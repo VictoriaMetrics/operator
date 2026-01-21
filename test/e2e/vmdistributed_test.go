@@ -200,7 +200,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
@@ -279,7 +279,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -374,7 +374,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
 						Name: inlineVMAuthName,
@@ -446,7 +446,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -524,7 +524,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{
@@ -605,7 +605,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
 							Ref: &corev1.LocalObjectReference{
@@ -685,7 +685,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{
@@ -776,7 +776,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -890,7 +890,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -982,7 +982,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
@@ -1059,9 +1059,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{VMClusters: []vmv1alpha1.VMClusterRefOrSpec{
 						{
-							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
-								s.ClusterVersion = "v1.126.0-cluster"
-							}),
+							Spec: genVMClusterSpec(),
 						},
 					}},
 				},
@@ -1096,9 +1094,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 							Ref: &corev1.LocalObjectReference{
 								Name: "vmcluster-existing",
 							},
-							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
-								s.ClusterVersion = "v1.126.0-cluster"
-							}),
+							Spec: genVMClusterSpec(),
 						},
 					}},
 				},
@@ -1123,7 +1119,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmagentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
@@ -1243,7 +1239,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 30 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: vmAgentName},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: vmAuthName},
 					Zones: vmv1alpha1.ZoneSpec{

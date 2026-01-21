@@ -56,7 +56,7 @@ func createVMClusterAndEnsureOperational(ctx context.Context, k8sClient client.C
 			return k8sClient.Get(ctx, types.NamespacedName{Name: vmcluster.Name, Namespace: ns}, &vmv1beta1.VMCluster{})
 		}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 	})
-	Expect(k8sClient.Create(ctx, vmcluster)).To(Succeed())
+	Expect(k8sClient.Create(ctx, vmcluster.DeepCopy())).To(Succeed())
 	Eventually(func() error {
 		return expectObjectStatusOperational(ctx, k8sClient, vmcluster, types.NamespacedName{Name: vmcluster.Name, Namespace: ns})
 	}, eventualDistributedExpandingTimeout).Should(Succeed())
@@ -166,7 +166,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 	vmAgentName := "new-vmagent"
 	vmAuthName := "new-vmauth"
 
-	Context("create", Serial, func() {
+	Context("create", func() {
 		It("should successfully create a VMDistributed with inline VMAgent spec", func() {
 			By("creating 2 VMClusters")
 			vmCluster1 := &vmv1beta1.VMCluster{
@@ -1015,7 +1015,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 		})
 	})
 
-	Context("fail", Serial, func() {
+	Context("fail", func() {
 		DescribeTable("should fail when creating VMDistributed", func(cr *vmv1alpha1.VMDistributed) {
 			namespacedName.Name = cr.Name
 			DeferCleanup(func() {
@@ -1106,7 +1106,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 		)
 	})
 
-	Context("delete", Serial, func() {
+	Context("delete", func() {
 
 		It("should delete VMDistributed and remove it from the cluster", func() {
 			namespacedName.Name = "vmdistributed-remove"

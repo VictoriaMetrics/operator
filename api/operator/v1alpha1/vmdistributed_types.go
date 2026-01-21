@@ -309,6 +309,20 @@ func (cr *VMDistributed) AnnotationsFiltered() map[string]string {
 	return map[string]string{}
 }
 
+// Owns returns error if owned by other CR
+func (cr *VMDistributed) Owns(r client.Object) error {
+	refs := r.GetOwnerReferences()
+	for i := range refs {
+		ref := &refs[i]
+		if ref.APIVersion == cr.APIVersion && ref.Kind == cr.Kind {
+			if ref.Name != cr.Name {
+				return fmt.Errorf("%T %s/%s is owned by other distributed resource: %s, expected: %s", r, r.GetNamespace(), r.GetName(), ref.Name, cr.Name)
+			}
+		}
+	}
+	return nil
+}
+
 // AsOwner returns owner references with current object as owner
 func (cr *VMDistributed) AsOwner() metav1.OwnerReference {
 	return metav1.OwnerReference{

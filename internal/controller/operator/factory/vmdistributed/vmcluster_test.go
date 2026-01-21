@@ -196,9 +196,9 @@ func TestEnsureNoVMClusterOwners(t *testing.T) {
 		},
 	}
 
-	err := ensureNoVMClusterOwners(cr, vmc)
+	err := cr.Owns(vmc)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unexpected owner reference")
+	assert.Contains(t, err.Error(), "is owned by other distributed resource")
 }
 
 func TestWaitForVMClusterReady_Success(t *testing.T) {

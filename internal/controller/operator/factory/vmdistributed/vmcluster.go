@@ -12,11 +12,9 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -26,12 +24,12 @@ import (
 // getReferencedVMCluster fetches an existing VMCluster based on its reference.
 func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespace string, ref *corev1.LocalObjectReference) (*vmv1beta1.VMCluster, error) {
 	vmClusterObj := &vmv1beta1.VMCluster{}
-	namespacedName := types.NamespacedName{Name: ref.Name, Namespace: namespace}
-	if err := rclient.Get(ctx, namespacedName, vmClusterObj); err != nil {
+	nsn := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := rclient.Get(ctx, nsn, vmClusterObj); err != nil {
 		if k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("referenced VMCluster %s/%s not found: %w", namespace, ref.Name, err)
+			return nil, fmt.Errorf("referenced VMCluster %s not found: %w", nsn.String(), err)
 		}
-		return nil, fmt.Errorf("failed to get referenced VMCluster %s/%s: %w", namespace, ref.Name, err)
+		return nil, fmt.Errorf("failed to get referenced VMCluster %s: %w", nsn.String(), err)
 	}
 	return vmClusterObj, nil
 }
@@ -59,9 +57,10 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
 			}
 			// We try to fetch the object to get the current state (Generation, etc)
-			if err := rclient.Get(ctx, types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}, vmClusters[i]); err != nil {
+			nsn := types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}
+			if err := rclient.Get(ctx, nsn, vmClusters[i]); err != nil {
 				if !k8serrors.IsNotFound(err) {
-					return nil, fmt.Errorf("failed to fetch vmcluster %s: %w", vmClusterObjOrRef.Name, err)
+					return nil, fmt.Errorf("failed to fetch vmcluster %s: %w", nsn.String(), err)
 				}
 			}
 		default:
@@ -193,8 +192,9 @@ func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.
 func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration, status vmv1beta1.UpdateStatus) error {
 	var lastStatus vmv1beta1.UpdateStatus
 	// Fetch VMCluster in a loop until it has UpdateStatusOperational status
+	nsn := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		if err := rclient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, vmCluster); err != nil {
+		if err := rclient.Get(ctx, nsn, vmCluster); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -204,7 +204,7 @@ func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, v
 		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == status, nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w, current status: %s", vmCluster.Namespace, vmCluster.Name, err, lastStatus)
+		return fmt.Errorf("failed to wait for VMCluster %s to be ready: %w, current status: %s", nsn.String(), err, lastStatus)
 	}
 
 	return nil
@@ -212,36 +212,4 @@ func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, v
 
 func waitForVMClusterReady(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
 	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusOperational)
-}
-
-// func waitForVMClusterExpanding(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration) error {
-// 	return waitForVMClusterToReachStatus(ctx, rclient, vmCluster, deadline, vmv1beta1.UpdateStatusExpanding)
-// }
-
-// setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.
-func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme *runtime.Scheme) (bool, error) {
-	if ok, err := controllerutil.HasOwnerReference(obj.GetOwnerReferences(), cr, scheme); err != nil {
-		return false, fmt.Errorf("failed to check owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
-	} else if !ok {
-		// Set owner reference for the VMCluster to the VMDistributed
-		if err := controllerutil.SetOwnerReference(cr, obj, scheme); err != nil {
-			return false, fmt.Errorf("failed to set owner reference for %s %s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), err)
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-// ensureNoVMClusterOwners validates that vmClusterObj has no owner references other than cr.
-func ensureNoVMClusterOwners(cr *vmv1alpha1.VMDistributed, vmClusterObj *vmv1beta1.VMCluster) error {
-	for _, owner := range vmClusterObj.GetOwnerReferences() {
-		isCROwner := owner.APIVersion == cr.APIVersion &&
-			owner.Kind == cr.Kind &&
-			owner.Name == cr.GetName()
-
-		if !isCROwner {
-			return fmt.Errorf("vmcluster %s has unexpected owner reference: %s/%s/%s, expected %s/%s/%s", vmClusterObj.Name, owner.APIVersion, owner.Kind, owner.Name, cr.APIVersion, cr.Kind, cr.Name)
-		}
-	}
-	return nil
 }

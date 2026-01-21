@@ -64,8 +64,8 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1
 	}
 
 	currentVMAuth := &vmv1beta1.VMAuth{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newVMAuth.Name, Namespace: newVMAuth.Namespace}, currentVMAuth)
-	if err != nil {
+	nsn := types.NamespacedName{Name: newVMAuth.Name, Namespace: newVMAuth.Namespace}
+	if err := rclient.Get(ctx, nsn, currentVMAuth); err != nil {
 		if k8serrors.IsNotFound(err) {
 			if _, err := setOwnerRefIfNeeded(cr, newVMAuth, rclient.Scheme()); err != nil {
 				return err
@@ -97,8 +97,9 @@ func waitForVMAuthReady(ctx context.Context, rclient client.Client, vmAuth *vmv1
 
 	var lastStatus vmv1beta1.UpdateStatus
 	// Fetch VMAuth in a loop until it has UpdateStatusOperational status
+	nsn := types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, defaultReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
-		if err := rclient.Get(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}, vmAuth); err != nil {
+		if err := rclient.Get(ctx, nsn, vmAuth); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -108,7 +109,7 @@ func waitForVMAuthReady(ctx context.Context, rclient client.Client, vmAuth *vmv1
 		return vmAuth.GetGeneration() == vmAuth.Status.ObservedGeneration && vmAuth.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to wait for VMAuth %s/%s to be ready: %w, current status: %s", vmAuth.Namespace, vmAuth.Name, err, lastStatus)
+		return fmt.Errorf("failed to wait for VMAuth %s to be ready: %w, current status: %s", nsn.String(), err, lastStatus)
 	}
 
 	return nil

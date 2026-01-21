@@ -10,8 +10,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -34,7 +36,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 	logger.WithContext(ctx).Info("Starting reconciliation", "name", cr.Name)
 
-	// Fetch VMCluster statuses by name (needed to build target refs for the VMUser).
+	// Fetch VMCluster statuses by name (needed to build target refs VMAuth).
 	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
@@ -42,8 +44,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributed only
 	for _, vmCluster := range vmClusters {
-		err := ensureNoVMClusterOwners(cr, vmCluster)
-		if err != nil {
+		if err := cr.Owns(vmCluster); err != nil {
 			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
 		}
 	}
@@ -97,7 +98,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 		needsToBeCreated := false
 		// Get vmClusterObj in case it doesn't exist or has changed
-		if err = rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); k8serrors.IsNotFound(err) {
+		nsn := types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}
+		if err = rclient.Get(ctx, nsn, vmClusterObj); k8serrors.IsNotFound(err) {
 			needsToBeCreated = true
 		}
 
@@ -246,4 +248,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 	}
 	logger.WithContext(ctx).Info("Reconciliation completed", "name", cr.Name)
 	return nil
+}
+
+// setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.
+func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme *runtime.Scheme) (bool, error) {
+	if ok, err := controllerutil.HasOwnerReference(obj.GetOwnerReferences(), cr, scheme); err != nil {
+		return false, fmt.Errorf("failed to check owner reference for %T=%s/%s: %w", obj, obj.GetNamespace(), obj.GetName(), err)
+	} else if !ok {
+		if err := controllerutil.SetOwnerReference(cr, obj, scheme); err != nil {
+			return false, fmt.Errorf("failed to set owner reference for %T=%s/%s: %w", obj, obj.GetNamespace(), obj.GetName(), err)
+		}
+		return true, nil
+	}
+	return false, nil
 }

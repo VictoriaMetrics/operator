@@ -88,8 +88,8 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	// Wait for vmAgent to become ready
 	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		vmAgentObj := &vmv1beta1.VMAgent{}
-		namespacedName := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
-		err = rclient.Get(ctx, namespacedName, vmAgentObj)
+		nsn := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
+		err = rclient.Get(ctx, nsn, vmAgentObj)
 		if err != nil {
 			return false, err
 		}
@@ -189,8 +189,8 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	vmAgentExists := true
 	vmAgentNeedsUpdate := false
 	vmAgentObj := &vmv1beta1.VMAgent{}
-	namespacedName := types.NamespacedName{Name: cr.Spec.VMAgent.Name, Namespace: cr.Namespace}
-	if err := rclient.Get(ctx, namespacedName, vmAgentObj); err != nil {
+	nsn := types.NamespacedName{Name: cr.Spec.VMAgent.Name, Namespace: cr.Namespace}
+	if err := rclient.Get(ctx, nsn, vmAgentObj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			vmAgentExists = false
 			// If it doesn't exist, initialize object for creation.
@@ -201,7 +201,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 				},
 			}
 		} else {
-			return nil, fmt.Errorf("failed to get VMAgent %s/%s: %w", cr.Namespace, cr.Spec.VMAgent.Name, err)
+			return nil, fmt.Errorf("failed to get VMAgent %s: %w", nsn.String(), err)
 		}
 	}
 

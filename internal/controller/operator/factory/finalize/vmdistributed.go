@@ -21,36 +21,37 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 	objsToRemove := []client.Object{}
 	objsToDisown := []client.Object{}
 	if len(cr.Spec.VMAgent.Name) > 0 {
-		vmAgentMeta := metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      cr.Spec.VMAgent.Name,
-		}
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMAgent{ObjectMeta: vmAgentMeta})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      cr.Spec.VMAgent.Name,
+			},
+		})
 	}
 	if len(cr.Spec.VMAuth.Name) > 0 {
-		vmAuthMeta := metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      cr.Spec.VMAuth.Name,
-		}
-		objsToRemove = append(objsToRemove, &vmv1beta1.VMAuth{ObjectMeta: vmAuthMeta})
+		objsToRemove = append(objsToRemove, &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      cr.Spec.VMAuth.Name,
+			},
+		})
 	}
 	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
-		if vmclusterSpec.Ref != nil {
+		if vmclusterSpec.Ref != nil && len(vmclusterSpec.Ref.Name) > 0 {
 			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      vmclusterSpec.Ref.Name,
 					Namespace: cr.Namespace,
 				},
 			})
-			continue
+		} else if len(vmclusterSpec.Name) > 0 {
+			objsToRemove = append(objsToRemove, &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmclusterSpec.Name,
+					Namespace: cr.Namespace,
+				},
+			})
 		}
-		vmcluster := &vmv1beta1.VMCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmclusterSpec.Name,
-				Namespace: cr.Namespace,
-			},
-		}
-		objsToRemove = append(objsToRemove, vmcluster)
 	}
 	for _, objToRemove := range objsToRemove {
 		if err := removeFinalizeObjByNameWithOwnerReference(ctx, rclient, objToRemove, cr.Name, cr.Namespace, false); err != nil {
@@ -60,21 +61,35 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 			return err
 		}
 	}
+	owner := cr.AsOwner()
 	for _, objToDisown := range objsToDisown {
+		nsn := types.NamespacedName{
+			Name:      objToDisown.GetName(),
+			Namespace: objToDisown.GetNamespace(),
+		}
 		err := wait.PollUntilContextTimeout(ctx, time.Second, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
-			err = rclient.Get(ctx, types.NamespacedName{Name: objToDisown.GetName(), Namespace: objToDisown.GetNamespace()}, objToDisown)
-			if err != nil && !k8serrors.IsNotFound(err) {
+			if err := rclient.Get(ctx, nsn, objToDisown); err != nil {
+				if k8serrors.IsNotFound(err) {
+					return true, nil
+				}
 				return false, fmt.Errorf("error looking for object: %w", err)
 			}
-			objToDisown.SetOwnerReferences([]metav1.OwnerReference{})
-
+			ownerReferences := objToDisown.GetOwnerReferences()
+			refs := ownerReferences[:0]
+			for _, ref := range ownerReferences {
+				if ref.APIVersion == owner.APIVersion && ref.Name == owner.Name && ref.Kind == owner.Kind {
+					continue
+				}
+				refs = append(refs, ref)
+			}
+			objToDisown.SetOwnerReferences(refs)
 			if err := rclient.Update(ctx, objToDisown); err != nil {
 				return false, fmt.Errorf("error on update: %w", err)
 			}
 			return true, nil
 		})
 		if err != nil {
-			return fmt.Errorf("failed to disown object %s %s/%s: %w", objToDisown.GetObjectKind().GroupVersionKind(), objToDisown.GetName(), objToDisown.GetNamespace(), err)
+			return fmt.Errorf("failed to disown object %T=%s: %w", objToDisown, nsn.String(), err)
 		}
 	}
 	// Remove the CR

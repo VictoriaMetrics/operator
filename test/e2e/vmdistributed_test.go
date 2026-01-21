@@ -1106,8 +1106,6 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 		It("should delete VMDistributed and remove it from the cluster", func() {
 			namespacedName.Name = "vmdistributed-remove"
-			vmagentName := namespacedName.Name + "-agent"
-			vmauthName := namespacedName.Name + "-vmauth"
 			vmc1Name := namespacedName.Name + "-c1"
 			vmc2Name := namespacedName.Name + "-c2"
 
@@ -1119,9 +1117,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 10 * time.Second},
+					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
-						Name: vmagentName,
+						Name: vmAgentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
@@ -1129,7 +1127,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						},
 					},
 					VMAuth: vmv1alpha1.VMAuthNameAndSpec{
-						Name: vmauthName,
+						Name: vmAuthName,
 						Spec: &vmv1beta1.VMAuthSpec{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 								ReplicaCount: ptr.To[int32](1),
@@ -1160,10 +1158,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
 
 			By("ensuring VMAgent was created")
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})).To(Succeed())
 
 			By("ensuring VMAuth was created")
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})).To(Succeed())
 
 			By("ensuring VMClusters were created")
 			vmclusters := []string{vmc1Name, vmc2Name}
@@ -1175,16 +1173,14 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, cr)).To(Succeed())
 
 			By("ensuring VMAgent is eventually removed")
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: vmagentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})
-				return k8serrors.IsNotFound(err)
-			}, eventualDeletionTimeout).Should(BeTrue())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgentName, Namespace: cr.Namespace}, &vmv1beta1.VMAgent{})
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			By("ensuring VMAuth is eventually removed")
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: vmauthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
-				return k8serrors.IsNotFound(err)
-			}, eventualDeletionTimeout).Should(BeTrue())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAuthName, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			By("ensuring VMDistributed is eventually removed")
 			Eventually(func() error {
@@ -1197,10 +1193,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			By("ensuring VMClusters are eventually removed")
 			for _, vmclusterName := range vmclusters {
-				Eventually(func() bool {
-					err := k8sClient.Get(ctx, types.NamespacedName{Name: vmclusterName, Namespace: namespace}, &vmv1beta1.VMCluster{})
-					return k8serrors.IsNotFound(err)
-				}, eventualDeletionTimeout).Should(BeTrue())
+				Eventually(func() error {
+					return k8sClient.Get(ctx, types.NamespacedName{Name: vmclusterName, Namespace: namespace}, &vmv1beta1.VMCluster{})
+				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 			}
 		})
 

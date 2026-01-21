@@ -25326,9 +25326,6 @@ spec:
                         properties:
                           name:
                             type: string
-                          overrideSpec:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
                           ref:
                             properties:
                               name:

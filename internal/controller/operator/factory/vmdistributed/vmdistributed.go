@@ -17,6 +17,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -34,19 +35,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		return nil
 	}
 
+	if !build.MustSkipRuntimeValidation {
+		if err := cr.Validate(); err != nil {
+			return err
+		}
+	}
+
 	logger.WithContext(ctx).Info("Starting reconciliation", "name", cr.Name)
 
 	// Fetch VMCluster statuses by name (needed to build target refs VMAuth).
-	vmClusters, err := fetchVMClusters(ctx, rclient, cr.Namespace, cr.Spec.Zones.VMClusters)
+	vmClusters, err := fetchVMClusters(ctx, rclient, cr)
 	if err != nil {
 		return fmt.Errorf("failed to fetch vmclusters: %w", err)
-	}
-
-	// Throw error if VMCluster has any other owner - that means it is managed by one instance of VMDistributed only
-	for _, vmCluster := range vmClusters {
-		if err := cr.Owns(vmCluster); err != nil {
-			return fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
-		}
 	}
 
 	// TODO[vrutkovs]: if vmauth exists wait for it become operational
@@ -115,53 +115,28 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
 		mergedSpec := vmClusterObj.Spec
-		previousVMClusterObjSpec := vmClusterObj.Spec.DeepCopy()
+		previousVMClusterObjSpec := mergedSpec.DeepCopy()
 		modifiedSpec := false
 
 		// Apply GlobalOverrideSpec if it is set
 		if cr.Spec.Zones.GlobalOverrideSpec != nil {
-			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(vmClusterObj.Spec, cr.Spec.Zones.GlobalOverrideSpec)
+			mergedSpec, modifiedSpec, err = applyOverrideSpec(mergedSpec, cr.Spec.Zones.GlobalOverrideSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
 		}
-		diff := cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
-		if diff != "" {
-			logger.WithContext(ctx).Info("GlobalOverrideSpec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
-			logger.WithContext(ctx).Info(diff)
-		}
 
 		// Apply cluster-specific override if it exist
-		previousVMClusterObjSpec = mergedSpec.DeepCopy()
-		if zoneRefOrSpec.Ref != nil && zoneRefOrSpec.OverrideSpec != nil {
-			mergedSpec, modifiedSpec, err = ApplyOverrideSpec(mergedSpec, zoneRefOrSpec.OverrideSpec)
-			if err != nil {
-				return fmt.Errorf("failed to apply override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
-			}
-		}
-		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
-		if diff != "" {
-			logger.WithContext(ctx).Info("zoneRefOrSpec.Ref diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
-			logger.WithContext(ctx).Info(diff)
-		}
-
-		previousVMClusterObjSpec = mergedSpec.DeepCopy()
 		if zoneRefOrSpec.Spec != nil {
 			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}
 		}
-		diff = cmp.Diff(*previousVMClusterObjSpec, mergedSpec)
+		diff := cmp.Diff(previousVMClusterObjSpec, mergedSpec)
 		if diff != "" {
-			logger.WithContext(ctx).Info("zoneRefOrSpec.Spec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
+			logger.WithContext(ctx).Info("zoneRefOrSpec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
 			logger.WithContext(ctx).Info(diff)
-		}
-
-		// Apply VMDistributed License to VMCluster if not already set
-		if mergedSpec.License == nil && cr.Spec.License != nil {
-			mergedSpec.License = cr.Spec.License.DeepCopy()
-			modifiedSpec = true
 		}
 
 		// Set owner reference for this vmcluster

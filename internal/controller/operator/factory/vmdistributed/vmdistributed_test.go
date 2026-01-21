@@ -56,7 +56,7 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 }
 
 // newVMDistributed constructs a VMDistributed for tests.
-func newVMDistributed(name string, zones []vmv1alpha1.VMClusterRefOrSpec, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributed {
+func newVMDistributed(name string, zones []vmv1alpha1.VMClusterObjOrRef, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...interface{}) *vmv1alpha1.VMDistributed {
 	var vmAuth vmv1alpha1.VMAuthNameAndSpec
 
 	// Parse extras to find VMAuth (ignore any legacy VMUser parameters).
@@ -114,7 +114,7 @@ func beforeEach(o opts) *testData {
 	vmcluster1 := newVMCluster("vmcluster-1", "v1.0.0")
 	vmcluster2 := newVMCluster("vmcluster-2", "v1.0.0") // keep original helper semantics
 
-	zones := []vmv1alpha1.VMClusterRefOrSpec{
+	zones := []vmv1alpha1.VMClusterObjOrRef{
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-1"}},
 		{Ref: &corev1.LocalObjectReference{Name: "vmcluster-2"}},
 	}

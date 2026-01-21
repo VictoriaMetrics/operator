@@ -104,14 +104,14 @@ func TestApplyOverrideSpec_NilOverride(t *testing.T) {
 		ClusterVersion:     "v1.0.0",
 		ServiceAccountName: "base",
 	}
-	merged, modified, err := ApplyOverrideSpec(base, nil)
+	merged, modified, err := applyOverrideSpec(base, nil)
 	assert.NoError(t, err)
 	assert.False(t, modified)
 	assert.Equal(t, base, merged)
 
 	// empty JSON override should be no-op
 	empty := &apiextensionsv1.JSON{Raw: []byte("{}")}
-	merged2, modified2, err := ApplyOverrideSpec(base, empty)
+	merged2, modified2, err := applyOverrideSpec(base, empty)
 	assert.NoError(t, err)
 	assert.False(t, modified2)
 	assert.Equal(t, base, merged2)
@@ -292,12 +292,21 @@ func TestFetchVMClusters_InlineAndRef(t *testing.T) {
 	inlineSpec := vmv1beta1.VMClusterSpec{
 		ClusterVersion: "v0.1.0",
 	}
-	zones := []vmv1alpha1.VMClusterRefOrSpec{
-		{Ref: &corev1.LocalObjectReference{Name: "ref"}},
-		{Name: "inline", Spec: &inlineSpec},
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			Zones: vmv1alpha1.ZoneSpec{
+				VMClusters: []vmv1alpha1.VMClusterObjOrRef{
+					{Ref: &corev1.LocalObjectReference{Name: "ref"}},
+					{Name: "inline", Spec: &inlineSpec},
+				},
+			},
+		},
 	}
 
-	got, err := fetchVMClusters(context.Background(), cl, "ns", zones)
+	got, err := fetchVMClusters(context.Background(), cl, cr)
 	assert.NoError(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, "ref", got[0].Name)
@@ -325,13 +334,21 @@ func TestFetchVMClusters_SortedByGeneration(t *testing.T) {
 
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(c1, c2, c3).Build()
 
-	refs := []vmv1alpha1.VMClusterRefOrSpec{
-		{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}},
-		{Ref: &corev1.LocalObjectReference{Name: "cluster-2"}},
-		{Ref: &corev1.LocalObjectReference{Name: "cluster-3"}},
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			Zones: vmv1alpha1.ZoneSpec{
+				VMClusters: []vmv1alpha1.VMClusterObjOrRef{
+					{Ref: &corev1.LocalObjectReference{Name: "cluster-1"}},
+					{Ref: &corev1.LocalObjectReference{Name: "cluster-2"}},
+					{Ref: &corev1.LocalObjectReference{Name: "cluster-3"}},
+				},
+			},
+		},
 	}
-
-	got, err := fetchVMClusters(context.Background(), cl, "ns", refs)
+	got, err := fetchVMClusters(context.Background(), cl, cr)
 	assert.NoError(t, err)
 	assert.Len(t, got, 3)
 
@@ -353,21 +370,21 @@ func TestApplyGlobalOverrideSpec(t *testing.T) {
 
 	// Test with nil GlobalOverrideSpec
 	globalOverride := (*apiextensionsv1.JSON)(nil)
-	merged, modified, err := ApplyOverrideSpec(base, globalOverride)
+	merged, modified, err := applyOverrideSpec(base, globalOverride)
 	assert.NoError(t, err)
 	assert.False(t, modified)
 	assert.Equal(t, base, merged)
 
 	// Test with empty GlobalOverrideSpec
 	emptyGlobal := &apiextensionsv1.JSON{Raw: []byte("{}")}
-	merged2, modified2, err := ApplyOverrideSpec(base, emptyGlobal)
+	merged2, modified2, err := applyOverrideSpec(base, emptyGlobal)
 	assert.NoError(t, err)
 	assert.False(t, modified2)
 	assert.Equal(t, base, merged2)
 
 	// Test with GlobalOverrideSpec that modifies top-level fields
 	globalTopLevel := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
-	merged3, modified3, err := ApplyOverrideSpec(base, globalTopLevel)
+	merged3, modified3, err := applyOverrideSpec(base, globalTopLevel)
 	assert.NoError(t, err)
 	assert.True(t, modified3)
 	assert.Equal(t, "v2.0.0", merged3.ClusterVersion)
@@ -376,7 +393,7 @@ func TestApplyGlobalOverrideSpec(t *testing.T) {
 
 	// Test with GlobalOverrideSpec that sets a field to null
 	globalNullify := &apiextensionsv1.JSON{Raw: []byte(`{"serviceAccountName": null}`)}
-	merged5, modified5, err := ApplyOverrideSpec(base, globalNullify)
+	merged5, modified5, err := applyOverrideSpec(base, globalNullify)
 	assert.NoError(t, err)
 	assert.True(t, modified5)
 	assert.Equal(t, "", merged5.ServiceAccountName) // Should be empty string (null in JSON becomes empty string after unmarshal)
@@ -391,7 +408,7 @@ func TestApplyGlobalAndClusterSpecificOverrideSpecs(t *testing.T) {
 
 	// Apply GlobalOverrideSpec first
 	globalOverride := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
-	merged1, modified1, err := ApplyOverrideSpec(base, globalOverride)
+	merged1, modified1, err := applyOverrideSpec(base, globalOverride)
 	assert.NoError(t, err)
 	assert.True(t, modified1)
 	assert.Equal(t, "v2.0.0", merged1.ClusterVersion)
@@ -400,7 +417,7 @@ func TestApplyGlobalAndClusterSpecificOverrideSpecs(t *testing.T) {
 
 	// Then apply cluster-specific override
 	clusterOverride := &apiextensionsv1.JSON{Raw: []byte(`{"retentionPeriod": "10d", "clusterVersion": "v3.0.0"}`)}
-	merged2, modified2, err := ApplyOverrideSpec(merged1, clusterOverride)
+	merged2, modified2, err := applyOverrideSpec(merged1, clusterOverride)
 	assert.NoError(t, err)
 	assert.True(t, modified2)
 	assert.Equal(t, "v3.0.0", merged2.ClusterVersion)        // Cluster-specific override should take precedence

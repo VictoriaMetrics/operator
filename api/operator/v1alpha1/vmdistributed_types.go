@@ -67,41 +67,67 @@ type VMDistributedSpec struct {
 // ZoneSpec is a list of VMCluster instances to update.
 type ZoneSpec struct {
 	// GlobalOverrideSpec specifies an override to all VMClusters.
-	// These overrides are applied to the referenced object if `Ref` is specified.
+	// These overrides are applied to the referenced object if `ref` is specified.
 	// +kubebuilder:validation:Type=object
 	// +kubebuilder:validation:XPreserveUnknownFields
 	// +optional
 	GlobalOverrideSpec *apiextensionsv1.JSON `json:"globalOverrideSpec,omitempty"`
 
-	// Each VMClusterRefOrSpec is either defining a new inline VMCluster or referencing an existing one.
-	VMClusters []VMClusterRefOrSpec `json:"vmclusters,omitempty"`
+	// Each VMClusterObjOrRef is either defining a new inline VMCluster or referencing an existing one.
+	VMClusters []VMClusterObjOrRef `json:"vmclusters,omitempty"`
+}
+
+func (s *ZoneSpec) validate() error {
+	for idx, refOrSpec := range s.VMClusters {
+		if err := refOrSpec.validate(idx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // +k8s:openapi-gen=true
-// VMClusterRefOrSpec is either a reference to existing VMCluster or a specification of a new VMCluster.
-// +kubebuilder:validation:Xor=Ref,Spec
-type VMClusterRefOrSpec struct {
+// VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
+// +kubebuilder:validation:Xor=Ref,Name
+type VMClusterObjOrRef struct {
 	// Ref points to the VMCluster object.
-	// If Ref is specified, Name and Spec are ignored.
+	// If Ref is specified, Name is ignored.
 	// +optional
 	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
 
-	// OverrideSpec specifies an override to the VMClusterSpec of the referenced object.
-	// This override is applied to the referenced object if `Ref` is specified.
-	// This field is ignored if `Spec` is specified.
-	// +kubebuilder:validation:Type=object
-	// +kubebuilder:validation:XPreserveUnknownFields
-	// +optional
-	OverrideSpec *apiextensionsv1.JSON `json:"overrideSpec,omitempty"`
-
 	// Name specifies the static name to be used for the VMCluster when Spec is provided.
-	// This field is ignored if `Ref` is specified.
+	// This field is ignored if `ref` is specified.
 	// +optional
 	Name string `json:"name,omitempty"`
+
 	// Spec defines the desired state of a new VMCluster.
-	// This field is ignored if `Ref` is specified.
+	// This field is ignored if `ref` is specified.
 	// +optional
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
+}
+
+func (s *VMClusterObjOrRef) validate(idx int) error {
+	// Check mutual exclusivity: either ref or name must be set, but not both
+	if s.Ref != nil && len(s.Name) > 0 {
+		return fmt.Errorf("vmclusters[%d] must specify either ref or name, not both", idx)
+	}
+
+	// Check that at least one of ref or name is set
+	if s.Ref == nil && len(s.Name) == 0 {
+		return fmt.Errorf("vmclusters[%d] must have either ref or name set", idx)
+	}
+
+	// If Spec is provided, Name must be set
+	if s.Spec != nil && len(s.Name) == 0 {
+		return fmt.Errorf("ref.name must be set when spec is provided at vmclusters[%d]", idx)
+	}
+
+	// If ref is provided, ref.name must be set
+	if s.Ref != nil && len(s.Ref.Name) == 0 {
+		return fmt.Errorf("Ref.Name must be set for reference at vmclusters[%d]", idx)
+	}
+
+	return nil
 }
 
 // +k8s:openapi-gen=true
@@ -476,4 +502,22 @@ func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// Validate validates the VMDistributed resource
+func (cr *VMDistributed) Validate() error {
+	spec := cr.Spec
+	// Validate VMAuth
+	if spec.VMAuth.Name == "" {
+		return fmt.Errorf("VMAuth.Name must be set")
+	}
+
+	// VMAgent needs to specify either Name or LabelSelector
+	if spec.VMAgent.Name != "" && spec.VMAgent.LabelSelector != nil {
+		return fmt.Errorf("VMAgent.Name and LabelSelector cannot be set at the same time")
+	}
+	if spec.VMAgent.Spec != nil && spec.VMAgent.LabelSelector != nil {
+		return fmt.Errorf("VMAgent.Spec and LabelSelector cannot be set at the same time")
+	}
+	return spec.Zones.validate()
 }

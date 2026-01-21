@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,37 +34,41 @@ func getReferencedVMCluster(ctx context.Context, rclient client.Client, namespac
 }
 
 // fetchVMClusters ensures that referenced VMClusters are fetched and validated.
-func fetchVMClusters(ctx context.Context, rclient client.Client, namespace string, refs []vmv1alpha1.VMClusterRefOrSpec) ([]*vmv1beta1.VMCluster, error) {
+func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) ([]*vmv1beta1.VMCluster, error) {
 	logger.WithContext(ctx).Info("Fetching VMClusters")
 
-	var err error
-	vmClusters := make([]*vmv1beta1.VMCluster, len(refs))
-	for i, vmClusterObjOrRef := range refs {
+	objOrRefs := cr.Spec.Zones.VMClusters
+	vmClusters := make([]*vmv1beta1.VMCluster, len(objOrRefs))
+	for i, objOrRef := range objOrRefs {
+		vmCluster := &vmv1beta1.VMCluster{}
 		switch {
-		case vmClusterObjOrRef.Ref != nil:
-			vmClusters[i], err = getReferencedVMCluster(ctx, rclient, namespace, vmClusterObjOrRef.Ref)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fetch vmclusters: %w", err)
+		case objOrRef.Ref != nil && len(objOrRef.Ref.Name) > 0:
+			nsn := types.NamespacedName{Name: objOrRef.Ref.Name, Namespace: cr.Namespace}
+			if err := rclient.Get(ctx, nsn, vmCluster); err != nil {
+				if k8serrors.IsNotFound(err) {
+					return nil, fmt.Errorf("referenced vmclusters[%d]=%s not found: %w", i, nsn.String(), err)
+				}
+				return nil, fmt.Errorf("failed to get referenced vmclusters[%d]=%s: %w", i, nsn.String(), err)
 			}
-		case vmClusterObjOrRef.Spec != nil:
-			// Create an in-memory VMCluster object, it will be reconciled in the main loop.
-			vmClusters[i] = &vmv1beta1.VMCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmClusterObjOrRef.Name,
-					Namespace: namespace,
-				},
-				Spec: *vmClusterObjOrRef.Spec.DeepCopy(),
-			}
+		case len(objOrRef.Name) > 0:
 			// We try to fetch the object to get the current state (Generation, etc)
-			nsn := types.NamespacedName{Name: vmClusterObjOrRef.Name, Namespace: namespace}
-			if err := rclient.Get(ctx, nsn, vmClusters[i]); err != nil {
-				if !k8serrors.IsNotFound(err) {
-					return nil, fmt.Errorf("failed to fetch vmcluster %s: %w", nsn.String(), err)
+			nsn := types.NamespacedName{Name: objOrRef.Name, Namespace: cr.Namespace}
+			if err := rclient.Get(ctx, nsn, vmCluster); err != nil {
+				if k8serrors.IsNotFound(err) {
+					vmCluster.Name = objOrRef.Name
+					vmCluster.Namespace = cr.Namespace
+					vmCluster.Spec = *objOrRef.Spec.DeepCopy()
+				} else {
+					return nil, fmt.Errorf("unexpected error while fetching vmclusters[%d]=%s: %w", i, nsn.String(), err)
 				}
 			}
 		default:
-			return nil, fmt.Errorf("invalid VMClusterRefOrSpec at index %d: neither Ref nor Spec is set", i)
+			return nil, fmt.Errorf("invalid VMClusterObjOrRef at index %d: neither Ref nor Name is set", i)
 		}
+		if err := cr.Owns(vmCluster); err != nil {
+			return nil, fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)
+		}
+		vmClusters[i] = vmCluster
 	}
 
 	// Sort VMClusters by observedGeneration in descending order (biggest first)
@@ -77,24 +80,24 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, namespace strin
 	return vmClusters, nil
 }
 
-// ApplyOverrideSpec merges an override VMClusterSpec into a base VMClusterSpec.
-// Fields present in the overrideSpec (and not nil) will overwrite corresponding fields in the baseSpec.
-func ApplyOverrideSpec(baseSpec vmv1beta1.VMClusterSpec, overrideSpec *apiextensionsv1.JSON) (vmv1beta1.VMClusterSpec, bool, error) {
-	if overrideSpec == nil || overrideSpec.Raw == nil || len(overrideSpec.Raw) == 0 {
-		return baseSpec, false, nil
+// applyOverrideSpec merges an override VMClusterSpec into a base VMClusterSpec.
+// Fields present in the override will overwrite corresponding fields in the base.
+func applyOverrideSpec(base vmv1beta1.VMClusterSpec, override *apiextensionsv1.JSON) (vmv1beta1.VMClusterSpec, bool, error) {
+	if override == nil || override.Raw == nil || len(override.Raw) == 0 {
+		return base, false, nil
 	}
 
-	baseSpecJSON, err := json.Marshal(baseSpec)
+	baseJSON, err := json.Marshal(base)
 	if err != nil {
 		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal base VMClusterSpec: %w", err)
 	}
 
 	var baseMap map[string]interface{}
-	if err := json.Unmarshal(baseSpecJSON, &baseMap); err != nil {
+	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
 		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal base VMClusterSpec to map: %w", err)
 	}
 	var overrideMap map[string]interface{}
-	if err := json.Unmarshal(overrideSpec.Raw, &overrideMap); err != nil {
+	if err := json.Unmarshal(override.Raw, &overrideMap); err != nil {
 		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal override VMClusterSpec to map: %w", err)
 	}
 
@@ -150,10 +153,10 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]interface{}) bool {
 	return modified
 }
 
-// mergeVMClusterSpecs merges the zoneSpec into baseSpec and returns the merged result
+// mergeVMClusterSpecs merges the zoneSpec into base and returns the merged result
 // along with a boolean indicating whether any modifications were made.
-func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.VMClusterSpec, bool, error) {
-	baseSpecJSON, err := json.Marshal(baseSpec)
+func mergeVMClusterSpecs(base, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.VMClusterSpec, bool, error) {
+	baseJSON, err := json.Marshal(base)
 	if err != nil {
 		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to marshal base VMClusterSpec: %w", err)
 	}
@@ -164,7 +167,7 @@ func mergeVMClusterSpecs(baseSpec, zoneSpec vmv1beta1.VMClusterSpec) (vmv1beta1.
 	}
 
 	var baseMap map[string]interface{}
-	if err := json.Unmarshal(baseSpecJSON, &baseMap); err != nil {
+	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
 		return vmv1beta1.VMClusterSpec{}, false, fmt.Errorf("failed to unmarshal base VMClusterSpec to map: %w", err)
 	}
 

@@ -28,13 +28,11 @@ import (
 )
 
 const (
-	persistentQueueSTSDir    = "/vlagent_pq/vlagent-remotewrite-data"
-	persistentQueueMountName = "persistent-queue-data"
+	defaultTmpDataPath = "/vlagent-data"
+	hostTmpDataPath    = "/var/lib" + defaultTmpDataPath
+	defaultLogsPath    = "/var/log/containers"
 
-	defaultLogsPath        = "/var/log/containers"
-	defaultCheckpointsPath = "/var/lib/vlagent_checkpoints"
-	checkpointsVolumeName  = "checkpoints"
-
+	tmpDataVolumeName           = "tmp-data"
 	remoteWriteAssetsMounthPath = "/etc/vl/remote-write-assets"
 	tlsServerConfigMountPath    = "/etc/vl/tls-server-secrets"
 )
@@ -235,8 +233,8 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 
-	if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
-		cr.Spec.Storage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
+	if cr.Spec.TmpDataPath == nil {
+		cr.Spec.Storage.IntoSTSVolume(tmpDataVolumeName, &stsSpec.Spec)
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return stsSpec, nil
@@ -268,6 +266,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	var agentVolumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
+	tmpDataPath := defaultTmpDataPath
 	if cr.Spec.K8sCollector.Enabled {
 		args = append(args, "-kubernetesCollector")
 		if len(cr.Spec.K8sCollector.TenantID) > 0 {
@@ -287,6 +286,21 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		}
 		if len(cr.Spec.K8sCollector.ExtraFields) > 0 {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.extraFields=%s", cr.Spec.K8sCollector.ExtraFields))
+		}
+		if len(cr.Spec.K8sCollector.ExcludeFilter) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.excludeFilter=%s", cr.Spec.K8sCollector.ExcludeFilter))
+		}
+		if ptr.Deref(cr.Spec.K8sCollector.IncludePodLabels, true) {
+			args = append(args, "-kubernetesCollector.includePodLabels")
+		}
+		if ptr.Deref(cr.Spec.K8sCollector.IncludePodAnnotations, false) {
+			args = append(args, "-kubernetesCollector.includePodAnnotations")
+		}
+		if ptr.Deref(cr.Spec.K8sCollector.IncludeNodeLabels, false) {
+			args = append(args, "-kubernetesCollector.includeNodeLabels")
+		}
+		if ptr.Deref(cr.Spec.K8sCollector.IncludeNodeAnnotations, false) {
+			args = append(args, "-kubernetesCollector.includeNodeAnnotations")
 		}
 
 		if len(cr.Spec.K8sCollector.LogsPath) == 0 || cr.Spec.K8sCollector.LogsPath == defaultLogsPath {
@@ -321,35 +335,33 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		} else {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.logsPath=%s", cr.Spec.K8sCollector.LogsPath))
 		}
-		checkpointsPath := defaultCheckpointsPath
-		if len(cr.Spec.K8sCollector.CheckpointsPath) == 0 || cr.Spec.K8sCollector.CheckpointsPath == defaultCheckpointsPath {
+		if cr.Spec.K8sCollector.CheckpointsPath != nil {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%s", *cr.Spec.K8sCollector.CheckpointsPath))
+		}
+		tmpDataPath = hostTmpDataPath
+		if cr.Spec.TmpDataPath == nil {
 			volumes = append(volumes, corev1.Volume{
-				Name: checkpointsVolumeName,
+				Name: tmpDataVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: checkpointsPath,
+						Path: hostTmpDataPath,
 					},
-				},
-			})
-			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-				Name:      checkpointsVolumeName,
-				MountPath: checkpointsPath,
-			})
-			checkpointsPath = path.Join(checkpointsPath, "checkpoints.json")
-		} else {
-			checkpointsPath = cr.Spec.K8sCollector.CheckpointsPath
-		}
-		args = append(args, fmt.Sprintf("-kubernetesCollector.checkpointsPath=%s", checkpointsPath))
-
-		if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
-			volumes = append(volumes, corev1.Volume{
-				Name: persistentQueueMountName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			})
 		}
 	}
+
+	if cr.Spec.TmpDataPath == nil {
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      tmpDataVolumeName,
+				MountPath: tmpDataPath,
+			},
+		)
+	} else {
+		tmpDataPath = *cr.Spec.TmpDataPath
+	}
+	args = append(args, fmt.Sprintf("-tmpDataPath=%s", tmpDataPath))
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
@@ -364,16 +376,6 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
-	if cr.Spec.RemoteWriteSettings == nil || cr.Spec.RemoteWriteSettings.TmpDataPath == nil {
-		// do not mount pq if user provided own path
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      persistentQueueMountName,
-				MountPath: persistentQueueSTSDir,
-			},
-		)
-	}
 
 	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
 	volumes = append(volumes, cr.Spec.Volumes...)
@@ -441,7 +443,11 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 
 	operatorContainers = append(operatorContainers, vlagentContainer)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	if cr.Spec.K8sCollector.Enabled {
+		build.AddStrictSecuritySettingsWithRootToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	} else {
+		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	}
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -527,7 +533,6 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
-	pqMountPath := persistentQueueSTSDir
 	if cr.Spec.Storage != nil {
 		if storage, ok := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
 			storageInt, ok := storage.AsInt64()
@@ -664,14 +669,13 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 			args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
 		}
 		if rws.TmpDataPath != nil {
-			pqMountPath = *rws.TmpDataPath
+			args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", *rws.TmpDataPath))
 		}
 		if rws.MaxBlockSize != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%s", *rws.MaxBlockSize))
 		}
 	}
 
-	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
 	if !hasAnyDiskUsagesSet && len(maxDiskUsage) > 0 {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
 	}

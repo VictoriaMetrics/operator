@@ -103,11 +103,11 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		expected: []corev1.Container{
 			{
 				Name:            "c1",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 			{
 				Name:            "c2",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 		},
 	})
@@ -174,11 +174,11 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		expected: []corev1.Container{
 			{
 				Name:            "c1",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 			{
 				Name:            "c2",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 		},
 	})
@@ -200,11 +200,11 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 		expected: []corev1.Container{
 			{
 				Name:            "c1",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 			{
 				Name:            "c2",
-				SecurityContext: defaultSecurityContext,
+				SecurityContext: getDefaultSecurityContext(false),
 			},
 		},
 	})

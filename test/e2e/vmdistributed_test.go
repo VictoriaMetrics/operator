@@ -588,7 +588,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 		})
 
 		It("should handle rolling updates with VMAgent configuration changes", func() {
-			nsn.Name = "vmd-global-override"
+			nsn.Name = "vmd-rolling-updates"
 			vmclusters := []*vmv1beta1.VMCluster{
 				{
 					ObjectMeta: metav1.ObjectMeta{

@@ -51,7 +51,7 @@ var _ = Describe("VMAuth Webhook", func() {
          unauthorizedUserAccessSpec:
             default_url: 
             - http://url-1
-        `, "incorrect cr.spec.UnauthorizedUserAccess syntax: at least one of `url_map`, `url_prefix` or `target_refs` must be defined"),
+        `, "incorrect cr.spec.UnauthorizedUserAccess syntax: at least one of `url_map`, `url_prefix` or `targetRefs` must be defined"),
 			Entry("incorrect unauthorized access config, bad metric_labels syntax", `
         apiVersion: v1 
         kind: VMAuth

@@ -219,8 +219,8 @@ func (cr *VMAgent) GetShardCount() int {
 }
 
 // GetReloadURL implements reloadable interface
-func (cr *VMAgent) GetReloadURL() string {
-	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)
+func (cr *VMAgent) GetReloadURL(host string) string {
+	return BuildLocalURL(reloadAuthKey, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface

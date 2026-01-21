@@ -185,10 +185,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 
 	listenHost := ""
 	if cr.Spec.ListenLocal {
-		listenHost = "127.0.0.1"
-		if cfg.EnableTCP6 {
-			listenHost = "localhost"
-		}
+		listenHost = config.GetLocalhost()
 	}
 	amArgs = append(amArgs, fmt.Sprintf("--web.listen-address=%s:%d", listenHost, port))
 

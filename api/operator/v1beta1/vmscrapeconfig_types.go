@@ -155,6 +155,7 @@ type KubernetesSDConfig struct {
 	// +optional
 	APIServer *string `json:"apiServer,omitempty"`
 	// Role of the Kubernetes entities that should be discovered.
+	// +kubebuilder:validation:Enum=node;pod;service;endpoints;endpointslice;ingress
 	// +required
 	Role string `json:"role"`
 	// BasicAuth information to use on every scrape request.
@@ -195,6 +196,7 @@ type KubernetesSDConfig struct {
 // K8SSelectorConfig is Kubernetes Selector Config
 type K8SSelectorConfig struct {
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=node;pod;service;endpoints;endpointslice;ingress
 	Role  string `json:"role"`
 	Label string `json:"label,omitempty"`
 	Field string `json:"field,omitempty"`

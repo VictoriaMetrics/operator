@@ -40,6 +40,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	}
 
 	f := func(o opts) {
+		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		if o.mustAddPrevSpec {
@@ -742,7 +743,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		statefulsetMode: true,
 		validate: func(set *appsv1.StatefulSet) error {
-			cnt := set.Spec.Template.Spec.Containers[1]
+			cnt := set.Spec.Template.Spec.Containers[0]
 			if cnt.Name != "vmagent" {
 				return fmt.Errorf("unexpected container name: %q, want: vmagent", cnt.Name)
 			}
@@ -2360,51 +2361,12 @@ initcontainers:
         - --config-secret-key=vmagent.yaml.gz
         - --config-secret-name=default/vmagent-agent
         - --only-init-config
-        - --reload-url=http://localhost:8429/-/reload
+        - --reload-url=http://127.0.0.1:8429/-/reload
         - --webhook-method=POST
       volumemounts:
         - name: config-out
           mountpath: /etc/vmagent/config_out
 containers:
-    - name: config-reloader
-      image: vmcustomer:v1
-      args:
-        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
-        - --config-secret-key=vmagent.yaml.gz
-        - --config-secret-name=default/vmagent-agent
-        - --reload-url=http://localhost:8429/-/reload
-        - --webhook-method=POST
-      ports:
-        - name: reloader-http
-          containerport: 8435
-          protocol: TCP
-      volumemounts:
-        - name: config-out
-          mountpath: /etc/vmagent/config_out
-      livenessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
-        timeoutseconds: 1
-        periodseconds: 10
-        successthreshold: 1
-        failurethreshold: 3
-      readinessprobe:
-        probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
-        initialdelayseconds: 5
-        timeoutseconds: 1
-        periodseconds: 10
-        successthreshold: 1
-        failurethreshold: 3
-      terminationmessagepolicy: FallbackToLogsOnError
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
@@ -2452,6 +2414,45 @@ containers:
         failurethreshold: 10
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
+    - name: config-reloader
+      image: vmcustomer:v1
+      args:
+        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
+        - --config-secret-key=vmagent.yaml.gz
+        - --config-secret-name=default/vmagent-agent
+        - --reload-url=http://127.0.0.1:8429/-/reload
+        - --webhook-method=POST
+      ports:
+        - name: reloader-http
+          containerport: 8435
+          protocol: TCP
+      volumemounts:
+        - name: config-out
+          mountpath: /etc/vmagent/config_out
+      livenessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    intval: 8435
+                scheme: HTTP
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      readinessprobe:
+        probehandler:
+            httpget:
+                path: /health
+                port:
+                    intval: 8435
+                scheme: HTTP
+        initialdelayseconds: 5
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      terminationmessagepolicy: FallbackToLogsOnError
 
 serviceaccountname: vmagent-agent
 `,

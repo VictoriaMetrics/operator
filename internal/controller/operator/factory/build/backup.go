@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
@@ -36,11 +37,11 @@ func VMBackupManager(
 	snapshotDeleteURL := cr.SnapShotDeleteURL
 	if snapshotCreateURL == "" {
 		// http://localhost:port/snapshot/create
-		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(port, extraArgs)
+		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(config.GetLocalhost(), port, extraArgs)
 	}
 	if snapshotDeleteURL == "" {
 		// http://localhost:port/snapshot/delete
-		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(port, extraArgs)
+		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(config.GetLocalhost(), port, extraArgs)
 	}
 	backupDst := cr.Destination
 	// add suffix with pod name for cluster backupmanager

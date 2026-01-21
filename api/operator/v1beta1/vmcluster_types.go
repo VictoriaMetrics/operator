@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
-	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -796,25 +795,13 @@ func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 }
 
 // SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
-	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
+func (*VMBackup) SnapshotCreatePathWithFlags(host, port string, extraArgs map[string]string) string {
+	return BuildLocalURL(snapshotAuthKey, host, port, snapshotCreate, extraArgs)
 }
 
 // SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
-	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(BuildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
-}
-
-func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
-	if authKey, ok := extraArgs["snapshotAuthKey"]; ok {
-		separator := "?"
-		idx := strings.IndexByte(urlPath, '?')
-		if idx > 0 {
-			separator = "&"
-		}
-		return urlPath + separator + "authKey=" + authKey
-	}
-	return urlPath
+func (*VMBackup) SnapshotDeletePathWithFlags(host, port string, extraArgs map[string]string) string {
+	return BuildLocalURL(snapshotAuthKey, host, port, snapshotDelete, extraArgs)
 }
 
 // GetServiceAccountName returns service account name for all vmcluster components

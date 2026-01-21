@@ -115,13 +115,15 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,
 			Selector:        serviceMon.Spec.Selector,
 			Endpoints:       convertEndpoint(serviceMon.Spec.Endpoints),
-			DiscoveryRole:   convertDiscoveryRole(serviceMon.Spec.ServiceDiscoveryRole),
 			NamespaceSelector: vmv1beta1.NamespaceSelector{
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
 			},
 			ScrapeClassName: serviceMon.Spec.ScrapeClassName,
 		},
+	}
+	if serviceMon.Spec.ServiceDiscoveryRole != nil {
+		cs.Spec.DiscoveryRole = strings.ToLower(string(*serviceMon.Spec.ServiceDiscoveryRole))
 	}
 	if serviceMon.Spec.SampleLimit != nil && *serviceMon.Spec.SampleLimit <= uint64(math.MaxInt) {
 		cs.Spec.SampleLimit = int(*serviceMon.Spec.SampleLimit)
@@ -156,20 +158,6 @@ func ReplacePromDirPath(origin string) string {
 		return strings.Replace(origin, prometheusConfigmapDir, vmv1beta1.ConfigMapsDir, 1)
 	}
 	return origin
-}
-
-func convertDiscoveryRole(src *promv1.ServiceDiscoveryRole) string {
-	var role string
-	if src == nil {
-		return role
-	}
-	switch *src {
-	case promv1.EndpointsRole:
-		role = "endpoints"
-	case promv1.EndpointSliceRole:
-		role = "endpointslice"
-	}
-	return role
 }
 
 // ConvertOAuth converts prometheus OAuth config to VM one

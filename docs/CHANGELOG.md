@@ -21,20 +21,27 @@ aliases:
 **Update note 6: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
 **Update node 7: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.**
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.133.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.133.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.6.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.6.0) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.7.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.7.0) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1285) version
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).
-* FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
+* FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): support logs collection. See [#1501](https://github.com/VictoriaMetrics/operator/issues/1501).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): use `operator_bad_objects_total` metric with `object_namespace` and `crd` labels to track invalid objects managed by VMAgent, VMAuth, VMAlert and VMAlertmanager. Old `operator_alertmanager_bad_objects_count` and `operator_vmalert_bad_objects_count` are deprecated and will be removed in next releases.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added HPA support for all cluster CR storage. See [#1678](https://github.com/VictoriaMetrics/operator/issues/1678).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle) and [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster): support license options. See [#2649](https://github.com/VictoriaMetrics/helm-charts/issues/2649).
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add support of `spec.server` configuration.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.
-* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use Service labels instead of selector in VMServiceScrape selector. See [#1709](https://github.com/VictoriaMetrics/operator/issues/1709).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update Alertmanager dependency to fix config validation for Incident.io. See [#1730](https://github.com/VictoriaMetrics/operator/issues/1730).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not add `-enterprise` suffix to image, if tag contains `@` symbol. See [#1723](https://github.com/VictoriaMetrics/operator/issues/1723).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use 127.0.0.1 instead of localhost in reload and snapshot url for setups without IPV6 enabled.
+* BUGFIX: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): properly convert prometheus ScrapeConfig's role into VMScrapeConfig. See [#1735](https://github.com/VictoriaMetrics/operator/issues/1735).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): make vmagent container default. See [#1740](https://github.com/VictoriaMetrics/operator/issues/1740).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

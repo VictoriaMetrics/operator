@@ -172,10 +172,10 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 // Validate performs semantic syntax validation
 func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 	if len(s.URLMap) == 0 && len(s.URLPrefix) == 0 && len(s.TargetRefs) == 0 {
-		return fmt.Errorf("at least one of `url_map`, `url_prefix` or `target_refs` must be defined")
+		return fmt.Errorf("at least one of `url_map`, `url_prefix` or `targetRefs` must be defined")
 	}
 	if len(s.TargetRefs) != 0 && (len(s.URLMap) != 0 || len(s.URLPrefix) != 0) {
-		return fmt.Errorf("`target_refs` cannot be used together with `url_prefix` or `url_map`")
+		return fmt.Errorf("`targetRefs` cannot be used together with `url_prefix` or `url_map`")
 	}
 	isRetryCodesSet := len(s.RetryStatusCodes) > 0
 	for _, r := range s.TargetRefs {
@@ -710,12 +710,12 @@ func (cr *VMAuth) IsUnmanaged() bool {
 }
 
 // GetReloadURL implements reloadable interface
-func (cr *VMAuth) GetReloadURL() string {
+func (cr *VMAuth) GetReloadURL(host string) string {
 	port := cr.Spec.Port
 	if len(cr.Spec.InternalListenPort) > 0 {
 		port = cr.Spec.InternalListenPort
 	}
-	return BuildReloadPathWithPort(cr.Spec.ExtraArgs, port)
+	return BuildLocalURL(reloadAuthKey, host, port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface

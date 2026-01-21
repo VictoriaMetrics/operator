@@ -34,10 +34,10 @@ var (
 	initConf sync.Once
 
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION":  "v1.133.0",
+		"VM_METRICS_VERSION":  "v1.134.0",
 		"VM_LOGS_VERSION":     "v1.43.1",
-		"VM_ANOMALY_VERSION":  "v1.28.2",
-		"VM_TRACES_VERSION":   "v0.6.0",
+		"VM_ANOMALY_VERSION":  "v1.28.5",
+		"VM_TRACES_VERSION":   "v0.7.0",
 		"VM_OPERATOR_VERSION": getVersion("v0.66.1"),
 	}
 )
@@ -662,6 +662,15 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		opConf = &c
 	})
 	return opConf
+}
+
+// GetLocalhost returns localhost value depending on global configuration
+func GetLocalhost() string {
+	cfg := MustGetBaseConfig()
+	if cfg.EnableTCP6 {
+		return "localhost"
+	}
+	return "127.0.0.1"
 }
 
 var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)

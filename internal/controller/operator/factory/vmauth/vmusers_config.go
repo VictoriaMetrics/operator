@@ -33,16 +33,22 @@ type parsedObjects struct {
 }
 
 // builds vmauth config.
-func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]byte, error) {
+func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]byte, error) {
 	// loads info about exist operator object kind for crdRef.
-	crdCache := pos.fetchCRDRefURLs(ctx, rclient)
+	crdURLCache := make(map[string]string)
+	if cr.Spec.UnauthorizedUserAccessSpec != nil {
+		if err := fetchCRDRefURLs(ctx, rclient, cr.Spec.UnauthorizedUserAccessSpec.TargetRefs, crdURLCache); err != nil {
+			return nil, fmt.Errorf("failed to fetch unauthorized_user.target_refs[*].crd: %w", err)
+		}
+	}
+	pos.fetchCRDRefURLs(ctx, rclient, crdURLCache)
 	toCreateSecrets, toUpdate, err := pos.addAuthCredentialsBuildSecrets(ac)
 	if err != nil {
 		return nil, err
 	}
 
 	// generate yaml config for vmauth.
-	cfg, err := pos.generateVMAuthConfig(vmauth, crdCache, ac)
+	cfg, err := pos.generateVMAuthConfig(cr, crdURLCache, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -297,51 +303,53 @@ func (c *clusterWithURL) AsURL() string {
 	return builder(c.Object)
 }
 
+func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta1.TargetRef, crdURLCache map[string]string) error {
+	for j := range refs {
+		ref := &refs[j]
+		if ref.CRD == nil {
+			continue
+		}
+		key := ref.CRD.AsKey()
+		if _, ok := crdURLCache[key]; ok {
+			continue
+		}
+		crdObj, ok := crdNameToObject[ref.CRD.Kind]
+		if !ok {
+			return fmt.Errorf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
+		}
+		ref.CRD.AddRefToObj(crdObj.(client.Object))
+		url, err := getAsURLObject(ctx, rclient, crdObj)
+		if err != nil {
+			if !build.IsNotFound(err) {
+				return fmt.Errorf("cannot get object as url: %w", err)
+			}
+			return fmt.Errorf("cannot find CRD link for kind=%q at ref idx=%d: %w", ref.CRD.Kind, j, err)
+		}
+		crdURLCache[key] = url
+	}
+	return nil
+}
+
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
-func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client) map[string]string {
-	crdCacheURLCache := make(map[string]string)
+func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client, crdURLCache map[string]string) {
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
 		if !build.MustSkipRuntimeValidation {
 			if err := user.Validate(); err != nil {
 				return err
 			}
 		}
-		for j := range user.Spec.TargetRefs {
-			ref := user.Spec.TargetRefs[j]
-			if ref.CRD == nil {
-				continue
-			}
-			key := ref.CRD.AsKey()
-			if _, ok := crdCacheURLCache[key]; ok {
-				continue
-			}
-			crdObj, ok := crdNameToObject[ref.CRD.Kind]
-			if !ok {
-				return fmt.Errorf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
-			}
-			ref.CRD.AddRefToObj(crdObj.(client.Object))
-			url, err := getAsURLObject(ctx, rclient, crdObj)
-			if err != nil {
-				if !build.IsNotFound(err) {
-					return fmt.Errorf("cannot get object as url: %w", err)
-				}
-				return fmt.Errorf("cannot find CRD link for kind=%q at ref idx=%d: %w", ref.CRD.Kind, j, err)
-			}
-			crdCacheURLCache[key] = url
-		}
-		return nil
+		return fetchCRDRefURLs(ctx, rclient, user.Spec.TargetRefs, crdURLCache)
 	})
-	return crdCacheURLCache
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
+func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdURLCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
 
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		userCfg, err := genUserCfg(user, crdCache, cr, ac)
+		userCfg, err := genUserCfg(user, crdURLCache, cr, ac)
 		if err != nil {
 			return err
 		}
@@ -358,7 +366,7 @@ func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdCache ma
 		}
 	}
 
-	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, crdCache, ac)
+	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, crdURLCache, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}

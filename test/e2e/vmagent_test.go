@@ -100,7 +100,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
 					Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(6))
 					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(2))
-					vmagentCnt := dep.Spec.Template.Spec.Containers[1]
+					vmagentCnt := dep.Spec.Template.Spec.Containers[0]
 					Expect(vmagentCnt.Name).To(Equal("vmagent"))
 					Expect(vmagentCnt.VolumeMounts).To(HaveLen(6))
 					Expect(vmagentCnt.Args).To(ContainElements("-remoteWrite.streamAggr.config=,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabeling-0.yaml,"))
@@ -311,10 +311,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
 					cric := pic[0]
 					Expect(cric.VolumeMounts).To(HaveLen(2))
-					crc := pc[0]
+					crc := pc[1]
 					Expect(crc.Name).To(Equal("config-reloader"))
 					Expect(crc.VolumeMounts).To(HaveLen(2))
-					vmc := pc[1]
+					vmc := pc[0]
 					Expect(vmc.Name).To(Equal("vmagent"))
 					Expect(vmc.VolumeMounts).To(HaveLen(5))
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(Succeed())

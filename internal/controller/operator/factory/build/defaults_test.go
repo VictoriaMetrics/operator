@@ -54,4 +54,8 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 	f("", "v1.120.0-rc1", true, "v1.120.0-rc1")
 	f("", "v1.120.0-enterprise-rc1", true, "v1.120.0-enterprise-rc1")
 	f("", "v1.120.0-enterprise-cluster-rc1", true, "v1.120.0-enterprise-cluster-rc1")
+	f("", "v1.120.0@sha256xxx", true, "v1.120.0@sha256xxx")
+	f("", "v1.120.0-enterprise@sha256xxx", true, "v1.120.0-enterprise@sha256xxx")
+	f("", "v1.120.0-cluster@sha256xxx", true, "v1.120.0-cluster@sha256xxx")
+	f("", "v1.120.0-enterprise-cluster@sha256xxx", true, "v1.120.0-enterprise-cluster@sha256xxx")
 }

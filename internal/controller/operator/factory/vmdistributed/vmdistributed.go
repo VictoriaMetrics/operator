@@ -213,6 +213,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		}
 
+		if modifiedSpec {
+			logger.WithContext(ctx).Info("Waiting for VMCluster to start expanding", "index", i, "name", vmClusterObj.Name)
+			if err := waitForVMClusterToExpand(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
+				return fmt.Errorf("failed to wait for VMCluster %s/%s to start expanding: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
+			}
+		}
+
 		// Wait for VMCluster to be ready
 		logger.WithContext(ctx).Info("Waiting for VMCluster to become operational", "index", i, "name", vmClusterObj.Name)
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {

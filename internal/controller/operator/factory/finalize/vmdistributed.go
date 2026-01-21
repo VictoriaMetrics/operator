@@ -54,11 +54,27 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 		}
 	}
 	for _, objToRemove := range objsToRemove {
-		if err := removeFinalizeObjByNameWithOwnerReference(ctx, rclient, objToRemove, cr.Name, cr.Namespace, false); err != nil {
-			return err
+		nsn := types.NamespacedName{
+			Name:      objToRemove.GetName(),
+			Namespace: objToRemove.GetNamespace(),
 		}
-		if err := SafeDelete(ctx, rclient, objToRemove); err != nil {
-			return err
+		err := wait.PollUntilContextTimeout(ctx, time.Second, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+			if err := rclient.Get(ctx, nsn, objToRemove); err != nil {
+				if k8serrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, fmt.Errorf("error looking for object: %w", err)
+			}
+			if err := removeFinalizeObjByNameWithOwnerReference(ctx, rclient, objToRemove, cr.Name, cr.Namespace, false); err != nil {
+				return false, err
+			}
+			if err := SafeDelete(ctx, rclient, objToRemove); err != nil {
+				return false, err
+			}
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to remove object %T=%s: %w", objToRemove, nsn.String(), err)
 		}
 	}
 	owner := cr.AsOwner()

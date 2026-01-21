@@ -1119,7 +1119,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAgentFlushDeadline: &metav1.Duration{Duration: 1 * time.Second},
 					ZoneUpdatePause:      &metav1.Duration{Duration: 1 * time.Second},
-					ReadyDeadline:        &metav1.Duration{Duration: 1 * time.Minute},
+					ReadyDeadline:        &metav1.Duration{Duration: 10 * time.Second},
 					VMAgent: vmv1alpha1.VMAgentNameAndSpec{
 						Name: vmagentName,
 						Spec: &vmv1alpha1.CustomVMAgentSpec{

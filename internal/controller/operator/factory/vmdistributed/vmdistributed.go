@@ -90,6 +90,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 	logger.WithContext(ctx).Info("Waiting for all VMClusters to be ready")
 	for _, vmClusterObj := range vmClusters {
+		if err := rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); k8serrors.IsNotFound(err) {
+			continue
+		}
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}

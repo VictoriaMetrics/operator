@@ -37,9 +37,8 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 Each entry in the `vmclusters` array allows you to either reference an existing `VMCluster` resource or define a new one inline.
 
 *   `ref`: A `corev1.LocalObjectReference` pointing to an existing `VMCluster` object by name.
-*   `overrideSpec`: An optional JSON object that specifies an override to the `VMClusterSpec` for this specific cluster. This is applied on top of the `globalOverrideSpec`.
 *   `name`: The name to be used for the `VMCluster` when `spec` is provided.
-*   `spec`: A `vmv1beta1.VMClusterSpec` object that defines the desired state of a new `VMCluster` managed by this resource.
+*   `spec`: A `vmv1beta1.VMClusterSpec` object that defines the desired state of a new or referenced `VMCluster` managed by this resource.
 
 **Example: Defining a `VMDistributed` with inline `VMCluster` specifications:**
 
@@ -100,7 +99,7 @@ spec:
     vmclusters:
       - ref:
           name: cluster-prod-1
-        overrideSpec:
+        spec:
           vmstorage:
             storage:
               volumeClaimTemplate:

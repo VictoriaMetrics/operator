@@ -19,7 +19,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
-	vmd "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -945,7 +945,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				latestCR.Kind = "VMDistributed"
 				latestCR.APIVersion = vmv1alpha1.GroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
-				Expect(vmd.CreateOrUpdate(ctx, &latestCR, k8sClient, httpTimeout)).To(Succeed())
+				Expect(vmdistributed.CreateOrUpdate(ctx, &latestCR, k8sClient, httpTimeout)).To(Succeed())
 			}
 
 			// Verify resource versions have not changed (no updates performed)

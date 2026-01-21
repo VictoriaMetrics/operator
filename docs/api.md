@@ -1318,9 +1318,9 @@ Appears in: [ZoneSpec](#zonespec)
 
 | Field | Description |
 | --- | --- |
-| name<a href="#vmclusterobjorref-name" id="vmclusterobjorref-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMCluster when Spec is provided.<br />This field is ignored if `ref` is specified. |
+| name<a href="#vmclusterobjorref-name" id="vmclusterobjorref-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VMCluster.<br />This field is ignored if `ref` is specified. |
 | ref<a href="#vmclusterobjorref-ref" id="vmclusterobjorref-ref">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | _(Optional)_<br/>Ref points to the VMCluster object.<br />If Ref is specified, Name is ignored. |
-| spec<a href="#vmclusterobjorref-spec" id="vmclusterobjorref-spec">#</a><br/>_[VMClusterSpec](#vmclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMCluster.<br />This field is ignored if `ref` is specified. |
+| spec<a href="#vmclusterobjorref-spec" id="vmclusterobjorref-spec">#</a><br/>_[VMClusterSpec](#vmclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMCluster. |
 
 
 #### VMDistributed

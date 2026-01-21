@@ -95,36 +95,29 @@ type VMClusterObjOrRef struct {
 	// +optional
 	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
 
-	// Name specifies the static name to be used for the VMCluster when Spec is provided.
+	// Name specifies the static name to be used for the new VMCluster.
 	// This field is ignored if `ref` is specified.
 	// +optional
 	Name string `json:"name,omitempty"`
 
-	// Spec defines the desired state of a new VMCluster.
-	// This field is ignored if `ref` is specified.
+	// Spec defines the desired state of a new or update spec for existing VMCluster.
 	// +optional
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 }
 
 func (s *VMClusterObjOrRef) validate(idx int) error {
 	// Check mutual exclusivity: either ref or name must be set, but not both
-	if s.Ref != nil && len(s.Name) > 0 {
+	if s.Ref != nil && len(s.Ref.Name) > 0 && len(s.Name) > 0 {
 		return fmt.Errorf("vmclusters[%d] must specify either ref or name, not both", idx)
 	}
 
 	// Check that at least one of ref or name is set
-	if s.Ref == nil && len(s.Name) == 0 {
-		return fmt.Errorf("vmclusters[%d] must have either ref or name set", idx)
-	}
-
-	// If Spec is provided, Name must be set
-	if s.Spec != nil && len(s.Name) == 0 {
-		return fmt.Errorf("ref.name must be set when spec is provided at vmclusters[%d]", idx)
-	}
-
-	// If ref is provided, ref.name must be set
-	if s.Ref != nil && len(s.Ref.Name) == 0 {
-		return fmt.Errorf("Ref.Name must be set for reference at vmclusters[%d]", idx)
+	if s.Ref == nil || len(s.Ref.Name) == 0 {
+		if len(s.Name) == 0 {
+			return fmt.Errorf("vmclusters[%d] must have either ref or name set", idx)
+		} else if s.Spec == nil {
+			return fmt.Errorf("vmclusters[%d] must have spec if name is set", idx)
+		}
 	}
 
 	return nil

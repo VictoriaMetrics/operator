@@ -31,11 +31,4 @@ func TestValidateVMClusterObjOrRef_Matrix(t *testing.T) {
 
 	missingSpecName := VMClusterObjOrRef{Spec: &vmv1beta1.VMClusterSpec{}}
 	assert.Error(t, missingSpecName.validate(5))
-
-	// Spec with OverrideSpec simultaneously
-	bad := VMClusterObjOrRef{
-		Name: "x",
-		Spec: &vmv1beta1.VMClusterSpec{},
-	}
-	assert.Error(t, bad.validate(6))
 }

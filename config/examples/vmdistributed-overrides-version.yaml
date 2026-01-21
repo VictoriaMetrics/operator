@@ -15,19 +15,19 @@ spec:
     vmclusters:
     - ref:
         name: vmcluster-us-east-1
-      overrideSpec:
+      spec:
         vmselect:
           image:
             tag: v1.90.0
     - ref:
         name: vmcluster-us-west-2
-      overrideSpec:
+      spec:
         vmselect:
           image:
             tag: v1.90.0
     - ref:
         name: vmcluster-eu-west-1
-      overrideSpec:
+      spec:
         vmselect:
           image:
             tag: v1.111.0

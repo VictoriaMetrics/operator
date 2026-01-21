@@ -17,16 +17,16 @@ spec:
     vmclusters:
     - ref:
         name: vmcluster-us-east-1
-      overrideSpec:
+      spec:
         vmselect:
           replicaCount: 3
     - ref:
         name: vmcluster-us-west-2
-      overrideSpec:
+      spec:
         vmselect:
           replicaCount: 4
     - ref:
         name: vmcluster-eu-west-1
-      overrideSpec:
+      spec:
         vmselect:
           replicaCount: 2

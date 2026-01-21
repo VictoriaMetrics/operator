@@ -10,7 +10,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
@@ -24,7 +23,6 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.StatefulSet{}, addStatefulsetDefaults)
-	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAuth{}, addVMAuthDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAgent{}, addVMAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlert{}, addVMAlertDefaults)
@@ -982,24 +980,4 @@ func addEntSuffixToTag(versionTag string) string {
 	}
 
 	return versionTag
-}
-
-func addVMDistributedDefaults(objI any) {
-	cr, ok := objI.(*vmv1alpha1.VMDistributed)
-	if !ok {
-		return
-	}
-	c := getCfg()
-	cv := config.ApplicationDefaults(c.VMAuthDefault)
-	if cr.Spec.VMAuth.Spec == nil {
-		cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{}
-	}
-	addDefaultsToCommonParams(&cr.Spec.VMAuth.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-	addDefaultsToConfigReloader(&cr.Spec.VMAuth.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.VMAuth.Spec.UseDefaultResources, false))
-
-	cv = config.ApplicationDefaults(c.VMAgentDefault)
-	if cr.Spec.VMAgent.Spec == nil {
-		cr.Spec.VMAgent.Spec = &vmv1alpha1.CustomVMAgentSpec{}
-	}
-	addDefaultsToCommonParams(&cr.Spec.VMAgent.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 }

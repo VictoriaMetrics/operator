@@ -252,7 +252,6 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(vmauth.OwnerReferences[0].Name).To(Equal(cr.Name))
 			Expect(vmauth.OwnerReferences[0].Kind).To(Equal("VMDistributed"))
 			Expect(vmauth.OwnerReferences[0].UID).To(Equal(cr.UID))
-			Expect(vmauth.Spec.Port).To(Equal("8427"))
 		})
 
 		It("should successfully create a VMDistributed with inline VMCluster specs", func() {

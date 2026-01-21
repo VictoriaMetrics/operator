@@ -448,6 +448,11 @@ func (in *VLAgentSpec) DeepCopyInto(out *VLAgentSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.K8sCollector.DeepCopyInto(&out.K8sCollector)
+	if in.License != nil {
+		in, out := &in.License, &out.License
+		*out = new(v1beta1.License)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.EmbeddedProbes != nil {
 		in, out := &in.EmbeddedProbes, &out.EmbeddedProbes
 		*out = new(v1beta1.EmbeddedProbes)
@@ -568,6 +573,11 @@ func (in *VLClusterSpec) DeepCopyInto(out *VLClusterSpec) {
 	if in.VLStorage != nil {
 		in, out := &in.VLStorage, &out.VLStorage
 		*out = new(VLStorage)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.License != nil {
+		in, out := &in.License, &out.License
+		*out = new(v1beta1.License)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.UseStrictSecurity != nil {
@@ -818,6 +828,11 @@ func (in *VLSingleSpec) DeepCopyInto(out *VLSingleSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.StorageMetadata.DeepCopyInto(&out.StorageMetadata)
+	if in.License != nil {
+		in, out := &in.License, &out.License
+		*out = new(v1beta1.License)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ServiceSpec != nil {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(v1beta1.AdditionalServiceSpec)

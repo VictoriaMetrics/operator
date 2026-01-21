@@ -76,6 +76,11 @@ type VLAgentSpec struct {
 	// K8sCollector configures VLAgent logs collection from K8s pods
 	K8sCollector VLAgentK8sCollector `json:"k8sCollector,omitempty"`
 
+	// License allows to configure license key to be used for enterprise features.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
+	// +optional
+	License *vmv1beta1.License `json:"license,omitempty"`
+
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`

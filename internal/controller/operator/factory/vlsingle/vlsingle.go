@@ -240,6 +240,9 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		ports = build.AddSyslogPortsTo(ports, r.Spec.SyslogSpec)
 	}
 
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, r.Spec.License, vmv1beta1.SecretsDir)
+	args = build.LicenseArgsTo(args, r.Spec.License, vmv1beta1.SecretsDir)
+
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vlsingleContainer := corev1.Container{

@@ -219,7 +219,7 @@ func addVLAgentDefaults(objI any) {
 	c := getCfg()
 
 	cv := config.ApplicationDefaults(c.VLAgentDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 }
 
 func addVMSingleDefaults(objI any) {
@@ -291,7 +291,7 @@ func addVLSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VLSingle)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLSingleDefault)
-	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, nil, &cv)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 }
 
 func addVTSingleDefaults(objI any) {
@@ -957,7 +957,7 @@ func addVLClusterDefaults(objI any) {
 		cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets = append(cr.Spec.RequestsLoadBalancer.Spec.ImagePullSecrets, cr.Spec.ImagePullSecrets...)
 
 		cv := config.ApplicationDefaults(c.VMAuthDefault)
-		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, nil, &cv)
+		addDefaultsToCommonParams(&cr.Spec.RequestsLoadBalancer.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
 		spec := &cr.Spec.RequestsLoadBalancer.Spec
 		if spec.EmbeddedProbes == nil {
 			spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{}

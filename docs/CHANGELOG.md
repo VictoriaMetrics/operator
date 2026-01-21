@@ -23,7 +23,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.6.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.6.0) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.7.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.7.0) version.
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1285) version
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support `namespace` parameter in `attach_metadata` section for all scrape configurations. See [#1654](https://github.com/VictoriaMetrics/operator/issues/1654).

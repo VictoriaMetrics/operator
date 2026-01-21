@@ -246,11 +246,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		}
 
-		logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
-		if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
-			return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
-		}
-		if cr.Spec.VMAuth.Name != "" {
+		if len(vmClusters) > 1 {
+			logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
+			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
+				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
+			}
 			vmAuth := &vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cr.Spec.VMAuth.Name,

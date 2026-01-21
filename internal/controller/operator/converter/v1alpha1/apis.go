@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -145,6 +146,14 @@ func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *conf
 	cs.Spec.RelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
 	cs.Spec.MetricRelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
 	cs.Spec.Path = ptr.Deref(promscrapeConfig.Spec.MetricsPath, "")
+	for i := range cs.Spec.KubernetesSDConfigs {
+		sdCfg := &cs.Spec.KubernetesSDConfigs[i]
+		sdCfg.Role = strings.ToLower(sdCfg.Role)
+		for j := range sdCfg.Selectors {
+			selector := &sdCfg.Selectors[j]
+			selector.Role = strings.ToLower(selector.Role)
+		}
+	}
 	if promscrapeConfig.Spec.ScrapeInterval != nil {
 		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
 	}

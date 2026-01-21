@@ -39,6 +39,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update Alertmanager dependency to fix config validation for Incident.io. See [#1730](https://github.com/VictoriaMetrics/operator/issues/1730).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not add `-enterprise` suffix to image, if tag contains `@` symbol. See [#1723](https://github.com/VictoriaMetrics/operator/issues/1723).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use 127.0.0.1 instead of localhost in reload and snapshot url for setups without IPV6 enabled.
+* BUGFIX: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): properly convert prometheus ScrapeConfig's role into VMScrapeConfig. See [#1735](https://github.com/VictoriaMetrics/operator/issues/1735).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): make vmagent container default. See [#1740](https://github.com/VictoriaMetrics/operator/issues/1740).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)

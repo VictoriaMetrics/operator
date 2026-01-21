@@ -1002,15 +1002,4 @@ func addVMDistributedDefaults(objI any) {
 		cr.Spec.VMAgent.Spec = &vmv1alpha1.CustomVMAgentSpec{}
 	}
 	addDefaultsToCommonParams(&cr.Spec.VMAgent.Spec.CommonDefaultableParams, cr.Spec.License, &cv)
-
-	for i := range cr.Spec.Zones.VMClusters {
-		cluster := &cr.Spec.Zones.VMClusters[i]
-		if cluster.Spec == nil {
-			cluster.Spec = &vmv1beta1.VMClusterSpec{}
-		}
-		if cluster.Spec.VMSelect == nil {
-			cluster.Spec.VMSelect = &vmv1beta1.VMSelect{}
-		}
-		addVMClusterSpecDefaults(cluster.Spec)
-	}
 }

@@ -27,27 +27,33 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "e2e Controller WATCH_NAMESPACE Suite")
 }
 
-var k8sClient client.Client
-var _ = SynchronizedBeforeSuite(
-	func() {
-		Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
-		suite.InitOperatorProcess()
-	},
-	func() {
-		k8sClient = suite.GetClient()
-		testNamespace := corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: excludedNamespace,
-			},
-		}
-		err := k8sClient.Create(context.Background(), &testNamespace)
-		Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
-	})
+var (
+	k8sClient client.Client
 
-var _ = SynchronizedAfterSuite(
-	func() {
-		suite.StopClient()
-	},
-	func() {
-		suite.ShutdownOperatorProcess()
-	})
+	_ = SynchronizedBeforeSuite(
+		func() {
+			Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
+			suite.InitOperatorProcess()
+		},
+		func() {
+			k8sClient = suite.GetClient()
+			testNamespace := corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: excludedNamespace,
+				},
+			}
+			err := k8sClient.Create(context.Background(), &testNamespace)
+			Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+		})
+
+	_ = SynchronizedAfterSuite(
+		func() {
+			suite.StopClient()
+		},
+		func() {
+			suite.ShutdownOperatorProcess()
+		})
+
+	_ = AfterEach(suite.CollectK8SResources)
+	_ = ReportAfterSuite("allure report", suite.AllureReport)
+)

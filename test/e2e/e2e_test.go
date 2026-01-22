@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -61,6 +61,41 @@ var (
 			suite.ShutdownOperatorProcess()
 		},
 	)
+
+	_ = AfterEach(func() {
+		if CurrentSpecReport().Failed() {
+			err := utils.RunCrustGather(context.Background(), 10*time.Minute)
+			if err != nil {
+				fmt.Fprintf(GinkgoWriter, "crust-gather: %v", err)
+			}
+		}
+	})
+
+	_ = ReportAfterSuite("allure report", func(report types.Report) {
+		parserConfig := parser.Config{}
+		parserConfig.LabelsScraperOpts = append(parserConfig.LabelsScraperOpts, allureReport.WillAutoGenerateID(true))
+		allureReports, err := convert.GinkgoToAllureReport([]types.Report{report}, parser.NewDefaultParser, parserConfig)
+		if err != nil {
+			fmt.Fprintf(GinkgoWriter, "allure report: %v", err)
+		}
+
+		reportPath, err := filepath.Abs(allureReportPath)
+		if err != nil {
+			fmt.Fprintf(GinkgoWriter, "allure report: %v", err)
+		}
+
+		if err := os.MkdirAll(reportPath, 0755); err != nil {
+			panic(fmt.Sprintf("failed to create report dir: %v", err))
+		}
+
+		fileManager := fmngr.NewFileManager(reportPath)
+
+		errs := convert.PrintAllureReports(allureReports, fileManager)
+		if len(errs) > 0 {
+			fmt.Fprintf(GinkgoWriter, "allure report: %v", errs)
+		}
+		GinkgoLogr.Info("Allure report generated", "path", reportPath)
+	})
 
 	// _ = AfterSuite()
 

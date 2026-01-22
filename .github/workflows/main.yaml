@@ -103,3 +103,12 @@ jobs:
         if: success() || failure()
         with:
           report_paths: 'report.xml'
+      - name: Generate Allure Report
+        if: github.event.pull_request.draft == false && failure()
+        run: make allure-report
+      - name: Archive Allure report results
+        if: github.event.pull_request.draft == false && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: /tmp/allure-report.html

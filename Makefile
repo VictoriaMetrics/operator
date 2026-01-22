@@ -470,6 +470,10 @@ $(CRUST_GATHER_BIN): $(LOCALBIN)
 	$(call download-github-release,$(CRUST_GATHER_BIN),crust-gather/crust-gather,$(CRUST_GATHER_VERSION),kubectl-crust-gather_$(CRUST_GATHER_VERSION)_$(OS)_$(ARCH).tar.gz,kubectl-crust-gather)
 	cp -rvf $(CRUST_GATHER_BIN) $(CRUST_GATHER_VERSIONLESS_BIN)
 
+.PHONY: allure-report
+allure-report:
+	npx allure awesome --single-file /tmp/allure-results -o /tmp/allure-report.html
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
 # $2 - package url which can be installed

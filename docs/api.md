@@ -1371,7 +1371,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 
 | Field | Description |
 | --- | --- |
-| globalOverrideSpec<a href="#zonespec-globaloverridespec" id="zonespec-globaloverridespec">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | _(Optional)_<br/>GlobalOverrideSpec specifies an override to all VMClusters.<br />These overrides are applied to the referenced object if `ref` is specified. |
+| globalOverrideSpec<a href="#zonespec-globaloverridespec" id="zonespec-globaloverridespec">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | _(Optional)_<br/>GlobalClusterSpec specifies an override to all VMClusters.<br />These overrides are applied to the referenced object if `ref` is specified. |
 | vmclusters<a href="#zonespec-vmclusters" id="zonespec-vmclusters">#</a><br/>_[VMClusterObjOrRef](#vmclusterobjorref) array_ | _(Required)_<br/>Each VMClusterObjOrRef is either defining a new inline VMCluster or referencing an existing one. |
 
 
@@ -5342,5 +5342,3 @@ Appears in: [Receiver](#receiver)
 | timeout<a href="#webhookconfig-timeout" id="webhookconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke the webhook<br />available since v0.28.0 alertmanager version |
 | url<a href="#webhookconfig-url" id="webhookconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
 | url_secret<a href="#webhookconfig-url_secret" id="webhookconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
-
-

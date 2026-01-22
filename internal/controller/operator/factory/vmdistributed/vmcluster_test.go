@@ -361,28 +361,28 @@ func TestFetchVMClusters_SortedByGeneration(t *testing.T) {
 	assert.Equal(t, int64(1), got[2].Status.ObservedGeneration)
 }
 
-func TestApplyGlobalOverrideSpec(t *testing.T) {
+func TestApplyGlobalClusterSpec(t *testing.T) {
 	base := vmv1beta1.VMClusterSpec{
 		ClusterVersion:     "v1.0.0",
 		ServiceAccountName: "base",
 		RetentionPeriod:    "30d",
 	}
 
-	// Test with nil GlobalOverrideSpec
+	// Test with nil GlobalClusterSpec
 	globalOverride := (*apiextensionsv1.JSON)(nil)
 	merged, modified, err := applyOverrideSpec(base, globalOverride)
 	assert.NoError(t, err)
 	assert.False(t, modified)
 	assert.Equal(t, base, merged)
 
-	// Test with empty GlobalOverrideSpec
+	// Test with empty GlobalClusterSpec
 	emptyGlobal := &apiextensionsv1.JSON{Raw: []byte("{}")}
 	merged2, modified2, err := applyOverrideSpec(base, emptyGlobal)
 	assert.NoError(t, err)
 	assert.False(t, modified2)
 	assert.Equal(t, base, merged2)
 
-	// Test with GlobalOverrideSpec that modifies top-level fields
+	// Test with GlobalClusterSpec that modifies top-level fields
 	globalTopLevel := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
 	merged3, modified3, err := applyOverrideSpec(base, globalTopLevel)
 	assert.NoError(t, err)
@@ -391,7 +391,7 @@ func TestApplyGlobalOverrideSpec(t *testing.T) {
 	assert.Equal(t, "global-sa", merged3.ServiceAccountName)
 	assert.Equal(t, "30d", merged3.RetentionPeriod) // Unchanged field
 
-	// Test with GlobalOverrideSpec that sets a field to null
+	// Test with GlobalClusterSpec that sets a field to null
 	globalNullify := &apiextensionsv1.JSON{Raw: []byte(`{"serviceAccountName": null}`)}
 	merged5, modified5, err := applyOverrideSpec(base, globalNullify)
 	assert.NoError(t, err)
@@ -406,7 +406,7 @@ func TestApplyGlobalAndClusterSpecificOverrideSpecs(t *testing.T) {
 		RetentionPeriod:    "30d",
 	}
 
-	// Apply GlobalOverrideSpec first
+	// Apply GlobalClusterSpec first
 	globalOverride := &apiextensionsv1.JSON{Raw: []byte(`{"clusterVersion": "v2.0.0", "serviceAccountName": "global-sa"}`)}
 	merged1, modified1, err := applyOverrideSpec(base, globalOverride)
 	assert.NoError(t, err)

@@ -118,9 +118,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		previousVMClusterObjSpec := mergedSpec.DeepCopy()
 		modifiedSpec := false
 
-		// Apply GlobalOverrideSpec if it is set
-		if cr.Spec.Zones.GlobalOverrideSpec != nil {
-			mergedSpec, modifiedSpec, err = applyOverrideSpec(mergedSpec, cr.Spec.Zones.GlobalOverrideSpec)
+		// Apply GlobalClusterSpec if it is set
+		if cr.Spec.Zones.GlobalClusterSpec != nil {
+			mergedSpec, modifiedSpec, err = applyOverrideSpec(mergedSpec, cr.Spec.Zones.GlobalClusterSpec)
 			if err != nil {
 				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
 			}

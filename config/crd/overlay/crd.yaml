@@ -25348,7 +25348,7 @@ spec:
                 type: string
               zones:
                 properties:
-                  globalOverrideSpec:
+                  globalClusterSpec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   vmclusters:

@@ -521,7 +521,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			createVMAuth(ctx, k8sClient, nsn.Name, namespace)
 			createVMAgent(ctx, k8sClient, nsn.Name, namespace)
 
-			By("creating a VMDistributed with GlobalOverrideSpec and cluster-specific overrides")
+			By("creating a VMDistributed with GlobalClusterSpec and cluster-specific overrides")
 			cr := &vmv1alpha1.VMDistributed{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -534,7 +534,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAgent:              vmv1alpha1.VMAgentNameAndSpec{Name: nsn.Name},
 					VMAuth:               vmv1alpha1.VMAuthNameAndSpec{Name: nsn.Name},
 					Zones: vmv1alpha1.ZoneSpec{
-						GlobalOverrideSpec: &apiextensionsv1.JSON{
+						GlobalClusterSpec: &apiextensionsv1.JSON{
 							Raw: []byte(`{"retentionPeriod": "60d"}`),
 						},
 						VMClusters: []vmv1alpha1.VMClusterObjOrRef{

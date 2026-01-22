@@ -67,7 +67,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		}
 		vmAgentObjs = append(vmAgentObjs, vmAgentObj)
 	} else {
-		vmAgentObjs, err := listVMAgents(ctx, rclient, cr.Namespace, cr.Spec.VMAgent.LabelSelector)
+		vmAgentObjs, err = listVMAgents(ctx, rclient, cr.Namespace, cr.Spec.VMAgent.LabelSelector)
 		if err != nil {
 			return fmt.Errorf("failed to list VMAgents: %w", err)
 		}

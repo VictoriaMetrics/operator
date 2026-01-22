@@ -23,18 +23,20 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 
 *   `paused`: If set to `true`, the operator will not perform any actions on the underlying managed objects. Useful for temporarily halting reconciliation.
 *   `readyDeadline`: The deadline for each `VMCluster` to become ready during an update. Default is `5m`.
-*   `vmAgentFlushDeadline`: The deadline for `VMAgent` to flush its accumulated queue before proceeding to the next cluster update. Default is `1m`.
+*   `vmagentFlushDeadline`: The deadline for `VMAgent` to flush its accumulated queue before proceeding to the next cluster update. Default is `1m`.
 *   `zoneUpdatePause`: The time the operator should wait between zone updates to ensure a smooth transition. Default is `1m`.
 *   `vmagent`: Configuration for a `VMAgent` instance that will be configured to route traffic to managed `VMCluster` instances. It acts as a global write path entry point.
 *   `vmauth`: Configuration for a `VMAuth` instance that acts as a proxy/load-balancer for the `vmselect` components of the managed clusters. It acts as a global read path entry point.
-*   `zones`: Defines the set of VictoriaMetrics clusters that form the distributed setup.
-    *   `globalOverrideSpec`: An optional JSON object that specifies an override to the `VMClusterSpec` applied to **all** clusters in the `zones` list.
-    *   `vmclusters`: A list of `VMClusterRefOrSpec` objects defining the individual clusters.
+*   `commonZone`: Common zone configuration, which is default for each zone resource.
+*   `zones`: Defines the list of `VMDistributedZone` that form the distributed setup.
 *   `license`: Configures the license key for enterprise features. If provided, it is automatically passed to the managed `VMAgent`, `VMAuth`, and all `VMCluster` instances.
 
-### `VMClusterRefOrSpec`
+### `VMDistributedZone`
 
-Each entry in the `vmclusters` array allows you to either reference an existing `VMCluster` resource or define a new one inline.
+Each entry in the `zones` array includes:
+*   `vmcluster` defines `VMClusterRefOrSpec`, that allows either reference an existing `VMCluster` resource or define a new one inline.
+
+### `VMClusterRefOrSpec`
 
 *   `ref`: A `corev1.LocalObjectReference` pointing to an existing `VMCluster` object by name.
 *   `name`: The name to be used for the `VMCluster` when `spec` is provided.
@@ -53,8 +55,8 @@ spec:
   vmauth:
     name: my-distributed-vmauth
   zones:
-    vmclusters:
-      - name: zone-a
+    - vmcluster:
+        name: zone-a
         spec:
           vmstorage:
             replicaCount: 1
@@ -68,7 +70,8 @@ spec:
             replicaCount: 1
           vminsert:
             replicaCount: 1
-      - name: zone-b
+    - vmcluster:
+        name: zone-b
         spec:
           vmstorage:
             replicaCount: 1
@@ -92,12 +95,13 @@ kind: VMDistributed
 metadata:
   name: managed-distributed-cluster
 spec:
-  zones:
-    globalOverrideSpec:
-      vmstorage:
+  commonZone:
+    vmstorage:
+      spec:
         replicaCount: 3
-    vmclusters:
-      - ref:
+  zones:
+    - vmcluster:
+        ref:
           name: cluster-prod-1
         spec:
           vmstorage:
@@ -107,7 +111,8 @@ spec:
                   resources:
                     requests:
                       storage: 50Gi
-      - ref:
+    - vmcluster:
+        ref:
           name: cluster-prod-2
 ```
 
@@ -115,25 +120,31 @@ spec:
 
 VMDistributed can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.
 
-In order to update VMClusters in a coordinated manner, add VMCluster resources to the `vmclusters` list as refs:
+In order to update VMClusters in a coordinated manner, add VMCluster resources to the `zones` list as refs:
 ```
-    vmclusters:
-      - ref:
+spec:
+  zones:
+    - vmcluster:
+        ref:
           name: cluster-1
-      - ref:
+    - vmcluster:
+        ref:
           name: cluster-2
-      - ref:
+    - vmcluster:
+        ref:
           name: cluster-3
 ```
 
 and set vmauth pointing to global read vmauth:
 ```
+spec:
   vmauth:
     name: vmauth-global-read-<release name>
 ```
 
 VMAgents can be referenced by a label selector:
 ```
+spec:
   vmagent:
     labelSelector:
       matchLabels:

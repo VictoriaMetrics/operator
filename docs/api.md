@@ -1190,95 +1190,6 @@ Package v1alpha1 contains API Schema definitions for the operator v1alpha1 API g
 
 
 
-#### CustomVMAgentRemoteWriteSpec
-
-
-
-CustomVMAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
-These urls will be overwritten by the controller
-
-Appears in: [CustomVMAgentSpec](#customvmagentspec)
-
-| Field | Description |
-| --- | --- |
-| aws<a href="#customvmagentremotewritespec-aws" id="customvmagentremotewritespec-aws">#</a><br/>_[AWS](#aws)_ | _(Required)_<br/>AWS describes params specific to AWS cloud |
-| basicAuth<a href="#customvmagentremotewritespec-basicauth" id="customvmagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
-| bearerTokenSecret<a href="#customvmagentremotewritespec-bearertokensecret" id="customvmagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
-| forceVMProto<a href="#customvmagentremotewritespec-forcevmproto" id="customvmagentremotewritespec-forcevmproto">#</a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |
-| headers<a href="#customvmagentremotewritespec-headers" id="customvmagentremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue<br />vmagent supports since 1.79.0 version |
-| maxDiskUsage<a href="#customvmagentremotewritespec-maxdiskusage" id="customvmagentremotewritespec-maxdiskusage">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
-| oauth2<a href="#customvmagentremotewritespec-oauth2" id="customvmagentremotewritespec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
-| proxyURL<a href="#customvmagentremotewritespec-proxyurl" id="customvmagentremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
-| sendTimeout<a href="#customvmagentremotewritespec-sendtimeout" id="customvmagentremotewritespec-sendtimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
-| tlsConfig<a href="#customvmagentremotewritespec-tlsconfig" id="customvmagentremotewritespec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig describes tls configuration for remote write target |
-| url<a href="#customvmagentremotewritespec-url" id="customvmagentremotewritespec-url">#</a><br/>_string_ | _(Optional)_<br/>URL is the URL of the remote write system. |
-
-
-#### CustomVMAgentSpec
-
-
-
-CustomVMAgentSpec is a customized specification of a new VMAgent.
-It includes selected options from the original VMAgentSpec.
-
-Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
-
-| Field | Description |
-| --- | --- |
-| affinity<a href="#customvmagentspec-affinity" id="customvmagentspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
-| claimTemplates<a href="#customvmagentspec-claimtemplates" id="customvmagentspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode |
-| configMaps<a href="#customvmagentspec-configmaps" id="customvmagentspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
-| containers<a href="#customvmagentspec-containers" id="customvmagentspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
-| disableAutomountServiceAccountToken<a href="#customvmagentspec-disableautomountserviceaccounttoken" id="customvmagentspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
-| disableSelfServiceScrape<a href="#customvmagentspec-disableselfservicescrape" id="customvmagentspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
-| dnsConfig<a href="#customvmagentspec-dnsconfig" id="customvmagentspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
-| dnsPolicy<a href="#customvmagentspec-dnspolicy" id="customvmagentspec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
-| extraArgs<a href="#customvmagentspec-extraargs" id="customvmagentspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
-| extraEnvs<a href="#customvmagentspec-extraenvs" id="customvmagentspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
-| extraEnvsFrom<a href="#customvmagentspec-extraenvsfrom" id="customvmagentspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
-| hostAliases<a href="#customvmagentspec-hostaliases" id="customvmagentspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
-| hostNetwork<a href="#customvmagentspec-hostnetwork" id="customvmagentspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
-| host_aliases<a href="#customvmagentspec-host_aliases" id="customvmagentspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
-| image<a href="#customvmagentspec-image" id="customvmagentspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
-| imagePullSecrets<a href="#customvmagentspec-imagepullsecrets" id="customvmagentspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
-| initContainers<a href="#customvmagentspec-initcontainers" id="customvmagentspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
-| license<a href="#customvmagentspec-license" id="customvmagentspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
-| logFormat<a href="#customvmagentspec-logformat" id="customvmagentspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VMAgent to be configured with. |
-| logLevel<a href="#customvmagentspec-loglevel" id="customvmagentspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VMAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
-| managedMetadata<a href="#customvmagentspec-managedmetadata" id="customvmagentspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
-| minReadySeconds<a href="#customvmagentspec-minreadyseconds" id="customvmagentspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
-| nodeSelector<a href="#customvmagentspec-nodeselector" id="customvmagentspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
-| paused<a href="#customvmagentspec-paused" id="customvmagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| persistentVolumeClaimRetentionPolicy<a href="#customvmagentspec-persistentvolumeclaimretentionpolicy" id="customvmagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
-| podDisruptionBudget<a href="#customvmagentspec-poddisruptionbudget" id="customvmagentspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
-| podMetadata<a href="#customvmagentspec-podmetadata" id="customvmagentspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmagent pods. |
-| port<a href="#customvmagentspec-port" id="customvmagentspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
-| priorityClassName<a href="#customvmagentspec-priorityclassname" id="customvmagentspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
-| readinessGates<a href="#customvmagentspec-readinessgates" id="customvmagentspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
-| remoteWrite<a href="#customvmagentspec-remotewrite" id="customvmagentspec-remotewrite">#</a><br/>_[CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec) array_ | _(Optional)_<br/>RemoteWrite list of victoria metrics /some other remote write system<br />for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write<br />or for cluster different url<br />https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems |
-| remoteWriteSettings<a href="#customvmagentspec-remotewritesettings" id="customvmagentspec-remotewritesettings">#</a><br/>_[VMAgentRemoteWriteSettings](#vmagentremotewritesettings)_ | _(Optional)_<br/>RemoteWriteSettings defines global settings for all remoteWrite urls. |
-| replicaCount<a href="#customvmagentspec-replicacount" id="customvmagentspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
-| resources<a href="#customvmagentspec-resources" id="customvmagentspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
-| revisionHistoryLimitCount<a href="#customvmagentspec-revisionhistorylimitcount" id="customvmagentspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
-| rollingUpdate<a href="#customvmagentspec-rollingupdate" id="customvmagentspec-rollingupdate">#</a><br/>_[RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rollingupdatedeployment-v1-apps)_ | _(Optional)_<br/>RollingUpdate - overrides deployment update params. |
-| runtimeClassName<a href="#customvmagentspec-runtimeclassname" id="customvmagentspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
-| schedulerName<a href="#customvmagentspec-schedulername" id="customvmagentspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
-| secrets<a href="#customvmagentspec-secrets" id="customvmagentspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
-| securityContext<a href="#customvmagentspec-securitycontext" id="customvmagentspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
-| serviceAccountName<a href="#customvmagentspec-serviceaccountname" id="customvmagentspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
-| statefulMode<a href="#customvmagentspec-statefulmode" id="customvmagentspec-statefulmode">#</a><br/>_boolean_ | _(Optional)_<br/>StatefulMode enables StatefulSet for `VMAgent` instead of Deployment<br />it allows using persistent storage for vmagent's persistentQueue |
-| statefulRollingUpdateStrategy<a href="#customvmagentspec-statefulrollingupdatestrategy" id="customvmagentspec-statefulrollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
-| statefulStorage<a href="#customvmagentspec-statefulstorage" id="customvmagentspec-statefulstorage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
-| terminationGracePeriodSeconds<a href="#customvmagentspec-terminationgraceperiodseconds" id="customvmagentspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
-| tolerations<a href="#customvmagentspec-tolerations" id="customvmagentspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
-| topologySpreadConstraints<a href="#customvmagentspec-topologyspreadconstraints" id="customvmagentspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
-| updateStrategy<a href="#customvmagentspec-updatestrategy" id="customvmagentspec-updatestrategy">#</a><br/>_[DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#deploymentstrategytype-v1-apps)_ | _(Optional)_<br/>UpdateStrategy - overrides default update strategy.<br />works only for deployments, statefulset always use OnDelete. |
-| useDefaultResources<a href="#customvmagentspec-usedefaultresources" id="customvmagentspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
-| useStrictSecurity<a href="#customvmagentspec-usestrictsecurity" id="customvmagentspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
-| volumeMounts<a href="#customvmagentspec-volumemounts" id="customvmagentspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
-| volumes<a href="#customvmagentspec-volumes" id="customvmagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
-
-
 #### VMAgentNameAndSpec
 
 
@@ -1291,7 +1202,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | --- | --- |
 | labelSelector<a href="#vmagentnameandspec-labelselector" id="vmagentnameandspec-labelselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>LabelSelector specifies VMAgents to be selected for metrics check. |
 | name<a href="#vmagentnameandspec-name" id="vmagentnameandspec-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMAgent when Spec is provided. |
-| spec<a href="#vmagentnameandspec-spec" id="vmagentnameandspec-spec">#</a><br/>_[CustomVMAgentSpec](#customvmagentspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAgent.<br />Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator. |
+| spec<a href="#vmagentnameandspec-spec" id="vmagentnameandspec-spec">#</a><br/>_[VMDistributedAgentSpec](#vmdistributedagentspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAgent.<br />Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator. |
 
 
 #### VMAuthNameAndSpec
@@ -1314,7 +1225,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 
 VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
 
-Appears in: [ZoneSpec](#zonespec)
+Appears in: [VMDistributedZone](#vmdistributedzone)
 
 | Field | Description |
 | --- | --- |
@@ -1339,6 +1250,95 @@ VMDistributedSpec is progressively rolling out updates to multiple VMClusters.
 | spec<a href="#vmdistributed-spec" id="vmdistributed-spec">#</a><br/>_[VMDistributedSpec](#vmdistributedspec)_ | _(Required)_<br/>spec defines the desired state of VMDistributed |
 
 
+#### VMDistributedAgentRemoteWriteSpec
+
+
+
+VMDistributedAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
+These urls will be overwritten by the controller
+
+Appears in: [VMDistributedAgentSpec](#vmdistributedagentspec)
+
+| Field | Description |
+| --- | --- |
+| aws<a href="#vmdistributedagentremotewritespec-aws" id="vmdistributedagentremotewritespec-aws">#</a><br/>_[AWS](#aws)_ | _(Required)_<br/>AWS describes params specific to AWS cloud |
+| basicAuth<a href="#vmdistributedagentremotewritespec-basicauth" id="vmdistributedagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
+| bearerTokenSecret<a href="#vmdistributedagentremotewritespec-bearertokensecret" id="vmdistributedagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
+| forceVMProto<a href="#vmdistributedagentremotewritespec-forcevmproto" id="vmdistributedagentremotewritespec-forcevmproto">#</a><br/>_boolean_ | _(Optional)_<br/>ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url |
+| headers<a href="#vmdistributedagentremotewritespec-headers" id="vmdistributedagentremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue<br />vmagent supports since 1.79.0 version |
+| maxDiskUsage<a href="#vmdistributedagentremotewritespec-maxdiskusage" id="vmdistributedagentremotewritespec-maxdiskusage">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
+| oauth2<a href="#vmdistributedagentremotewritespec-oauth2" id="vmdistributedagentremotewritespec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#vmdistributedagentremotewritespec-proxyurl" id="vmdistributedagentremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
+| sendTimeout<a href="#vmdistributedagentremotewritespec-sendtimeout" id="vmdistributedagentremotewritespec-sendtimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
+| tlsConfig<a href="#vmdistributedagentremotewritespec-tlsconfig" id="vmdistributedagentremotewritespec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig describes tls configuration for remote write target |
+| url<a href="#vmdistributedagentremotewritespec-url" id="vmdistributedagentremotewritespec-url">#</a><br/>_string_ | _(Optional)_<br/>URL is the URL of the remote write system. |
+
+
+#### VMDistributedAgentSpec
+
+
+
+VMDistributedAgentSpec is a customized specification of a new VMAgent.
+It includes selected options from the original VMAgentSpec.
+
+Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
+
+| Field | Description |
+| --- | --- |
+| affinity<a href="#vmdistributedagentspec-affinity" id="vmdistributedagentspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
+| claimTemplates<a href="#vmdistributedagentspec-claimtemplates" id="vmdistributedagentspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode |
+| configMaps<a href="#vmdistributedagentspec-configmaps" id="vmdistributedagentspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
+| containers<a href="#vmdistributedagentspec-containers" id="vmdistributedagentspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
+| disableAutomountServiceAccountToken<a href="#vmdistributedagentspec-disableautomountserviceaccounttoken" id="vmdistributedagentspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
+| disableSelfServiceScrape<a href="#vmdistributedagentspec-disableselfservicescrape" id="vmdistributedagentspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
+| dnsConfig<a href="#vmdistributedagentspec-dnsconfig" id="vmdistributedagentspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
+| dnsPolicy<a href="#vmdistributedagentspec-dnspolicy" id="vmdistributedagentspec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
+| extraArgs<a href="#vmdistributedagentspec-extraargs" id="vmdistributedagentspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
+| extraEnvs<a href="#vmdistributedagentspec-extraenvs" id="vmdistributedagentspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| extraEnvsFrom<a href="#vmdistributedagentspec-extraenvsfrom" id="vmdistributedagentspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| hostAliases<a href="#vmdistributedagentspec-hostaliases" id="vmdistributedagentspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
+| hostNetwork<a href="#vmdistributedagentspec-hostnetwork" id="vmdistributedagentspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
+| host_aliases<a href="#vmdistributedagentspec-host_aliases" id="vmdistributedagentspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
+| image<a href="#vmdistributedagentspec-image" id="vmdistributedagentspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
+| imagePullSecrets<a href="#vmdistributedagentspec-imagepullsecrets" id="vmdistributedagentspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
+| initContainers<a href="#vmdistributedagentspec-initcontainers" id="vmdistributedagentspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| license<a href="#vmdistributedagentspec-license" id="vmdistributedagentspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
+| logFormat<a href="#vmdistributedagentspec-logformat" id="vmdistributedagentspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VMAgent to be configured with. |
+| logLevel<a href="#vmdistributedagentspec-loglevel" id="vmdistributedagentspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VMAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
+| managedMetadata<a href="#vmdistributedagentspec-managedmetadata" id="vmdistributedagentspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
+| minReadySeconds<a href="#vmdistributedagentspec-minreadyseconds" id="vmdistributedagentspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
+| nodeSelector<a href="#vmdistributedagentspec-nodeselector" id="vmdistributedagentspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
+| paused<a href="#vmdistributedagentspec-paused" id="vmdistributedagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| persistentVolumeClaimRetentionPolicy<a href="#vmdistributedagentspec-persistentvolumeclaimretentionpolicy" id="vmdistributedagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
+| podDisruptionBudget<a href="#vmdistributedagentspec-poddisruptionbudget" id="vmdistributedagentspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
+| podMetadata<a href="#vmdistributedagentspec-podmetadata" id="vmdistributedagentspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vmagent pods. |
+| port<a href="#vmdistributedagentspec-port" id="vmdistributedagentspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
+| priorityClassName<a href="#vmdistributedagentspec-priorityclassname" id="vmdistributedagentspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
+| readinessGates<a href="#vmdistributedagentspec-readinessgates" id="vmdistributedagentspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
+| remoteWrite<a href="#vmdistributedagentspec-remotewrite" id="vmdistributedagentspec-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec) array_ | _(Optional)_<br/>RemoteWrite list of victoria metrics /some other remote write system<br />for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write<br />or for cluster different url<br />https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems |
+| remoteWriteSettings<a href="#vmdistributedagentspec-remotewritesettings" id="vmdistributedagentspec-remotewritesettings">#</a><br/>_[VMAgentRemoteWriteSettings](#vmagentremotewritesettings)_ | _(Optional)_<br/>RemoteWriteSettings defines global settings for all remoteWrite urls. |
+| replicaCount<a href="#vmdistributedagentspec-replicacount" id="vmdistributedagentspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
+| resources<a href="#vmdistributedagentspec-resources" id="vmdistributedagentspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| revisionHistoryLimitCount<a href="#vmdistributedagentspec-revisionhistorylimitcount" id="vmdistributedagentspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
+| rollingUpdate<a href="#vmdistributedagentspec-rollingupdate" id="vmdistributedagentspec-rollingupdate">#</a><br/>_[RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#rollingupdatedeployment-v1-apps)_ | _(Optional)_<br/>RollingUpdate - overrides deployment update params. |
+| runtimeClassName<a href="#vmdistributedagentspec-runtimeclassname" id="vmdistributedagentspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
+| schedulerName<a href="#vmdistributedagentspec-schedulername" id="vmdistributedagentspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
+| secrets<a href="#vmdistributedagentspec-secrets" id="vmdistributedagentspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
+| securityContext<a href="#vmdistributedagentspec-securitycontext" id="vmdistributedagentspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
+| serviceAccountName<a href="#vmdistributedagentspec-serviceaccountname" id="vmdistributedagentspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
+| statefulMode<a href="#vmdistributedagentspec-statefulmode" id="vmdistributedagentspec-statefulmode">#</a><br/>_boolean_ | _(Optional)_<br/>StatefulMode enables StatefulSet for `VMAgent` instead of Deployment<br />it allows using persistent storage for vmagent's persistentQueue |
+| statefulRollingUpdateStrategy<a href="#vmdistributedagentspec-statefulrollingupdatestrategy" id="vmdistributedagentspec-statefulrollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
+| statefulStorage<a href="#vmdistributedagentspec-statefulstorage" id="vmdistributedagentspec-statefulstorage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>StatefulStorage configures storage for StatefulSet |
+| terminationGracePeriodSeconds<a href="#vmdistributedagentspec-terminationgraceperiodseconds" id="vmdistributedagentspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
+| tolerations<a href="#vmdistributedagentspec-tolerations" id="vmdistributedagentspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
+| topologySpreadConstraints<a href="#vmdistributedagentspec-topologyspreadconstraints" id="vmdistributedagentspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
+| updateStrategy<a href="#vmdistributedagentspec-updatestrategy" id="vmdistributedagentspec-updatestrategy">#</a><br/>_[DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#deploymentstrategytype-v1-apps)_ | _(Optional)_<br/>UpdateStrategy - overrides default update strategy.<br />works only for deployments, statefulset always use OnDelete. |
+| useDefaultResources<a href="#vmdistributedagentspec-usedefaultresources" id="vmdistributedagentspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
+| useStrictSecurity<a href="#vmdistributedagentspec-usestrictsecurity" id="vmdistributedagentspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
+| volumeMounts<a href="#vmdistributedagentspec-volumemounts" id="vmdistributedagentspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
+| volumes<a href="#vmdistributedagentspec-volumes" id="vmdistributedagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+
+
 #### VMDistributedSpec
 
 
@@ -1349,30 +1349,31 @@ Appears in: [VMDistributed](#vmdistributed)
 
 | Field | Description |
 | --- | --- |
+| commonZone<a href="#vmdistributedspec-commonzone" id="vmdistributedspec-commonzone">#</a><br/>_[VMDistributedZone](#vmdistributedzone)_ | _(Optional)_<br/>CommonZone defines common properties for all zones |
 | license<a href="#vmdistributedspec-license" id="vmdistributedspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters. |
 | paused<a href="#vmdistributedspec-paused" id="vmdistributedspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | readyDeadline<a href="#vmdistributedspec-readydeadline" id="vmdistributedspec-readydeadline">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ReadyDeadline is the deadline for the VMCluster to be ready. |
-| vmAgentFlushDeadline<a href="#vmdistributedspec-vmagentflushdeadline" id="vmdistributedspec-vmagentflushdeadline">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>VMAgentFlushDeadline is the deadline for VMAgent to flush accumulated queue. |
 | vmagent<a href="#vmdistributedspec-vmagent" id="vmdistributedspec-vmagent">#</a><br/>_[VMAgentNameAndSpec](#vmagentnameandspec)_ | _(Required)_<br/>VMAgent is the name and spec of the VM agent to balance traffic between VMClusters. |
+| vmagentFlushDeadline<a href="#vmdistributedspec-vmagentflushdeadline" id="vmdistributedspec-vmagentflushdeadline">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>VMAgentFlushDeadline is the deadline for VMAgent to flush accumulated queue. |
 | vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMAuthNameAndSpec](#vmauthnameandspec)_ | _(Required)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
 | zoneUpdatePause<a href="#vmdistributedspec-zoneupdatepause" id="vmdistributedspec-zoneupdatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
-| zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[ZoneSpec](#zonespec)_ | _(Required)_<br/>Zones is a list of VMCluster instances to update. Each VMCluster in the list represents a "zone" within the distributed cluster. |
+| zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[VMDistributedZone](#vmdistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
 
 
 
 
-#### ZoneSpec
+#### VMDistributedZone
 
 
 
-ZoneSpec is a list of VMCluster instances to update.
+VMDistributedZone defines items within a single zone to update.
 
 Appears in: [VMDistributedSpec](#vmdistributedspec)
 
 | Field | Description |
 | --- | --- |
-| globalOverrideSpec<a href="#zonespec-globaloverridespec" id="zonespec-globaloverridespec">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | _(Optional)_<br/>GlobalClusterSpec specifies an override to all VMClusters.<br />These overrides are applied to the referenced object if `ref` is specified. |
-| vmclusters<a href="#zonespec-vmclusters" id="zonespec-vmclusters">#</a><br/>_[VMClusterObjOrRef](#vmclusterobjorref) array_ | _(Required)_<br/>Each VMClusterObjOrRef is either defining a new inline VMCluster or referencing an existing one. |
+| name<a href="#vmdistributedzone-name" id="vmdistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in commonZone spec as %ZONE% |
+| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMClusterObjOrRef](#vmclusterobjorref)_ | _(Required)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 
 
 
@@ -1424,7 +1425,7 @@ Appears in: [VMAgentSpec](#vmagentspec)
 
 AWS defines AWS cloud auth specific params
 
-Appears in: [CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+Appears in: [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)
 
 | Field | Description |
 | --- | --- |
@@ -1574,7 +1575,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1604,7 +1605,7 @@ _Underlying type:_ _string_
 BytesString represents bytes value defined directly as integer
 or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
 
-Appears in: [CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec), [VLAgentRemoteWriteSettings](#vlagentremotewritesettings), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentRemoteWriteSettings](#vmagentremotewritesettings), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentRemoteWriteSettings](#vlagentremotewritesettings), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentRemoteWriteSettings](#vmagentremotewritesettings), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 
 
@@ -1650,7 +1651,7 @@ Appears in: [TLSClientConfig](#tlsclientconfig), [TLSServerConfig](#tlsservercon
 CommonApplicationDeploymentParams defines common params
 for deployment and statefulset specifications
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -1711,7 +1712,7 @@ Appears in: [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertma
 CommonDefaultableParams contains Application settings
 with known values populated from operator configuration
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2086,7 +2087,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 Only fields which are relevant to embedded resources are included.
 
-Appears in: [AdditionalServiceSpec](#additionalservicespec), [CustomVMAgentSpec](#customvmagentspec), [EmbeddedHTTPRoute](#embeddedhttproute), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedHTTPRoute](#embeddedhttproute), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2116,7 +2117,7 @@ Appears in: [StorageSpec](#storagespec)
 
 
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2134,7 +2135,7 @@ EmbeddedProbes - it allows to override some probe params.
 its not necessary to specify all options,
 operator will replace missing spec with default values.
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2351,7 +2352,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 Image defines docker image settings
 
-Appears in: [CommonDefaultableParams](#commondefaultableparams), [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [CommonDefaultableParams](#commondefaultableparams), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2511,7 +2512,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedSpec](#vmdistributedspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMDistributedSpec](#vmdistributedspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -2582,7 +2583,7 @@ Appears in: [Receiver](#receiver)
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec), [VMUserSpec](#vmuserspec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMSingleSpec](#vmsinglespec), [VMUserSpec](#vmuserspec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -2626,7 +2627,7 @@ Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probe
 
 OAuth2 defines OAuth2 configuration
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -3094,7 +3095,7 @@ Appears in: [OAuth2](#oauth2), [TLSConfig](#tlsconfig)
 SecurityContext extends PodSecurityContext with ContainerSecurityContext
 It allows to globally configure security params for pod and all containers
 
-Appears in: [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams), [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [CommonApplicationDeploymentParams](#commonapplicationdeploymentparams), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 
 
@@ -3296,7 +3297,7 @@ Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagents
 StorageSpec defines the configured storage for a group VM servers.
 If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMDistributedAgentSpec](#vmdistributedagentspec), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -3394,7 +3395,7 @@ Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [CustomVMAgentRemoteWriteSpec](#customvmagentremotewritespec), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -3728,7 +3729,7 @@ or any other Prometheus-compatible storage system that supports the remote_write
 
 VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 
-Appears in: [CustomVMAgentSpec](#customvmagentspec), [VMAgentSpec](#vmagentspec)
+Appears in: [VMAgentSpec](#vmagentspec), [VMDistributedAgentSpec](#vmdistributedagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -5342,3 +5343,5 @@ Appears in: [Receiver](#receiver)
 | timeout<a href="#webhookconfig-timeout" id="webhookconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke the webhook<br />available since v0.28.0 alertmanager version |
 | url<a href="#webhookconfig-url" id="webhookconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
 | url_secret<a href="#webhookconfig-url_secret" id="webhookconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
+
+

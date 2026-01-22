@@ -57,12 +57,12 @@ func (r *fieldDiffRecorder) String() string {
 	return strings.Join(r.diffs, ",")
 }
 
-func diffDeep(a1, a2 interface{}) string {
+func diffDeep(a1, a2 any) string {
 	return diffDeepInternal(a1, a2, false)
 
 }
 
-func diffDeepDerivative(a1, a2 interface{}) string {
+func diffDeepDerivative(a1, a2 any) string {
 	return diffDeepInternal(a1, a2, true)
 }
 
@@ -73,7 +73,7 @@ func diffDeepDerivative(a1, a2 interface{}) string {
 // The unset fields include a nil pointer and an empty string.
 //
 // Helper function for equality.Semantic.DeepDerivative
-func diffDeepInternal(a1, a2 interface{}, useDerivative bool) string {
+func diffDeepInternal(a1, a2 any, useDerivative bool) string {
 	r := fieldDiffRecorder{
 		useDerivativeDiff: useDerivative,
 	}

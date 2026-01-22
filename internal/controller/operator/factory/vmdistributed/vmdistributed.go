@@ -2,9 +2,11 @@ package vmdistributed
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -18,7 +20,12 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+)
+
+const (
+	zonePlaceholder = "%ZONE%"
 )
 
 var (
@@ -102,9 +109,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 	// Apply changes to VMClusters one by one if new spec needs to be applied
 	logger.WithContext(ctx).Info("Reconciling VMClusters")
 	for i, vmClusterObj := range vmClusters {
+		zone := &cr.Spec.Zones[i]
 		logger.WithContext(ctx).Info("Reconciling VMCluster", "index", i, "name", vmClusterObj.Name)
-
-		zoneRefOrSpec := cr.Spec.Zones.VMClusters[i]
 
 		needsToBeCreated := false
 		// Get vmClusterObj in case it doesn't exist or has changed
@@ -114,28 +120,39 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		}
 
 		// Update the VMCluster when overrideSpec needs to be applied or ownerref set
-		mergedSpec := vmClusterObj.Spec
+		mergedSpec := vmClusterObj.Spec.DeepCopy()
 		previousVMClusterObjSpec := mergedSpec.DeepCopy()
-		modifiedSpec := false
+		var updatedSpec bool
 
-		// Apply GlobalClusterSpec if it is set
-		if cr.Spec.Zones.GlobalClusterSpec != nil {
-			mergedSpec, modifiedSpec, err = applyOverrideSpec(mergedSpec, cr.Spec.Zones.GlobalClusterSpec)
-			if err != nil {
-				return fmt.Errorf("failed to apply global override spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+		// Apply CommonZone if it is set
+		if cr.Spec.CommonZone.VMCluster != nil && cr.Spec.CommonZone.VMCluster.Spec != nil {
+			commonSpec := cr.Spec.CommonZone.VMCluster.Spec.DeepCopy()
+			if len(zone.Name) > 0 {
+				commonSpec, err = k8stools.RenderPlaceholders(commonSpec, map[string]string{
+					zonePlaceholder: zone.Name,
+				})
+				if err != nil {
+					return fmt.Errorf("failed to render common cluster: %w", err)
+				}
+			}
+			if updated, err := mergeDeep(mergedSpec, commonSpec); err != nil {
+				return fmt.Errorf("failed to apply common zone spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			} else if updated {
+				updatedSpec = updated
 			}
 		}
 
 		// Apply cluster-specific override if it exist
-		if zoneRefOrSpec.Spec != nil {
-			mergedSpec, modifiedSpec, err = mergeVMClusterSpecs(mergedSpec, *zoneRefOrSpec.Spec)
-			if err != nil {
+		if zone.VMCluster != nil && zone.VMCluster.Spec != nil {
+			if updated, err := mergeDeep(mergedSpec, zone.VMCluster.Spec); err != nil {
 				return fmt.Errorf("failed to merge spec for vmcluster %s at index %d: %w", vmClusterObj.Name, i, err)
+			} else if updated {
+				updatedSpec = updated
 			}
 		}
 		diff := cmp.Diff(previousVMClusterObjSpec, mergedSpec)
 		if diff != "" {
-			logger.WithContext(ctx).Info("zoneRefOrSpec diff", "diff", diff, "modifiedSpec", modifiedSpec, "index", i, "name", vmClusterObj.Name)
+			logger.WithContext(ctx).Info("zone vmcluster diff", "diff", diff, "updatedSpec", updatedSpec, "index", i, "name", vmClusterObj.Name)
 			logger.WithContext(ctx).Info(diff)
 		}
 
@@ -144,12 +161,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		if err != nil {
 			return fmt.Errorf("failed to set owner reference for vmcluster %s: %w", vmClusterObj.Name, err)
 		}
-		if !needsToBeCreated && !modifiedSpec && !modifiedOwnerRef {
+		if !needsToBeCreated && !updatedSpec && !modifiedOwnerRef {
 			// No changes required
 			continue
 		}
 
-		vmClusterObj.Spec = mergedSpec
+		vmClusterObj.Spec = *mergedSpec
 
 		if needsToBeCreated {
 			logger.WithContext(ctx).Info("Creating VMCluster", "index", i, "name", vmClusterObj.Name)
@@ -158,7 +175,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		} else {
 			// Drain cluster reads only if the spec has been modified
-			if modifiedSpec {
+			if updatedSpec {
 				logger.WithContext(ctx).Info("Excluding VMCluster from vmauth configuration", "index", i, "name", vmClusterObj.Name)
 				// Update vmauth lb with excluded cluster
 				activeVMClusters := make([]*vmv1beta1.VMCluster, 0, len(vmClusters)-1)
@@ -191,7 +208,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		}
 
-		if modifiedSpec {
+		if updatedSpec {
 			logger.WithContext(ctx).Info("Waiting for VMCluster to start expanding", "index", i, "name", vmClusterObj.Name)
 			if err := waitForVMClusterToExpand(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 				return fmt.Errorf("failed to wait for VMCluster %s/%s to start expanding: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
@@ -253,4 +270,79 @@ func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme
 		return true, nil
 	}
 	return false, nil
+}
+
+// mergeDeep merges an override object into a base one.
+// Fields present in the override will overwrite corresponding fields in the base.
+func mergeDeep[T any](base, override T) (bool, error) {
+	if any(override) == nil {
+		return false, nil
+	}
+
+	baseJSON, err := json.Marshal(base)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal base spec: %w", err)
+	}
+	overrideJSON, err := json.Marshal(override)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal override spec: %w", err)
+	}
+
+	var baseMap map[string]any
+	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
+		return false, fmt.Errorf("failed to unmarshal base spec to map: %w", err)
+	}
+	var overrideMap map[string]any
+	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
+		return false, fmt.Errorf("failed to unmarshal override spec to map: %w", err)
+	}
+
+	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
+	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
+	updated := mergeMapsRecursive(baseMap, overrideMap)
+	mergedSpecJSON, err := json.Marshal(baseMap)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal merged spec map: %w", err)
+	}
+
+	if err := json.Unmarshal(mergedSpecJSON, base); err != nil {
+		return false, fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
+	}
+
+	return updated, nil
+}
+
+// mergeMapsRecursive deeply merges overrideMap into baseMap.
+// It handles nested maps (which correspond to nested structs after JSON unmarshal).
+// Values from overrideMap overwrite values in baseMap.
+// It returns a boolean indicating if the baseMap was modified.
+func mergeMapsRecursive(baseMap, overrideMap map[string]any) bool {
+	var modified bool
+	if baseMap == nil && len(overrideMap) > 0 {
+		baseMap = make(map[string]any)
+	}
+	for key, overrideValue := range overrideMap {
+		if baseVal, ok := baseMap[key]; ok {
+			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
+				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
+					// Both are nested maps, recurse
+					if mergeMapsRecursive(baseMapNested, overrideMapNested) {
+						modified = true
+					}
+					continue
+				}
+			}
+		}
+
+		// For all other cases (scalar values, or when types for nested maps don't match),
+		// override the baseMap value. This handles explicit zero values and ensures
+		// overrides take precedence.
+		// We assign first, then check if it was a modification.
+		oldValue, exists := baseMap[key]
+		baseMap[key] = overrideValue // Force the overwrite for this key
+		if !exists || !reflect.DeepEqual(oldValue, overrideValue) {
+			modified = true
+		}
+	}
+	return modified
 }

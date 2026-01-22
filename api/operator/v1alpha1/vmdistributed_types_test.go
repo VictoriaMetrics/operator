@@ -11,24 +11,24 @@ import (
 
 func TestValidateVMClusterObjOrRef_Matrix(t *testing.T) {
 	s := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{Name: "a"}}
-	assert.NoError(t, s.validate(0))
+	assert.NoError(t, s.validate(nil))
 
 	s2 := VMClusterObjOrRef{Name: "b", Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.NoError(t, s2.validate(1))
+	assert.NoError(t, s2.validate(nil))
 
 	both := VMClusterObjOrRef{
 		Name: "c",
 		Ref:  &corev1.LocalObjectReference{Name: "c"},
 		Spec: &vmv1beta1.VMClusterSpec{},
 	}
-	assert.Error(t, both.validate(2))
+	assert.Error(t, both.validate(nil))
 
 	none := VMClusterObjOrRef{}
-	assert.Error(t, none.validate(3))
+	assert.Error(t, none.validate(nil))
 
 	missingRefName := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{}}
-	assert.Error(t, missingRefName.validate(4))
+	assert.Error(t, missingRefName.validate(nil))
 
 	missingSpecName := VMClusterObjOrRef{Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.Error(t, missingSpecName.validate(5))
+	assert.Error(t, missingSpecName.validate(nil))
 }

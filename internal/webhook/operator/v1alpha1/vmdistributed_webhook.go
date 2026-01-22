@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -48,6 +49,11 @@ func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj run
 		return
 	}
 
+	if r.Spec.ParsingError != "" {
+		err = errors.New(r.Spec.ParsingError)
+		return
+	}
+
 	if err = r.Validate(); err != nil {
 		return
 	}
@@ -60,6 +66,11 @@ func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newO
 	r, ok := newObj.(*vmv1alpha1.VMDistributed)
 	if !ok {
 		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+		return
+	}
+
+	if r.Spec.ParsingError != "" {
+		err = errors.New(r.Spec.ParsingError)
 		return
 	}
 

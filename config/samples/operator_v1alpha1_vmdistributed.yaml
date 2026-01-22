@@ -4,28 +4,26 @@ metadata:
   labels:
     app.kubernetes.io/name: victoriametrics-operator
     app.kubernetes.io/managed-by: kustomize
-  name: VMDistributed-sample-override
+  name: sample-override
 spec:
   vmagent:
     name: vmagent-sample
-  vmusers:
-    - name: vmuser-us-east-1
-    - name: vmuser-us-west-2
-    - name: vmuser-eu-west-1
   zones:
-    vmclusters:
-    - ref:
-        name: vmcluster-us-east-1
-      spec:
-        vmselect:
-          replicaCount: 2
-    - ref:
-        name: vmcluster-us-west-2
-      spec:
-        vmselect:
-          replicaCount: 2
-    - ref:
-        name: vmcluster-eu-west-1
-      spec:
-        vmselect:
-          replicaCount: 2
+    - vmcluster:
+        ref:
+          name: vmcluster-us-east-1
+        spec:
+          vmselect:
+            replicaCount: 2
+    - vmcluster:
+        ref:
+          name: vmcluster-us-west-2
+        spec:
+          vmselect:
+            replicaCount: 2
+    - vmcluster:
+        ref:
+          name: vmcluster-eu-west-1
+        spec:
+          vmselect:
+            replicaCount: 2

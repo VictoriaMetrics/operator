@@ -1,7 +1,7 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributed
 metadata:
-  name: VMDistributed-sample-vmagent
+  name: sample-vmagent
 spec:
   vmagent:
     name: global-write-vmagent
@@ -21,29 +21,19 @@ spec:
     name: global-read-vmauth
     spec:
       replicaCount: 1
+  commonZone:
+    vmcluster:
+      spec:
+        vmstorage:
+          replicaCount: 1
+        vmselect:
+          replicaCount: 1
+        vminsert:
+          replicaCount: 1
   zones:
-    vmclusters:
-    - name: vmcluster-us-east-1
-      spec:
-        vmstorage:
-          replicaCount: 1
-        vmselect:
-          replicaCount: 1
-        vminsert:
-          replicaCount: 1
-    - name: vmcluster-us-west-2
-      spec:
-        vmstorage:
-          replicaCount: 1
-        vmselect:
-          replicaCount: 1
-        vminsert:
-          replicaCount: 1
-    - name: vmcluster-eu-west-1
-      spec:
-        vmstorage:
-          replicaCount: 1
-        vmselect:
-          replicaCount: 1
-        vminsert:
-          replicaCount: 1
+    - vmcluster:
+        name: vmcluster-us-east-1
+    - vmcluster:
+        name: vmcluster-us-west-2
+    - vmcluster:
+        name: vmcluster-eu-west-1

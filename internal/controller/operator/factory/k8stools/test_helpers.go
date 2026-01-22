@@ -203,8 +203,11 @@ func (c *calls) Count(obj client.Object) int {
 func (c *calls) First(obj client.Object) client.Object {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if obj == nil && len(c.objects) > 0 {
-		return c.objects[0]
+	if obj == nil {
+		if len(c.objects) > 0 {
+			return c.objects[0]
+		}
+		return nil
 	}
 	key := getKey(obj)
 	for _, o := range c.objects {

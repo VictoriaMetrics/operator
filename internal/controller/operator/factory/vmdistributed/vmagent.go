@@ -206,7 +206,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Prepare the desired spec for VMAgent.
-	desiredVMAgentSpec := vmv1alpha1.CustomVMAgentSpec{}
+	desiredVMAgentSpec := vmv1alpha1.VMDistributedAgentSpec{}
 	if cr.Spec.VMAgent.Spec != nil {
 		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
 	}
@@ -219,14 +219,14 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Map CR-provided remoteWrite entries by URL so we can preserve auth/config if present.
-	writeSpecMap := map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec{}
+	writeSpecMap := map[string]vmv1alpha1.VMDistributedAgentRemoteWriteSpec{}
 	for _, rw := range desiredVMAgentSpec.RemoteWrite {
 		writeSpecMap[rw.URL] = rw
 	}
 
 	if !vmAgentExists {
 		// New VMAgent
-		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, len(remoteWriteURLs))
+		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.VMDistributedAgentRemoteWriteSpec, len(remoteWriteURLs))
 		for i, url := range remoteWriteURLs {
 			if crrw, ok := writeSpecMap[url]; ok {
 				desiredVMAgentSpec.RemoteWrite[i] = crrw
@@ -327,8 +327,8 @@ func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
 	return fmt.Sprintf("%s/insert/multitenant/prometheus/api/v1/write", insertBaseURL)
 }
 
-func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.CustomVMAgentRemoteWriteSpec) {
-	desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.CustomVMAgentRemoteWriteSpec, 0, len(remoteWriteURLs))
+func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.VMDistributedAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.VMDistributedAgentRemoteWriteSpec) {
+	desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.VMDistributedAgentRemoteWriteSpec, 0, len(remoteWriteURLs))
 	used := map[string]bool{}
 	// Build a map to lookup desired URLs
 	desiredSet := map[string]bool{}
@@ -340,7 +340,7 @@ func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remo
 		if !desiredSet[existing.URL] {
 			continue
 		}
-		customSpec := vmv1alpha1.CustomVMAgentRemoteWriteSpec{
+		customSpec := vmv1alpha1.VMDistributedAgentRemoteWriteSpec{
 			URL: existing.URL,
 		}
 		// Use existing spec if available, always rewrite URL
@@ -356,7 +356,7 @@ func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.CustomVMAgentSpec, remo
 		if used[newURL] {
 			continue
 		}
-		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1alpha1.CustomVMAgentRemoteWriteSpec{
+		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1alpha1.VMDistributedAgentRemoteWriteSpec{
 			URL: newURL,
 		})
 	}

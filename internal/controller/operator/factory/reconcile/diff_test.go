@@ -7,7 +7,7 @@ import (
 )
 
 func TestDiffDeepOk(t *testing.T) {
-	f := func(oldObj, newObj interface{}, expected string) {
+	f := func(oldObj, newObj any, expected string) {
 		t.Helper()
 		got := diffDeep(oldObj, newObj)
 		if got != expected {
@@ -45,7 +45,7 @@ func TestDiffDeepOk(t *testing.T) {
 }
 
 func TestDiffDeepDerivativeOk(t *testing.T) {
-	f := func(oldObj, newObj interface{}, expected string) {
+	f := func(oldObj, newObj any, expected string) {
 		t.Helper()
 		sym := equality.Semantic.DeepDerivative(oldObj, newObj)
 

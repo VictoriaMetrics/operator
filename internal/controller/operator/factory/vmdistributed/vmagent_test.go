@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -102,7 +103,6 @@ func newVMAgentMetricsHandler(t *testing.T, handler http.Handler) (*httptest.Ser
 
 func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 	t.Run("VMAgent metrics return zero", func(t *testing.T) {
-
 		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
 		}))
@@ -116,10 +116,10 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 	})
 
 	t.Run("VMAgent metrics return non-zero then zero", func(t *testing.T) {
-		callCount := 0
+		var callCount atomic.Int32
 		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			callCount++
-			if callCount == 1 {
+			callCount.Add(1)
+			if callCount.Load() == 1 {
 				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 100")
 			} else {
 				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")

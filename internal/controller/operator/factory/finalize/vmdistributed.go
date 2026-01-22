@@ -18,11 +18,12 @@ import (
 // OnVMDistributedDelete removes all objects related to VMDistributed component
 func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) error {
 	objsToDisown := []client.Object{}
-	for _, vmclusterSpec := range cr.Spec.Zones.VMClusters {
-		if vmclusterSpec.Ref != nil && len(vmclusterSpec.Ref.Name) > 0 {
+	for i := range cr.Spec.Zones {
+		zone := &cr.Spec.Zones[i]
+		if zone.VMCluster.Ref != nil && len(zone.VMCluster.Ref.Name) > 0 {
 			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmclusterSpec.Ref.Name,
+					Name:      zone.VMCluster.Ref.Name,
 					Namespace: cr.Namespace,
 				},
 			})

@@ -64,6 +64,9 @@ var (
 		},
 	)
 
+	_ = AfterEach(suite.CollectK8SResources)
+	_ = ReportAfterSuite("allure report", suite.AllureReport)
+
 	// _ = AfterSuite()
 
 	k8sClient client.Client

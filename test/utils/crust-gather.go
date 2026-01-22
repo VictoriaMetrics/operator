@@ -13,6 +13,7 @@ import (
 
 const (
 	crustGatherVersionlessBin = "bin/crust-gather"
+	crustGatherInvalidPath    = "/tmp/crust-gather.gz"
 	filePath                  = "/tmp/crust-gather.tar.gz"
 )
 
@@ -22,7 +23,8 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 	defer cancel()
 
 	// Run crust-gather
-	cmd := exec.CommandContext(timeBoundContext, crustGatherVersionlessBin, "collect", "-f", filePath, "-e", "gzip")
+	// Crust-gather bug: instead of /tmp/crust-gather.gz it creates /tmp/crust-gather.tar.gz
+	cmd := exec.CommandContext(timeBoundContext, crustGatherVersionlessBin, "collect", "-f", crustGatherInvalidPath, "-e", "gzip")
 	if _, err := Run(cmd); err != nil {
 		return fmt.Errorf("failed to run crust-gather: %v", err)
 	}

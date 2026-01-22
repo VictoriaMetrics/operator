@@ -86,17 +86,19 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 // single AsURL()+GetMetricPath() behavior.
 func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline, interval time.Duration, rclient client.Client) error {
 	// Wait for vmAgent to become ready
-	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+	nsn := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
+	resultErr := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		vmAgentObj := &vmv1beta1.VMAgent{}
-		nsn := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
-		err = rclient.Get(ctx, nsn, vmAgentObj)
-		if err != nil {
-			return false, err
+		if err = rclient.Get(ctx, nsn, vmAgentObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				err = nil
+			}
+			return
 		}
 		return vmAgentObj.GetGeneration() == vmAgentObj.Status.ObservedGeneration && vmAgentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
 	})
-	if err != nil {
-		return err
+	if resultErr != nil {
+		return resultErr
 	}
 
 	// Base values for fallback URL
@@ -107,12 +109,16 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 
 	var hosts []string
 	// Poll until pod IPs are discovered
-	err = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
+	listOpts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": vmAgent.PrefixedName()}),
+	}
+	resultErr = wait.PollUntilContextTimeout(ctx, 1*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		endpointList := &discoveryv1.EndpointSliceList{}
-		if err := rclient.List(ctx, endpointList, &client.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set{"kubernetes.io/service-name": vmAgent.PrefixedName()}),
-		}); err != nil {
-			return false, err
+		if err = rclient.List(ctx, endpointList, listOpts); err != nil {
+			if k8serrors.IsNotFound(err) {
+				err = nil
+			}
+			return
 		}
 		if len(endpointList.Items) == 0 {
 			return false, nil
@@ -121,8 +127,8 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		hosts = parseEndpointSliceAddresses(&endpointList.Items[0])
 		return len(hosts) > 0, nil
 	})
-	if err != nil {
-		return err
+	if resultErr != nil {
+		return resultErr
 	}
 
 	logger.WithContext(ctx).Info("Found VMAgent hosts", "hosts", hosts)
@@ -131,22 +137,22 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		logger.WithContext(ctx).Info("Found VMAgent instance metric URL", "url", metricsURL)
 
 		// Poll until all pod IPs return empty query metric
-		err = wait.PollUntilContextTimeout(ctx, interval, deadline, true, func(ctx context.Context) (done bool, err error) {
+		resultErr = wait.PollUntilContextTimeout(ctx, interval, deadline, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
-			metricValue, ferr := fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL)
-			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)
-			if ferr != nil {
+			var metricValue int64
+			if metricValue, err = fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL); err != nil {
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil
 			}
 			if metricValue != 0 {
 				return false, nil
 			}
+			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)
 			// All discovered addresses reported zero -> done.
 			return true, nil
 		})
-		if err != nil {
-			return fmt.Errorf("failed to wait for VMAgent metrics: %w", err)
+		if resultErr != nil {
+			return fmt.Errorf("failed to wait for VMAgent metrics: %w", resultErr)
 		}
 	}
 	return nil

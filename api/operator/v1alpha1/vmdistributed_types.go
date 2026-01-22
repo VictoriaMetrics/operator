@@ -23,7 +23,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -328,26 +327,6 @@ type VMDistributed struct {
 	Status VMDistributedStatus `json:"status,omitempty,omitzero"`
 }
 
-// SelectorLabels defines selector labels for given component kind
-func (cr *VMDistributed) SelectorLabels(kind vmv1beta1.ClusterComponent) map[string]string {
-	return vmv1beta1.ClusterSelectorLabels(kind, cr.Name, "vmd")
-}
-
-// PrefixedName returns prefixed name for the given component kind
-func (cr *VMDistributed) PrefixedName(kind vmv1beta1.ClusterComponent) string {
-	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", false)
-}
-
-// FinalLabels adds cluster labels to the base labels and filters by prefix if needed
-func (cr *VMDistributed) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]string {
-	return vmv1beta1.AddClusterLabels(cr.SelectorLabels(kind), "vmd")
-}
-
-// AnnotationsFiltered returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMDistributed) AnnotationsFiltered() map[string]string {
-	return map[string]string{}
-}
-
 // Owns returns error if owned by other CR
 func (cr *VMDistributed) Owns(r client.Object) error {
 	refs := r.GetOwnerReferences()
@@ -374,16 +353,6 @@ func (cr *VMDistributed) AsOwner() metav1.OwnerReference {
 	}
 }
 
-// PodLabels returns pod labels for given component kind
-func (cr *VMDistributed) PodLabels(kind vmv1beta1.ClusterComponent) map[string]string {
-	selectorLabels := cr.SelectorLabels(kind)
-	podMetadata := cr.PodMetadata(kind)
-	if podMetadata == nil {
-		return selectorLabels
-	}
-	return labels.Merge(podMetadata.Labels, selectorLabels)
-}
-
 func (cr *VMDistributed) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	if cr == nil {
 		return nil
@@ -403,51 +372,7 @@ func (cr *VMDistributed) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	return specCopy
 }
 
-// PodMetadata returns pod metadata for given component kind
-func (cr *VMDistributed) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
-	return cr.GetVMAuthSpec().PodMetadata
-}
-
-// FinalAnnotations returns global annotations to be applied by objects generate for vmcluster
-func (cr *VMDistributed) FinalAnnotations() map[string]string {
-	return map[string]string{}
-}
-
-// GetAdditionalService returns AdditionalServiceSpec settings
-func (cr *VMDistributed) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1beta1.AdditionalServiceSpec {
-	return nil
-}
-
-// GetServiceAccountName returns service account name for all vmcluster components
-func (cr *VMDistributed) GetServiceAccountName() string {
-	return cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
-}
-
-// PodAnnotations returns pod annotations for given component kind
-func (cr *VMDistributed) PodAnnotations(kind vmv1beta1.ClusterComponent) map[string]string {
-	podMetadata := cr.PodMetadata(kind)
-	if podMetadata == nil {
-		return nil
-	}
-	return podMetadata.Annotations
-}
-
-func (cr *VMDistributed) IsOwnsServiceAccount() bool {
-	return false
-}
-
-// PrefixedInternalName returns prefixed name for the given component kind
-func (cr *VMDistributed) PrefixedInternalName(kind vmv1beta1.ClusterComponent) string {
-	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vmd", true)
-}
-
-// PrefixedInternalName returns prefixed name for the given component kind
-func (cr *VMDistributed) AllLabels() map[string]string {
-	return cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)
-}
-
 // +kubebuilder:object:root=true
-
 // VMDistributedList contains a list of VMDistributed
 type VMDistributedList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -490,21 +415,6 @@ func (cr *VMDistributed) Paused() bool {
 
 func (cr *VMDistributed) GetVMUserName() string {
 	return fmt.Sprintf("%s-user", cr.Name)
-}
-
-// AutomountServiceAccountToken implements reloadable interface
-func (cr *VMDistributed) AutomountServiceAccountToken() bool {
-	return true
-}
-
-// GetReloaderParams implements reloadable interface
-func (cr *VMDistributed) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
-	return &cr.GetVMAuthSpec().CommonConfigReloaderParams
-}
-
-// UseProxyProtocol implements reloadable interface
-func (cr *VMDistributed) UseProxyProtocol() bool {
-	return false
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

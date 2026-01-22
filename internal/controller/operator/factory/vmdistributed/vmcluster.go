@@ -88,11 +88,11 @@ func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, v
 	// Fetch VMCluster in a loop until it has UpdateStatusOperational status
 	nsn := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		if err := rclient.Get(ctx, nsn, vmCluster); err != nil {
+		if err = rclient.Get(ctx, nsn, vmCluster); err != nil {
 			if k8serrors.IsNotFound(err) {
-				return false, nil
+				err = nil
 			}
-			return false, nil
+			return
 		}
 		lastStatus = vmCluster.Status.UpdateStatus
 		return vmCluster.GetGeneration() == vmCluster.Status.ObservedGeneration && vmCluster.Status.UpdateStatus == status, nil

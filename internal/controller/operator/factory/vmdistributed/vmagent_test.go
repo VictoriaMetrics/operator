@@ -132,7 +132,7 @@ func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
 
 		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 2*time.Second, 1*time.Second, trClient)
 		assert.NoError(t, err)
-		assert.True(t, callCount > 1) // Ensure it polled multiple times
+		assert.True(t, callCount.Load() > 1) // Ensure it polled multiple times
 	})
 
 	t.Run("VMAgent metrics timeout", func(t *testing.T) {

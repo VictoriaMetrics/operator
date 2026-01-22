@@ -115,7 +115,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		needsToBeCreated := false
 		// Get vmClusterObj in case it doesn't exist or has changed
 		nsn := types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}
-		if err = rclient.Get(ctx, nsn, vmClusterObj); k8serrors.IsNotFound(err) {
+		if err = rclient.Get(ctx, nsn, vmClusterObj); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("unexpected error during attempt to get spec.zones[%d].vmclusters object: %w", i, err)
+			}
 			needsToBeCreated = true
 		}
 

@@ -52,6 +52,9 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 			}
 			objToDisown.SetOwnerReferences(refs)
 			if err := rclient.Update(ctx, objToDisown); err != nil {
+				if k8serrors.IsConflict(err) {
+					return false, nil
+				}
 				return false, fmt.Errorf("error on update: %w", err)
 			}
 			return true, nil

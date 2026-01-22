@@ -8,6 +8,8 @@ metadata:
 spec:
   vmagent:
     name: vmagent-sample
+  vmauth:
+    name: vmauth-sample
   zones:
     - vmcluster:
         ref:

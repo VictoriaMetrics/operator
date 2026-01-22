@@ -84,10 +84,9 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen yq kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
-	$(YQ) -r 'del(.. | .description?)' -i config/crd/overlay/crd.yaml
 	$(KUSTOMIZE) build config/crd-specless > config/crd/overlay/crd.specless.yaml
 
 .PHONY: generate

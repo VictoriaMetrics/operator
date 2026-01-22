@@ -2511,7 +2511,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedSpec](#vmdistributedspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [CustomVMAgentSpec](#customvmagentspec), [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedSpec](#vmdistributedspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |

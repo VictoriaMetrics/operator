@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -35,7 +36,7 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 		return fmt.Errorf("failed to read %s: %v", filePath, err)
 	}
 	baseName := filepath.Base(filePath)
-	ginkgo.AddReportEntry(baseName, string(gzipFileContent), ginkgo.ReportEntryVisibilityNever)
+	ginkgo.AddReportEntry(baseName, base64.StdEncoding.EncodeToString(gzipFileContent), ginkgo.ReportEntryVisibilityNever)
 
 	return nil
 }

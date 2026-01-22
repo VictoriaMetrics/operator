@@ -152,7 +152,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo
+test-e2e: load-kind ginkgo crust-gather
 	$(GINKGO_BIN) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-timeout=30m \

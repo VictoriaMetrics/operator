@@ -1,0 +1,23 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: vmdistributed-with-label-selector
+spec:
+  vmagent:
+    labelSelector:
+      matchLabels:
+        app: vmagent-app
+  commonZone:
+    vmcluster:
+      spec:
+        vmstorage:
+          replicaCount: 1
+        vmselect:
+          replicaCount: 1
+        vminsert:
+          replicaCount: 1
+  zones:
+    - vmcluster:
+        name: vmcluster-zone-1
+    - vmcluster:
+        name: vmcluster-zone-2

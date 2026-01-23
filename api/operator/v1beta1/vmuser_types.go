@@ -275,28 +275,26 @@ func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 
 func (cr *VMUser) AsKey(hide bool) string {
 	var id string
-	if cr.Spec.Username != nil {
-		v := *cr.Spec.Username
+	hideFn := func(s string) string {
 		if hide {
-			v = strings.Repeat("*", 5)
+			return strings.Repeat("*", 5)
 		}
-		id = "basicAuth:" + v
+		return s
 	}
-	if cr.Spec.Password != nil {
-		v := *cr.Spec.Password
-		if hide {
-			v = strings.Repeat("*", 5)
+	switch {
+	case cr.Spec.BearerToken != nil:
+		id = "bearerToken:" + hideFn(*cr.Spec.BearerToken)
+	default:
+		if cr.Spec.Username != nil {
+			id = "basicAuth:" + hideFn(*cr.Spec.Username)
+		} else {
+			id = "basicAuth:" + hideFn(cr.Name)
 		}
-		return id + ":" + v
-	}
-	if cr.Spec.BearerToken != nil {
-		v := *cr.Spec.BearerToken
-		if hide {
-			v = strings.Repeat("*", 5)
+		if cr.Spec.Password != nil {
+			id = id + ":" + hideFn(*cr.Spec.Password)
 		}
-		return "bearerToken:" + v
 	}
-	return id
+	return cr.Namespace + "/" + id
 }
 
 func (cr *VMUser) Validate() error {

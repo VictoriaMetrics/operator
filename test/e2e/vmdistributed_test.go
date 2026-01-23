@@ -121,6 +121,10 @@ func createVMAuth(ctx context.Context, k8sClient client.Client, name, namespace 
 			},
 		},
 	}
+	// Reset expectedVMAuthToBeRemoved so that it would not leak into other tests
+	DeferCleanup(func() {
+		expectedVMAuthToBeRemoved = false
+	})
 	DeferCleanup(func() {
 		err := k8sClient.Delete(ctx, vmAuth)
 		if expectedVMAuthToBeRemoved {
@@ -151,6 +155,10 @@ func createVMAgent(ctx context.Context, k8sClient client.Client, name, namespace
 			},
 		},
 	}
+	// Reset expectedVMAuthToBeRemoved so that it would not leak into other tests
+	DeferCleanup(func() {
+		expectedVMAgentToBeRemoved = false
+	})
 	DeferCleanup(func() {
 		err := k8sClient.Delete(ctx, vmAgent)
 		if expectedVMAgentToBeRemoved {

@@ -21,6 +21,11 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
+var (
+	expectedVMAgentToBeRemoved = false
+	expectedVMAuthToBeRemoved  = false
+)
+
 func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) *vmv1beta1.VMClusterSpec {
 	commonApplicationDeploymentParams := vmv1beta1.CommonApplicationDeploymentParams{
 		ReplicaCount: ptr.To[int32](1),
@@ -116,7 +121,12 @@ func createVMAuth(ctx context.Context, k8sClient client.Client, name, namespace 
 		},
 	}
 	DeferCleanup(func() {
-		Expect(k8sClient.Delete(ctx, vmAuth)).To(Succeed())
+		err := k8sClient.Delete(ctx, vmAuth)
+		if expectedVMAuthToBeRemoved {
+			Expect(k8serrors.IsNotFound(err)).To(BeTrue(), fmt.Sprintf("expected NotFound error for %s, but got %v", vmAuth.Name, err))
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
 	})
 	Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
 	Eventually(func() error {
@@ -141,7 +151,12 @@ func createVMAgent(ctx context.Context, k8sClient client.Client, name, namespace
 		},
 	}
 	DeferCleanup(func() {
-		Expect(k8sClient.Delete(ctx, vmAgent)).To(Succeed())
+		err := k8sClient.Delete(ctx, vmAgent)
+		if expectedVMAgentToBeRemoved {
+			Expect(k8serrors.IsNotFound(err)).To(BeTrue(), fmt.Sprintf("expected NotFound error for %s, but got %v", vmAgent.Name, err))
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+		}
 	})
 	Expect(k8sClient.Create(ctx, vmAgent)).NotTo(HaveOccurred())
 	Eventually(func() error {
@@ -1352,6 +1367,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Eventually(func() error {
 				return k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{})
 			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			expectedVMAgentToBeRemoved = true
+			expectedVMAuthToBeRemoved = true
 
 			By("ensuring referenced VMCluster is not removed")
 			Consistently(func() error {

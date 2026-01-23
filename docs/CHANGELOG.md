@@ -41,16 +41,13 @@ aliases:
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/) and [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/): do not mount emptydir if storage data volume is already present in volumes list. Before it was impossible to mount external PVC without overriding default storageDataPath using `spec.extraArgs` and without having unneeded emptydir listed among pod volumes. Related issues [#1477](https://github.com/VictoriaMetrics/operator/issues/1477).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use Service labels instead of selector in VMServiceScrape selector. See [#1709](https://github.com/VictoriaMetrics/operator/issues/1709).
-<<<<<<< HEAD
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update Alertmanager dependency to fix config validation for Incident.io. See [#1730](https://github.com/VictoriaMetrics/operator/issues/1730).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not add `-enterprise` suffix to image, if tag contains `@` symbol. See [#1723](https://github.com/VictoriaMetrics/operator/issues/1723).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use 127.0.0.1 instead of localhost in reload and snapshot url for setups without IPV6 enabled.
 * BUGFIX: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): properly convert prometheus ScrapeConfig's role into VMScrapeConfig. See [#1735](https://github.com/VictoriaMetrics/operator/issues/1735).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): make vmagent container default. See [#1740](https://github.com/VictoriaMetrics/operator/issues/1740).
-=======
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use 127.0.0.1 instead of localhost in reload url for setups without IPV6 enabled.
 * BUGFIX: [VLAgent](https://docs.victoriametrics.com/operator/resources/vlagent/): update strict security mode configuration to work correctly with `K8sCollector`.
->>>>>>> f74ed1a7 (vlagent: use single volume for all vlagent data by default)
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

@@ -535,7 +535,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(updatedCluster2.Spec.RetentionPeriod).To(Equal("2w"))
 		})
 
-		It("should apply global overrides before cluster-specific overrides", Label("slow"), func() {
+		It("should apply global overrides before cluster-specific overrides", func() {
 			By("creating initial VMClusters")
 			nsn.Name = "vmd-global-override"
 			vmclusters := []*vmv1beta1.VMCluster{
@@ -1284,12 +1284,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			By("ensuring VMDistributed is eventually removed")
 			Eventually(func() error {
-				err := k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{})
-				if k8serrors.IsNotFound(err) {
-					return nil
-				}
-				return fmt.Errorf("want NotFound error, got: %w", err)
-			}, eventualDeletionTimeout).WithContext(ctx).Should(Succeed())
+				return k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{})
+			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			By("ensuring VMClusters are eventually removed")
 			for _, zone := range cr.Spec.Zones {

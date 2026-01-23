@@ -268,6 +268,8 @@ olm: operator-sdk opm yq docs
 	cp config/manifests/release-config.yaml bundle/$(VERSION)/
 	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	$(YQ) -i '.spec.install.spec.deployments[0].spec.template.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.20"' \

@@ -288,7 +288,7 @@ func (cr *VMUser) AsKey(hide bool) string {
 		if cr.Spec.Username != nil {
 			id = "basicAuth:" + hideFn(*cr.Spec.Username)
 		} else {
-			id = "basicAuth:" + hideFn(cr.Name)
+			id = "basicAuth:" + cr.Name
 		}
 		if cr.Spec.Password != nil {
 			id = id + ":" + hideFn(*cr.Spec.Password)

@@ -20,7 +20,7 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 	objsToDisown := []client.Object{}
 	for i := range cr.Spec.Zones {
 		zone := &cr.Spec.Zones[i]
-		if zone.VMCluster.Ref != nil && len(zone.VMCluster.Ref.Name) > 0 {
+		if zone.VMCluster.IsRefSet() {
 			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      zone.VMCluster.Ref.Name,

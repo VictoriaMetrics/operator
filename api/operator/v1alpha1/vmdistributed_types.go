@@ -105,11 +105,11 @@ type VMClusterObjOrRef struct {
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 }
 
-func (s *VMClusterObjOrRef) isRefSet() bool {
+func (s *VMClusterObjOrRef) IsRefSet() bool {
 	return s != nil && s.Ref != nil && len(s.Ref.Name) > 0
 }
 
-func (s *VMClusterObjOrRef) isNameSet() bool {
+func (s *VMClusterObjOrRef) IsNameSet() bool {
 	return s != nil && len(s.Name) > 0
 }
 
@@ -120,8 +120,8 @@ func (s *VMClusterObjOrRef) isSpecSet() bool {
 func (s *VMClusterObjOrRef) validate(cs *VMClusterObjOrRef) error {
 	// Check mutual exclusivity: either ref or name must be set, but not both
 
-	refSet := s.isRefSet() || cs.isRefSet()
-	nameSet := s.isNameSet() || cs.isNameSet()
+	refSet := s.IsRefSet() || cs.IsRefSet()
+	nameSet := s.IsNameSet() || cs.IsNameSet()
 	specSet := s.isSpecSet() || cs.isSpecSet()
 
 	if refSet && nameSet {

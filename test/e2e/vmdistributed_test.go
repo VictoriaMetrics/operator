@@ -323,15 +323,12 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					},
 				})
 			}
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
-			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
-			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 
 			By("waiting for VMDistributed to become operational")
 			Eventually(func() error {
 				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
 			}, eventualDistributedExpandingTimeout).WithContext(ctx).Should(Succeed())
+			verifyOwnerReferences(ctx, cr, inlineVMClusters, namespace)
 
 			By("verifying that the inline VMClusters are created and operational")
 			nsn := types.NamespacedName{Name: vmclusters[0].Name, Namespace: namespace}

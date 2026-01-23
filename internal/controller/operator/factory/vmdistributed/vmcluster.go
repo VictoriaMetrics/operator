@@ -46,12 +46,12 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 		}
 		var vmCluster vmv1beta1.VMCluster
 		switch {
-		case objOrRef.Ref != nil && len(objOrRef.Ref.Name) > 0:
+		case objOrRef.IsRefSet():
 			nsn := types.NamespacedName{Name: objOrRef.Ref.Name, Namespace: cr.Namespace}
 			if err := rclient.Get(ctx, nsn, &vmCluster); err != nil {
 				return nil, fmt.Errorf("failed to get referenced vmclusters[%d]=%s: %w", i, nsn.String(), err)
 			}
-		case len(objOrRef.Name) > 0:
+		case objOrRef.IsNameSet():
 			// We try to fetch the object to get the current state (Generation, etc)
 			nsn := types.NamespacedName{Name: objOrRef.Name, Namespace: cr.Namespace}
 			if err := rclient.Get(ctx, nsn, &vmCluster); err != nil {

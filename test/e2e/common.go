@@ -1,9 +1,5 @@
 package e2e
 
-import (
-	"os"
-)
-
 var LICENSE_KEY = os.Getenv("LICENSE_KEY")
 
 const (

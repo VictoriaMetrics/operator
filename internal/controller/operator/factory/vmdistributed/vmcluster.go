@@ -83,9 +83,9 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 	return vmClusters, nil
 }
 
+// waitForVMClusterToReachStatus waits till VMCluster reaches defined status
 func waitForVMClusterToReachStatus(ctx context.Context, rclient client.Client, vmCluster *vmv1beta1.VMCluster, deadline time.Duration, status vmv1beta1.UpdateStatus) error {
 	var lastStatus vmv1beta1.UpdateStatus
-	// Fetch VMCluster in a loop until it has UpdateStatusOperational status
 	nsn := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, vmCluster); err != nil {

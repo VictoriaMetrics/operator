@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -237,10 +236,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		logger.WithContext(ctx).Info("Fetching VMAgent metrics", "index", i, "name", vmClusterObj.Name, "timeout", vmAgentFlushDeadlineDeadline)
 		for _, vmAgentObj := range vmAgentObjs {
 			if err := waitForVMClusterVMAgentMetrics(ctx, httpClient, vmAgentObj, vmAgentFlushDeadlineDeadline, defaultVMAgentCheckInterval, rclient); err != nil {
-				// Ignore this error when running e2e tests - these need to run in the same network as pods
-				if os.Getenv("E2E_TEST") != "true" {
-					return fmt.Errorf("failed to wait for VMAgent %s metrics to show no pending queue: %w", vmAgentObj.Name, err)
-				}
+				return fmt.Errorf("failed to wait for VMAgent %s metrics to show no pending queue: %w", vmAgentObj.Name, err)
 			}
 		}
 

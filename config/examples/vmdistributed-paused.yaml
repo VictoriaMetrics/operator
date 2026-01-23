@@ -1,3 +1,39 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-us-east-1
+spec:
+  vmstorage:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 1
+  vminsert:
+    replicaCount: 1
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-us-west-2
+spec:
+  vmstorage:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 1
+  vminsert:
+    replicaCount: 1
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-eu-west-1
+spec:
+  vmstorage:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 1
+  vminsert:
+    replicaCount: 1
+---
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributed
 metadata:

@@ -29,7 +29,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// VMDistributedSpec defines the desired state of VMDistributedSpec
+// VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
@@ -52,7 +52,7 @@ type VMDistributedSpec struct {
 	Zones []VMDistributedZone `json:"zones,omitempty"`
 	// CommonZone defines common properties for all zones
 	// +optional
-	CommonZone VMDistributedZone `json:"commonZone"`
+	CommonZone VMDistributedZone `json:"commonZone,omitempty"`
 	// License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
 	// +optional
 	License *vmv1beta1.License `json:"license,omitempty"`
@@ -308,7 +308,7 @@ type VMDistributedStatus struct {
 // +kubebuilder:resource:path=vmdistributed,scope=Namespaced
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="current status of update rollout"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// VMDistributedSpec is progressively rolling out updates to multiple VMClusters.
+// VMDistributed is progressively rolling out updates to multiple zone components.
 type VMDistributed struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -433,15 +433,22 @@ func (cr *VMDistributed) Validate() error {
 		return fmt.Errorf("vmauth.name must be set")
 	}
 
-	// VMAgent needs to specify either Name or LabelSelector
+	// VMAgent's Name and LabelSelector are mutually exclusive
 	if spec.VMAgent.Name != "" && spec.VMAgent.LabelSelector != nil {
 		return fmt.Errorf("vmagent.name and labelSelector cannot be set at the same time")
 	}
 	if spec.VMAgent.Spec != nil && spec.VMAgent.LabelSelector != nil {
 		return fmt.Errorf("vmagent.spec and labelSelector cannot be set at the same time")
 	}
+	zones := make(map[string]struct{})
 	for i := range spec.Zones {
 		zone := &spec.Zones[i]
+		if len(zone.Name) > 0 {
+			if _, ok := zones[zone.Name]; ok {
+				return fmt.Errorf("spec.zones[*].name=%s is duplicated, zone names should be unique or unset", zone.Name)
+			}
+			zones[zone.Name] = struct{}{}
+		}
 		if err := zone.validate(&spec.CommonZone); err != nil {
 			return fmt.Errorf("zones[%d]: %w", i, err)
 		}

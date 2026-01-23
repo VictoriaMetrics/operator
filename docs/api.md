@@ -1238,7 +1238,7 @@ Appears in: [VMDistributedZone](#vmdistributedzone)
 
 
 
-VMDistributedSpec is progressively rolling out updates to multiple VMClusters.
+VMDistributed is progressively rolling out updates to multiple zone components.
 
 
 
@@ -1343,7 +1343,7 @@ Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
 
 
 
-VMDistributedSpec defines the desired state of VMDistributedSpec
+VMDistributedSpec defines configurable parameters for VMDistributed CR
 
 Appears in: [VMDistributed](#vmdistributed)
 

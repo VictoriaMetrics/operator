@@ -15,7 +15,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// OnVMDistributedDelete removes all objects related to VMDistributed component
+// OnVMDistributedDelete disowns referenced and removes created by VMDistributed components
 func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) error {
 	objsToDisown := []client.Object{}
 	for i := range cr.Spec.Zones {

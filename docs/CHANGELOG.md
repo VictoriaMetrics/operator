@@ -36,6 +36,7 @@ aliases:
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add support of `spec.server` configuration.
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): add collector `extraFilter`, `includePodLabels`, `includePodAnnotations`, `includeNodeLabels` and `includeNodeAnnotations` support for more flexible Kubernetes logs by metadata selection.
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): use a single volume for all VLAgent data by default instead of separate volumes/paths for checkpoints and remote write data.
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): global sample limit per scrape target is supported via `sampleLimit` option in scrape config. See [#10168](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10168).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed HPA cleanup logic for all cluster resources, before it was constantly recreated. Bug introduced in [this commit](https://github.com/VictoriaMetrics/operator/commit/983d1678c37497a7d03d2f57821219fd4975deec).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): prevent cluster load balancer secret from infinite reconcile.

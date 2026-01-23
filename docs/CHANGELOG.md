@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
+
 **Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
 **Update note 2: removed deprecated VMAgent `spec.aPIServerConfig` property**
 **Update note 3: removed deprecated VMCluster `spec.vmselect.persistentVolume` property**

@@ -1,5 +1,9 @@
 package e2e
 
+import (
+	"os"
+)
+
 var LICENSE_KEY = os.Getenv("LICENSE_KEY")
 
 const (
@@ -87,7 +91,7 @@ M7vgLchoksFqutzVhWleAEXg1dJo+GUKT9aep/OWzRSFYqruAILKHgylkftFb2GA
 tM4WxCuAsphZoewqBKvTvCdn8fmXFuWEOaZYfT8IvJ4R+7CfUwI6dA5xHRVxO6Yp
 DszbHrMGz4tq39kUG1ylOtspMuFhEHo7Qz+bRJFeLYvvV8W414m+zSndBut+thkY
 RBKeYvjZEvkpjCK2SQUK3SqipzpJFu5gkr3NcTk6Qd2T3LOAZcGXYLCTxTEW9DIn
-8X3nbqwPPg==                            
------END CERTIFICATE-----       
+8X3nbqwPPg==
+-----END CERTIFICATE-----
 `
 )

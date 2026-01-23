@@ -48,6 +48,8 @@ spec:
     spec:
       replicaCount: 1
   commonZone:
+    remoteWrite:
+      forceVMProto: true
     vmcluster:
       spec:
         clusterVersion: v1.90.0

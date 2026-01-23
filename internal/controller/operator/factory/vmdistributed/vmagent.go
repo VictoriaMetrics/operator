@@ -2,9 +2,11 @@ package vmdistributed
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -85,14 +87,14 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 	// Wait for vmAgent to become ready
 	nsn := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
 	resultErr := wait.PollUntilContextTimeout(ctx, 5*time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		vmAgentObj := &vmv1beta1.VMAgent{}
-		if err = rclient.Get(ctx, nsn, vmAgentObj); err != nil {
+		vmagentObj := &vmv1beta1.VMAgent{}
+		if err = rclient.Get(ctx, nsn, vmagentObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				err = nil
 			}
 			return
 		}
-		return vmAgentObj.GetGeneration() == vmAgentObj.Status.ObservedGeneration && vmAgentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
+		return vmagentObj.GetGeneration() == vmagentObj.Status.ObservedGeneration && vmagentObj.Status.UpdateStatus == vmv1beta1.UpdateStatusOperational, nil
 	})
 	if resultErr != nil {
 		return resultErr
@@ -165,182 +167,93 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 // updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributed.
 func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) (*vmv1beta1.VMAgent, error) {
 	logger.WithContext(ctx).Info("Reconciling VMAgent")
+	vmagentData, err := json.Marshal(cr.Spec.VMAgent.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal spec.vmagent.spec of VMDistributed=%s/%s: %w", cr.Name, cr.Namespace, err)
+	}
+
+	var vmagentSpec vmv1beta1.VMAgentSpec
+	if err := json.Unmarshal(vmagentData, &vmagentSpec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal spec.vmagent.spec of VMDistributed=%s/%s: %w", cr.Name, cr.Namespace, err)
+	}
+	vmagentSpec.IngestOnlyMode = true
+	if vmagentSpec.RemoteWriteSettings == nil {
+		vmagentSpec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{}
+	}
+	vmagentSpec.RemoteWriteSettings.UseMultiTenantMode = true
+	if vmagentSpec.License == nil && cr.Spec.License != nil {
+		vmagentSpec.License = cr.Spec.License.DeepCopy()
+	}
+
+	remoteWrites := make([]vmv1alpha1.VMDistributedAgentRemoteWriteSpec, len(cr.Spec.Zones))
+	for i := range cr.Spec.Zones {
+		zone := &cr.Spec.Zones[i]
+		if zone.RemoteWrite != nil {
+			remoteWrites[i] = *zone.RemoteWrite
+		}
+	}
+	remoteWritesData, err := json.Marshal(remoteWrites)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal.spec.zones[*].remoteWrite of VMDistributed=%s/%s: %w", cr.Name, cr.Namespace, err)
+	}
+	if err := json.Unmarshal(remoteWritesData, &vmagentSpec.RemoteWrite); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal.spec.zones[*].remoteWrite of VMDistributed=%s/%s: %w", cr.Name, cr.Namespace, err)
+	}
+
+	for i := range vmClusters {
+		vmagentSpec.RemoteWrite[i].URL = remoteWriteURL(vmClusters[i])
+	}
 
 	// Get existing vmagent obj using Name and cr namespace
-	vmAgentExists := true
-	vmAgentNeedsUpdate := false
-	vmAgentObj := &vmv1beta1.VMAgent{}
+	var vmagentObj vmv1beta1.VMAgent
 	nsn := types.NamespacedName{Name: cr.Spec.VMAgent.Name, Namespace: cr.Namespace}
-	if err := rclient.Get(ctx, nsn, vmAgentObj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			vmAgentExists = false
-			// If it doesn't exist, initialize object for creation.
-			vmAgentObj = &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      cr.Spec.VMAgent.Name,
-					Namespace: cr.Namespace,
-				},
-			}
-		} else {
+	if err := rclient.Get(ctx, nsn, &vmagentObj); err != nil {
+		if !k8serrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get VMAgent %s: %w", nsn.String(), err)
 		}
-	}
-
-	// Prepare the desired spec for VMAgent.
-	desiredVMAgentSpec := vmv1alpha1.VMDistributedAgentSpec{}
-	if cr.Spec.VMAgent.Spec != nil {
-		desiredVMAgentSpec = *cr.Spec.VMAgent.Spec.DeepCopy()
-	}
-
-	// Preserve existing VMAgent RemoteWrite order when possible to avoid unnecessary updates.
-	// New VMCluster URLs will be appended to the end of the list.
-	remoteWriteURLs := make([]string, 0, len(vmClusters))
-	for _, vmCluster := range vmClusters {
-		remoteWriteURLs = append(remoteWriteURLs, remoteWriteURL(vmCluster))
-	}
-
-	// Map CR-provided remoteWrite entries by URL so we can preserve auth/config if present.
-	writeSpecMap := map[string]vmv1alpha1.VMDistributedAgentRemoteWriteSpec{}
-	for _, rw := range desiredVMAgentSpec.RemoteWrite {
-		writeSpecMap[rw.URL] = rw
-	}
-
-	if !vmAgentExists {
-		// New VMAgent
-		desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.VMDistributedAgentRemoteWriteSpec, len(remoteWriteURLs))
-		for i, url := range remoteWriteURLs {
-			if crrw, ok := writeSpecMap[url]; ok {
-				desiredVMAgentSpec.RemoteWrite[i] = crrw
-			}
-			desiredVMAgentSpec.RemoteWrite[i].URL = url
+		// If it doesn't exist, initialize object for creation.
+		vmagentObj.Name = cr.Spec.VMAgent.Name
+		vmagentObj.Namespace = cr.Namespace
+		vmagentObj.OwnerReferences = []metav1.OwnerReference{cr.AsOwner()}
+		vmagentObj.Spec = vmagentSpec
+		logger.WithContext(ctx).Info("Creating VMAgent")
+		if err := rclient.Create(ctx, &vmagentObj); err != nil {
+			return nil, fmt.Errorf("failed to create VMAgent %s/%s: %w", vmagentObj.Namespace, vmagentObj.Name, err)
 		}
-	} else {
-		// Existing VMAgent
-		preserveVMAgentOrder(&desiredVMAgentSpec, remoteWriteURLs, vmAgentObj.Spec.RemoteWrite, writeSpecMap)
+		return &vmagentObj, nil
 	}
-
-	// Assemble new VMAgentSpec
-	newVMAgentSpec := vmv1beta1.VMAgentSpec{}
-	newVMAgentSpec.PodMetadata = desiredVMAgentSpec.PodMetadata
-	newVMAgentSpec.ManagedMetadata = desiredVMAgentSpec.ManagedMetadata
-	newVMAgentSpec.LogLevel = desiredVMAgentSpec.LogLevel
-	newVMAgentSpec.LogFormat = desiredVMAgentSpec.LogFormat
-	newVMAgentSpec.UpdateStrategy = desiredVMAgentSpec.UpdateStrategy
-	newVMAgentSpec.RollingUpdate = desiredVMAgentSpec.RollingUpdate
-	newVMAgentSpec.PodDisruptionBudget = desiredVMAgentSpec.PodDisruptionBudget
-	newVMAgentSpec.EmbeddedProbes = desiredVMAgentSpec.EmbeddedProbes
-	newVMAgentSpec.StatefulMode = desiredVMAgentSpec.StatefulMode
-	newVMAgentSpec.StatefulStorage = desiredVMAgentSpec.StatefulStorage
-	newVMAgentSpec.StatefulRollingUpdateStrategy = desiredVMAgentSpec.StatefulRollingUpdateStrategy
-	newVMAgentSpec.PersistentVolumeClaimRetentionPolicy = desiredVMAgentSpec.PersistentVolumeClaimRetentionPolicy
-	newVMAgentSpec.ClaimTemplates = desiredVMAgentSpec.ClaimTemplates
-	newVMAgentSpec.License = desiredVMAgentSpec.License
-	// If License is not set in VMAgent spec but is set in VMDistributed, use the VMDistributed License
-	if newVMAgentSpec.License == nil && cr.Spec.License != nil {
-		newVMAgentSpec.License = cr.Spec.License
+	orderMap := make(map[string]int)
+	for i, rw := range vmagentObj.Spec.RemoteWrite {
+		orderMap[rw.URL] = i
 	}
-	newVMAgentSpec.ServiceAccountName = desiredVMAgentSpec.ServiceAccountName
-	newVMAgentSpec.CommonDefaultableParams = desiredVMAgentSpec.CommonDefaultableParams
-	newVMAgentSpec.CommonApplicationDeploymentParams = desiredVMAgentSpec.CommonApplicationDeploymentParams
-
-	if desiredVMAgentSpec.RemoteWriteSettings == nil {
-		desiredVMAgentSpec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{}
-	}
-	desiredVMAgentSpec.RemoteWriteSettings.UseMultiTenantMode = true
-
-	newVMAgentSpec.IngestOnlyMode = true
-	newVMAgentSpec.RemoteWriteSettings = desiredVMAgentSpec.RemoteWriteSettings
-	newVMAgentSpec.RemoteWrite = make([]vmv1beta1.VMAgentRemoteWriteSpec, len(desiredVMAgentSpec.RemoteWrite))
-	for i, remoteWrite := range desiredVMAgentSpec.RemoteWrite {
-		vmAgentRemoteWrite := vmv1beta1.VMAgentRemoteWriteSpec{}
-		vmAgentRemoteWrite.URL = remoteWrite.URL
-		vmAgentRemoteWrite.BasicAuth = remoteWrite.BasicAuth
-		vmAgentRemoteWrite.BearerTokenSecret = remoteWrite.BearerTokenSecret
-		vmAgentRemoteWrite.OAuth2 = remoteWrite.OAuth2
-		vmAgentRemoteWrite.TLSConfig = remoteWrite.TLSConfig
-		vmAgentRemoteWrite.SendTimeout = remoteWrite.SendTimeout
-		vmAgentRemoteWrite.Headers = remoteWrite.Headers
-		vmAgentRemoteWrite.MaxDiskUsage = remoteWrite.MaxDiskUsage
-		vmAgentRemoteWrite.ForceVMProto = remoteWrite.ForceVMProto
-		vmAgentRemoteWrite.ProxyURL = remoteWrite.ProxyURL
-		vmAgentRemoteWrite.AWS = remoteWrite.AWS
-		newVMAgentSpec.RemoteWrite[i] = vmAgentRemoteWrite
-	}
-
-	// Compare current spec with desired spec and apply if different
-	if !equality.Semantic.DeepEqual(vmAgentObj.Spec, newVMAgentSpec) {
-		vmAgentObj.Spec = *newVMAgentSpec.DeepCopy()
-		vmAgentNeedsUpdate = true
-	}
+	sort.Slice(vmagentSpec.RemoteWrite, func(i, j int) bool {
+		return orderMap[vmagentSpec.RemoteWrite[i].URL] < orderMap[vmagentSpec.RemoteWrite[j].URL]
+	})
 
 	// Ensure owner reference is set to current CR
-	if modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, vmAgentObj, rclient.Scheme()); err != nil {
-		// setOwnerRefIfNeeded already returns wrapped error
-		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmAgentObj.Name, err)
-	} else if modifiedOwnerRef {
-		vmAgentNeedsUpdate = true
+	modifiedOwnerRef, err := setOwnerRefIfNeeded(cr, &vmagentObj, rclient.Scheme())
+	if err != nil {
+		return nil, fmt.Errorf("failed to set owner reference for VMAgent %s: %w", vmagentObj.Name, err)
 	}
 
 	// Create or update the vmagent object if spec has changed or it doesn't exist yet
-	switch {
-	case !vmAgentExists:
+	if modifiedOwnerRef || !equality.Semantic.DeepEqual(vmagentObj.Spec, vmagentSpec) {
 		// TODO[vrutkovs]: add diff
-		logger.WithContext(ctx).Info("Creating VMAgent")
-		if err := rclient.Create(ctx, vmAgentObj); err != nil {
-			return nil, fmt.Errorf("failed to create VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
-		}
-	case vmAgentNeedsUpdate:
-		// TODO[vrutkovs]: add diff
+		vmagentObj.Spec = vmagentSpec
 		logger.WithContext(ctx).Info("Updating VMAgent")
-
-		if err := rclient.Update(ctx, vmAgentObj); err != nil {
-			return nil, fmt.Errorf("failed to update VMAgent %s/%s: %w", vmAgentObj.Namespace, vmAgentObj.Name, err)
+		if err := rclient.Update(ctx, &vmagentObj); err != nil {
+			return nil, fmt.Errorf("failed to update VMAgent %s/%s: %w", vmagentObj.Namespace, vmagentObj.Name, err)
 		}
-	default:
+	} else {
 		logger.WithContext(ctx).Info("VMAgent is up to date")
 	}
-	return vmAgentObj, nil
+	return &vmagentObj, nil
 }
 
 // remoteWriteURL generates the remote write URL based on the provided VMCluster and tenant.
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
 	insertBaseURL := vmCluster.AsURL(vmv1beta1.ClusterComponentInsert)
 	return fmt.Sprintf("%s/insert/multitenant/prometheus/api/v1/write", insertBaseURL)
-}
-
-func preserveVMAgentOrder(desiredVMAgentSpec *vmv1alpha1.VMDistributedAgentSpec, remoteWriteURLs []string, vmAgentWriteSpec []vmv1beta1.VMAgentRemoteWriteSpec, writeSpecMap map[string]vmv1alpha1.VMDistributedAgentRemoteWriteSpec) {
-	desiredVMAgentSpec.RemoteWrite = make([]vmv1alpha1.VMDistributedAgentRemoteWriteSpec, 0, len(remoteWriteURLs))
-	used := map[string]bool{}
-	// Build a map to lookup desired URLs
-	desiredSet := map[string]bool{}
-	for _, u := range remoteWriteURLs {
-		desiredSet[u] = true
-	}
-	// First, keep URLs in the same order as existing VMAgent.Spec.RemoteWrite
-	for _, existing := range vmAgentWriteSpec {
-		if !desiredSet[existing.URL] {
-			continue
-		}
-		customSpec := vmv1alpha1.VMDistributedAgentRemoteWriteSpec{
-			URL: existing.URL,
-		}
-		// Use existing spec if available, always rewrite URL
-		if crrw, ok := writeSpecMap[existing.URL]; ok {
-			customSpec = *crrw.DeepCopy()
-			customSpec.URL = existing.URL
-		}
-		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, customSpec)
-		used[existing.URL] = true
-	}
-	// Append any new URLs that were not present in the existing spec
-	for _, newURL := range remoteWriteURLs {
-		if used[newURL] {
-			continue
-		}
-		desiredVMAgentSpec.RemoteWrite = append(desiredVMAgentSpec.RemoteWrite, vmv1alpha1.VMDistributedAgentRemoteWriteSpec{
-			URL: newURL,
-		})
-	}
 }
 
 func listVMAgents(ctx context.Context, rclient client.Client, namespace string, labelSelector *metav1.LabelSelector) ([]*vmv1beta1.VMAgent, error) {

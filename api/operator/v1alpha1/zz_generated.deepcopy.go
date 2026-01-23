@@ -198,13 +198,6 @@ func (in *VMDistributedAgentSpec) DeepCopyInto(out *VMDistributedAgentSpec) {
 		*out = new(v1beta1.ManagedObjectsMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.RemoteWrite != nil {
-		in, out := &in.RemoteWrite, &out.RemoteWrite
-		*out = make([]VMDistributedAgentRemoteWriteSpec, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	if in.RemoteWriteSettings != nil {
 		in, out := &in.RemoteWriteSettings, &out.RemoteWriteSettings
 		*out = new(v1beta1.VMAgentRemoteWriteSettings)
@@ -365,6 +358,11 @@ func (in *VMDistributedZone) DeepCopyInto(out *VMDistributedZone) {
 	if in.VMCluster != nil {
 		in, out := &in.VMCluster, &out.VMCluster
 		*out = new(VMClusterObjOrRef)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RemoteWrite != nil {
+		in, out := &in.RemoteWrite, &out.RemoteWrite
+		*out = new(VMDistributedAgentRemoteWriteSpec)
 		(*in).DeepCopyInto(*out)
 	}
 }

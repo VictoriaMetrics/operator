@@ -69,6 +69,11 @@ type VMDistributedZone struct {
 	Name string `json:"name,omitempty"`
 	// VMCluster defines a new inline or referencing existing one VMCluster
 	VMCluster *VMClusterObjOrRef `json:"vmcluster,omitempty"`
+	// RemoteWrite defines VMAgent remote write settings for given zone
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	RemoteWrite *VMDistributedAgentRemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
 func (z *VMDistributedZone) validate(cz *VMDistributedZone) error {
@@ -179,12 +184,6 @@ type VMDistributedAgentSpec struct {
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
 
-	// RemoteWrite list of victoria metrics /some other remote write system
-	// for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
-	// or for cluster different url
-	// https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems
-	// +optional
-	RemoteWrite []VMDistributedAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
 	// +optional
 	RemoteWriteSettings *vmv1beta1.VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
@@ -235,9 +234,6 @@ type VMDistributedAgentSpec struct {
 // These urls will be overwritten by the controller
 // +k8s:openapi-gen=true
 type VMDistributedAgentRemoteWriteSpec struct {
-	// URL is the URL of the remote write system.
-	// +optional
-	URL string `json:"url,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
 	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty"`

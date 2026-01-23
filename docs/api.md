@@ -1257,7 +1257,7 @@ VMDistributed is progressively rolling out updates to multiple zone components.
 VMDistributedAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
 These urls will be overwritten by the controller
 
-Appears in: [VMDistributedAgentSpec](#vmdistributedagentspec)
+Appears in: [VMDistributedZone](#vmdistributedzone)
 
 | Field | Description |
 | --- | --- |
@@ -1271,7 +1271,6 @@ Appears in: [VMDistributedAgentSpec](#vmdistributedagentspec)
 | proxyURL<a href="#vmdistributedagentremotewritespec-proxyurl" id="vmdistributedagentremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
 | sendTimeout<a href="#vmdistributedagentremotewritespec-sendtimeout" id="vmdistributedagentremotewritespec-sendtimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
 | tlsConfig<a href="#vmdistributedagentremotewritespec-tlsconfig" id="vmdistributedagentremotewritespec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig describes tls configuration for remote write target |
-| url<a href="#vmdistributedagentremotewritespec-url" id="vmdistributedagentremotewritespec-url">#</a><br/>_string_ | _(Optional)_<br/>URL is the URL of the remote write system. |
 
 
 #### VMDistributedAgentSpec
@@ -1315,7 +1314,6 @@ Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
 | port<a href="#vmdistributedagentspec-port" id="vmdistributedagentspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
 | priorityClassName<a href="#vmdistributedagentspec-priorityclassname" id="vmdistributedagentspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
 | readinessGates<a href="#vmdistributedagentspec-readinessgates" id="vmdistributedagentspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
-| remoteWrite<a href="#vmdistributedagentspec-remotewrite" id="vmdistributedagentspec-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec) array_ | _(Optional)_<br/>RemoteWrite list of victoria metrics /some other remote write system<br />for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write<br />or for cluster different url<br />https://docs.victoriametrics.com/victoriametrics/vmagent/#splitting-data-streams-among-multiple-systems |
 | remoteWriteSettings<a href="#vmdistributedagentspec-remotewritesettings" id="vmdistributedagentspec-remotewritesettings">#</a><br/>_[VMAgentRemoteWriteSettings](#vmagentremotewritesettings)_ | _(Optional)_<br/>RemoteWriteSettings defines global settings for all remoteWrite urls. |
 | replicaCount<a href="#vmdistributedagentspec-replicacount" id="vmdistributedagentspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vmdistributedagentspec-resources" id="vmdistributedagentspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
@@ -1373,6 +1371,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | Field | Description |
 | --- | --- |
 | name<a href="#vmdistributedzone-name" id="vmdistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in commonZone spec as %ZONE% |
+| remoteWrite<a href="#vmdistributedzone-remotewrite" id="vmdistributedzone-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
 | vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMClusterObjOrRef](#vmclusterobjorref)_ | _(Required)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 
 

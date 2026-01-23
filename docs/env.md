@@ -4,7 +4,7 @@
 | VM_LOGS_VERSION: `v1.43.1` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
 | VM_ANOMALY_VERSION: `v1.28.5` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_TRACES_VERSION: `v0.7.0` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |
-| VM_OPERATOR_VERSION: `v0.66.1` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a> |
+| VM_OPERATOR_VERSION: `v0.67.0` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a> |
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |
 | WATCH_NAMESPACE: `-` <a href="#variables-watch-namespace" id="variables-watch-namespace">#</a><br>Defines a list of namespaces to be watched by operator. Operator don't perform any cluster wide API calls if namespaces not empty. In case of empty list it performs only clusterwide api calls. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |

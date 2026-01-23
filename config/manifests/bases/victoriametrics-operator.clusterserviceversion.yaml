@@ -37,6 +37,25 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: VLAgent - is a tiny but brave agent, which helps you collect logs
+        from various sources and stores them in VictoriaLogs.
+      displayName: VLAgent
+      kind: VLAgent
+      name: vlagents.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
     - description: VLCluster is fast, cost-effective and scalable logs database.
       displayName: VLCluster
       kind: VLCluster
@@ -201,7 +220,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMAlert executes a list of given alerting or recording rules against
+    - description: VMAlert  executes a list of given alerting or recording rules against
         configured address.
       displayName: VMAlert
       kind: VMAlert
@@ -227,6 +246,35 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
+    - description: VMAnomaly is the Schema for the vmanomalies API.
+      displayName: VMAnomaly
+      kind: VMAnomaly
+      name: vmanomalies.operator.victoriametrics.com
+      specDescriptors:
+      - description: |-
+          ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
+          VMAnomaly object, which contains configuration for this VMAnomaly,
+          configuration must be inside secret key: anomaly.yaml.
+          It must be created by user.
+          instance. Defaults to 'vmanomaly-<anomaly-name>'
+          The secret is mounted into /etc/anomaly/config.
+        displayName: Secret with anomaly config
+        path: configSecret
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Secret
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
     - description: VMAuth is the Schema for the vmauths API
       displayName: VMAuth
       kind: VMAuth
@@ -352,7 +400,7 @@ spec:
       kind: VMServiceScrape
       name: vmservicescrapes.operator.victoriametrics.com
       version: v1beta1
-    - description: VMSingle is fast, cost-effective and scalable time-series database.
+    - description: VMSingle  is fast, cost-effective and scalable time-series database.
       displayName: VMSingle
       kind: VMSingle
       name: vmsingles.operator.victoriametrics.com
@@ -370,7 +418,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMStaticScrape defines static targets configuration for scraping.
+    - description: VMStaticScrape  defines static targets configuration for scraping.
       displayName: VMStatic Scrape
       kind: VMStaticScrape
       name: vmstaticscrapes.operator.victoriametrics.com
@@ -380,6 +428,68 @@ spec:
       kind: VMUser
       name: vmusers.operator.victoriametrics.com
       version: v1beta1
+    - description: VTCluster is fast, cost-effective and scalable traces database.
+      displayName: VTCluster
+      kind: VTCluster
+      name: vtclusters.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: insert.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: insert.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: select.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: select.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: storage.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: storage.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
+    - description: |-
+        VTSingle is fast, cost-effective and scalable traces database.
+        VTSingle is the Schema for the API
+      displayName: VTSingle
+      kind: VTSingle
+      name: vtsingles.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1
   description: |
     Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and
     provides migration mechanism.
@@ -734,6 +844,7 @@ spec:
           - vlclusters/status
           - vlsingles/status
           - vlagents/status
+          verbs: null
         - apiGroups:
           - ""
           - networking.k8s.io

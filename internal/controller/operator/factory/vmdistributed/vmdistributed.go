@@ -2,11 +2,9 @@ package vmdistributed
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"reflect"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -97,8 +95,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 
 	logger.WithContext(ctx).Info("Waiting for all VMClusters to be ready")
 	for _, vmClusterObj := range vmClusters {
-		if err := rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); k8serrors.IsNotFound(err) {
-			continue
+		if err := rclient.Get(ctx, types.NamespacedName{Name: vmClusterObj.Name, Namespace: vmClusterObj.Namespace}, vmClusterObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("unexpected error during attempt to get VMCluster %s/%s: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
 		}
 		if err := waitForVMClusterReady(ctx, rclient, vmClusterObj, vmclusterWaitReadyDeadline); err != nil {
 			return fmt.Errorf("failed to wait for VMCluster %s/%s to be ready: %w", vmClusterObj.Namespace, vmClusterObj.Name, err)
@@ -191,16 +192,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 				if err := createOrUpdateVMAuthLB(ctx, rclient, cr, activeVMClusters); err != nil {
 					return fmt.Errorf("failed to update vmauth lb with excluded vmcluster %s: %w", vmClusterObj.Name, err)
 				}
-				if cr.Spec.VMAuth.Name != "" {
-					vmAuth := &vmv1beta1.VMAuth{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      cr.Spec.VMAuth.Name,
-							Namespace: cr.Namespace,
-						},
-					}
-					if err := waitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
-						return fmt.Errorf("failed to wait for vmauth ready: %w", err)
-					}
+				vmAuth := &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      cr.Spec.VMAuth.Name,
+						Namespace: cr.Namespace,
+					},
+				}
+				if err := waitForVMAuthReady(ctx, rclient, vmAuth, cr.Spec.ReadyDeadline); err != nil {
+					return fmt.Errorf("failed to wait for vmauth ready: %w", err)
 				}
 			}
 
@@ -227,7 +226,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
 		if i != len(vmClusters)-1 {
 			logger.WithContext(ctx).Info("Sleeping between zone updates", "index", i, "name", vmClusterObj.Name, "zoneUpdatePause", zoneUpdatePause)
-			time.Sleep(zoneUpdatePause)
+			select {
+			case <-time.After(zoneUpdatePause):
+			case <-ctx.Done():
+				return fmt.Errorf("stopping update since context cancelled")
+			}
 		}
 
 		// Wait for VMAgent metrics to show no pending queue
@@ -241,7 +244,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		}
 
-		if len(vmClusters) > 1 {
+		if len(vmClusters) > 1 && cr.Spec.VMAuth.Name != "" {
 			logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
 			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
 				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)
@@ -273,79 +276,4 @@ func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme
 		return true, nil
 	}
 	return false, nil
-}
-
-// mergeDeep merges an override object into a base one.
-// Fields present in the override will overwrite corresponding fields in the base.
-func mergeDeep[T any](base, override T) (bool, error) {
-	if any(override) == nil {
-		return false, nil
-	}
-
-	baseJSON, err := json.Marshal(base)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal base spec: %w", err)
-	}
-	overrideJSON, err := json.Marshal(override)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal override spec: %w", err)
-	}
-
-	var baseMap map[string]any
-	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal base spec to map: %w", err)
-	}
-	var overrideMap map[string]any
-	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal override spec to map: %w", err)
-	}
-
-	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
-	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
-	updated := mergeMapsRecursive(baseMap, overrideMap)
-	mergedSpecJSON, err := json.Marshal(baseMap)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal merged spec map: %w", err)
-	}
-
-	if err := json.Unmarshal(mergedSpecJSON, base); err != nil {
-		return false, fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
-	}
-
-	return updated, nil
-}
-
-// mergeMapsRecursive deeply merges overrideMap into baseMap.
-// It handles nested maps (which correspond to nested structs after JSON unmarshal).
-// Values from overrideMap overwrite values in baseMap.
-// It returns a boolean indicating if the baseMap was modified.
-func mergeMapsRecursive(baseMap, overrideMap map[string]any) bool {
-	var modified bool
-	if baseMap == nil && len(overrideMap) > 0 {
-		baseMap = make(map[string]any)
-	}
-	for key, overrideValue := range overrideMap {
-		if baseVal, ok := baseMap[key]; ok {
-			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
-				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
-					// Both are nested maps, recurse
-					if mergeMapsRecursive(baseMapNested, overrideMapNested) {
-						modified = true
-					}
-					continue
-				}
-			}
-		}
-
-		// For all other cases (scalar values, or when types for nested maps don't match),
-		// override the baseMap value. This handles explicit zero values and ensures
-		// overrides take precedence.
-		// We assign first, then check if it was a modification.
-		oldValue, exists := baseMap[key]
-		baseMap[key] = overrideValue // Force the overwrite for this key
-		if !exists || !reflect.DeepEqual(oldValue, overrideValue) {
-			modified = true
-		}
-	}
-	return modified
 }

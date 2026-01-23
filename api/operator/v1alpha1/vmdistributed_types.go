@@ -56,8 +56,6 @@ type VMDistributedSpec struct {
 	// License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
 	// +optional
 	License *vmv1beta1.License `json:"license,omitempty"`
-	// ClusterVersion defines expected image tag for all components.
-
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
@@ -88,7 +86,7 @@ func (z *VMDistributedZone) validate(cz *VMDistributedZone) error {
 
 // +k8s:openapi-gen=true
 // VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
-// +kubebuilder:validation:Xor=Ref,Name
+// +kubebuilder:validation:XValidation:rule="!(has(self.ref) && has(self.name))",message="must specify either ref or name, not both"
 type VMClusterObjOrRef struct {
 	// Ref points to the VMCluster object.
 	// If Ref is specified, Name is ignored.
@@ -367,7 +365,7 @@ func (cr *VMDistributed) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
 	specCopy := spec.DeepCopy()
 	// If License is not set in VMAuth spec but is set in VMDistributed, use the VMDistributed License
 	if specCopy.License == nil && cr.Spec.License != nil {
-		specCopy.License = cr.Spec.License
+		specCopy.License = cr.Spec.License.DeepCopy()
 	}
 	return specCopy
 }

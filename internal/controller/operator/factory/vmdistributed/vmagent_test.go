@@ -6,20 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sync/atomic"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	fake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 // mockVMAgent is a small test double implementing the minimal interface expected by
@@ -50,104 +47,102 @@ func (m *mockVMAgent) PrefixedName() string {
 	return "vmagent-test-vmagent"
 }
 
-// newVMAgentMetricsHandler creates an httptest.Server that serves the provided handler
-// and a fake client seeded with a VMAgent and an EndpointSlice that points to the test server.
-// It returns the server, the mock VMAgent and the client.
-func newVMAgentMetricsHandler(t *testing.T, handler http.Handler) (*httptest.Server, *mockVMAgent, client.Client) {
-	scheme := runtime.NewScheme()
-	_ = vmv1alpha1.AddToScheme(scheme)
-	_ = vmv1beta1.AddToScheme(scheme)
-	_ = corev1.AddToScheme(scheme)
-	_ = discoveryv1.AddToScheme(scheme)
-
-	ts := httptest.NewServer(handler)
-
-	// ts.URL contains the URL of the test server
-	// we need to ensure endpoint will be set to its host and vmAgent URL will use the same port
-	mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
-	tsURL, err := url.Parse(ts.URL)
-	assert.NoError(t, err)
-
-	vmAgent := vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      mockVMAgent.GetName(),
-			Namespace: mockVMAgent.GetNamespace(),
-		},
-		Status: vmv1beta1.VMAgentStatus{
-			StatusMetadata: vmv1beta1.StatusMetadata{
-				UpdateStatus: vmv1beta1.UpdateStatusOperational,
-			},
-		},
-	}
-	endpointSlice := discoveryv1.EndpointSlice{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "random-endpoint-name",
-			Namespace: mockVMAgent.GetNamespace(),
-			Labels:    map[string]string{"kubernetes.io/service-name": vmAgent.PrefixedName()},
-		},
-		Endpoints: []discoveryv1.Endpoint{
-			{
-				Addresses: []string{tsURL.Hostname()},
-			},
-		},
-	}
-
-	initialObjects := []client.Object{}
-	initialObjects = append(initialObjects, &vmAgent)
-	initialObjects = append(initialObjects, &endpointSlice)
-
-	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initialObjects...).Build()
-
-	return ts, mockVMAgent, fakeClient
-}
-
 func TestWaitForVMClusterVMAgentMetrics(t *testing.T) {
-	t.Run("VMAgent metrics return zero", func(t *testing.T) {
-		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
-		}))
-		defer ts.Close()
+	type opts struct {
+		handler  http.HandlerFunc
+		deadline time.Duration
+		validate func()
+		errMsg   string
+	}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	f := func(o opts) {
+		t.Helper()
+		ts := httptest.NewServer(o.handler)
+		defer ts.Close()
+		mockVMAgent := &mockVMAgent{url: ts.URL, replicas: 1}
+		tsURL, err := url.Parse(ts.URL)
+		assert.NoError(t, err)
+		vmAgent := vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mockVMAgent.GetName(),
+				Namespace: mockVMAgent.GetNamespace(),
+			},
+			Status: vmv1beta1.VMAgentStatus{
+				StatusMetadata: vmv1beta1.StatusMetadata{
+					UpdateStatus: vmv1beta1.UpdateStatusOperational,
+				},
+			},
+		}
+		endpointSlice := discoveryv1.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "random-endpoint-name",
+				Namespace: mockVMAgent.GetNamespace(),
+				Labels:    map[string]string{"kubernetes.io/service-name": vmAgent.PrefixedName()},
+			},
+			Endpoints: []discoveryv1.Endpoint{
+				{
+					Addresses: []string{tsURL.Hostname()},
+				},
+			},
+		}
+
+		rclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+			&vmAgent,
+			&endpointSlice,
+		})
+
+		timeout := time.Second
+		ctx, cancel := context.WithTimeout(context.Background(), 2*timeout)
 		defer cancel()
 
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, time.Second, 1*time.Second, trClient)
-		assert.NoError(t, err)
+		err = waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, o.deadline, timeout, rclient)
+		if len(o.errMsg) > 0 {
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), o.errMsg)
+		} else {
+			assert.NoError(t, err)
+		}
+		if o.validate != nil {
+			o.validate()
+		}
+	}
+
+	// VMAgent metrics return zero
+	f(opts{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, `%s{path="/tmp"} 0`, vmagentQueueMetricName)
+		},
+		deadline: time.Second,
 	})
 
-	t.Run("VMAgent metrics return non-zero then zero", func(t *testing.T) {
-		var callCount atomic.Int32
-		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			callCount.Add(1)
-			if callCount.Load() == 1 {
-				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 100")
-			} else {
-				fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
-			}
-		}))
-		defer ts.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 2*time.Second, 1*time.Second, trClient)
-		assert.NoError(t, err)
-		assert.True(t, callCount.Load() > 1) // Ensure it polled multiple times
+	// VMAgent metrics return non-zero then zero
+	var callCount int
+	var mu sync.Mutex
+	value := 100
+	f(opts{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			fmt.Fprintf(w, `%s{path="/tmp"} %d`, vmagentQueueMetricName, value)
+			callCount++
+			value = 0
+		},
+		deadline: 4 * time.Second,
+		validate: func() {
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Greater(t, callCount, 1)
+		},
 	})
 
-	t.Run("VMAgent metrics timeout", func(t *testing.T) {
-		ts, mockVMAgent, trClient := newVMAgentMetricsHandler(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// VMAgent metrics timeout
+	f(opts{
+		handler: func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second) // Simulate a long response
-			fmt.Fprintln(w, "vm_persistentqueue_bytes_pending{path=\"/tmp\"} 0")
-		}))
-		defer ts.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		err := waitForVMClusterVMAgentMetrics(ctx, ts.Client(), mockVMAgent, 500*time.Millisecond, 1*time.Second, trClient) // Shorter deadline
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to wait for VMAgent metrics")
+			fmt.Fprintf(w, `%s{path="/tmp"} 0`, vmagentQueueMetricName)
+		},
+		deadline: 500 * time.Millisecond,
+		errMsg:   "failed to wait for VMAgent metrics",
 	})
 }
 
@@ -173,56 +168,68 @@ func TestVMAgentURLHelpers(t *testing.T) {
 }
 
 func TestListVMAgents(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = vmv1beta1.AddToScheme(scheme)
-
-	vmAgent1 := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent1",
-			Namespace: "default",
-			Labels:    map[string]string{"app": "vmagent", "env": "prod"},
-		},
-	}
-	vmAgent2 := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent2",
-			Namespace: "default",
-			Labels:    map[string]string{"app": "vmagent", "env": "dev"},
-		},
-	}
-	vmAgent3 := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent3",
-			Namespace: "other",
-			Labels:    map[string]string{"app": "vmagent", "env": "prod"},
-		},
+	type opts struct {
+		selector *metav1.LabelSelector
+		validate func([]*vmv1beta1.VMAgent, error)
 	}
 
-	fc := fake.NewClientBuilder().WithScheme(scheme).WithObjects(vmAgent1, vmAgent2, vmAgent3).Build()
+	f := func(o opts) {
+		t.Helper()
+		vmAgent1 := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent1",
+				Namespace: "default",
+				Labels:    map[string]string{"app": "vmagent", "env": "prod"},
+			},
+		}
+		vmAgent2 := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent2",
+				Namespace: "default",
+				Labels:    map[string]string{"app": "vmagent", "env": "dev"},
+			},
+		}
+		vmAgent3 := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent3",
+				Namespace: "other",
+				Labels:    map[string]string{"app": "vmagent", "env": "prod"},
+			},
+		}
+		rclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmAgent1, vmAgent2, vmAgent3})
+		agents, err := listVMAgents(context.Background(), rclient, "default", o.selector)
+		o.validate(agents, err)
+	}
 
-	t.Run("match label selector", func(t *testing.T) {
-		selector := &metav1.LabelSelector{
+	// match label selector
+	f(opts{
+		selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{"env": "prod"},
-		}
-		agents, err := listVMAgents(context.Background(), fc, "default", selector)
-		assert.NoError(t, err)
-		assert.Len(t, agents, 1)
-		assert.Equal(t, "agent1", agents[0].Name)
+		},
+		validate: func(agents []*vmv1beta1.VMAgent, err error) {
+			assert.NoError(t, err)
+			assert.Len(t, agents, 1)
+			assert.Equal(t, "agent1", agents[0].Name)
+		},
 	})
 
-	t.Run("match all in namespace", func(t *testing.T) {
-		selector := &metav1.LabelSelector{}
-		agents, err := listVMAgents(context.Background(), fc, "default", selector)
-		assert.NoError(t, err)
-		assert.Len(t, agents, 2)
+	// match all in namespace
+	f(opts{
+		selector: &metav1.LabelSelector{},
+		validate: func(agents []*vmv1beta1.VMAgent, err error) {
+			assert.NoError(t, err)
+			assert.Len(t, agents, 2)
+		},
 	})
 
-	t.Run("match none", func(t *testing.T) {
-		selector := &metav1.LabelSelector{
+	// match none
+	f(opts{
+		selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{"env": "staging"},
-		}
-		agents, err := listVMAgents(context.Background(), fc, "default", selector)
-		assert.NoError(t, err)
-		assert.Len(t, agents, 0)
+		},
+		validate: func(agents []*vmv1beta1.VMAgent, err error) {
+			assert.NoError(t, err)
+			assert.Len(t, agents, 0)
+		},
 	})
 }

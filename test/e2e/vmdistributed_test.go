@@ -117,7 +117,7 @@ func createVMAuth(ctx context.Context, k8sClient client.Client, name, namespace 
 		},
 	}
 	DeferCleanup(func() {
-		k8sClient.Delete(ctx, vmAuth)
+		Expect(k8sClient.Delete(ctx, vmAuth)).To(Succeed())
 	})
 	Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
 	Eventually(func() error {
@@ -142,7 +142,7 @@ func createVMAgent(ctx context.Context, k8sClient client.Client, name, namespace
 		},
 	}
 	DeferCleanup(func() {
-		k8sClient.Delete(ctx, vmAgent)
+		Expect(k8sClient.Delete(ctx, vmAgent)).To(Succeed())
 	})
 	Expect(k8sClient.Create(ctx, vmAgent)).NotTo(HaveOccurred())
 	Eventually(func() error {
@@ -1272,7 +1272,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					return nil
 				}
 				return fmt.Errorf("want NotFound error, got: %w", err)
-			}, eventualDeletionTimeout, 1).WithContext(ctx).Should(Succeed())
+			}, eventualDeletionTimeout).WithContext(ctx).Should(Succeed())
 
 			By("ensuring VMClusters are eventually removed")
 			for _, zone := range cr.Spec.Zones {

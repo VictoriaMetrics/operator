@@ -967,7 +967,7 @@ type VMAuthLoadBalancerSpec struct {
 	// License configures enterprise features license key
 	// +optional
 	License                    *License `json:"license,omitempty"`
-	CommonConfigReloaderParams `json:",inline"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
 }
 
 // ProbePath returns path for probe requests

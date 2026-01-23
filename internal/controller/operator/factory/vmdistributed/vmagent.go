@@ -3,15 +3,12 @@ package vmdistributed
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	discoveryv1 "k8s.io/api/discovery/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,7 +22,7 @@ import (
 )
 
 const (
-	VMAgentQueueMetricName = "vm_persistentqueue_bytes_pending"
+	vmagentQueueMetricName = "vm_persistentqueue_bytes_pending"
 )
 
 // VMAgentMetrics defines the interface for VMAgent objects that can provide metrics URLs
@@ -123,8 +120,10 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		if len(endpointList.Items) == 0 {
 			return false, nil
 		}
-		logger.WithContext(ctx).Info("Found VMAgent endpoint", "endpoint", &endpointList.Items[0])
-		hosts = parseEndpointSliceAddresses(&endpointList.Items[0])
+		for _, es := range endpointList.Items {
+			logger.WithContext(ctx).Info("Found VMAgent endpoint", "endpoint", es)
+			hosts = append(hosts, parseEndpointSliceAddresses(&es)...)
+		}
 		return len(hosts) > 0, nil
 	})
 	if resultErr != nil {
@@ -139,15 +138,20 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		// Poll until all pod IPs return empty query metric
 		resultErr = wait.PollUntilContextTimeout(ctx, interval, deadline, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
-			var metricValue int64
-			if metricValue, err = fetchVMAgentDiskBufferMetric(ctx, httpClient, metricsURL); err != nil {
+			var metricValues map[string]float64
+			if metricValues, err = fetchMetricValues(ctx, httpClient, metricsURL, vmagentQueueMetricName, "path"); err != nil {
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil
 			}
-			if metricValue != 0 {
+			if len(metricValues) == 0 {
 				return false, nil
 			}
-			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "value", metricValue)
+			for _, v := range metricValues {
+				if v > 0 {
+					return false, nil
+				}
+			}
+			logger.WithContext(ctx).Info("Found VMAgent instance metric value", "url", metricsURL, "values", metricValues)
 			// All discovered addresses reported zero -> done.
 			return true, nil
 		})
@@ -156,35 +160,6 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 		}
 	}
 	return nil
-}
-
-func fetchVMAgentDiskBufferMetric(ctx context.Context, httpClient *http.Client, metricsPath string) (int64, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsPath, nil)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create request for VMAgent at %s: %w", metricsPath, err)
-	}
-	resp, err := httpClient.Do(request)
-	if err != nil {
-		return 0, fmt.Errorf("failed to fetch metrics from VMAgent at %s: %w", metricsPath, err)
-	}
-	defer resp.Body.Close()
-	metricBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read VMAgent metrics at %s: %w", metricsPath, err)
-	}
-	metrics := string(metricBytes)
-	for _, metric := range strings.Split(metrics, "\n") {
-		value, found := strings.CutPrefix(metric, VMAgentQueueMetricName)
-		if found {
-			values := strings.Split(value, " ")
-			res, err := strconv.ParseFloat(values[len(values)-1], 64)
-			if err != nil {
-				return 0, fmt.Errorf("could not parse metric value %s: %w", metric, err)
-			}
-			return int64(res), nil
-		}
-	}
-	return 0, fmt.Errorf("metric %s not found", VMAgentQueueMetricName)
 }
 
 // updateOrCreateVMAgent ensures that the VMAgent is updated or created based on the provided VMDistributed.
@@ -293,7 +268,7 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Compare current spec with desired spec and apply if different
-	if !reflect.DeepEqual(vmAgentObj.Spec, newVMAgentSpec) {
+	if !equality.Semantic.DeepEqual(vmAgentObj.Spec, newVMAgentSpec) {
 		vmAgentObj.Spec = *newVMAgentSpec.DeepCopy()
 		vmAgentNeedsUpdate = true
 	}

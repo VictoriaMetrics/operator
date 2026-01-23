@@ -13,21 +13,23 @@ spec:
       replicaCount: 1
   zones:
     - vmcluster:
-        - ref:
-            name: vmcluster-us-east-1
-          spec:
-            vmselect:
-              image:
-                tag: v1.90.0
-        - ref:
-            name: vmcluster-us-west-2
-          spec:
-            vmselect:
-              image:
-                tag: v1.90.0
-        - ref:
-            name: vmcluster-eu-west-1
-          spec:
-            vmselect:
-              image:
-                tag: v1.111.0
+        ref:
+          name: vmcluster-us-east-1
+        spec:
+          vmselect:
+            image:
+              tag: v1.90.0
+    - vmcluster:
+        ref:
+          name: vmcluster-us-west-2
+        spec:
+          vmselect:
+            image:
+              tag: v1.90.0
+    - vmcluster:
+        ref:
+          name: vmcluster-eu-west-1
+        spec:
+          vmselect:
+            image:
+              tag: v1.111.0

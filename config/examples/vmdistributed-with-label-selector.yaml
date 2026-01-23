@@ -1,12 +1,14 @@
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributed
 metadata:
-  name: vmdistributed-with-label-selector
+  name: with-label-selector
 spec:
   vmagent:
     labelSelector:
       matchLabels:
         app: vmagent-app
+  vmauth:
+    name: with-label-selector
   commonZone:
     vmcluster:
       spec:

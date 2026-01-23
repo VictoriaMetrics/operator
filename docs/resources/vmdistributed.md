@@ -153,7 +153,7 @@ spec:
 
 ### Ownership and references
 
-VMDistributed owns VMAgents, and VMAuths created or referenced by the distributed chart. These objects are created with the same namespace as the VMDistributed and will be deleted when the VMDistributed is deleted.
+VMDistributed owns VMAgents, and VMAuths created or referenced by the distributed chart with the same namespace as the VMDistributed. Only created ones are deleted when the VMDistributed is deleted.
 
 When VMCluster is referenced via `ref`, these objects will have `ownerRef` set to the VMDistributed, but they will not be deleted when the VMDistributed is deleted. Instead, only `ownerRef` will be removed from them.
 

@@ -16154,6 +16154,9 @@ spec:
                       spec:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-validations:
+                    - message: must specify either ref or name, not both
+                      rule: '!(has(self.ref) && has(self.name))'
                 type: object
               license:
                 properties:
@@ -25384,6 +25387,9 @@ spec:
                         spec:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-validations:
+                      - message: must specify either ref or name, not both
+                        rule: '!(has(self.ref) && has(self.name))'
                   type: object
                 type: array
             type: object

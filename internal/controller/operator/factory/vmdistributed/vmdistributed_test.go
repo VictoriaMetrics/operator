@@ -272,6 +272,18 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
+			lb := &vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            d.cr.Spec.VMAuth.Name,
+					Namespace:       d.cr.Namespace,
+					OwnerReferences: []metav1.OwnerReference{d.cr.AsOwner()},
+				},
+				Spec: *d.cr.Spec.VMAuth.Spec,
+			}
+			lb.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+				TargetRefs: getVMClusterTargetRefs([]*vmv1beta1.VMCluster{d.vmclusters[0]}),
+			}
+			d.predefinedObjects = append(d.predefinedObjects, lb)
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
@@ -377,7 +389,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
-	// should use load balancer service URL if RequestsLoadBalancer is enabled
+	// check if works with RequestsLoadBalancer
 	f(opts{
 		prepare: func(d *testData) {
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"

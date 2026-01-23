@@ -24,7 +24,10 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 	vmClusters := make([]*vmv1beta1.VMCluster, len(cr.Spec.Zones))
 	for i := range cr.Spec.Zones {
 		zone := &cr.Spec.Zones[i]
-		objOrRef := zone.VMCluster
+		objOrRef := zone.VMCluster.DeepCopy()
+		if objOrRef == nil {
+			objOrRef = &vmv1alpha1.VMClusterObjOrRef{}
+		}
 		commonObjOrRef := cr.Spec.CommonZone.VMCluster.DeepCopy()
 		if commonObjOrRef != nil && commonObjOrRef.Spec != nil {
 			commonObjOrRef.Spec = nil
@@ -38,7 +41,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 				return nil, fmt.Errorf("failed to render common cluster: %w", err)
 			}
 			if _, err = mergeDeep(objOrRef, commonObjOrRef); err != nil {
-				return nil, fmt.Errorf("failed to apply common zone spec for vmcluster at index %d: %w", i, err)
+				return nil, fmt.Errorf("failed to merge common zone spec into vmcluster at index %d: %w", i, err)
 			}
 		}
 		var vmCluster vmv1beta1.VMCluster
@@ -46,9 +49,6 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 		case objOrRef.Ref != nil && len(objOrRef.Ref.Name) > 0:
 			nsn := types.NamespacedName{Name: objOrRef.Ref.Name, Namespace: cr.Namespace}
 			if err := rclient.Get(ctx, nsn, &vmCluster); err != nil {
-				if k8serrors.IsNotFound(err) {
-					return nil, fmt.Errorf("referenced vmclusters[%d]=%s not found: %w", i, nsn.String(), err)
-				}
 				return nil, fmt.Errorf("failed to get referenced vmclusters[%d]=%s: %w", i, nsn.String(), err)
 			}
 		case len(objOrRef.Name) > 0:

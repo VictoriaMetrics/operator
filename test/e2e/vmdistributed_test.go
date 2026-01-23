@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -178,6 +179,10 @@ func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributed, vm
 
 var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 	ctx := context.Background()
+
+	// This env var is required to make vmagent metrics checker ignore errors
+	// as the test runs outside of the cluster and has no access to pod metrics
+	os.Setenv("E2E_TEST", "true")
 
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	nsn := types.NamespacedName{

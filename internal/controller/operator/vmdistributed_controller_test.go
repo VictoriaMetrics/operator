@@ -35,30 +35,42 @@ var _ = Describe("VMDistributed Controller", func() {
 
 		ctx := context.Background()
 
-		typeNamespacedName := types.NamespacedName{
+		nsn := types.NamespacedName{
 			Name:      resourceName,
 			Namespace: "default",
 		}
-		VMDistributed := &vmv1alpha1.VMDistributed{}
-
+		vmd := &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nsn.Name,
+				Namespace: nsn.Namespace,
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				VMAgent: vmv1alpha1.VMDistributedAgent{
+					Name: "test",
+				},
+				VMAuth: vmv1alpha1.VMDistributedAuth{
+					Name: "test",
+				},
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						VMCluster: &vmv1alpha1.VMDistributedCluster{
+							Name: "test",
+						},
+					},
+				},
+			},
+		}
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VMDistributed")
-			err := k8sClient.Get(ctx, typeNamespacedName, VMDistributed)
-			if err != nil && k8serrors.IsNotFound(err) {
-				resource := &vmv1alpha1.VMDistributed{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			if err := k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{}); err != nil {
+				Expect(err).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				Expect(k8sClient.Create(ctx, vmd)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			resource := &vmv1alpha1.VMDistributed{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			err := k8sClient.Get(ctx, nsn, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance VMDistributed")
@@ -72,7 +84,7 @@ var _ = Describe("VMDistributed Controller", func() {
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
+				NamespacedName: nsn,
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})

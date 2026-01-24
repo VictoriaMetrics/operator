@@ -9,26 +9,26 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-func TestValidateVMClusterObjOrRef_Matrix(t *testing.T) {
-	s := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{Name: "a"}}
+func TestValidateVMDistributedCluster_Matrix(t *testing.T) {
+	s := VMDistributedCluster{Ref: &corev1.LocalObjectReference{Name: "a"}}
 	assert.NoError(t, s.validate(nil))
 
-	s2 := VMClusterObjOrRef{Name: "b", Spec: &vmv1beta1.VMClusterSpec{}}
+	s2 := VMDistributedCluster{Name: "b", Spec: &vmv1beta1.VMClusterSpec{}}
 	assert.NoError(t, s2.validate(nil))
 
-	both := VMClusterObjOrRef{
+	both := VMDistributedCluster{
 		Name: "c",
 		Ref:  &corev1.LocalObjectReference{Name: "c"},
 		Spec: &vmv1beta1.VMClusterSpec{},
 	}
 	assert.Error(t, both.validate(nil))
 
-	none := VMClusterObjOrRef{}
+	none := VMDistributedCluster{}
 	assert.Error(t, none.validate(nil))
 
-	missingRefName := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{}}
+	missingRefName := VMDistributedCluster{Ref: &corev1.LocalObjectReference{}}
 	assert.Error(t, missingRefName.validate(nil))
 
-	missingSpecName := VMClusterObjOrRef{Spec: &vmv1beta1.VMClusterSpec{}}
+	missingSpecName := VMDistributedCluster{Spec: &vmv1beta1.VMClusterSpec{}}
 	assert.Error(t, missingSpecName.validate(nil))
 }

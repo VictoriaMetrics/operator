@@ -227,7 +227,15 @@ func updateOrCreateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 		orderMap[rw.URL] = i
 	}
 	sort.Slice(vmagentSpec.RemoteWrite, func(i, j int) bool {
-		return orderMap[vmagentSpec.RemoteWrite[i].URL] < orderMap[vmagentSpec.RemoteWrite[j].URL]
+		idxI, okI := orderMap[vmagentSpec.RemoteWrite[i].URL]
+		idxJ, okJ := orderMap[vmagentSpec.RemoteWrite[j].URL]
+		if !okI {
+			return false
+		}
+		if !okJ {
+			return true
+		}
+		return idxI < idxJ
 	})
 
 	// Ensure owner reference is set to current CR

@@ -26,7 +26,7 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 		zone := &cr.Spec.Zones[i]
 		objOrRef := zone.VMCluster.DeepCopy()
 		if objOrRef == nil {
-			objOrRef = &vmv1alpha1.VMClusterObjOrRef{}
+			objOrRef = &vmv1alpha1.VMDistributedCluster{}
 		}
 		commonObjOrRef := cr.Spec.CommonZone.VMCluster.DeepCopy()
 		if commonObjOrRef != nil && commonObjOrRef.Spec != nil {
@@ -55,18 +55,17 @@ func fetchVMClusters(ctx context.Context, rclient client.Client, cr *vmv1alpha1.
 			// We try to fetch the object to get the current state (Generation, etc)
 			nsn := types.NamespacedName{Name: objOrRef.Name, Namespace: cr.Namespace}
 			if err := rclient.Get(ctx, nsn, &vmCluster); err != nil {
-				if k8serrors.IsNotFound(err) {
-					vmCluster.Name = objOrRef.Name
-					vmCluster.Namespace = cr.Namespace
-					if objOrRef.Spec != nil {
-						vmCluster.Spec = *objOrRef.Spec.DeepCopy()
-					}
-				} else {
+				if !k8serrors.IsNotFound(err) {
 					return nil, fmt.Errorf("unexpected error while fetching vmclusters[%d]=%s: %w", i, nsn.String(), err)
+				}
+				vmCluster.Name = objOrRef.Name
+				vmCluster.Namespace = cr.Namespace
+				if objOrRef.Spec != nil {
+					vmCluster.Spec = *objOrRef.Spec.DeepCopy()
 				}
 			}
 		default:
-			return nil, fmt.Errorf("invalid VMClusterObjOrRef at index %d: neither Ref nor Name is set", i)
+			return nil, fmt.Errorf("invalid VMDistributedCluster at index %d: neither Ref nor Name is set", i)
 		}
 		if err := cr.Owns(&vmCluster); err != nil {
 			return nil, fmt.Errorf("failed to validate owner references for unreferenced vmcluster %s: %w", vmCluster.Name, err)

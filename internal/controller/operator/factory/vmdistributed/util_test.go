@@ -28,7 +28,7 @@ func TestFetchMetricValues(t *testing.T) {
 		values, err := fetchMetricValues(ctx, ts.Client(), ts.URL, metric, dimension)
 		assert.NoError(t, err)
 
-		assert.Equal(t, values, expected)
+		assert.Equal(t, expected, values)
 	}
 
 	// test metric

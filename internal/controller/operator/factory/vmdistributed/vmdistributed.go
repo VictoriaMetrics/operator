@@ -245,7 +245,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 			}
 		}
 
-		if len(vmClusters) > 1 && cr.Spec.VMAuth.Name != "" {
+		if updatedSpec && cr.Spec.VMAuth.Name != "" {
 			logger.WithContext(ctx).Info("Re-enabling VMCluster in vmauth", "index", i, "name", vmClusterObj.Name)
 			if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
 				return fmt.Errorf("failed to update vmauth lb with included vmcluster %s: %w", vmClusterObj.Name, err)

@@ -44,10 +44,10 @@ type VMDistributedSpec struct {
 	// +optional
 	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
 	// VMAgent is the name and spec of the VM agent to balance traffic between VMClusters.
-	VMAgent VMAgentNameAndSpec `json:"vmagent,omitempty"`
+	VMAgent VMDistributedAgent `json:"vmagent,omitempty"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
-	VMAuth VMAuthNameAndSpec `json:"vmauth,omitempty"`
+	VMAuth VMDistributedAuth `json:"vmauth,omitempty"`
 	// Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup.
 	Zones []VMDistributedZone `json:"zones,omitempty"`
 	// CommonZone defines common properties for all zones
@@ -68,7 +68,7 @@ type VMDistributedZone struct {
 	// Name defines a name of zone, which can be used in commonZone spec as %ZONE%
 	Name string `json:"name,omitempty"`
 	// VMCluster defines a new inline or referencing existing one VMCluster
-	VMCluster *VMClusterObjOrRef `json:"vmcluster,omitempty"`
+	VMCluster *VMDistributedCluster `json:"vmcluster,omitempty"`
 	// RemoteWrite defines VMAgent remote write settings for given zone
 	// +optional
 	// +kubebuilder:validation:Schemaless
@@ -77,7 +77,7 @@ type VMDistributedZone struct {
 }
 
 func (z *VMDistributedZone) validate(cz *VMDistributedZone) error {
-	var cc *VMClusterObjOrRef
+	var cc *VMDistributedCluster
 	if cz != nil {
 		cc = cz.VMCluster
 	}
@@ -90,9 +90,9 @@ func (z *VMDistributedZone) validate(cz *VMDistributedZone) error {
 }
 
 // +k8s:openapi-gen=true
-// VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
+// VMDistributedCluster is either a reference to existing VMCluster or a specification of a new VMCluster.
 // +kubebuilder:validation:XValidation:rule="!(has(self.ref) && has(self.name))",message="must specify either ref or name, not both"
-type VMClusterObjOrRef struct {
+type VMDistributedCluster struct {
 	// Ref points to the VMCluster object.
 	// If Ref is specified, Name is ignored.
 	// +optional
@@ -110,19 +110,19 @@ type VMClusterObjOrRef struct {
 	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
 }
 
-func (s *VMClusterObjOrRef) IsRefSet() bool {
+func (s *VMDistributedCluster) IsRefSet() bool {
 	return s != nil && s.Ref != nil && len(s.Ref.Name) > 0
 }
 
-func (s *VMClusterObjOrRef) IsNameSet() bool {
+func (s *VMDistributedCluster) IsNameSet() bool {
 	return s != nil && len(s.Name) > 0
 }
 
-func (s *VMClusterObjOrRef) isSpecSet() bool {
+func (s *VMDistributedCluster) isSpecSet() bool {
 	return s != nil && s.Spec != nil
 }
 
-func (s *VMClusterObjOrRef) validate(cs *VMClusterObjOrRef) error {
+func (s *VMDistributedCluster) validate(cs *VMDistributedCluster) error {
 	// Check mutual exclusivity: either ref or name must be set, but not both
 
 	refSet := s.IsRefSet() || cs.IsRefSet()
@@ -146,8 +146,8 @@ func (s *VMClusterObjOrRef) validate(cs *VMClusterObjOrRef) error {
 }
 
 // +k8s:openapi-gen=true
-// VMAgentNameAndSpec is a name and a specification of a new VMAgent.
-type VMAgentNameAndSpec struct {
+// VMDistributedAgent is a name and a specification of a new VMAgent.
+type VMDistributedAgent struct {
 	// Name specifies the static name to be used for the VMAgent when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
@@ -276,9 +276,9 @@ type VMDistributedAgentRemoteWriteSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// VMAuthNameAndSpec defines a VMAuth by name or inline spec
-type VMAuthNameAndSpec struct {
-	// Name specifies the static name to be used for the VMAuthNameAndSpec when Spec is provided.
+// VMDistributedAuth defines a VMAuth by name or inline spec
+type VMDistributedAuth struct {
+	// Name specifies the static name to be used for the VMDistributedAuth when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
 	// Spec defines the desired state of a new VMAuth.

@@ -57,15 +57,15 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 }
 
 // newVMDistributed constructs a VMDistributed for tests.
-func newVMDistributed(name string, zones []vmv1alpha1.VMDistributedZone, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...any) *vmv1alpha1.VMDistributed {
-	var vmAuth vmv1alpha1.VMAuthNameAndSpec
+func newVMDistributed(name string, zones []vmv1alpha1.VMDistributedZone, vmAgentSpec vmv1alpha1.VMDistributedAgent, extras ...any) *vmv1alpha1.VMDistributed {
+	var vmAuth vmv1alpha1.VMDistributedAuth
 
 	// Parse extras to find VMAuth (ignore any legacy VMUser parameters).
 	for _, e := range extras {
 		switch v := e.(type) {
-		case vmv1alpha1.VMAuthNameAndSpec:
+		case vmv1alpha1.VMDistributedAuth:
 			vmAuth = v
-		case *vmv1alpha1.VMAuthNameAndSpec:
+		case *vmv1alpha1.VMDistributedAuth:
 			if v != nil {
 				vmAuth = *v
 			}
@@ -119,13 +119,13 @@ func beforeEach(o opts) *testData {
 	for i, cluster := range vmclusters {
 		zones = append(zones, vmv1alpha1.VMDistributedZone{
 			Name: fmt.Sprintf("vmcluster-%d", i+1),
-			VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+			VMCluster: &vmv1alpha1.VMDistributedCluster{
 				Ref: &corev1.LocalObjectReference{Name: cluster.Name},
 			},
 		})
 	}
-	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
-	cr := newVMDistributed("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
+	vmAgentSpec := vmv1alpha1.VMDistributedAgent{Name: vmagent.Name}
+	cr := newVMDistributed("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMDistributedAuth{Name: "vmauth-proxy"})
 	d := &testData{
 		vmagent:    vmagent,
 		vmclusters: vmclusters,

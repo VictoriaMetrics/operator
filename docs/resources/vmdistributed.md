@@ -3,14 +3,13 @@ weight: 12
 title: VMDistributed
 menu:
   docs:
-    identifier: operator-cr-VMDistributed
+    identifier: operator-cr-vmdistributed
     parent: operator-cr
     weight: 12
 aliases:
-  - /operator/resources/VMDistributed/
+  - /operator/resources/vmdistributed/
 tags:
-  - CRD
-  - VMDistributed
+  - vmdistributed
 ---
 
 `VMDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters. It allows you to define and manage cluster components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
@@ -34,9 +33,9 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 ### `VMDistributedZone`
 
 Each entry in the `zones` array includes:
-*   `vmcluster` defines `VMClusterRefOrSpec`, that allows either reference an existing `VMCluster` resource or define a new one inline.
+*   `vmcluster` defines `VMDistributedCluster`, that allows either reference an existing `VMCluster` resource or define a new one inline.
 
-### `VMClusterRefOrSpec`
+### `VMDistributedCluster`
 
 *   `ref`: A `corev1.LocalObjectReference` pointing to an existing `VMCluster` object by name.
 *   `name`: The name to be used for the `VMCluster` when `spec` is provided.
@@ -90,6 +89,37 @@ spec:
 **Example: Referencing existing clusters with global and specific overrides:**
 
 ```yaml
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: cluster-prod-1
+spec:
+  vmstorage:
+    spec:
+      replicaCount: 1
+  vmselect:
+    spec:
+      replicaCount: 1
+  vminsert:
+    spec:
+      replicaCount: 1
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: cluster-prod-2
+spec:
+  vmstorage:
+    spec:
+      replicaCount: 1
+  vmselect:
+    spec:
+      replicaCount: 1
+  vminsert:
+    spec:
+      replicaCount: 1
+---
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributed
 metadata:

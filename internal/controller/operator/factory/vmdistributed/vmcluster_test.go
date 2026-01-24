@@ -158,12 +158,12 @@ func TestFetchVMClusters_InlineAndRef(t *testing.T) {
 		Spec: vmv1alpha1.VMDistributedSpec{
 			Zones: []vmv1alpha1.VMDistributedZone{
 				{
-					VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+					VMCluster: &vmv1alpha1.VMDistributedCluster{
 						Ref: &corev1.LocalObjectReference{Name: "ref"},
 					},
 				},
 				{
-					VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+					VMCluster: &vmv1alpha1.VMDistributedCluster{
 						Name: "inline",
 						Spec: &inlineSpec,
 					},
@@ -203,17 +203,17 @@ func TestFetchVMClusters_SortedByGeneration(t *testing.T) {
 		Spec: vmv1alpha1.VMDistributedSpec{
 			Zones: []vmv1alpha1.VMDistributedZone{
 				{
-					VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+					VMCluster: &vmv1alpha1.VMDistributedCluster{
 						Ref: &corev1.LocalObjectReference{Name: "cluster-1"},
 					},
 				},
 				{
-					VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+					VMCluster: &vmv1alpha1.VMDistributedCluster{
 						Ref: &corev1.LocalObjectReference{Name: "cluster-2"},
 					},
 				},
 				{
-					VMCluster: &vmv1alpha1.VMClusterObjOrRef{
+					VMCluster: &vmv1alpha1.VMDistributedCluster{
 						Ref: &corev1.LocalObjectReference{Name: "cluster-3"},
 					},
 				},

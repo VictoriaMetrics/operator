@@ -17,13 +17,13 @@ aliases:
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 
-**Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
-**Update note 2: removed deprecated VMAgent `spec.aPIServerConfig` property**
-**Update note 3: removed deprecated VMCluster `spec.vmselect.persistentVolume` property**
-**Update note 4: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.**
-**Update note 5: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.**
-**Update note 6: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.**
-**Update note 7: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.**
+**Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.
+**Update note 2**: removed deprecated VMAgent `spec.aPIServerConfig` property
+**Update note 3**: removed deprecated VMCluster `spec.vmselect.persistentVolume` property
+**Update note 4**: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.
+**Update note 5**: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.
+**Update note 6**: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.
+**Update note 7**: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).
@@ -66,9 +66,9 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 
 **Release date:** 03 December 2025
 
-**Update note 1: `labels` and `annotations` inheritance is removed. It was deprecated in v0.51.0. Consider moving all needed labels and annotations to the `spec.managedMetadata` fields.**
+**Update note 1**: `labels` and `annotations` inheritance is removed. It was deprecated in v0.51.0. Consider moving all needed labels and annotations to the `spec.managedMetadata` fields.
 
-**Update node 2: removed VMCluster's `status.clusterStatus` and VMSingle's `status.singleStatus`, that were deprecated in v0.51.0.**
+**Update node 2**: removed VMCluster's `status.clusterStatus` and VMSingle's `status.singleStatus`, that were deprecated in v0.51.0.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.131.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.131.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.5.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.5.0) version.
@@ -354,7 +354,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 ![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11500)
 ![AppVersion: v1.18.0](https://img.shields.io/badge/v1.18.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v180)
 
-**Update note 1: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
+**Update note 1**: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.115.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11150) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  v1.18.0 version
@@ -423,7 +423,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 ![AppVersion: v1.113.0](https://img.shields.io/badge/v1.113.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11300)
 ![AppVersion: v1.15.0](https://img.shields.io/badge/v1.15.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v1150)
 
-**Update note 1: remove deprecated fields `Replicas`, `UpdateReplicas`, `AvailableReplicas` and `UnAvailableReplicas` from `vlogs`, `vmsingle`,`vmagent`, `vmalert`  objects `.status`.
+**Update note 1**: remove deprecated fields `Replicas`, `UpdateReplicas`, `AvailableReplicas` and `UnAvailableReplicas` from `vlogs`, `vmsingle`,`vmagent`, `vmalert`  objects `.status`.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to v1.113.0 version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  v1.15.0 version
@@ -517,12 +517,12 @@ If you still want to upgrade, you can override the vmagent image version by sett
 ![AppVersion: v1.108.1](https://img.shields.io/badge/v1.108.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11070)
 ![AppVersion: v1.3.2](https://img.shields.io/badge/v1.3.2-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v132)
 
-**Update note 1: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
-Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metadata.labels` will be removed after upgrade to `v0.52.0`.**
+**Update note 1**: `labels` and `annotations` inheritance is deprecated and will be remove at upcoming `v0.52.0` release. It's recommend to move all needed labels and annotations to the `spec.managedMetadata` fields.
+Operator will preserve `annotations`, but any changes to it will be ignored. `labels` inherited from `CRD.metadata.labels` will be removed after upgrade to `v0.52.0`.
 
-**Update note 2: `VMAuth.spec.unauthorizedAccessConfig` is deprecated in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.**
+**Update note 2**: `VMAuth.spec.unauthorizedAccessConfig` is deprecated in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.
 
-**Update note 3: The following fields: `[default_url,tlsConfig,discover_backend_ips,headers,response_headers,retry_status_codes,max_concurrent_requests,load_balancing_policy,drop_src_path_prefix_parts]` are deprecated at `VMAuth.spec.` in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.**
+**Update note 3**: The following fields: `[default_url,tlsConfig,discover_backend_ips,headers,response_headers,retry_status_codes,max_concurrent_requests,load_balancing_policy,drop_src_path_prefix_parts]` are deprecated at `VMAuth.spec.` in favour of `VMAuth.spec.unauthorizedUserAccessSpec`. Operator still serves deprecated fields until `v1.0` release.
 
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): add `"app.kubernetes.io/part-of": "vmcluster"` label to the objects generated for `VMCluster` components. It helps to use labels selectors to identify objects belong to the cluster.
 - [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): adds new `spec` setting `unauthorizedUserAccessSpec` that replaces `unauthorizedAccessConfig` and inlined fields from `VMUserConfigOptions`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1168) for details.
@@ -695,9 +695,9 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Breaking changes
 
-- **Update note 1: operator now forbids cross VMAlertmanagerConfig or global receiver references. VMAlertmanagerConfig must include only local receivers .**
-- **Update note 2: removed deprecated `mute_time_intervals` from `VMAlertmanagerConfig.spec`. Use `VMAlertmanagerConfig.spec.time_intervals` instead.**
-- **Update note 3: operator adds `blackhole` as default route for `VMalertmanager` if root route receiver is empty. Previously it added a first VMAlertmanagerConfig receiver. Update global VMalertmanager configuration with proper route receiver if needed**
+- **Update note 1**: operator now forbids cross VMAlertmanagerConfig or global receiver references. VMAlertmanagerConfig must include only local receivers .
+- **Update note 2**: removed deprecated `mute_time_intervals` from `VMAlertmanagerConfig.spec`. Use `VMAlertmanagerConfig.spec.time_intervals` instead.
+- **Update note 3**: operator adds `blackhole` as default route for `VMalertmanager` if root route receiver is empty. Previously it added a first VMAlertmanagerConfig receiver. Update global VMalertmanager configuration with proper route receiver if needed
 
 - [config-reloader](https://docs.victoriametrics.com/operator/): adds new flags `tlsCaFile`, `tlsCertFile`,`tlsKeyFile`,`tlsServerName`,`tlsInsecureSkipVerify`. It allows to configure `tls` for reload endpoint. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1033).
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/):  adds `status.lastSyncError` field, adds server-side validation for `spec.targetRefs.crd.kind`. Adds small refactoring.
@@ -723,7 +723,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Breaking changes
 
-- **Update note 1: for operatorhub based `VMAgent` deployment `serviceAccount` `vmagent` must be removed. It's no longer shipped with bundle. After deletion operator will create new account with needed permissions.**
+- **Update note 1**: for operatorhub based `VMAgent` deployment `serviceAccount` `vmagent` must be removed. It's no longer shipped with bundle. After deletion operator will create new account with needed permissions.
 
 - [manifests]: properly add webhook.enable for operatorhub deployments. See this commit 7a460b090dec018ea23ab8d9de414e2f7da1c513 for details.
 - [manifests]: removes exact user from `runAsUser` setting. It must be defined at `docker image` or `security profile` level. See this commit 1cc4a0e5334f254a771fa06e9c07dfa93fbb734a for details.
@@ -748,10 +748,10 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Breaking changes
 
-- **Update note 1: the `--metrics-addr` command-line flag at `operator` was deprecated. Use `--metrics-bind-address` instead.**
-- **Update note 2: the `--enable-leader-election` command-line flag at `operator` was deprecated. Use `--leader-elect` instead.**
-- **Update note 3: the `--http.readyListenAddr` command-line flag at `operator` was deprecated. Use `--health-probe-bind-address` instead.**
-- **Update note 4: multitenant endpoints suffix `/insert/multitenant/<suffix>` needs to be added in `remoteWrite.url` if storage supports multitenancy when using `remoteWriteSettings.useMultiTenantMode`, as upstream [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) has deprecated `-remoteWrite.multitenantURL` command-line flag since v1.102.0.**
+- **Update note 1**: the `--metrics-addr` command-line flag at `operator` was deprecated. Use `--metrics-bind-address` instead.
+- **Update note 2**: the `--enable-leader-election` command-line flag at `operator` was deprecated. Use `--leader-elect` instead.
+- **Update note 3**: the `--http.readyListenAddr` command-line flag at `operator` was deprecated. Use `--health-probe-bind-address` instead.
+- **Update note 4**: multitenant endpoints suffix `/insert/multitenant/<suffix>` needs to be added in `remoteWrite.url` if storage supports multitenancy when using `remoteWriteSettings.useMultiTenantMode`, as upstream [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) has deprecated `-remoteWrite.multitenantURL` command-line flag since v1.102.0.
 
 ### Updates
 

@@ -16,6 +16,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
+**Release date:** 23 January 2026
 
 **Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.
 **Update note 2**: removed deprecated VMAgent `spec.aPIServerConfig` property

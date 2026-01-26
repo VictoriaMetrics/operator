@@ -52,6 +52,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): make vmagent container default. See [#1740](https://github.com/VictoriaMetrics/operator/issues/1740).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use 127.0.0.1 instead of localhost in reload url for setups without IPV6 enabled.
 * BUGFIX: [VLAgent](https://docs.victoriametrics.com/operator/resources/vlagent/): update strict security mode configuration to work correctly with `K8sCollector`.
+* BUGFIX: [VMUser](https://docs.victoriametrics.com/operator/): throw error if username and bearerToken are both set. See [#1745](https://github.com/VictoriaMetrics/operator/pull/1745).
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 

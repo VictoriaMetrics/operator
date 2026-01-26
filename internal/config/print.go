@@ -118,7 +118,7 @@ func (boc *BaseOperatorConf) PrintDefaults(format string) error {
 		}
 
 	}
-	err = tmpl.Execute(w, map[string]interface{}{
+	err = tmpl.Execute(w, map[string]any{
 		"Params":       params,
 		"Descriptions": descriptions,
 	})

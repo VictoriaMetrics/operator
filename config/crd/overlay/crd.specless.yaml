@@ -28,85 +28,47 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: VLAgent - is a tiny but brave agent, which helps you collect
-          logs from various sources and stores them in VictoriaLogs.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VLAgentSpec defines the desired state of VLAgent
             required:
             - remoteWrite
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VLAgentStatus defines the observed state of VLAgent
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -121,23 +83,16 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               replicas:
-                description: ReplicaCount Total number of pods targeted by this VLAgent
                 format: int32
                 type: integer
               selector:
-                description: Selector string form of label value set for autoscaling
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -188,82 +143,45 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: VLCluster is fast, cost-effective and scalable logs database.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VLClusterSpec defines the desired state of VLCluster
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VLClusterStatus defines the observed state of VLCluster
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -278,16 +196,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -322,88 +235,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VLogs is fast, cost-effective and scalable logs database.
-          VLogs is the Schema for the vlogs API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: |-
-              VLogsSpec defines the desired state of VLogs
-              VLogs is deprecated, migrate to the VLSingle
             required:
             - retentionPeriod
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VLogsStatus defines the observed state of VLogs
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -418,16 +290,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -462,84 +329,45 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: |-
-          VLSingle is fast, cost-effective and scalable logs database.
-          VLSingle is the Schema for the API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VLSingleSpec defines the desired state of VLSingle
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VLSingleStatus defines the observed state of VLSingle
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -554,16 +382,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -606,86 +429,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
-          or any other Prometheus-compatible storage system that supports the remote_write protocol.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMAgentSpec defines the desired state of VMAgent
             required:
             - remoteWrite
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAgentStatus defines the observed state of VMAgent
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -700,28 +484,19 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               replicas:
-                description: ReplicaCount Total number of pods targeted by this VMAgent
                 format: int32
                 type: integer
               selector:
-                description: Selector string form of label value set for autoscaling
                 type: string
               shards:
-                description: Shards represents total number of vmagent deployments
-                  with uniq scrape targets
                 format: int32
                 type: integer
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -762,89 +537,48 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs
-          API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: |-
-              VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
-              it must reference only locally defined objects
             required:
             - receivers
             - route
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAlertmanagerConfigStatus defines the observed state of
-              VMAlertmanagerConfig
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -861,16 +595,11 @@ spec:
               lastErrorParentAlertmanagerName:
                 type: string
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -911,87 +640,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: |-
-              Specification of the desired behavior of the VMAlertmanager cluster. More info:
-              https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: |-
-              Most recent observed status of the VMAlertmanager cluster.
-              Operator API itself. More info:
-              https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1006,16 +693,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         required:
@@ -1056,85 +738,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMAlert  executes a list of given alerting or recording rules
-          against configured address.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMAlertSpec defines the desired state of VMAlert
             required:
             - datasource
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAlertStatus defines the observed state of VMAlert
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1149,16 +793,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -1197,85 +836,48 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: VMAnomaly is the Schema for the vmanomalies API.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMAnomalySpec defines the desired state of VMAnomaly.
             required:
             - reader
             - writer
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAnomalyStatus defines the observed state of VMAnomaly.
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1290,21 +892,14 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               shards:
-                description: Shards represents total number of vmanomaly statefulsets
-                  with uniq scrape targets
                 format: int32
                 type: integer
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -1347,82 +942,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMAuth is the Schema for the vmauths API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMAuthSpec defines the desired state of VMAuth
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAuthStatus defines the observed state of VMAuth
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1437,16 +995,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -1493,84 +1046,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMCluster is fast, cost-effective and scalable time-series database.
-          Cluster version with
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMClusterSpec defines the desired state of VMCluster
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMClusterStatus defines the observed state of VMCluster
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1585,16 +1099,105 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: vmdistributed.operator.victoriametrics.com
+spec:
+  group: operator.victoriametrics.com
+  names:
+    kind: VMDistributed
+    listKind: VMDistributedList
+    plural: vmdistributed
+    singular: vmdistributed
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: current status of update rollout
+      jsonPath: .status.updateStatus
+      name: Status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    lastUpdateTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - lastUpdateTime
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                type: integer
+              reason:
+                type: string
+              updateStatus:
                 type: string
             type: object
         required:
@@ -1633,85 +1236,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMNodeScrape defines discovery for targets placed on kubernetes nodes,
-          usually its node-exporters and other host services.
-          InternalIP is used as __address__ for scraping.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMNodeScrapeSpec defines specification for VMNodeScrape.
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1726,16 +1289,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -1772,87 +1330,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMPodScrape is scrape configuration for pods,
-          it generates vmagent's config for scraping pod targets
-          based on selectors.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMPodScrapeSpec defines the desired state of VMPodScrape
             required:
             - podMetricsEndpoints
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -1867,16 +1385,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -1913,87 +1426,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMProbe defines a probe for targets, that will be executed with prober,
-          like blackbox exporter.
-          It helps to monitor reachability of target with various checks.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMProbeSpec contains specification parameters for a Probe.
             required:
             - vmProberSpec
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2008,16 +1481,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         required:
@@ -2056,84 +1524,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMRule defines rule records for vmalert application
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMRuleSpec defines the desired state of VMRule
             required:
             - groups
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMRuleStatus defines the observed state of VMRule
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2148,16 +1579,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         required:
@@ -2196,83 +1622,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMScrapeConfig specifies a set of targets and parameters describing
-          how to scrape them.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMScrapeConfigSpec defines the desired state of VMScrapeConfig
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2287,16 +1675,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -2333,88 +1716,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: |-
-          VMServiceScrape is scrape configuration for endpoints associated with
-          kubernetes service,
-          it generates scrape configuration for vmagent based on selectors.
-          result config will scrape service endpoints
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMServiceScrapeSpec defines the desired state of VMServiceScrape
             required:
             - endpoints
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2429,16 +1771,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         required:
@@ -2475,82 +1812,45 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMSingle  is fast, cost-effective and scalable time-series database.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMSingleSpec defines the desired state of VMSingle
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMSingleStatus defines the observed state of VMSingle
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2565,16 +1865,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -2611,84 +1906,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMStaticScrape  defines static targets configuration for scraping.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMStaticScrapeSpec defines the desired state of VMStaticScrape.
             required:
             - targetEndpoints
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2703,16 +1961,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -2749,84 +2002,47 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMUser is the Schema for the vmusers API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VMUserSpec defines the desired state of VMUser
             required:
             - targetRefs
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMUserStatus defines the observed state of VMUser
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2841,16 +2057,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -2897,82 +2108,45 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: VTCluster is fast, cost-effective and scalable traces database.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VTClusterSpec defines the desired state of VTCluster
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VTClusterStatus defines the observed state of VTCluster
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -2987,16 +2161,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object
@@ -3031,84 +2200,45 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: |-
-          VTSingle is fast, cost-effective and scalable traces database.
-          VTSingle is the Schema for the API
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: VTSingleSpec defines the desired state of VTSingle
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VTSingleStatus defines the observed state of VTSingle
             properties:
               conditions:
-                description: 'Known .status.conditions.type are: "Available", "Progressing",
-                  and "Degraded"'
                 items:
-                  description: Condition defines status condition of the resource
                   properties:
                     lastTransitionTime:
-                      description: lastTransitionTime is the last time the condition
-                        transitioned from one status to another.
                       format: date-time
                       type: string
                     lastUpdateTime:
-                      description: |-
-                        LastUpdateTime is the last time of given type update.
-                        This value is used for status TTL update and removal
                       format: date-time
                       type: string
                     message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       type: string
                     status:
-                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase.
                       maxLength: 316
                       type: string
                   required:
@@ -3123,16 +2253,11 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               observedGeneration:
-                description: |-
-                  ObservedGeneration defines current generation picked by operator for the
-                  reconcile
                 format: int64
                 type: integer
               reason:
-                description: Reason defines human readable error reason
                 type: string
               updateStatus:
-                description: UpdateStatus defines a status for update rollout
                 type: string
             type: object
         type: object

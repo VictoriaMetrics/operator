@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
+
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 
 **Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**
@@ -84,7 +86,6 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): check `mute_time_intervals` in subroutes: See [#1618](https://github.com/VictoriaMetrics/operator/issues/1618).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove incorrect key argument in structured log for when the actual PVC storage size is larger than the currently configured size and properly indicate which is the new and which is the existing size: See PR [#1636](https://github.com/VictoriaMetrics/operator/pull/1636) for details.
 * BUGFIX: [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): properly print `status` replicas for `insert`, `select` and `storage` components.
-
 
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
 

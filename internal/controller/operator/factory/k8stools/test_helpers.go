@@ -2,7 +2,8 @@ package k8stools
 
 import (
 	"context"
-	"sync/atomic"
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -18,6 +19,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -40,6 +42,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfigList{},
 		&vmv1beta1.VMClusterList{},
 		&vmv1beta1.VLogsList{},
+		&vmv1alpha1.VMDistributedList{},
 		&vmv1.VLSingleList{},
 		&vmv1.VTSingleList{},
 		&vmv1.VLClusterList{},
@@ -67,6 +70,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfig{},
 		&vmv1beta1.VMCluster{},
 		&vmv1beta1.VLogs{},
+		&vmv1alpha1.VMDistributed{},
 		&vmv1.VLSingle{},
 		&vmv1.VLCluster{},
 		&vmv1.VTSingle{},
@@ -80,7 +84,7 @@ func testGetScheme() *runtime.Scheme {
 }
 
 // GetTestClientWithObjects returns testing client with optional predefined objects
-func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
+func GetTestClientWithObjects(predefinedObjects []runtime.Object) *TestClientWithStatsTrack {
 	obj := make([]client.Object, 0, len(predefinedObjects))
 	for _, o := range predefinedObjects {
 		obj = append(obj, o.(client.Object))
@@ -89,7 +93,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 }
 
 // GetTestClientWithClientObjects returns testing client with optional predefined objects
-func GetTestClientWithClientObjects(predefinedObjects []client.Object) client.Client {
+func GetTestClientWithClientObjects(predefinedObjects []client.Object) *TestClientWithStatsTrack {
 	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).
 		WithStatusSubresource(
 			&vmv1beta1.VMRule{},
@@ -108,6 +112,7 @@ func GetTestClientWithClientObjects(predefinedObjects []client.Object) client.Cl
 			&vmv1beta1.VMScrapeConfig{},
 			&vmv1beta1.VMStaticScrape{},
 			&vmv1beta1.VMNodeScrape{},
+			&vmv1alpha1.VMDistributed{},
 			&vmv1.VLSingle{},
 			&vmv1.VLCluster{},
 			&vmv1.VTSingle{},
@@ -162,57 +167,112 @@ func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
 	}
 }
 
-// TestClientWithStatsTrack helps to track actual requests to the api server
-type TestClientWithStatsTrack struct {
-	origin         client.Client
-	ApplyCalls     atomic.Int64
-	GetCalls       atomic.Int64
-	DeleteCalls    atomic.Int64
-	CreateCalls    atomic.Int64
-	UpdateCalls    atomic.Int64
-	ListCalls      atomic.Int64
-	PatchCalls     atomic.Int64
-	DeleteAllCalls atomic.Int64
+type calls struct {
+	objects []client.Object
+	mu      sync.Mutex
 }
 
-func (tcs *TestClientWithStatsTrack) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
-	tcs.ApplyCalls.Add(1)
-	return tcs.origin.Apply(ctx, obj, opts...)
+func getKey(obj client.Object) string {
+	return fmt.Sprintf("%T/%s/%s", obj, obj.GetNamespace(), obj.GetName())
+}
+
+func (c *calls) add(obj client.Object) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.objects = append(c.objects, obj)
+}
+
+// Count returns calls count for given obj
+func (c *calls) Count(obj client.Object) int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if obj == nil {
+		return len(c.objects)
+	}
+	var count int
+	key := getKey(obj)
+	for _, o := range c.objects {
+		if getKey(o) == key {
+			count++
+		}
+	}
+	return count
+}
+
+// First returns first call, that matches given obj
+func (c *calls) First(obj client.Object) client.Object {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if obj == nil {
+		if len(c.objects) > 0 {
+			return c.objects[0]
+		}
+		return nil
+	}
+	key := getKey(obj)
+	for _, o := range c.objects {
+		if getKey(o) == key {
+			return o
+		}
+	}
+	return nil
+}
+
+// TestClientWithStatsTrack helps to track actual requests to the api server
+type TestClientWithStatsTrack struct {
+	origin      client.Client
+	GetCalls    calls
+	DeleteCalls calls
+	CreateCalls calls
+	UpdateCalls calls
+	PatchCalls  calls
+}
+
+func (tcs *TestClientWithStatsTrack) TotalCallsCount(obj client.Object) int {
+	var count int
+	count += tcs.GetCalls.Count(obj)
+	count += tcs.DeleteCalls.Count(obj)
+	count += tcs.CreateCalls.Count(obj)
+	count += tcs.UpdateCalls.Count(obj)
+	count += tcs.PatchCalls.Count(obj)
+	return count
 }
 
 func (tcs *TestClientWithStatsTrack) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	tcs.GetCalls.Add(1)
+	tcs.GetCalls.add(obj)
 	return tcs.origin.Get(ctx, key, obj, opts...)
 }
 
-func (tcs *TestClientWithStatsTrack) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	tcs.ListCalls.Add(1)
-	return tcs.origin.List(ctx, list, opts...)
-}
-
 func (tcs *TestClientWithStatsTrack) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	tcs.CreateCalls.Add(1)
+	tcs.CreateCalls.add(obj)
 	return tcs.origin.Create(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	tcs.DeleteCalls.Add(1)
+	tcs.DeleteCalls.add(obj)
 	return tcs.origin.Delete(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	tcs.UpdateCalls.Add(1)
+	tcs.UpdateCalls.add(obj)
 	return tcs.origin.Update(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	tcs.PatchCalls.Add(1)
+	tcs.PatchCalls.add(obj)
 	return tcs.origin.Patch(ctx, obj, patch, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	return tcs.origin.Apply(ctx, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return tcs.origin.List(ctx, list, opts...)
 }
 
 // DeleteAllOf deletes all objects of the given type matching the given options.
 func (tcs *TestClientWithStatsTrack) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
-	tcs.DeleteAllCalls.Add(1)
 	return tcs.origin.DeleteAllOf(ctx, obj, opts...)
 }
 

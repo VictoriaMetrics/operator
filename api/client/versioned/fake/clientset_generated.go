@@ -21,6 +21,8 @@ import (
 	clientset "github.com/VictoriaMetrics/operator/api/client/versioned"
 	operatorv1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1"
 	fakeoperatorv1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1/fake"
+	operatorv1alpha1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1alpha1"
+	fakeoperatorv1alpha1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1alpha1/fake"
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1"
 	fakeoperatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,6 +85,11 @@ var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
 )
+
+// OperatorV1alpha1 retrieves the OperatorV1alpha1Client
+func (c *Clientset) OperatorV1alpha1() operatorv1alpha1.OperatorV1alpha1Interface {
+	return &fakeoperatorv1alpha1.FakeOperatorV1alpha1{Fake: &c.Fake}
+}
 
 // OperatorV1beta1 retrieves the OperatorV1beta1Client
 func (c *Clientset) OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface {

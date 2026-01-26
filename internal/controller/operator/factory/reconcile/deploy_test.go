@@ -22,7 +22,6 @@ func TestDeployOk(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		rclient := k8stools.GetTestClientWithObjects(nil)
-		clientStats := rclient.(*k8stools.TestClientWithStatsTrack)
 
 		waitTimeout := 5 * time.Second
 		prevDeploy := dep.DeepCopy()
@@ -72,13 +71,13 @@ func TestDeployOk(t *testing.T) {
 			t.Fatalf("failed to create deploy: %s", err)
 		}
 		// expect 1 create
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
+		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
 		// expect 0 update
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("failed to update created deploy: %s", err)
 		}
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(0), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
+		assert.Equal(t, 0, rclient.UpdateCalls.Count(dep))
 
 		// expect 1 UpdateCalls
 		reloadDep()
@@ -93,16 +92,16 @@ func TestDeployOk(t *testing.T) {
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 1 failed to update created deploy: %s", err)
 		}
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
+		assert.Equal(t, 1, rclient.UpdateCalls.Count(dep))
 
 		// expected still same 1 update
 		reloadDep()
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect still 1 failed to update created deploy: %s", err)
 		}
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
+		assert.Equal(t, 1, rclient.UpdateCalls.Count(dep))
 
 		// expected 2 updates
 		prevDeploy.Spec.Template.Annotations = dep.Spec.Template.Annotations
@@ -111,8 +110,8 @@ func TestDeployOk(t *testing.T) {
 		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 2 failed to update deploy: %s", err)
 		}
-		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
-		assert.Equal(t, int64(2), clientStats.UpdateCalls.Load())
+		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
+		assert.Equal(t, 2, rclient.UpdateCalls.Count(dep))
 	}
 
 	f(&appsv1.Deployment{

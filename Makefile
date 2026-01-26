@@ -85,7 +85,7 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
 	$(KUSTOMIZE) build config/crd-specless > config/crd/overlay/crd.specless.yaml
 
@@ -102,9 +102,11 @@ api-gen: client-gen lister-gen informer-gen
 		--input-base "" \
                 --plural-exceptions "VLogs:VLogs" \
 		--plural-exceptions "VMAnomaly:VMAnomalies" \
+		--plural-exceptions "VMDistributed:VMDistributed" \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client \
 		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt \
+		--input github.com/VictoriaMetrics/operator/api/operator/v1alpha1 \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1
 	@echo ">> generating with lister-gen"
@@ -113,6 +115,7 @@ api-gen: client-gen lister-gen informer-gen
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
 		--plural-exceptions "VMAnomaly:VMAnomalies" \
+		--plural-exceptions "VMDistributed:VMDistributed" \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"
 	$(INFORMER_GEN) github.com/VictoriaMetrics/operator/api/operator/... \
@@ -120,6 +123,7 @@ api-gen: client-gen lister-gen informer-gen
 		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
 		--plural-exceptions "VLogs:VLogs" \
 		--plural-exceptions "VMAnomaly:VMAnomalies" \
+		--plural-exceptions "VMDistributed:VMDistributed" \
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt

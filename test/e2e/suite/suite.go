@@ -27,6 +27,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/manager"
@@ -39,7 +40,9 @@ var stopped = make(chan struct{})
 
 // GetClient returns kubernetes client for cluster connection
 func GetClient() client.Client {
-	err := vmv1beta1.AddToScheme(scheme.Scheme)
+	err := vmv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = vmv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = vmv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
@@ -142,18 +145,37 @@ func InitOperatorProcess() {
 		Expect(os.Setenv("VM_PODWAITREADYTIMEOUT", "20s")).To(Succeed())
 		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
 		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())
-		resourceEnvsPRefixes := []string{
-			"VM_VMBACKUP_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMAGENTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMALERTDEFAULT_RESOURCE_REQUEST_",
-			"VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_",
+		resourceEnvsPrefixes := []string{
+			"VMBACKUP",
+			"VMCLUSTERDEFAULT_VMSTORAGEDEFAULT",
+			"VMCLUSTERDEFAULT_VMSELECTDEFAULT",
+			"VMCLUSTERDEFAULT_VMINSERTDEFAULT",
+			"VLCLUSTERDEFAULT_VLSTORAGEDEFAULT",
+			"VLCLUSTERDEFAULT_VLSELECTDEFAULT",
+			"VLCLUSTERDEFAULT_VLINSERTDEFAULT",
+			"VTCLUSTERDEFAULT_STORAGE",
+			"VTCLUSTERDEFAULT_SELECT",
+			"VTCLUSTERDEFAULT_INSERT",
+			"VMAGENTDEFAULT",
+			"VMAUTHDEFAULT",
+			"VMALERTDEFAULT",
+			"VMSINGLEDEFAULT",
+			"VMAUTHDEFAULT",
+			"VLAGENTDEFAULT",
+			"VLSINGLEDEFAULT",
+			"VTSINGLEDEFAULT",
 		}
-		for _, minRequests := range resourceEnvsPRefixes {
-			Expect(os.Setenv(minRequests+"CPU", "10m")).To(Succeed())
-			Expect(os.Setenv(minRequests+"MEM", "10Mi")).To(Succeed())
+		resources := map[string]string{
+			"CPU": "10m",
+			"MEM": "10Mi",
+		}
+		for _, prefix := range resourceEnvsPrefixes {
+			for _, t := range []string{"LIMIT", "REQUEST"} {
+				for rn, rv := range resources {
+					envName := fmt.Sprintf("VM_%s_RESOURCE_%s_%s", prefix, t, rn)
+					Expect(os.Setenv(envName, rv)).To(Succeed())
+				}
+			}
 		}
 
 		// disable web servers because it fails to listen when running several test packages one after another

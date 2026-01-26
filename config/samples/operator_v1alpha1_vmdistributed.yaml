@@ -1,0 +1,31 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sample-override
+spec:
+  vmagent:
+    name: vmagent-sample
+  vmauth:
+    name: vmauth-sample
+  zones:
+    - vmcluster:
+        ref:
+          name: vmcluster-us-east-1
+        spec:
+          vmselect:
+            replicaCount: 2
+    - vmcluster:
+        ref:
+          name: vmcluster-us-west-2
+        spec:
+          vmselect:
+            replicaCount: 2
+    - vmcluster:
+        ref:
+          name: vmcluster-eu-west-1
+        spec:
+          vmselect:
+            replicaCount: 2

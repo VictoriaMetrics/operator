@@ -1,0 +1,45 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: sample-new
+spec:
+  vmagent:
+    name: global-write-vmagent
+    spec:
+      replicaCount: 1
+  vmauth:
+    name: global-read-vmauth
+    spec:
+      replicaCount: 1
+  commonZone:
+    vmcluster:
+      spec:
+        retentionPeriod: "4"
+        replicationFactor: 2
+        vmstorage:
+          replicaCount: 2
+          storageDataPath: "/vm-data"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 10Gi
+        vmselect:
+          replicaCount: 2
+          cacheMountPath: "/select-cache"
+          storage:
+            volumeClaimTemplate:
+              spec:
+                resources:
+                  requests:
+                    storage: 2Gi
+        vminsert:
+          replicaCount: 2
+  zones:
+    - vmcluster:
+        name: vmcluster-us-east-1
+    - vmcluster:
+        name: vmcluster-us-west-2
+    - vmcluster:
+        name: vmcluster-eu-west-1

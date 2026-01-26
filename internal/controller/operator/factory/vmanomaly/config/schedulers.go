@@ -17,7 +17,7 @@ var (
 )
 
 // UnmarshalYAML implements yaml.Unmarshaller interface
-func (s *scheduler) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *scheduler) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {
 		return err

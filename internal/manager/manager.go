@@ -42,6 +42,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	vmcontroller "github.com/VictoriaMetrics/operator/internal/controller/operator"
@@ -50,6 +51,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	webhookv1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1"
+	webhookv1alpha1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1alpha1"
 	webhookv1beta1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1beta1"
 )
 
@@ -124,6 +126,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(vmv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(vmv1beta1.AddToScheme(scheme))
 	utilruntime.Must(vmv1.AddToScheme(scheme))
 	utilruntime.Must(metav1.AddToScheme(scheme))
@@ -369,6 +372,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1.SetupVMAnomalyWebhookWithManager,
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
+		webhookv1alpha1.SetupVMDistributedWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
 		webhookv1.SetupVLAgentWebhookWithManager,
 		webhookv1.SetupVLSingleWebhookWithManager,
@@ -488,6 +492,7 @@ var controllersByName = map[string]crdController{
 	"VMNodeScrape":         &vmcontroller.VMNodeScrapeReconciler{},
 	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
 	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
+	"VMDistributed":        &vmcontroller.VMDistributedReconciler{},
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {

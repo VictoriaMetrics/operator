@@ -39,7 +39,6 @@ rules:
   - configmaps/status
   - pods
   - nodes
-  - nodes/proxy
   - nodes/metrics
   - namespaces
   verbs:

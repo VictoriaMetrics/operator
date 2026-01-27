@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0).
+
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added namespace to `--cluster.peer` arguments explicitly when `spec.clusterDomainName` is omitted and added unit tests to test this.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
 

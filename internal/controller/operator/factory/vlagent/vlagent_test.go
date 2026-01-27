@@ -1048,7 +1048,7 @@ containers:
       - -httpListenAddr=:9425
       - -kubernetesCollector
       - -kubernetesCollector.includePodLabels
-      - -kubernetesCollector.msgField="msg,message"
+      - -kubernetesCollector.msgField=msg,message
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
       - -tmpDataPath=/var/lib/vlagent-data

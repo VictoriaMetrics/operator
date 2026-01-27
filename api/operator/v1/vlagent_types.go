@@ -134,6 +134,9 @@ type VLAgentK8sCollector struct {
 	// DecolorizeFields defines fields to remove ANSI color codes across logs ingested from Kubernetes
 	DecolorizeFields []string `json:"decolorizeFields,omitempty"`
 
+	// StreamFields defines list of fields to use as log stream fields for logs ingested from Kubernetes Pods
+	StreamFields []string `json:"streamFields,omitempty"`
+
 	// MsgField defines fields that may contain the _msg field
 	MsgFields []string `json:"msgFields,omitempty"`
 

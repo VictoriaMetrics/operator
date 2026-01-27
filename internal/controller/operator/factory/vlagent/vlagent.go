@@ -270,19 +270,22 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	if cr.Spec.K8sCollector.Enabled {
 		args = append(args, "-kubernetesCollector")
 		if len(cr.Spec.K8sCollector.TenantID) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.tenantID=%q", cr.Spec.K8sCollector.TenantID))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.tenantID=%s", cr.Spec.K8sCollector.TenantID))
 		}
 		if len(cr.Spec.K8sCollector.IgnoreFields) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.ignoreFields=%q", strings.Join(cr.Spec.K8sCollector.IgnoreFields, ",")))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.ignoreFields=%s", strings.Join(cr.Spec.K8sCollector.IgnoreFields, ",")))
 		}
 		if len(cr.Spec.K8sCollector.DecolorizeFields) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.decolorizeFields=%q", strings.Join(cr.Spec.K8sCollector.DecolorizeFields, ",")))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.decolorizeFields=%s", strings.Join(cr.Spec.K8sCollector.DecolorizeFields, ",")))
+		}
+		if len(cr.Spec.K8sCollector.StreamFields) > 0 {
+			args = append(args, fmt.Sprintf("-kubernetesCollector.streamFields=%s", strings.Join(cr.Spec.K8sCollector.StreamFields, ",")))
 		}
 		if len(cr.Spec.K8sCollector.MsgFields) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.msgField=%q", strings.Join(cr.Spec.K8sCollector.MsgFields, ",")))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.msgField=%s", strings.Join(cr.Spec.K8sCollector.MsgFields, ",")))
 		}
 		if len(cr.Spec.K8sCollector.TimeFields) > 0 {
-			args = append(args, fmt.Sprintf("-kubernetesCollector.timeField=%q", strings.Join(cr.Spec.K8sCollector.TimeFields, ",")))
+			args = append(args, fmt.Sprintf("-kubernetesCollector.timeField=%s", strings.Join(cr.Spec.K8sCollector.TimeFields, ",")))
 		}
 		if len(cr.Spec.K8sCollector.ExtraFields) > 0 {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.extraFields=%s", cr.Spec.K8sCollector.ExtraFields))

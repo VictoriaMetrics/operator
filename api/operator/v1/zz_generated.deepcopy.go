@@ -261,6 +261,11 @@ func (in *VLAgentK8sCollector) DeepCopyInto(out *VLAgentK8sCollector) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.StreamFields != nil {
+		in, out := &in.StreamFields, &out.StreamFields
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.MsgFields != nil {
 		in, out := &in.MsgFields, &out.MsgFields
 		*out = make([]string, len(*in))

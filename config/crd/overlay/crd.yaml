@@ -377,6 +377,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  streamFields:
+                    items:
+                      type: string
+                    type: array
                   tenantID:
                     type: string
                   timeFields:

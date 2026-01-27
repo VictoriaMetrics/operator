@@ -1477,7 +1477,7 @@ up{baz="bar"} 123
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
 							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](5),
+								ReplicaCount: ptr.To[int32](4),
 							},
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 								Labels: map[string]string{"version": "old"},
@@ -1486,7 +1486,7 @@ up{baz="bar"} 123
 								MaxUnavailable: ptr.To(intstr.FromString("100%")),
 							},
 							PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
-								MinAvailable: ptr.To(intstr.FromInt32(4)),
+								MinAvailable: ptr.To(intstr.FromInt32(3)),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
@@ -1525,9 +1525,9 @@ up{baz="bar"} 123
 								Namespace: namespace,
 								Name:      cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 							}, &pdb)
-							Expect(pdb.Status.CurrentHealthy).To(BeNumerically(">=", 4), "at least 4 pods should be healthy during the update")
+							Expect(pdb.Status.CurrentHealthy).To(BeNumerically(">=", 3), "at least 3 pods should be healthy during the update")
 							return podsUpdated
-						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically("==", 5))
+						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically("==", 4))
 					},
 				},
 			),

@@ -1101,7 +1101,7 @@ func HasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
 func LastAppliedChangesAsPatch(spec any) (client.Patch, error) {
 	data, err := json.Marshal(spec)
 	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
+		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json: %w", err)
 	}
 	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, LastAppliedSpecAnnotation, data)
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil

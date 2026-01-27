@@ -265,7 +265,7 @@ func parseNestedRoutes(src *Route) error {
 		decoder := json.NewDecoder(bytes.NewReader(nestedRoute.Raw))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&subRoute); err != nil {
-			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+			return fmt.Errorf("cannot parse json value=%s for nested route: %w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&subRoute); err != nil {
 			return err

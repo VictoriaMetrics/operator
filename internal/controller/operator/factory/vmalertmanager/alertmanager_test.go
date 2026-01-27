@@ -3,6 +3,7 @@ package vmalertmanager
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -224,6 +225,77 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				return fmt.Errorf("templates dir not found in args of config-reloader container")
 			}
 
+			return nil
+		},
+	})
+
+	// alertmanager in cluster mode with undefined clusterDomainName
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-am",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(3)),
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) error {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
+			vmaContainer := set.Spec.Template.Spec.Containers[0]
+
+			clusterPeers := make([]string, 0, 3)
+			for _, arg := range vmaContainer.Args {
+				if strings.HasPrefix(arg, "--cluster.peer=") {
+					clusterPeers = append(clusterPeers, arg)
+				}
+			}
+
+			assert.ElementsMatch(t, clusterPeers, []string{
+				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring:9094",
+				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring:9094",
+				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring:9094",
+			}, "unexpected cluster peer arguments found")
+			return nil
+		},
+	})
+
+	// alertmanager in cluster mode with clusterDomainName
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-am",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				ClusterDomainName: "example.com",
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(3)),
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) error {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
+			vmaContainer := set.Spec.Template.Spec.Containers[0]
+
+			clusterPeers := make([]string, 0, 3)
+			for _, arg := range vmaContainer.Args {
+				if strings.HasPrefix(arg, "--cluster.peer=") {
+					clusterPeers = append(clusterPeers, arg)
+				}
+			}
+
+			assert.ElementsMatch(t, clusterPeers, []string{
+				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
+				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
+				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
+			}, "unexpected cluster peer arguments found")
 			return nil
 		},
 	})

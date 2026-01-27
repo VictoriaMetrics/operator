@@ -57,3 +57,29 @@ spec:
       targetLabel: __metrics_path__
       replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
 ```
+
+Note that since 0.68.0 operator no longer ships with `nodes/proxy` permissions, you need to create a `ClusterRole` and `ClusterRoleBinding` for `VMNodeScrape` to work properly:
+```yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmnode-scrape
+rules:
+- apiGroups: [""]
+  resources: ["nodes/proxy"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vmnode-scrape
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vmnode-scrape
+subjects:
+- kind: ServiceAccount
+  name: vmagent-vmks
+  namespace: vm
+```

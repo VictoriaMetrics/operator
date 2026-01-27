@@ -211,12 +211,10 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.advertise-address=%s", cr.Spec.ClusterAdvertiseAddress))
 	}
 
-	var clusterPeerDomain string
+	// clusterPeerDomain consists of service name and namespace
+	clusterPeerDomain := fmt.Sprintf("%s.%s", cr.PrefixedName(), cr.Namespace)
 	if cr.Spec.ClusterDomainName != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.svc.%s.", cr.Namespace, cr.Spec.ClusterDomainName)
-	} else {
-		// The default DNS search path is .svc.<cluster domain>
-		clusterPeerDomain = cr.Namespace
+		clusterPeerDomain = fmt.Sprintf("%s.svc.%s.", clusterPeerDomain, cr.Spec.ClusterDomainName)
 	}
 
 	for i := int32(0); i < ptr.Deref(cr.Spec.ReplicaCount, 0); i++ {

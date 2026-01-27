@@ -15,6 +15,8 @@ aliases:
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): unnecessary `nodes/proxy` permission removed from ClusterRole. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
+
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 
 **Update note 1: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.**

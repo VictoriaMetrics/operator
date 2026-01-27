@@ -77,7 +77,6 @@ var (
 			Resources: []string{
 				"nodes",
 				"nodes/metrics",
-				"nodes/proxy",
 				"services",
 				"endpoints",
 				"pods",

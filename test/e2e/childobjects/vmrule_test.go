@@ -91,6 +91,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ExtraArgs: map[string]string{
+									"notifier.url": "http://test",
+								},
+							},
 						},
 					},
 				},
@@ -142,6 +147,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							RuleSelector:       metav1.SetAsLabelSelector(map[string]string{"exact-match-label": "value-1"}),
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
+							},
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ExtraArgs: map[string]string{
+									"notifier.url": "http://test",
+								},
 							},
 						},
 					},
@@ -241,6 +251,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							SelectAllByDefault: true,
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
+							},
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ExtraArgs: map[string]string{
+									"notifier.url": "http://test",
+								},
 							},
 						},
 					},

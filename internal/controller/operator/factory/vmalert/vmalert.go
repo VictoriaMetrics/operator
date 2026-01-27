@@ -652,7 +652,13 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 		}
 	}
 	if !url.IsSet() {
-		args = append(args, "-notifier.url=")
+		if _, ok := cr.Spec.ExtraArgs["notifier.url"]; ok {
+			return args, nil
+		}
+		if _, ok := cr.Spec.ExtraArgs["notifier.config"]; ok {
+			return args, nil
+		}
+		return nil, fmt.Errorf("no notifiers found, properly configure selectors or static notifiers using spec.notifiers or spec.notifier")
 	}
 	totalCount := len(notifierTargets)
 	args = build.AppendFlagsToArgs(args, totalCount, url, authUser, authPasswordFile)

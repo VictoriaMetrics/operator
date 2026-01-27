@@ -17,6 +17,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
+* BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

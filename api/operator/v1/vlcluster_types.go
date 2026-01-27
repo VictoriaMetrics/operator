@@ -551,7 +551,8 @@ type VLStorage struct {
 	// Useful at storage expanding, when you want to rebalance some data at cluster.
 	// +optional
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
-	// MaintenanceInsertNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	// MaintenanceSelectNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
 	vmv1beta1.CommonDefaultableParams           `json:",inline"`

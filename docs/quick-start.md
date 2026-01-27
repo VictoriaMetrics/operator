@@ -59,7 +59,7 @@ If you are new to metrics and monitoring, we recommend reading the following art
 
 ## Operator
 
-Download the latest [operator release](https://github.com/VictoriaMetrics/operator/latest) from GitHub:
+Download the latest [operator release](https://github.com/VictoriaMetrics/operator/releases/latest) from GitHub:
 ```sh
 export VM_OPERATOR_VERSION=$(basename $(curl -fs -o /dev/null -w %{redirect_url} https://github.com/VictoriaMetrics/operator/releases/latest));
 echo "VM_OPERATOR_VERSION=$VM_OPERATOR_VERSION";

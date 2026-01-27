@@ -65,7 +65,8 @@ type VMDistributedSpec struct {
 // VMDistributedZoneCommon defines items, that are common for all zones
 type VMDistributedZoneCommon struct {
 	// VMCluster defines a new inline or referencing existing one VMCluster
-	VMCluster VMDistributedZoneCluster `json:"vmcluster"`
+	// +optional
+	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
 	// RemoteWrite defines VMAgent remote write settings for given zone
 	// +optional
 	// +kubebuilder:validation:Schemaless
@@ -85,7 +86,8 @@ type VMDistributedZone struct {
 	// Name defines a name of zone, which can be used in commonZone spec as %ZONE%
 	Name string `json:"name"`
 	// VMCluster defines a new inline or referencing existing one VMCluster
-	VMCluster VMDistributedZoneCluster `json:"vmcluster"`
+	// +optional
+	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
 	// RemoteWrite defines VMAgent remote write settings for given zone
 	// +optional
 	// +kubebuilder:validation:Schemaless
@@ -405,7 +407,7 @@ func (cr *VMDistributed) Validate() error {
 		clusterName := zone.VMClusterName(cr)
 		if len(clusterName) > 0 {
 			if _, ok := clusters[clusterName]; ok {
-				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is duplicated, cluster names must be unique", i, clusterName)
+				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
 			}
 			clusters[clusterName] = struct{}{}
 		}

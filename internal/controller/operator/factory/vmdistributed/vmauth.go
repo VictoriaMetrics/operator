@@ -16,6 +16,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 func getVMClusterTargetRefs(vmClusters []*vmv1beta1.VMCluster) []vmv1beta1.TargetRef {
@@ -62,7 +63,7 @@ func reconcileVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha
 	if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmAuth); err != nil {
 		return err
 	}
-	if err := waitForStatus(ctx, rclient, vmAuth.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.WaitForStatus(ctx, rclient, vmAuth.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 		return fmt.Errorf("failed to wait for VMAuth ready: %w", err)
 	}
 	return nil

@@ -1355,7 +1355,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | --- | --- |
 | name<a href="#vmdistributedzone-name" id="vmdistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in commonZone spec as %ZONE% |
 | remoteWrite<a href="#vmdistributedzone-remotewrite" id="vmdistributedzone-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
-| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Required)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
+| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 
 
 #### VMDistributedZoneCluster
@@ -1385,7 +1385,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | readyTimeout<a href="#vmdistributedzonecommon-readytimeout" id="vmdistributedzonecommon-readytimeout">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ReadyTimeout is the timeout for the VMCluster to be ready. |
 | remoteWrite<a href="#vmdistributedzonecommon-remotewrite" id="vmdistributedzonecommon-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
 | updatePause<a href="#vmdistributedzonecommon-updatepause" id="vmdistributedzonecommon-updatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
-| vmcluster<a href="#vmdistributedzonecommon-vmcluster" id="vmdistributedzonecommon-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Required)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
+| vmcluster<a href="#vmdistributedzonecommon-vmcluster" id="vmdistributedzonecommon-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 
 
 

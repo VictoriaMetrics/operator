@@ -77,38 +77,3 @@ func TestSetOwnerRefIfNeeded(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, modified2)
 }
-
-func TestWaitForStatus(t *testing.T) {
-	f := func(status vmv1beta1.UpdateStatus, isErr bool) {
-		vmc := &vmv1beta1.VMCluster{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: vmv1beta1.GroupVersion.String(),
-				Kind:       "VMCluster",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmc",
-				Namespace: "default",
-			},
-			Status: vmv1beta1.VMClusterStatus{
-				StatusMetadata: vmv1beta1.StatusMetadata{
-					UpdateStatus: status,
-				},
-			},
-		}
-		rclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmc})
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		err := waitForStatus(ctx, rclient, vmc.DeepCopy(), 1*time.Second, vmv1beta1.UpdateStatusOperational)
-		if isErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-	}
-
-	// success
-	f(vmv1beta1.UpdateStatusOperational, false)
-
-	// fail
-	f(vmv1beta1.UpdateStatusExpanding, true)
-}

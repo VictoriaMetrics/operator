@@ -23,6 +23,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -51,11 +52,11 @@ func appendHostsFromEndpointSlice(hosts []string, es *discoveryv1.EndpointSlice)
 			if a == "" {
 				continue
 			}
+			host := fmt.Sprintf("%s:%d", a, port)
 			if es.AddressType == discoveryv1.AddressTypeIPv6 {
-				hosts = append(hosts, fmt.Sprintf("[%s]:%d", a, port))
-			} else {
-				hosts = append(hosts, fmt.Sprintf("%s:%d", a, port))
+				host = fmt.Sprintf("[%s]:%d", a, port)
 			}
+			hosts = append(hosts, host)
 		}
 	}
 	return hosts
@@ -185,7 +186,7 @@ func reconcileVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1
 	if err := createOrUpdateVMAgent(ctx, rclient, cr, vmAgent); err != nil {
 		return fmt.Errorf("failed to update VMAgent: %w", err)
 	}
-	if err := waitForStatus(ctx, rclient, vmAgent.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.WaitForStatus(ctx, rclient, vmAgent.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 		return fmt.Errorf("failed to wait for VMAgent=%s: %w", vmAgent.Name, err)
 	}
 	logger.WithContext(ctx).Info("fetching VMAgent metrics", "name", vmAgent.Name)
@@ -245,21 +246,4 @@ func createOrUpdateVMAgent(ctx context.Context, rclient client.Client, cr *vmv1a
 func remoteWriteURL(vmCluster *vmv1beta1.VMCluster) string {
 	insertBaseURL := vmCluster.AsURL(vmv1beta1.ClusterComponentInsert)
 	return fmt.Sprintf("%s/insert/multitenant/prometheus/api/v1/write", insertBaseURL)
-}
-
-func listVMAgents(ctx context.Context, rclient client.Client, namespace string, labelSelector *metav1.LabelSelector) ([]*vmv1beta1.VMAgent, error) {
-	labelsSelector, err := metav1.LabelSelectorAsSelector(labelSelector)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse selector as labelSelector: %w", err)
-	}
-
-	vmAgentList := &vmv1beta1.VMAgentList{}
-	if err := rclient.List(ctx, vmAgentList, client.InNamespace(namespace), client.MatchingLabelsSelector{Selector: labelsSelector}); err != nil {
-		return nil, err
-	}
-	vmAgents := make([]*vmv1beta1.VMAgent, 0, len(vmAgentList.Items))
-	for i := range vmAgentList.Items {
-		vmAgents = append(vmAgents, &vmAgentList.Items[i])
-	}
-	return vmAgents, nil
 }

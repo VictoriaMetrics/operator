@@ -25107,8 +25107,6 @@ spec:
                       spec:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
-                required:
-                - vmcluster
                 type: object
               zones:
                 items:
@@ -25126,7 +25124,6 @@ spec:
                       type: object
                   required:
                   - name
-                  - vmcluster
                   type: object
                 type: array
             type: object

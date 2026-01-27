@@ -107,6 +107,7 @@ func beforeEach(o opts) *testData {
 	vmclusters := []*vmv1beta1.VMCluster{
 		newVMCluster("vmcluster-1", "v1.0.0"),
 		newVMCluster("vmcluster-2", "v1.0.0"),
+		newVMCluster("vmcluster-3", "v1.0.0"),
 	}
 	var zones []vmv1alpha1.VMDistributedZone
 	for i, cluster := range vmclusters {
@@ -181,7 +182,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	f(opts{
 		prepare: func(d *testData) {
 			d.vmagent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
-				{URL: remoteWriteURL(d.vmclusters[0])},
+				{URL: remoteWriteURL(d.vmclusters[2])},
 			}
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
@@ -194,10 +195,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, client.ObjectKey{Name: d.vmagent.Name, Namespace: d.vmagent.Namespace}, got))
 
 			// Verify urls order is preserved
-			assert.Len(t, got.Spec.RemoteWrite, 2)
-			for i := range d.vmclusters {
-				assert.Equal(t, remoteWriteURL(d.vmclusters[i]), got.Spec.RemoteWrite[i].URL)
-			}
+			assert.Len(t, got.Spec.RemoteWrite, 3)
+			assert.Equal(t, remoteWriteURL(d.vmclusters[2]), got.Spec.RemoteWrite[0].URL)
+			assert.Equal(t, remoteWriteURL(d.vmclusters[0]), got.Spec.RemoteWrite[1].URL)
+			assert.Equal(t, remoteWriteURL(d.vmclusters[1]), got.Spec.RemoteWrite[2].URL)
 		},
 	})
 
@@ -319,7 +320,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, "default", createdVMAuth.Namespace)
 			assert.Equal(t, "INFO", createdVMAuth.Spec.LogLevel)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 3)
 
 			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
 			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
@@ -410,7 +411,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NotNil(t, createdItem)
 			createdVMAuth := createdItem.(*vmv1beta1.VMAuth)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 3)
 			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
 			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
 			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)

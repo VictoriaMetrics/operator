@@ -63,6 +63,28 @@ func TestValidateVMDistributed(t *testing.T) {
 		},
 		isErr: true,
 	})
+
+	// same vmcluster in two zones
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				Zones: []VMDistributedZone{
+					{
+						Name:      "zone-1",
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+					{
+						Name:      "zone-2",
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
 }
 
 func TestEnsureNoVMOwners(t *testing.T) {

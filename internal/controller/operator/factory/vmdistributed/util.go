@@ -7,17 +7,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 func fetchMetricValues(ctx context.Context, httpClient *http.Client, url, metricName, dimension string) (map[string]float64, error) {
@@ -249,34 +244,6 @@ func prevBackslashesCount(s string) int {
 		s = s[:len(s)-1]
 	}
 	return n
-}
-
-// waitForStatus waits till obj reaches defined status
-func waitForStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
-	ctx context.Context,
-	rclient client.Client,
-	obj reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
-	interval time.Duration,
-	status vmv1beta1.UpdateStatus,
-) error {
-	var lastStatus *vmv1beta1.StatusMetadata
-	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
-	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
-		if err = rclient.Get(ctx, nsn, obj); err != nil {
-			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn, err)
-			return
-		}
-		lastStatus = obj.GetStatus().GetStatusMetadata()
-		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
-	})
-	if err != nil {
-		updateStatus := "unknown"
-		if lastStatus != nil {
-			updateStatus = string(lastStatus.UpdateStatus)
-		}
-		return fmt.Errorf("failed to wait for %T %s to be ready: %w, current status: %s", obj, nsn, err, updateStatus)
-	}
-	return nil
 }
 
 // setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.

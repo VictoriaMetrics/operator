@@ -16,6 +16,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -64,9 +65,14 @@ func zoneUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDi
 	if err := rclient.Update(ctx, &prevVMCluster); err != nil {
 		return false, err
 	}
+
+	if !specChanged {
+		return false, nil
+	}
+
 	// Wait for VMCluster to be ready
 	logger.WithContext(ctx).Info("waiting for VMCluster to become operational", "name", vmCluster.Name)
-	if err := waitForStatus(ctx, rclient, vmCluster.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := reconcile.WaitForStatus(ctx, rclient, vmCluster.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 		return false, fmt.Errorf("failed to wait for VMCluster=%s to be ready: %w", vmCluster.Name, err)
 	}
 	if err := reconcileVMAgent(ctx, rclient, cr, vmClusters); err != nil {
@@ -108,7 +114,7 @@ func prepareUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.V
 					return
 				}
 			}
-			if err := waitForStatus(ctx, rclient, cluster.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+			if err := reconcile.WaitForStatus(ctx, rclient, cluster.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 				cancel(fmt.Errorf("failed to wait for VMCluster=%s to be ready: %w", nsn, err))
 				return
 			}
@@ -191,7 +197,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		}
 	}
 
-	logger.WithContext(ctx).Info("reenabling all VMClusters in VMAuth")
+	logger.WithContext(ctx).Info("ensuring all VMClusters are present in VMAuth")
 	if err := reconcileVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
 		return fmt.Errorf("failed to reconcile VMAuth: %w", err)
 	}

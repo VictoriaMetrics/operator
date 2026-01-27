@@ -76,7 +76,6 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if agentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
 		return
 	}
 

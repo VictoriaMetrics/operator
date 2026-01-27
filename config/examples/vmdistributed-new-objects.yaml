@@ -11,7 +11,7 @@ spec:
     name: global-read-vmauth
     spec:
       replicaCount: 1
-  commonZone:
+  zoneCommon:
     vmcluster:
       spec:
         retentionPeriod: "4"
@@ -37,9 +37,6 @@ spec:
         vminsert:
           replicaCount: 2
   zones:
-    - vmcluster:
-        name: vmcluster-us-east-1
-    - vmcluster:
-        name: vmcluster-us-west-2
-    - vmcluster:
-        name: vmcluster-eu-west-1
+    - name: us-east-1
+    - name: us-west-2
+    - name: eu-west-1

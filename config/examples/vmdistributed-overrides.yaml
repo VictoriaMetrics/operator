@@ -48,21 +48,21 @@ spec:
     spec:
       replicaCount: 1
   zones:
-    - vmcluster:
-        ref:
-          name: vmcluster-us-east-1
+    - name: us-east-1
+      vmcluster:
+        name: vmcluster-us-east-1
         spec:
           vmselect:
             replicaCount: 3
-    - vmcluster:
-        ref:
-          name: vmcluster-us-west-2
+    - name: us-west-2
+      vmcluster:
+        name: vmcluster-us-west-2
         spec:
           vmselect:
             replicaCount: 4
-    - vmcluster:
-        ref:
-          name: vmcluster-eu-west-1
+    - name: eu-west-1
+      vmcluster:
+        name: vmcluster-eu-west-1
         spec:
           vmselect:
             replicaCount: 2

@@ -80,6 +80,6 @@ roleRef:
   name: vmnode-scrape
 subjects:
 - kind: ServiceAccount
-  name: vmagent-vmks
-  namespace: vm
+  name: <vmagent-service-account>
+  namespace: <vmagent-namespace>
 ```

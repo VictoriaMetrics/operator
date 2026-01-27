@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,8 +30,14 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
+)
+
+var (
+	alertmanagerSync           sync.RWMutex
+	alertmanagerReconcileLimit = limiter.NewRateLimiter("vmalertmanager", 5)
 )
 
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
@@ -72,8 +79,13 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmalertmanager", req}
 	}
-	RegisterObjectStat(instance, "vmalertmanager")
 
+	if !instance.IsUnmanaged() {
+		alertmanagerSync.RLock()
+		defer alertmanagerSync.RUnlock()
+	}
+
+	RegisterObjectStat(instance, "vmalertmanager")
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertManagerDelete(ctx, r.Client, instance); err != nil {
 			return result, err

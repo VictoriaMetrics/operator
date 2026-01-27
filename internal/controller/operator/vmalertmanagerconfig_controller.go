@@ -29,12 +29,9 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
 )
-
-var vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
 
 // VMAlertmanagerConfigReconciler reconciles a VMAlertmanagerConfig object
 type VMAlertmanagerConfigReconciler struct {
@@ -74,10 +71,12 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 
 	RegisterObjectStat(&instance, "vmalertmanagerconfig")
 
-	if vmaConfigRateLimiter.MustThrottleReconcile() {
+	if alertmanagerReconcileLimit.MustThrottleReconcile() {
 		return
 	}
 
+	alertmanagerSync.Lock()
+	defer alertmanagerSync.Unlock()
 	var objects vmv1beta1.VMAlertmanagerList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertmanagerList) {
 		objects.Items = append(objects.Items, dst.Items...)

@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -142,7 +143,9 @@ func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			IngestOnlyMode: true,
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				IngestOnlyMode: ptr.To(true),
+			},
 		},
 	}
 

@@ -18,15 +18,21 @@ package operator
 
 import (
 	"context"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 var _ = Describe("VMAgent Controller", func() {
@@ -81,3 +87,98 @@ var _ = Describe("VMAgent Controller", func() {
 		})
 	})
 })
+
+func TestVMAgent_Reconcile_AgentSync_Managed(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.TODO()
+	s := runtime.NewScheme()
+	if err := vmv1beta1.AddToScheme(s); err != nil {
+		t.Fatalf("failed to add vmv1beta1 scheme: %v", err)
+	}
+	if err := clientgoscheme.AddToScheme(s); err != nil {
+		t.Fatalf("failed to add clientgoscheme scheme: %v", err)
+	}
+
+	managedVM := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "managed",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				SelectAllByDefault: true,
+			},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithObjects(managedVM).Build()
+
+	r := &VMAgentReconciler{
+		Client:       cl,
+		BaseConf:     &config.BaseOperatorConf{},
+		Log:          ctrl.Log.WithName("test"),
+		OriginScheme: s,
+	}
+
+	// start with locked agent reconcile
+	agentSync.Lock()
+
+	// Create a channel to monitor reconcile completion
+	doneCh := make(chan struct{})
+	go func() {
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: managedVM.Name, Namespace: managedVM.Namespace}})
+		// Close done channel when reconcile completes
+		close(doneCh)
+	}()
+	// ensure that reconcile is blocked
+	g.Consistently(doneCh, "1s").ShouldNot(BeClosed())
+
+	// reconcile completes when agentSync is unlocked
+	agentSync.Unlock()
+	g.Eventually(doneCh, "5s").Should(BeClosed())
+}
+
+func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.TODO()
+	s := runtime.NewScheme()
+	if err := vmv1beta1.AddToScheme(s); err != nil {
+		t.Fatalf("failed to add vmv1beta1 scheme: %v", err)
+	}
+	if err := clientgoscheme.AddToScheme(s); err != nil {
+		t.Fatalf("failed to add clientgoscheme scheme: %v", err)
+	}
+
+	unmanagedVM := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unmanaged",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithObjects(unmanagedVM).Build()
+
+	r := &VMAgentReconciler{
+		Client:       cl,
+		BaseConf:     &config.BaseOperatorConf{},
+		Log:          ctrl.Log.WithName("test"),
+		OriginScheme: s,
+	}
+
+	// Start with locked agent reconcile
+	agentSync.Lock()
+	defer agentSync.Unlock()
+
+	// Create a channel to monitor reconcile completion
+	doneCh := make(chan struct{})
+	go func() {
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: unmanagedVM.Name, Namespace: unmanagedVM.Namespace}})
+		// Close done channel when reconcile completes
+		close(doneCh)
+	}()
+	// The channel should be closed immediately - resource is unmanaged
+	g.Eventually(doneCh, "5s").Should(BeClosed())
+}

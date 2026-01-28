@@ -177,12 +177,7 @@ func buildVMAgent(cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluste
 	return &vmAgent, nil
 }
 
-func reconcileVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) error {
-	vmAgent, err := buildVMAgent(cr, vmClusters)
-	if err != nil {
-		return fmt.Errorf("failed to build VMAgent: %w", err)
-	}
-
+func reconcileVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmAgent *vmv1beta1.VMAgent) error {
 	if err := createOrUpdateVMAgent(ctx, rclient, cr, vmAgent); err != nil {
 		return fmt.Errorf("failed to update VMAgent: %w", err)
 	}

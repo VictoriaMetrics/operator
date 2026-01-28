@@ -19,14 +19,12 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-func getVMClusterTargetRefs(vmClusters []*vmv1beta1.VMCluster) []vmv1beta1.TargetRef {
-	var targetRefs []vmv1beta1.TargetRef
+func appendVMClusterTargetRefs(targetRefs []vmv1beta1.TargetRef, vmClusters []*vmv1beta1.VMCluster) []vmv1beta1.TargetRef {
 	for _, cluster := range vmClusters {
 		targetRefs = append(targetRefs, vmv1beta1.TargetRef{
 			URLMapCommon: vmv1beta1.URLMapCommon{
-				DropSrcPathPrefixParts: ptr.To(0),
-				LoadBalancingPolicy:    ptr.To("first_available"),
-				RetryStatusCodes:       []int{500, 502, 503},
+				LoadBalancingPolicy: ptr.To("first_available"),
+				RetryStatusCodes:    []int{500, 502, 503},
 			},
 			Paths: []string{"/select/.+", "/admin/tenants"},
 			CRD: &vmv1beta1.CRDRef{
@@ -36,13 +34,25 @@ func getVMClusterTargetRefs(vmClusters []*vmv1beta1.VMCluster) []vmv1beta1.Targe
 			},
 		})
 	}
-	slices.SortFunc(targetRefs, func(a, b vmv1beta1.TargetRef) int {
-		return cmp.Compare(a.CRD.Name, b.CRD.Name)
-	})
 	return targetRefs
 }
 
-func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) *vmv1beta1.VMAuth {
+func appendVMAgentTargetRef(targetRefs []vmv1beta1.TargetRef, vmAgent *vmv1beta1.VMAgent) []vmv1beta1.TargetRef {
+	return append(targetRefs, vmv1beta1.TargetRef{
+		URLMapCommon: vmv1beta1.URLMapCommon{
+			LoadBalancingPolicy: ptr.To("first_available"),
+			RetryStatusCodes:    []int{500, 502, 503},
+		},
+		Paths: []string{"/insert/.+"},
+		CRD: &vmv1beta1.CRDRef{
+			Kind:      "VMAgent",
+			Name:      vmAgent.Name,
+			Namespace: vmAgent.Namespace,
+		},
+	})
+}
+
+func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgent *vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster) *vmv1beta1.VMAuth {
 	vmAuth := vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.VMAuthName(),
@@ -54,12 +64,21 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMClust
 	if vmAuth.Spec.UnauthorizedUserAccessSpec == nil {
 		vmAuth.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{}
 	}
-	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = getVMClusterTargetRefs(vmClusters)
+	var targetRefs []vmv1beta1.TargetRef
+	targetRefs = appendVMClusterTargetRefs(targetRefs, vmClusters)
+	targetRefs = appendVMAgentTargetRef(targetRefs, vmAgent)
+	slices.SortFunc(targetRefs, func(a, b vmv1beta1.TargetRef) int {
+		return cmp.Or(
+			cmp.Compare(a.CRD.Kind, b.CRD.Kind),
+			cmp.Compare(a.CRD.Name, b.CRD.Name),
+		)
+	})
+	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = targetRefs
 	return &vmAuth
 }
 
-func reconcileVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) error {
-	vmAuth := buildVMAuthLB(cr, vmClusters)
+func reconcileVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmAgent *vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster) error {
+	vmAuth := buildVMAuthLB(cr, vmAgent, vmClusters)
 	if err := createOrUpdateVMAuthLB(ctx, rclient, cr, vmAuth); err != nil {
 		return err
 	}

@@ -77,6 +77,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmalert", req}
 	}
+
 	if !instance.IsUnmanaged() {
 		alertSync.RLock()
 		defer alertSync.RUnlock()

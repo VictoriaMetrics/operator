@@ -72,8 +72,10 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	RegisterObjectStat(instance, "vmrule")
+
 	if alertReconcileLimit.MustThrottleReconcile() {
-		return
+		// fast path
+		return ctrl.Result{}, nil
 	}
 
 	alertSync.Lock()

@@ -77,6 +77,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{err, "vmauth", req}
 	}
+
 	if !instance.IsUnmanaged() {
 		authSync.RLock()
 		defer authSync.RUnlock()

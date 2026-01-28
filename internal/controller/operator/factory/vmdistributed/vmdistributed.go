@@ -24,7 +24,7 @@ const (
 	defaultStatusCheckInterval  = 5 * time.Second
 )
 
-func zoneUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster, i int) (bool, error) {
+func zoneUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmAgent *vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, i int) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, cr.Spec.ZoneCommon.ReadyTimeout.Duration)
 	defer cancel()
 
@@ -58,7 +58,7 @@ func zoneUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDi
 		var activeClusters []*vmv1beta1.VMCluster
 		activeClusters = append(activeClusters[:0], vmClusters[:i]...)
 		activeClusters = append(activeClusters, vmClusters[i+1:]...)
-		if err := reconcileVMAuthLB(ctx, rclient, cr, activeClusters); err != nil {
+		if err := reconcileVMAuthLB(ctx, rclient, cr, vmAgent, activeClusters); err != nil {
 			return false, fmt.Errorf("failed to update vmauth lb with excluded VMCluster=%s: %w", nsn, err)
 		}
 	}
@@ -75,13 +75,13 @@ func zoneUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDi
 	if err := reconcile.WaitForStatus(ctx, rclient, vmCluster.DeepCopy(), defaultStatusCheckInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 		return false, fmt.Errorf("failed to wait for VMCluster=%s to be ready: %w", vmCluster.Name, err)
 	}
-	if err := reconcileVMAgent(ctx, rclient, cr, vmClusters); err != nil {
+	if err := reconcileVMAgent(ctx, rclient, cr, vmAgent); err != nil {
 		return false, fmt.Errorf("failed to sync VMAgent: %w", err)
 	}
 	return true, nil
 }
 
-func prepareUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster) error {
+func prepareUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, vmAgent *vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster) error {
 	var resultErr error
 	var wg sync.WaitGroup
 	var once sync.Once
@@ -138,12 +138,12 @@ func prepareUpgrade(ctx context.Context, rclient client.Client, cr *vmv1alpha1.V
 	// TODO[vrutkovs]: if vmauth exists wait for it become operational
 
 	// Update or create the VMAgent
-	if err := reconcileVMAgent(ctx, rclient, cr, vmClusters); err != nil {
+	if err := reconcileVMAgent(ctx, rclient, cr, vmAgent); err != nil {
 		return fmt.Errorf("failed to sync VMAgent: %w", err)
 	}
 
 	logger.WithContext(ctx).Info("enabling all VMClusters in VMAuth")
-	if err := reconcileVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
+	if err := reconcileVMAuthLB(ctx, rclient, cr, vmAgent, vmClusters); err != nil {
 		return fmt.Errorf("failed to reconcile VMAuth: %w", err)
 	}
 	return nil
@@ -170,13 +170,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		return fmt.Errorf("failed to build VMClusters: %w", err)
 	}
 
-	if err := prepareUpgrade(ctx, rclient, cr, vmClusters); err != nil {
+	vmAgent, err := buildVMAgent(cr, vmClusters)
+	if err != nil {
+		return fmt.Errorf("failed to build VMAgent: %w", err)
+	}
+
+	if err := prepareUpgrade(ctx, rclient, cr, vmAgent, vmClusters); err != nil {
 		return fmt.Errorf("failed to prepare VMDistributed=%s/%s upgrade: %w", cr.Namespace, cr.Name, err)
 	}
 
 	// Apply changes to VMClusters one by one if new spec needs to be applied
 	for i := range vmClusters {
-		upgraded, err := zoneUpgrade(ctx, rclient, cr, vmClusters, i)
+		upgraded, err := zoneUpgrade(ctx, rclient, cr, vmAgent, vmClusters, i)
 		if err != nil {
 			return err
 		}
@@ -198,7 +203,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 	}
 
 	logger.WithContext(ctx).Info("ensuring all VMClusters are present in VMAuth")
-	if err := reconcileVMAuthLB(ctx, rclient, cr, vmClusters); err != nil {
+	if err := reconcileVMAuthLB(ctx, rclient, cr, vmAgent, vmClusters); err != nil {
 		return fmt.Errorf("failed to reconcile VMAuth: %w", err)
 	}
 

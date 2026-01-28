@@ -208,7 +208,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.cr.Spec.VMAuth.Name = ""
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.vmclusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, d.vmclusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 			assert.Equal(t, 2, rclient.TotalCallsCount(nil))
 			// Verify the VMAuth was created with the default name (cr.Name)
@@ -242,7 +242,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				LogLevel: "INFO",
 			}
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, clusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, clusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 
 			// Check for update call
@@ -274,14 +274,17 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Spec: d.cr.Spec.VMAuth.Spec,
 			}
+			var targetRefs []vmv1beta1.TargetRef
+			targetRefs = appendVMAgentTargetRef(targetRefs, d.vmagent)
+			targetRefs = appendVMClusterTargetRefs(targetRefs, []*vmv1beta1.VMCluster{d.vmclusters[0]})
 			lb.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-				TargetRefs: getVMClusterTargetRefs([]*vmv1beta1.VMCluster{d.vmclusters[0]}),
+				TargetRefs: targetRefs,
 			}
 			d.predefinedObjects = append(d.predefinedObjects, lb)
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, clusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, clusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 
 			// Should contain no updates
@@ -306,7 +309,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.vmclusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, d.vmclusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
@@ -320,27 +323,34 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, "default", createdVMAuth.Namespace)
 			assert.Equal(t, "INFO", createdVMAuth.Spec.LogLevel)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 3)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 4)
 
 			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
-			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
 			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
 			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+			assert.Equal(t, []string{"/insert/.+"}, firstTargetRef.Paths)
 			assert.NotNil(t, firstTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[0].Name, firstTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[0].Namespace, firstTargetRef.CRD.Namespace)
+			assert.Equal(t, "VMAgent", firstTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmagent.Name, firstTargetRef.CRD.Name)
+			assert.Equal(t, d.vmagent.Namespace, firstTargetRef.CRD.Namespace)
 
 			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
-			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
 			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
 			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
 			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
 			assert.NotNil(t, secondTargetRef.CRD)
 			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[1].Name, secondTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[1].Namespace, secondTargetRef.CRD.Namespace)
+			assert.Equal(t, d.vmclusters[0].Name, secondTargetRef.CRD.Name)
+			assert.Equal(t, d.vmclusters[0].Namespace, secondTargetRef.CRD.Namespace)
+
+			thirdTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[2]
+			assert.Equal(t, ptr.To("first_available"), thirdTargetRef.LoadBalancingPolicy)
+			assert.Equal(t, []int{500, 502, 503}, thirdTargetRef.RetryStatusCodes)
+			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, thirdTargetRef.Paths)
+			assert.NotNil(t, thirdTargetRef.CRD)
+			assert.Equal(t, "VMCluster/vmselect", thirdTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmclusters[1].Name, thirdTargetRef.CRD.Name)
+			assert.Equal(t, d.vmclusters[1].Namespace, thirdTargetRef.CRD.Namespace)
 
 			// Verify OwnerReference
 			assert.NotEmpty(t, createdVMAuth.OwnerReferences)
@@ -371,7 +381,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, clusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, clusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 			updatedVMAuth := rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
@@ -399,7 +409,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.vmclusters[0].Spec.RequestsLoadBalancer.Spec.Port = "8427"
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.vmclusters)
+			vmAuth := buildVMAuthLB(d.cr, d.vmagent, d.vmclusters)
 			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, vmAuth))
 			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
@@ -411,26 +421,24 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NotNil(t, createdItem)
 			createdVMAuth := createdItem.(*vmv1beta1.VMAuth)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 3)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 4)
 			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
-			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
 			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
 			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
+			assert.Equal(t, []string{"/insert/.+"}, firstTargetRef.Paths)
 			assert.NotNil(t, firstTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[0].Name, firstTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[0].Namespace, firstTargetRef.CRD.Namespace)
+			assert.Equal(t, "VMAgent", firstTargetRef.CRD.Kind)
+			assert.Equal(t, d.vmagent.Name, firstTargetRef.CRD.Name)
+			assert.Equal(t, d.vmagent.Namespace, firstTargetRef.CRD.Namespace)
 
 			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
-			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
 			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
 			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
 			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
 			assert.NotNil(t, secondTargetRef.CRD)
 			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[1].Name, secondTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[1].Namespace, secondTargetRef.CRD.Namespace)
+			assert.Equal(t, d.vmclusters[0].Name, secondTargetRef.CRD.Name)
+			assert.Equal(t, d.vmclusters[0].Namespace, secondTargetRef.CRD.Namespace)
 		},
 	})
 }

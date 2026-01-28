@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	agentSync           sync.Mutex
+	agentSync           sync.RWMutex
 	agentReconcileLimit = limiter.NewRateLimiter("vmagent", 5)
 )
 
@@ -88,9 +88,10 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return result, &getError{origin: err, controller: "vmagent", requestObject: req}
 	}
+
 	if !instance.IsUnmanaged(nil) {
-		agentSync.Lock()
-		defer agentSync.Unlock()
+		agentSync.RLock()
+		defer agentSync.RUnlock()
 	}
 
 	RegisterObjectStat(instance, "vmagent")

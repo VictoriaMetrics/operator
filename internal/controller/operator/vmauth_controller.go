@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,8 +30,14 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmauth"
+)
+
+var (
+	authSync           sync.RWMutex
+	authReconcileLimit = limiter.NewRateLimiter("vmauth", 5)
 )
 
 // VMAuthReconciler reconciles a VMAuth object
@@ -71,8 +78,12 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, &getError{err, "vmauth", req}
 	}
 
-	RegisterObjectStat(instance, "vmauth")
+	if !instance.IsUnmanaged() {
+		authSync.RLock()
+		defer authSync.RUnlock()
+	}
 
+	RegisterObjectStat(instance, "vmauth")
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAuthDelete(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot remove finalizer from vmauth: %w", err)

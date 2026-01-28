@@ -73,11 +73,13 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	RegisterObjectStat(instance, "vmrule")
 
-	if vmAlertRateLimiter.MustThrottleReconcile() {
+	if alertReconcileLimit.MustThrottleReconcile() {
 		// fast path
 		return ctrl.Result{}, nil
 	}
 
+	alertSync.Lock()
+	defer alertSync.Unlock()
 	var objects vmv1beta1.VMAlertList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertList) {
 		objects.Items = append(objects.Items, dst.Items...)

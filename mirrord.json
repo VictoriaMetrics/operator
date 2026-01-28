@@ -1,0 +1,17 @@
+{
+  "feature": {
+    "fs": {
+      "mode": "local"
+    },
+    "network": {
+      "outgoing": {
+        "tcp": true,
+        "udp": true,
+        "ignore_localhost": true,
+        "filter": {
+          "remote": ["10.244.0.0/16"]
+        }
+      }
+    }
+  }
+}

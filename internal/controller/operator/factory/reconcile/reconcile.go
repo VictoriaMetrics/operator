@@ -9,9 +9,12 @@ import (
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -170,4 +173,35 @@ func isConflict(err error) bool {
 
 func retryOnConflict(fn func() error) error {
 	return retry.OnError(retry.DefaultRetry, isConflict, fn)
+}
+
+// WaitForStatus waits till obj reaches defined status
+func WaitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
+	ctx context.Context,
+	rclient client.Client,
+	obj ObjectWithDeepCopyAndStatus[T, ST, STC],
+	interval time.Duration,
+	status vmv1beta1.UpdateStatus,
+) error {
+	var lastStatus *vmv1beta1.StatusMetadata
+	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
+	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
+		if err = rclient.Get(ctx, nsn, obj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn, err)
+			return
+		}
+		lastStatus = obj.GetStatus().GetStatusMetadata()
+		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
+	})
+	if err != nil {
+		updateStatus := "unknown"
+		if lastStatus != nil {
+			updateStatus = string(lastStatus.UpdateStatus)
+		}
+		return fmt.Errorf("failed to wait for %T %s to be ready: %w, current status: %s", obj, nsn, err, updateStatus)
+	}
+	return nil
 }

@@ -1191,50 +1191,6 @@ Package v1alpha1 contains API Schema definitions for the operator v1alpha1 API g
 
 
 
-#### VMAgentNameAndSpec
-
-
-
-VMAgentNameAndSpec is a name and a specification of a new VMAgent.
-
-Appears in: [VMDistributedSpec](#vmdistributedspec)
-
-| Field | Description |
-| --- | --- |
-| labelSelector<a href="#vmagentnameandspec-labelselector" id="vmagentnameandspec-labelselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | _(Optional)_<br/>LabelSelector specifies VMAgents to be selected for metrics check. |
-| name<a href="#vmagentnameandspec-name" id="vmagentnameandspec-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMAgent when Spec is provided. |
-| spec<a href="#vmagentnameandspec-spec" id="vmagentnameandspec-spec">#</a><br/>_[VMDistributedAgentSpec](#vmdistributedagentspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAgent.<br />Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator. |
-
-
-#### VMAuthNameAndSpec
-
-
-
-VMAuthNameAndSpec defines a VMAuth by name or inline spec
-
-Appears in: [VMDistributedSpec](#vmdistributedspec)
-
-| Field | Description |
-| --- | --- |
-| name<a href="#vmauthnameandspec-name" id="vmauthnameandspec-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMAuthNameAndSpec when Spec is provided. |
-| spec<a href="#vmauthnameandspec-spec" id="vmauthnameandspec-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
-
-
-#### VMClusterObjOrRef
-
-
-
-VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
-
-Appears in: [VMDistributedZone](#vmdistributedzone)
-
-| Field | Description |
-| --- | --- |
-| name<a href="#vmclusterobjorref-name" id="vmclusterobjorref-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VMCluster.<br />This field is ignored if `ref` is specified. |
-| ref<a href="#vmclusterobjorref-ref" id="vmclusterobjorref-ref">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | _(Optional)_<br/>Ref points to the VMCluster object.<br />If Ref is specified, Name is ignored. |
-| spec<a href="#vmclusterobjorref-spec" id="vmclusterobjorref-spec">#</a><br/>_[VMClusterSpec](#vmclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMCluster. |
-
-
 #### VMDistributed
 
 
@@ -1251,6 +1207,20 @@ VMDistributed is progressively rolling out updates to multiple zone components.
 | spec<a href="#vmdistributed-spec" id="vmdistributed-spec">#</a><br/>_[VMDistributedSpec](#vmdistributedspec)_ | _(Required)_<br/>spec defines the desired state of VMDistributed |
 
 
+#### VMDistributedAgent
+
+
+
+VMDistributedAgent is a name and a specification of a new VMAgent.
+
+Appears in: [VMDistributedSpec](#vmdistributedspec)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vmdistributedagent-name" id="vmdistributedagent-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMAgent when Spec is provided. |
+| spec<a href="#vmdistributedagent-spec" id="vmdistributedagent-spec">#</a><br/>_[VMDistributedAgentSpec](#vmdistributedagentspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAgent.<br />Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator. |
+
+
 #### VMDistributedAgentRemoteWriteSpec
 
 
@@ -1258,7 +1228,7 @@ VMDistributed is progressively rolling out updates to multiple zone components.
 VMDistributedAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
 These urls will be overwritten by the controller
 
-Appears in: [VMDistributedZone](#vmdistributedzone)
+Appears in: [VMDistributedZone](#vmdistributedzone), [VMDistributedZoneCommon](#vmdistributedzonecommon)
 
 | Field | Description |
 | --- | --- |
@@ -1281,7 +1251,7 @@ Appears in: [VMDistributedZone](#vmdistributedzone)
 VMDistributedAgentSpec is a customized specification of a new VMAgent.
 It includes selected options from the original VMAgentSpec.
 
-Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
+Appears in: [VMDistributedAgent](#vmdistributedagent)
 
 | Field | Description |
 | --- | --- |
@@ -1338,6 +1308,20 @@ Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
 | volumes<a href="#vmdistributedagentspec-volumes" id="vmdistributedagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
+#### VMDistributedAuth
+
+
+
+VMDistributedAuth defines a VMAuth by name or inline spec
+
+Appears in: [VMDistributedSpec](#vmdistributedspec)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vmdistributedauth-name" id="vmdistributedauth-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMDistributedAuth when Spec is provided. |
+| spec<a href="#vmdistributedauth-spec" id="vmdistributedauth-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
+
+
 #### VMDistributedSpec
 
 
@@ -1348,14 +1332,12 @@ Appears in: [VMDistributed](#vmdistributed)
 
 | Field | Description |
 | --- | --- |
-| commonZone<a href="#vmdistributedspec-commonzone" id="vmdistributedspec-commonzone">#</a><br/>_[VMDistributedZone](#vmdistributedzone)_ | _(Optional)_<br/>CommonZone defines common properties for all zones |
 | license<a href="#vmdistributedspec-license" id="vmdistributedspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters. |
 | paused<a href="#vmdistributedspec-paused" id="vmdistributedspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
-| readyDeadline<a href="#vmdistributedspec-readydeadline" id="vmdistributedspec-readydeadline">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ReadyDeadline is the deadline for the VMCluster to be ready. |
-| vmagent<a href="#vmdistributedspec-vmagent" id="vmdistributedspec-vmagent">#</a><br/>_[VMAgentNameAndSpec](#vmagentnameandspec)_ | _(Required)_<br/>VMAgent is the name and spec of the VM agent to balance traffic between VMClusters. |
-| vmagentFlushDeadline<a href="#vmdistributedspec-vmagentflushdeadline" id="vmdistributedspec-vmagentflushdeadline">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>VMAgentFlushDeadline is the deadline for VMAgent to flush accumulated queue. |
-| vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMAuthNameAndSpec](#vmauthnameandspec)_ | _(Required)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
-| zoneUpdatePause<a href="#vmdistributedspec-zoneupdatepause" id="vmdistributedspec-zoneupdatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
+| retain<a href="#vmdistributedspec-retain" id="vmdistributedspec-retain">#</a><br/>_boolean_ | _(Optional)_<br/>Retain keeps resources in case of VMDistributed removal |
+| vmagent<a href="#vmdistributedspec-vmagent" id="vmdistributedspec-vmagent">#</a><br/>_[VMDistributedAgent](#vmdistributedagent)_ | _(Required)_<br/>VMAgent is the name and spec of the VM agent to balance traffic between VMClusters. |
+| vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMDistributedAuth](#vmdistributedauth)_ | _(Required)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
+| zoneCommon<a href="#vmdistributedspec-zonecommon" id="vmdistributedspec-zonecommon">#</a><br/>_[VMDistributedZoneCommon](#vmdistributedzonecommon)_ | _(Optional)_<br/>ZoneCommon defines common properties for all zones |
 | zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[VMDistributedZone](#vmdistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
 
 
@@ -1373,7 +1355,37 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | --- | --- |
 | name<a href="#vmdistributedzone-name" id="vmdistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in commonZone spec as %ZONE% |
 | remoteWrite<a href="#vmdistributedzone-remotewrite" id="vmdistributedzone-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
-| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMClusterObjOrRef](#vmclusterobjorref)_ | _(Required)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
+| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
+
+
+#### VMDistributedZoneCluster
+
+
+
+VMDistributedZoneCluster defines the name and specification of a VMCluster to be created or updated.
+
+Appears in: [VMDistributedZone](#vmdistributedzone), [VMDistributedZoneCommon](#vmdistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vmdistributedzonecluster-name" id="vmdistributedzonecluster-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VMCluster. |
+| spec<a href="#vmdistributedzonecluster-spec" id="vmdistributedzonecluster-spec">#</a><br/>_[VMClusterSpec](#vmclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMCluster. |
+
+
+#### VMDistributedZoneCommon
+
+
+
+VMDistributedZoneCommon defines items, that are common for all zones
+
+Appears in: [VMDistributedSpec](#vmdistributedspec)
+
+| Field | Description |
+| --- | --- |
+| readyTimeout<a href="#vmdistributedzonecommon-readytimeout" id="vmdistributedzonecommon-readytimeout">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>ReadyTimeout is the timeout for the VMCluster to be ready. |
+| remoteWrite<a href="#vmdistributedzonecommon-remotewrite" id="vmdistributedzonecommon-remotewrite">#</a><br/>_[VMDistributedAgentRemoteWriteSpec](#vmdistributedagentremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
+| updatePause<a href="#vmdistributedzonecommon-updatepause" id="vmdistributedzonecommon-updatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
+| vmcluster<a href="#vmdistributedzonecommon-vmcluster" id="vmdistributedzonecommon-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 
 
 
@@ -4303,7 +4315,7 @@ Appears in: [VMAuthLoadBalancer](#vmauthloadbalancer)
 
 VMAuthSpec defines the desired state of VMAuth
 
-Appears in: [VMAuth](#vmauth), [VMAuthNameAndSpec](#vmauthnameandspec)
+Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 
 | Field | Description |
 | --- | --- |
@@ -4471,7 +4483,7 @@ Cluster version with
 
 VMClusterSpec defines the desired state of VMCluster
 
-Appears in: [VMCluster](#vmcluster), [VMClusterObjOrRef](#vmclusterobjorref)
+Appears in: [VMCluster](#vmcluster), [VMDistributedZoneCluster](#vmdistributedzonecluster)
 
 | Field | Description |
 | --- | --- |

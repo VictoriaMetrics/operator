@@ -39,8 +39,6 @@ kind: VMDistributed
 metadata:
   name: sample-custom-timeout
 spec:
-  readyDeadline: 10m
-  zoneUpdatePause: 1m
   vmagent:
     name: global-write-vmagent
     spec:
@@ -49,22 +47,25 @@ spec:
     name: global-read-vmauth
     spec:
       replicaCount: 1
+  zoneCommon:
+    readyTimeout: 10m
+    updatePause: 1m
   zones:
-    - vmcluster:
-        ref:
-          name: vmcluster-us-east-1
+    - name: us-east-1
+      vmcluster:
+        name: vmcluster-us-east-1
         spec:
           vmselect:
             replicaCount: 3
-    - vmcluster:
-        ref:
-          name: vmcluster-us-west-2
+    - name: us-west-2
+      vmcluster:
+        name: vmcluster-us-west-2
         spec:
           vmselect:
             replicaCount: 4
-    - vmcluster:
-        ref:
-          name: vmcluster-eu-west-1
+    - name: eu-west-1
+      vmcluster:
+        name: vmcluster-eu-west-1
         spec:
           vmselect:
             replicaCount: 2

@@ -17,9 +17,11 @@ aliases:
 
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added namespace to `--cluster.peer` arguments explicitly when `spec.clusterDomainName` is omitted and added unit tests to test this.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
+* FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): support ability to override default stream fields for vlagent in logs collection mode.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
+* BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): previously the operator emitted quoted `spec.k8sCollector.{msgField,timeField,ignoreFields,decolorizeFields}` values, which caused vlagent to misparse these fields; now these fields are emitted unquoted so collector settings are applied correctly. See [#1749](https://github.com/VictoriaMetrics/operator/issues/1749).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

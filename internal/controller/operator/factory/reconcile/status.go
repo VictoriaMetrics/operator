@@ -251,7 +251,7 @@ func buildStatusPatch(currentStatus any) (client.Patch, error) {
 	}
 	data, err := json.Marshal(ops)
 	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize patch specification as json :%w", err)
+		return nil, fmt.Errorf("possible bug, cannot serialize patch specification as json: %w", err)
 	}
 
 	return client.RawPatch(types.JSONPatchType, data), nil

@@ -407,7 +407,7 @@ func generateConfig(
 ) ([]byte, error) {
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
-		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
+		logger.WithContext(ctx).Info("setting discovery for the single namespace only." +
 			"Since operator launched with set WATCH_NAMESPACE param. " +
 			"Set custom ServiceAccountName property for VMAgent if needed.")
 		cr.Spec.IgnoreNamespaceSelectors = true

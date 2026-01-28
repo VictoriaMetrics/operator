@@ -27,7 +27,7 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 	}
 	var baseYAMlCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
-		return nil, fmt.Errorf("cannot parse base cfg :%w", err)
+		return nil, fmt.Errorf("cannot parse base cfg: %w", err)
 	}
 
 	if baseYAMlCfg.Route == nil {
@@ -123,7 +123,7 @@ func addConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	}
 	var baseYAMlCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
-		return nil, fmt.Errorf("cannot parse base cfg :%w", err)
+		return nil, fmt.Errorf("cannot parse base cfg: %w", err)
 	}
 	templatesSetByIdx := make(map[string]int)
 	for idx, v := range baseYAMlCfg.Templates {

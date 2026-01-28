@@ -63,7 +63,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	}
 	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
 	if err != nil {
-		return fmt.Errorf("cannot create or update vmauth service :%w", err)
+		return fmt.Errorf("cannot create or update vmauth service: %w", err)
 	}
 	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)

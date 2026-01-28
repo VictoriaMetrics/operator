@@ -64,7 +64,7 @@ func Test_generateProbeConfig(t *testing.T) {
 					Path:   "/probe2",
 				},
 				Targets: vmv1beta1.VMProbeTargets{
-					StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+					Static: &vmv1beta1.VMProbeTargetStatic{
 						Targets: []string{"host-1", "host-2"},
 						Labels:  map[string]string{"label1": "value1"},
 					},
@@ -96,7 +96,197 @@ relabel_configs:
 `,
 	})
 
-	// with ingress discover
+	// with Pod discovery
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "probe-pod",
+				Namespace: "monitor",
+			},
+			Spec: vmv1beta1.VMProbeSpec{
+				Module:       "http200",
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRolePod,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label1"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		want: `job_name: probe/monitor/probe-pod
+honor_labels: false
+metrics_path: /probe
+params:
+  module:
+  - http200
+kubernetes_sd_configs:
+- role: pod
+  namespaces:
+    names:
+    - monitor
+relabel_configs:
+- action: replace
+  source_labels:
+  - __meta_kubernetes_pod_annotation_operator_victoriametrics_com_probe_path
+  target_label: __meta_kubernetes_pod_path
+- if: '{__meta_kubernetes_pod_annotationpresent_operator_victoriametrics_com_probe_path!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_pod_path
+  replacement: /
+- action: replace
+  source_labels:
+  - __meta_kubernetes_pod_annotation_operator_victoriametrics_com_probe_scheme
+  target_label: __meta_kubernetes_pod_scheme
+- if: '{__meta_kubernetes_pod_annotationpresent_operator_victoriametrics_com_probe_scheme!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_pod_scheme
+  replacement: http
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_pod_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_pod_scheme
+  - __address__
+  - __meta_kubernetes_pod_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - label1
+  target_label: api
+  action: replacement
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
+
+	// with Service discovery
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "probe-service",
+				Namespace: "monitor",
+			},
+			Spec: vmv1beta1.VMProbeSpec{
+				Module:       "http200",
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRoleService,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label1"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		want: `job_name: probe/monitor/probe-service
+honor_labels: false
+metrics_path: /probe
+params:
+  module:
+  - http200
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - monitor
+relabel_configs:
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_path
+  target_label: __meta_kubernetes_service_path
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_path!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_path
+  replacement: /
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_scheme
+  target_label: __meta_kubernetes_service_scheme
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_scheme!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_scheme
+  replacement: http
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_service_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_service_scheme
+  - __address__
+  - __meta_kubernetes_service_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - label1
+  target_label: api
+  action: replacement
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
+
+	// with Ingress discovery
 	f(opts{
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
@@ -113,13 +303,16 @@ relabel_configs:
 				Module:       "http200",
 				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
 				Targets: vmv1beta1.VMProbeTargets{
-					Ingress: &vmv1beta1.ProbeTargetIngress{
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						RelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								SourceLabels: []string{"label1"},
-								TargetLabel:  "api",
-								Action:       "replacement",
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRoleIngress,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label1"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
 							},
 						},
 					},
@@ -162,6 +355,142 @@ relabel_configs:
   target_label: ingress
 - source_labels:
   - label1
+  target_label: api
+  action: replacement
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
+
+	// with mixed discovery
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "probe-mixed",
+				Namespace: "monitor",
+			},
+			Spec: vmv1beta1.VMProbeSpec{
+				Module:       "http200",
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRoleIngress,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label1"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
+							},
+						},
+						{
+							Role:              k8sSDRoleService,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label2"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		want: `job_name: probe/monitor/probe-mixed
+honor_labels: false
+metrics_path: /probe
+params:
+  module:
+  - http200
+kubernetes_sd_configs:
+- role: ingress
+  namespaces:
+    names:
+    - monitor
+- role: service
+  namespaces:
+    names:
+    - monitor
+relabel_configs:
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_ingress_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_ingress_scheme
+  - __address__
+  - __meta_kubernetes_ingress_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_ingress_name
+  target_label: ingress
+- source_labels:
+  - label1
+  target_label: api
+  action: replacement
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_path
+  target_label: __meta_kubernetes_service_path
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_path!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_path
+  replacement: /
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_scheme
+  target_label: __meta_kubernetes_service_scheme
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_scheme!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_scheme
+  replacement: http
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_service_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_service_scheme
+  - __address__
+  - __meta_kubernetes_service_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - label2
   target_label: api
   action: replacement
 - source_labels:
@@ -228,7 +557,7 @@ relabel_configs:
 				},
 				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
 				Targets: vmv1beta1.VMProbeTargets{
-					StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
+					Static: &vmv1beta1.VMProbeTargetStatic{
 						Targets: []string{"host-1", "host-2"},
 						Labels:  map[string]string{"label1": "value1"},
 					},
@@ -315,16 +644,19 @@ basic_auth:
 				Module:       "http200",
 				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
 				Targets: vmv1beta1.VMProbeTargets{
-					Ingress: &vmv1beta1.ProbeTargetIngress{
-						NamespaceSelector: vmv1beta1.NamespaceSelector{},
-						Selector: *metav1.SetAsLabelSelector(map[string]string{
-							"ingress-class": "ngin",
-						}),
-						RelabelConfigs: []*vmv1beta1.RelabelConfig{
-							{
-								SourceLabels: []string{"label1"},
-								TargetLabel:  "api",
-								Action:       "replacement",
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRoleIngress,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+							Selector: *metav1.SetAsLabelSelector(map[string]string{
+								"ingress-class": "nginx",
+							}),
+							RelabelConfigs: []*vmv1beta1.RelabelConfig{
+								{
+									SourceLabels: []string{"label1"},
+									TargetLabel:  "api",
+									Action:       "replacement",
+								},
 							},
 						},
 					},
@@ -344,7 +676,7 @@ kubernetes_sd_configs:
     - monitor
   selectors:
   - role: ingress
-    label: ingress-class=ngin
+    label: ingress-class=nginx
 relabel_configs:
 - source_labels:
   - __address__

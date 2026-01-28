@@ -649,6 +649,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
+		t.Helper()
 		ctx := context.TODO()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		got, err := createOrUpdateService(ctx, cl, o.cr, nil)
@@ -688,6 +689,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		want               []string
 	}
 	f := func(o opts) {
+		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
@@ -713,10 +715,15 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{
 					URL: "http://vmsingle-url",
 				},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ExtraArgs: map[string]string{
+						"notifier.url": "http://test",
+					},
+				},
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 	}
 	f(o)
 
@@ -739,10 +746,15 @@ func Test_buildVMAlertArgs(t *testing.T) {
 						},
 					},
 				},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ExtraArgs: map[string]string{
+						"notifier.url": "http://test",
+					},
+				},
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 	}
 	f(o)
 

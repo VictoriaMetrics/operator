@@ -28,7 +28,9 @@ func Test_generateProbeConfig(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		got, err := generateProbeConfig(ctx, o.cr, o.sc, ac)
+		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		sp := &o.cr.Spec.CommonScrapeParams
+		got, err := generateProbeConfig(ctx, sp, pos, o.sc, ac)
 		if err != nil {
 			t.Errorf("cannot generate ProbeConfig, err: %e", err)
 			return

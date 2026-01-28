@@ -70,21 +70,19 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsStaticScrapeUnmanaged() {
+		if item.IsUnmanaged(instance) {
 			continue
 		}
 		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
 		ctx := logger.AddToContext(ctx, l)
-		if item.Spec.DaemonSetMode {
-			continue
-		}
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
+			objectSelector, namespaceSelector := item.ScrapeSelectors(instance)
 			opts := &k8stools.SelectorOpts{
 				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: item.Spec.StaticScrapeNamespaceSelector,
-				ObjectSelector:    item.Spec.StaticScrapeSelector,
+				NamespaceSelector: namespaceSelector,
+				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)

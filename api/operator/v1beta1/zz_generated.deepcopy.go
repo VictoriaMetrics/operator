@@ -801,6 +801,11 @@ func (in *CommonScrapeParams) DeepCopyInto(out *CommonScrapeParams) {
 			(*out)[key] = val
 		}
 	}
+	if in.IngestOnlyMode != nil {
+		in, out := &in.IngestOnlyMode, &out.IngestOnlyMode
+		*out = new(bool)
+		**out = **in
+	}
 	out.CommonScrapeSecurityEnforcements = in.CommonScrapeSecurityEnforcements
 }
 

@@ -12,13 +12,13 @@ import (
 
 func generateNodeScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	sp *vmv1beta1.CommonScrapeParams,
+	pos *parsedObjects,
 	sc *vmv1beta1.VMNodeScrape,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {
 	spec := &sc.Spec
-	apiserverConfig := cr.Spec.APIServerConfig
-	se := cr.Spec.CommonScrapeSecurityEnforcements
+	se := &sp.CommonScrapeSecurityEnforcements
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -26,18 +26,18 @@ func generateNodeScrapeConfig(
 		},
 	}
 
-	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, cr)
+	scrapeClass := getScrapeClass(sc.Spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&sc.Spec.EndpointAuth, scrapeClass)
 		mergeEndpointRelabelingsWithScrapeClass(&sc.Spec.EndpointRelabelings, scrapeClass)
 	}
 
-	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, cr)
+	setScrapeIntervalToWithLimit(ctx, &spec.EndpointScrapeParams, sp)
 
 	k8sSDOpts := generateK8SSDConfigOptions{
-		shouldAddSelectors: cr.Spec.EnableKubernetesAPISelectors,
+		shouldAddSelectors: sp.EnableKubernetesAPISelectors,
 		selectors:          sc.Spec.Selector,
-		apiServerConfig:    apiserverConfig,
+		apiServerConfig:    pos.APIServerConfig,
 		role:               k8sSDRoleNode,
 		namespace:          sc.Namespace,
 	}
@@ -51,7 +51,7 @@ func generateNodeScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	skipRelabelSelectors := cr.Spec.EnableKubernetesAPISelectors
+	skipRelabelSelectors := sp.EnableKubernetesAPISelectors
 	relabelings = addSelectorToRelabelingFor(relabelings, "node", spec.Selector, skipRelabelSelectors)
 	// Add __address__ as internalIP and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
@@ -102,7 +102,7 @@ func generateNodeScrapeConfig(
 	for _, c := range spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.NodeScrapeRelabelTemplate {
+	for _, trc := range sp.NodeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

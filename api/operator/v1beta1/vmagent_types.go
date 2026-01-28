@@ -34,14 +34,12 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
 	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
-
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8428/api/v1/write
 	// or for cluster different url
@@ -105,11 +103,6 @@ type VMAgentSpec struct {
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
-	// IngestOnlyMode switches vmagent into unmanaged mode
-	// it disables any config generation for scraping
-	// Currently it prevents vmagent from managing tls and auth options for remote write
-	// +optional
-	IngestOnlyMode bool `json:"ingestOnlyMode,omitempty"`
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
@@ -216,6 +209,11 @@ func (cr *VMAgent) GetShardCount() int {
 		return 1
 	}
 	return *cr.Spec.ShardCount
+}
+
+// ExternalLabels returns external labels for scraping
+func (cr *VMAgent) ExternalLabels() map[string]string {
+	return cr.Spec.externalLabels(fmt.Sprintf("%s/%s", cr.Namespace, cr.Name))
 }
 
 // GetReloadURL implements reloadable interface
@@ -567,7 +565,7 @@ func (cr *VMAgent) IsOwnsServiceAccount() bool {
 }
 
 func (cr *VMAgent) GetClusterRoleName() string {
-	return fmt.Sprintf("monitoring:%s:vmagent-%s", cr.Namespace, cr.Name)
+	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
 // AsURL - returns url for http access
@@ -612,67 +610,36 @@ func (*VMAgent) ProbeNeedLiveness() bool {
 	return true
 }
 
+// ScrapeSelectors gets object and namespace sepectors
+func (cr *VMAgent) ScrapeSelectors(scrape client.Object) (*metav1.LabelSelector, *metav1.LabelSelector) {
+	return cr.Spec.ScrapeSelectors(scrape)
+}
+
 // IsUnmanaged checks if object should managed any config objects
-func (cr *VMAgent) IsUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
+func (cr *VMAgent) IsUnmanaged(scrape client.Object) bool {
+	if !cr.DeletionTimestamp.IsZero() || cr.Spec.ParsingError != "" {
 		return true
 	}
-	return cr.Spec.isUnmanaged()
-}
+	if scrape == nil {
+		return cr.Spec.isUnmanaged()
+	}
+	switch s := scrape.(type) {
+	case *VMNodeScrape:
+		return cr.Spec.DaemonSetMode || cr.Spec.isNodeScrapeUnmanaged()
+	case *VMServiceScrape:
+		return cr.Spec.DaemonSetMode || cr.Spec.isServiceScrapeUnmanaged()
+	case *VMPodScrape:
+		return cr.Spec.isPodScrapeUnmanaged()
+	case *VMProbe:
+		return cr.Spec.DaemonSetMode || cr.Spec.isProbeUnmanaged()
+	case *VMStaticScrape:
+		return cr.Spec.DaemonSetMode || cr.Spec.isStaticScrapeUnmanaged()
+	case *VMScrapeConfig:
+		return cr.Spec.DaemonSetMode || cr.Spec.isScrapeConfigUnmanaged()
+	default:
+		panic(fmt.Sprintf("BUG: scrape kind %T is not supported", s))
+	}
 
-// IsNodeScrapeUnmanaged checks if vmagent should managed any VMNodeScrape objects
-func (cr *VMAgent) IsNodeScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isNodeScrapeUnmanaged()
-}
-
-// IsServiceScrapeUnmanaged checks if vmagent should managed any VMServiceScrape objects
-func (cr *VMAgent) IsServiceScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isServiceScrapeUnmanaged()
-}
-
-// IsUnmanaged checks if vmagent should managed any VMPodScrape objects
-func (cr *VMAgent) IsPodScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isPodScrapeUnmanaged()
-}
-
-// IsProbeUnmanaged checks if vmagent should managed any VMProbe objects
-func (cr *VMAgent) IsProbeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isProbeUnmanaged()
-}
-
-// IsStaticScrapeUnmanaged checks if vmagent should managed any VMStaticScrape objects
-func (cr *VMAgent) IsStaticScrapeUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isStaticScrapeUnmanaged()
-}
-
-// IsScrapeConfigUnmanaged checks if vmagent should managed any VMScrapeConfig objects
-func (cr *VMAgent) IsScrapeConfigUnmanaged() bool {
-	// fast path
-	if cr.Spec.IngestOnlyMode {
-		return true
-	}
-	return cr.Spec.isScrapeConfigUnmanaged()
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

@@ -121,6 +121,7 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 
 	var cpuResourceIsSet bool
 	var memResourceIsSet bool
+	var ephemeralStorageResourceIsSet bool
 
 	if _, ok := crdResources.Limits[corev1.ResourceMemory]; ok {
 		memResourceIsSet = true
@@ -128,27 +129,41 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 	if _, ok := crdResources.Limits[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
+	if _, ok := crdResources.Limits[corev1.ResourceEphemeralStorage]; ok {
+		ephemeralStorageResourceIsSet = true
+	}
 	if _, ok := crdResources.Requests[corev1.ResourceMemory]; ok {
 		memResourceIsSet = true
 	}
 	if _, ok := crdResources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
+	if _, ok := crdResources.Requests[corev1.ResourceEphemeralStorage]; ok {
+		ephemeralStorageResourceIsSet = true
+	}
 
 	if !cpuResourceIsSet && useDefault {
-		if defaultResources.Request.Cpu != config.UnLimitedResource {
+		if defaultResources.Request.Cpu != config.UnlimitedQuantity {
 			crdResources.Requests[corev1.ResourceCPU] = resource.MustParse(defaultResources.Request.Cpu)
 		}
-		if defaultResources.Limit.Cpu != config.UnLimitedResource {
+		if defaultResources.Limit.Cpu != config.UnlimitedQuantity {
 			crdResources.Limits[corev1.ResourceCPU] = resource.MustParse(defaultResources.Limit.Cpu)
 		}
 	}
 	if !memResourceIsSet && useDefault {
-		if defaultResources.Request.Mem != config.UnLimitedResource {
+		if defaultResources.Request.Mem != config.UnlimitedQuantity {
 			crdResources.Requests[corev1.ResourceMemory] = resource.MustParse(defaultResources.Request.Mem)
 		}
-		if defaultResources.Limit.Mem != config.UnLimitedResource {
+		if defaultResources.Limit.Mem != config.UnlimitedQuantity {
 			crdResources.Limits[corev1.ResourceMemory] = resource.MustParse(defaultResources.Limit.Mem)
+		}
+	}
+	if !ephemeralStorageResourceIsSet && useDefault {
+		if defaultResources.Request.EphemeralStorage != config.UnlimitedQuantity {
+			crdResources.Requests[corev1.ResourceEphemeralStorage] = resource.MustParse(defaultResources.Request.EphemeralStorage)
+		}
+		if defaultResources.Limit.EphemeralStorage != config.UnlimitedQuantity {
+			crdResources.Limits[corev1.ResourceEphemeralStorage] = resource.MustParse(defaultResources.Limit.EphemeralStorage)
 		}
 	}
 	return crdResources

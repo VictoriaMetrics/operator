@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	UnLimitedResource = "unlimited"
+	UnlimitedQuantity = "unlimited"
 )
 
 func getVersion(defaultVersion string) string {
@@ -57,6 +57,21 @@ func getEnvOpts() env.Options {
 	return envOpts
 }
 
+// Resource is useful for generic resource building
+// uses the same memory layout as resources at config
+type Resource struct {
+	Limit struct {
+		Mem              string
+		Cpu              string
+		EphemeralStorage string
+	}
+	Request struct {
+		Mem              string
+		Cpu              string
+		EphemeralStorage string
+	}
+}
+
 // ApplicationDefaults is useful for generic default building
 // uses the same memory as application default at config
 type ApplicationDefaults struct {
@@ -66,26 +81,15 @@ type ApplicationDefaults struct {
 	UseDefaultResources bool
 	Resource            struct {
 		Limit struct {
-			Mem string
-			Cpu string
+			Mem              string
+			Cpu              string
+			EphemeralStorage string
 		}
 		Request struct {
-			Mem string
-			Cpu string
+			Mem              string
+			Cpu              string
+			EphemeralStorage string
 		}
-	}
-}
-
-// Resource is useful for generic resource building
-// uses the same memory layout as resources at config
-type Resource struct {
-	Limit struct {
-		Mem string
-		Cpu string
-	}
-	Request struct {
-		Mem string
-		Cpu string
 	}
 }
 
@@ -107,18 +111,32 @@ type BaseOperatorConf struct {
 	ContainerRegistry string `default:"" env:"VM_CONTAINERREGISTRY"`
 	// Deprecated: use VM_CONFIG_RELOADER_IMAGE instead
 	CustomConfigReloaderImage string `env:"VM_CUSTOMCONFIGRELOADERIMAGE"`
-	ConfigReloaderImage       string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:"VM_CONFIG_RELOADER_IMAGE,expand"`
 	PSPAutoCreateEnabled      bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
 	EnableTCP6                bool   `default:"false" env:"VM_ENABLETCP6"`
 
-	// defines global resource.limits.cpu for all config-reloader containers
-	ConfigReloaderLimitCPU string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_CPU"`
-	// defines global resource.limits.memory for all config-reloader containers
-	ConfigReloaderLimitMemory string `default:"unlimited" env:"VM_CONFIG_RELOADER_LIMIT_MEMORY"`
-	// defines global resource.requests.cpu for all config-reloader containers
-	ConfigReloaderRequestCPU string `default:"10m" env:"VM_CONFIG_RELOADER_REQUEST_CPU"`
-	// defines global resource.requests.memory for all config-reloader containers
-	ConfigReloaderRequestMemory string `default:"25Mi" env:"VM_CONFIG_RELOADER_REQUEST_MEMORY"`
+	// defines global config reloader parameters
+	ConfigReloader struct {
+		// default image for all config-reloader containers
+		Image    string `default:"victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}" env:",expand"`
+		Resource struct {
+			Limit struct {
+				// defines global resource.limits.memory for all config-reloader containers
+				Mem string `default:"unlimited" env:"MEMORY"`
+				// defines global resource.limits.cpu for all config-reloader containers
+				Cpu string `default:"unlimited"`
+				// defines global resource.limits.ephemeral-storage for all config-reloader containers
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				// defines global resource.requests.memory for all config-reloader containers
+				Mem string `default:"25Mi" env:"MEMORY"`
+				// defines global resource.requests.cpu for all config-reloader containers
+				Cpu string `default:"10m"`
+				// defines global resource.requests.ephemeral-storage for all config-reloader containers
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"REQUEST_"`
+		}
+	} `prefix:"VM_CONFIG_RELOADER_"`
 
 	VLogsDefault struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
@@ -127,12 +145,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				Mem              string `default:"1500Mi"`
+				Cpu              string `default:"1200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"150m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLOGSDEFAULT_"`
@@ -144,12 +164,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLAGENTDEFAULT_"`
@@ -161,12 +183,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				Mem              string `default:"1500Mi"`
+				Cpu              string `default:"1200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"150m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLSINGLEDEFAULT_"`
@@ -178,12 +202,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				Mem              string `default:"1500Mi"`
+				Cpu              string `default:"1200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"150m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VTSINGLEDEFAULT_"`
@@ -195,12 +221,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMALERTDEFAULT_"`
@@ -218,12 +246,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMAGENTDEFAULT_"`
@@ -235,12 +265,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"200m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"200Mi"`
-				Cpu string `default:"50m"`
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
@@ -252,12 +284,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"1500Mi"`
-				Cpu string `default:"1200m"`
+				Mem              string `default:"1500Mi"`
+				Cpu              string `default:"1200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"150m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"150m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMSINGLEDEFAULT_"`
@@ -270,12 +304,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"1000Mi"`
-					Cpu string `default:"500m"`
+					Mem              string `default:"1000Mi"`
+					Cpu              string `default:"500m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"500Mi"`
-					Cpu string `default:"100m"`
+					Mem              string `default:"500Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSELECTDEFAULT_"`
@@ -287,12 +323,14 @@ type BaseOperatorConf struct {
 			Port         string `default:"8482"`
 			Resource     struct {
 				Limit struct {
-					Mem string `default:"1500Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"1500Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"500Mi"`
-					Cpu string `default:"250m"`
+					Mem              string `default:"500Mi"`
+					Cpu              string `default:"250m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSTORAGEDEFAULT_"`
@@ -302,12 +340,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"500Mi"`
-					Cpu string `default:"500m"`
+					Mem              string `default:"500Mi"`
+					Cpu              string `default:"500m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"200Mi"`
-					Cpu string `default:"150m"`
+					Mem              string `default:"200Mi"`
+					Cpu              string `default:"150m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMINSERTDEFAULT_"`
@@ -319,12 +359,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource                     struct {
 			Limit struct {
-				Mem string `default:"256Mi"`
-				Cpu string `default:"100m"`
+				Mem              string `default:"256Mi"`
+				Cpu              string `default:"100m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"56Mi"`
-				Cpu string `default:"30m"`
+				Mem              string `default:"56Mi"`
+				Cpu              string `default:"30m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMALERTMANAGER_"`
@@ -337,12 +379,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"500Mi"`
-				Cpu string `default:"500m"`
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"500m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"200Mi"`
-				Cpu string `default:"150m"`
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"150m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMBACKUP_"`
@@ -353,12 +397,14 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource            struct {
 			Limit struct {
-				Mem string `default:"300Mi"`
-				Cpu string `default:"200m"`
+				Mem              string `default:"300Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"LIMIT_"`
 			Request struct {
-				Mem string `default:"100Mi"`
-				Cpu string `default:"50m"`
+				Mem              string `default:"100Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMAUTHDEFAULT_"`
@@ -371,12 +417,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"9471"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSELECTDEFAULT_"`
@@ -386,12 +434,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"9491"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"2048Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"2048Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"512Mi"`
-					Cpu string `default:"200m"`
+					Mem              string `default:"512Mi"`
+					Cpu              string `default:"200m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSTORAGEDEFAULT_"`
@@ -401,12 +451,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"9481"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLINSERTDEFAULT_"`
@@ -420,12 +472,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"10471"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"SELECT_"`
@@ -435,12 +489,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"10491"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"2048Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"2048Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"512Mi"`
-					Cpu string `default:"200m"`
+					Mem              string `default:"512Mi"`
+					Cpu              string `default:"200m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"STORAGE_"`
@@ -450,12 +506,14 @@ type BaseOperatorConf struct {
 			Port     string `default:"10481"`
 			Resource struct {
 				Limit struct {
-					Mem string `default:"1024Mi"`
-					Cpu string `default:"1000m"`
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"LIMIT_"`
 				Request struct {
-					Mem string `default:"256Mi"`
-					Cpu string `default:"100m"`
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"INSERT_"`
@@ -534,58 +592,48 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 }
 
 // Validate - validates config on best effort.
-func (boc BaseOperatorConf) Validate() error {
+func (boc BaseOperatorConf) validate() error {
 	for _, ns := range boc.WatchNamespaces {
 		if !validNamespaceRegex.MatchString(ns) {
 			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())
 		}
 	}
 	validateResource := func(name string, res Resource) error {
-		if res.Request.Mem != UnLimitedResource {
+		if res.Request.Mem != UnlimitedQuantity {
 			if _, err := resource.ParseQuantity(res.Request.Mem); err != nil {
 				return fmt.Errorf("cannot parse resource request memory for %q: %w", name, err)
 			}
 		}
-		if res.Request.Cpu != UnLimitedResource {
+		if res.Request.Cpu != UnlimitedQuantity {
 			if _, err := resource.ParseQuantity(res.Request.Cpu); err != nil {
 				return fmt.Errorf("cannot parse resource request cpu for %q: %w", name, err)
 			}
 		}
-		if res.Limit.Mem != UnLimitedResource {
+		if res.Request.EphemeralStorage != UnlimitedQuantity {
+			if _, err := resource.ParseQuantity(res.Request.EphemeralStorage); err != nil {
+				return fmt.Errorf("cannot parse resource request ephemeral storage for %q: %w", name, err)
+			}
+		}
+		if res.Limit.Mem != UnlimitedQuantity {
 			if _, err := resource.ParseQuantity(res.Limit.Mem); err != nil {
 				return fmt.Errorf("cannot parse resource limit memory for %q: %w", name, err)
 			}
 		}
-		if res.Limit.Cpu != UnLimitedResource {
+		if res.Limit.Cpu != UnlimitedQuantity {
 			if _, err := resource.ParseQuantity(res.Limit.Cpu); err != nil {
 				return fmt.Errorf("cannot parse resource limit cpu for %q: %w", name, err)
 			}
 		}
+		if res.Limit.EphemeralStorage != UnlimitedQuantity {
+			if _, err := resource.ParseQuantity(res.Limit.EphemeralStorage); err != nil {
+				return fmt.Errorf("cannot parse resource limit ephemeral storage for %q: %w", name, err)
+			}
+		}
 		return nil
 	}
-
-	if boc.ConfigReloaderLimitMemory != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit memory: %w", err)
-		}
+	if err := validateResource("config-reloader", Resource(boc.ConfigReloader.Resource)); err != nil {
+		return err
 	}
-	if boc.ConfigReloaderLimitCPU != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderLimitCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource limit cpu: %w", err)
-		}
-	}
-
-	if len(boc.ConfigReloaderRequestMemory) > 0 && boc.ConfigReloaderRequestMemory != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestMemory); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request memory: %w", err)
-		}
-	}
-	if len(boc.ConfigReloaderRequestCPU) > 0 && boc.ConfigReloaderRequestCPU != UnLimitedResource {
-		if _, err := resource.ParseQuantity(boc.ConfigReloaderRequestCPU); err != nil {
-			return fmt.Errorf("cannot parse global config-reloader resource request cpu: %w", err)
-		}
-	}
-
 	if err := validateResource("vmagent", Resource(boc.VMAgentDefault.Resource)); err != nil {
 		return err
 	}
@@ -654,9 +702,9 @@ func MustGetBaseConfig() *BaseOperatorConf {
 			panic(err)
 		}
 		if c.CustomConfigReloaderImage != "" {
-			c.ConfigReloaderImage = c.CustomConfigReloaderImage
+			c.ConfigReloader.Image = c.CustomConfigReloaderImage
 		}
-		if err := c.Validate(); err != nil {
+		if err := c.validate(); err != nil {
 			panic(err)
 		}
 		opConf = &c

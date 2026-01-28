@@ -238,12 +238,14 @@ func addVMSingleDefaults(objI any) {
 		UseDefaultResources: c.VMBackup.UseDefaultResources,
 		Resource: struct {
 			Limit struct {
-				Mem string
-				Cpu string
+				Mem              string
+				Cpu              string
+				EphemeralStorage string
 			}
 			Request struct {
-				Mem string
-				Cpu string
+				Mem              string
+				Cpu              string
+				EphemeralStorage string
 			}
 		}(c.VMBackup.Resource),
 	}
@@ -316,12 +318,14 @@ func addVMAlertmanagerDefaults(objI any) {
 		UseDefaultResources: amcd.UseDefaultResources,
 		Resource: struct {
 			Limit struct {
-				Mem string
-				Cpu string
+				Mem              string
+				Cpu              string
+				EphemeralStorage string
 			}
 			Request struct {
-				Mem string
-				Cpu string
+				Mem              string
+				Cpu              string
+				EphemeralStorage string
 			}
 		}(amcd.Resource),
 	}
@@ -379,12 +383,14 @@ func addVMClusterSpecDefaults(spec *vmv1beta1.VMClusterSpec) {
 			UseDefaultResources: c.VMBackup.UseDefaultResources,
 			Resource: struct {
 				Limit struct {
-					Mem string
-					Cpu string
+					Mem              string
+					Cpu              string
+					EphemeralStorage string
 				}
 				Request struct {
-					Mem string
-					Cpu string
+					Mem              string
+					Cpu              string
+					EphemeralStorage string
 				}
 			}(c.VMBackup.Resource),
 		}
@@ -590,27 +596,12 @@ func addDefaultsToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 		if common.ConfigReloaderImageTag != "" {
 			common.ConfigReloaderImage = common.ConfigReloaderImageTag
 		} else {
-			common.ConfigReloaderImage = c.ConfigReloaderImage
+			common.ConfigReloaderImage = c.ConfigReloader.Image
 		}
 	}
 
 	common.ConfigReloaderImage = formatContainerImage(c.ContainerRegistry, common.ConfigReloaderImage)
-	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
-		Limit: struct {
-			Mem string
-			Cpu string
-		}{
-			Cpu: c.ConfigReloaderLimitCPU,
-			Mem: c.ConfigReloaderLimitMemory,
-		},
-		Request: struct {
-			Mem string
-			Cpu string
-		}{
-			Cpu: c.ConfigReloaderRequestCPU,
-			Mem: c.ConfigReloaderRequestMemory,
-		},
-	}, useDefaultResources)
+	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource(c.ConfigReloader.Resource), useDefaultResources)
 }
 
 func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {

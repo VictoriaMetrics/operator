@@ -219,7 +219,7 @@ func RunManager(ctx context.Context) error {
 	flagsAsMetrics(r, managerFlags)
 	config.ConfigAsMetrics(r, baseConfig)
 
-	setupLog.Info("Registering Components.")
+	setupLog.Info("registering Components.")
 	var watchNsCacheByName map[string]cache.Config
 	if len(baseConfig.WatchNamespaces) > 0 {
 		setupLog.Info("operator configured with watching for subset of namespaces, cluster wide access is disabled", "namespaces", strings.Join(baseConfig.WatchNamespaces, ","))

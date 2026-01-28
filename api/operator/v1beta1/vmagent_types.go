@@ -146,7 +146,7 @@ func (cr *VMAgent) Validate() error {
 	if cr.Spec.InlineScrapeConfig != "" {
 		var inlineCfg yaml.MapSlice
 		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineCfg); err != nil {
-			return fmt.Errorf("bad cr.spec.inlineScrapeConfig it must be valid yaml, err :%w", err)
+			return fmt.Errorf("bad cr.spec.inlineScrapeConfig it must be valid yaml: %w", err)
 		}
 	}
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
@@ -156,11 +156,11 @@ func (cr *VMAgent) Validate() error {
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {
-			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
+			return fmt.Errorf("remoteWrite[%d].url cannot be empty", idx)
 		}
 		if len(rw.InlineUrlRelabelConfig) > 0 {
 			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
-				return fmt.Errorf("bad urlRelabelingConfig at idx: %d, err: %w", idx, err)
+				return fmt.Errorf("bad remoteWrite[%d].urlRelabelingConfig: %w", idx, err)
 			}
 		}
 	}
@@ -179,7 +179,7 @@ func (cr *VMAgent) Validate() error {
 	defaultScrapeClass := false
 	for _, sc := range cr.Spec.ScrapeClasses {
 		if _, ok := scrapeClassNames[sc.Name]; ok {
-			return fmt.Errorf("duplicate scrape class name %q", sc.Name)
+			return fmt.Errorf("duplicated scrapeClass=%q", sc.Name)
 		}
 		if ptr.Deref(sc.Default, false) {
 			if defaultScrapeClass {
@@ -189,17 +189,17 @@ func (cr *VMAgent) Validate() error {
 		}
 		if sc.TLSConfig != nil {
 			if err := sc.TLSConfig.Validate(); err != nil {
-				return fmt.Errorf("incorrect tlsConfig for scrape class %q: %w", sc.Name, err)
+				return fmt.Errorf("incorrect tlsConfig for scrapeClass=%q: %w", sc.Name, err)
 			}
 		}
 		if err := sc.OAuth2.validate(); err != nil {
-			return fmt.Errorf("incorrect oauth2 for scrape class %q: %w", sc.Name, err)
+			return fmt.Errorf("incorrect oauth2 for scrapeClass=%q: %w", sc.Name, err)
 		}
 		if err := sc.Authorization.validate(); err != nil {
-			return fmt.Errorf("incorrect authorization for scrape class %q:: %w", sc.Name, err)
+			return fmt.Errorf("incorrect authorization for scrapeClass=%q: %w", sc.Name, err)
 		}
 		if err := sc.validate(); err != nil {
-			return fmt.Errorf("incorrect relabeling for scrape class %q:: %w", sc.Name, err)
+			return fmt.Errorf("incorrect relabeling for scrapeClass=%q: %w", sc.Name, err)
 		}
 	}
 	return nil

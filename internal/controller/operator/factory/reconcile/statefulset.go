@@ -178,7 +178,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 		// check if pvcs need to resize
 		if cr.HasClaim {
-			err = growSTSPVC(ctx, rclient, newSts)
+			err = updateSTSPVC(ctx, rclient, newSts)
 		}
 
 		return err

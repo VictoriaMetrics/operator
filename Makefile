@@ -156,8 +156,8 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo
-	$(GINKGO_BIN) \
+test-e2e: load-kind ginkgo crust-gather
+	env CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(GINKGO_BIN) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-timeout=30m \
 		-junit-report=report.xml ./test/e2e/...
@@ -380,7 +380,7 @@ OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
 YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
-GINKGO_VERSION ?= v2.23.0
+CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.6.0
@@ -393,6 +393,8 @@ OLM_VERSION ?= 0.31.0
 OPERATOR_SDK_VERSION ?= v1.39.1
 OPM_VERSION ?= v1.51.0
 YQ_VERSION ?= v4.45.1
+GINKGO_VERSION ?= v2.23.0
+CRUST_GATHER_VERSION ?= v0.11.0
 
 CRD_REF_DOCS_VERSION ?= latest
 
@@ -464,6 +466,18 @@ yq: $(YQ)
 $(YQ): $(LOCALBIN)
 	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,$(YQ_VERSION))
 
+UNAME_S=$(shell uname -s 2>/dev/null)
+OS=$(shell echo $(UNAME_S) | tr A-Z a-z)
+ARCH=$(if $(filter x86_64,$(shell uname -m 2>/dev/null)),amd64,arm64)
+.PHONY: crust-gather
+crust-gather: $(CRUST_GATHER_BIN)
+$(CRUST_GATHER_BIN): $(LOCALBIN)
+	$(call download-github-release,$(CRUST_GATHER_BIN),crust-gather/crust-gather,$(CRUST_GATHER_VERSION),kubectl-crust-gather_$(CRUST_GATHER_VERSION)_$(OS)_$(ARCH).tar.gz,kubectl-crust-gather)
+
+.PHONY: allure-report
+allure-report:
+	npx allure awesome --single-file /tmp/allure-results -o /tmp/allure-report.html
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
 # $2 - package url which can be installed
@@ -475,5 +489,28 @@ package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 GOBIN=$(LOCALBIN) go install $${package} ;\
 mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) || echo "move not needed" ;\
+}
+endef
+
+# download-github-release will download a binary from github releases
+# $1 - target path with name of binary
+# $2 - repo url
+# $3 - specific version of package
+# $4 - artifact name
+# $5 - binary name
+define download-github-release
+@[ -f $(1) ] || { \
+set -e; \
+url="https://github.com/$(2)/releases/download/$(3)/$(4)"; \
+echo "Downloading $(1) from $${url}" ;\
+if echo "$(4)" | grep -q ".tar.gz$$"; then \
+curl -sL $${url} -o $(LOCALBIN)/$(4); \
+tar -xzf $(LOCALBIN)/$(4) -C $(LOCALBIN); \
+mv $(LOCALBIN)/$(5) $(1); \
+rm $(LOCALBIN)/$(4); \
+else \
+curl -sL $${url} -o $(1); \
+chmod +x $(1); \
+fi; \
 }
 endef

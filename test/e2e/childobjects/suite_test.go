@@ -22,22 +22,28 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "e2e Controller Child objects")
 }
 
-var k8sClient client.Client
-var _ = SynchronizedBeforeSuite(
-	func() {
-		suite.InitOperatorProcess()
-	},
-	func() {
-		k8sClient = suite.GetClient()
-	})
+var (
+	k8sClient client.Client
 
-var _ = SynchronizedAfterSuite(
-	func() {
-		suite.StopClient()
-	},
-	func() {
-		suite.ShutdownOperatorProcess()
-	})
+	_ = SynchronizedBeforeSuite(
+		func() {
+			suite.InitOperatorProcess()
+		},
+		func() {
+			k8sClient = suite.GetClient()
+		})
+
+	_ = SynchronizedAfterSuite(
+		func() {
+			suite.StopClient()
+		},
+		func() {
+			suite.ShutdownOperatorProcess()
+		})
+
+	_ = AfterEach(suite.CollectK8SResources)
+	_ = ReportAfterSuite("allure report", suite.AllureReport)
+)
 
 func expectConditionOkFor(conds []vmv1beta1.Condition, typeCondtains string) error {
 	for _, cond := range conds {

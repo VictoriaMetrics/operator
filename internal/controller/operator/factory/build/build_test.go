@@ -1,11 +1,12 @@
 package build
 
 import (
-	"reflect"
+	"bytes"
+	"encoding/binary"
 	"slices"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -25,10 +26,7 @@ func TestLicenseAddArgsTo(t *testing.T) {
 		got := LicenseArgsTo(o.args, &o.license, o.secretMountDir)
 		slices.Sort(got)
 		slices.Sort(o.want)
-
-		if !reflect.DeepEqual(got, o.want) {
-			t.Errorf("vmv1beta1.License.MaybeAddToArgs(): %s", cmp.Diff(got, o.want))
-		}
+		assert.Equal(t, o.want, got)
 	}
 
 	// license key provided
@@ -79,4 +77,39 @@ func TestLicenseAddArgsTo(t *testing.T) {
 		secretMountDir: "/etc/secrets",
 		want:           []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
 	})
+}
+
+func TestGzipGunzipConfig(t *testing.T) {
+	f := func(data any) {
+		var b bytes.Buffer
+		var err error
+		t.Helper()
+		switch d := data.(type) {
+		case string:
+			_, err = b.Write([]byte(d))
+		default:
+			err = binary.Write(&b, binary.BigEndian, data)
+		}
+		if err != nil {
+			t.Errorf("failed to write data to buffer: %v", err)
+		}
+		compressed, err := GzipConfig(b.Bytes())
+		if err != nil {
+			t.Errorf("failed to compress data: %v", err)
+		}
+		uncompressed, err := GunzipConfig(compressed)
+		if err != nil {
+			t.Errorf("failed to uncompress data: %v", err)
+		}
+		assert.True(t, bytes.Equal(b.Bytes(), uncompressed))
+	}
+
+	// test compression-decompression
+	f("test data")
+
+	// empty data
+	f("")
+
+	// binary data
+	f([]int32{1, 2, 3, 4})
 }

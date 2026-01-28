@@ -1,11 +1,8 @@
 package vmagent
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -134,16 +131,10 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 			t.Fatalf("cannot get vmagent config secret: %s", err)
 		}
 		gotCfg := expectSecret.Data[scrapeGzippedFilename]
-		cfgB := bytes.NewBuffer(gotCfg)
-		gr, err := gzip.NewReader(cfgB)
+		data, err := build.GunzipConfig(gotCfg)
 		if err != nil {
-			t.Fatalf("er: %s", err)
+			t.Fatalf("cannot gunzip vmagent config: %s", err)
 		}
-		data, err := io.ReadAll(gr)
-		if err != nil {
-			t.Fatalf("cannot read cfg: %s", err)
-		}
-		gr.Close()
 		assert.Equal(t, o.wantConfig, string(data))
 	}
 
@@ -2248,16 +2239,10 @@ scrape_configs: []
 		}
 
 		gotCfg := configSecret.Data[scrapeGzippedFilename]
-		cfgB := bytes.NewBuffer(gotCfg)
-		gr, err := gzip.NewReader(cfgB)
+		data, err := build.GunzipConfig(gotCfg)
 		if err != nil {
-			t.Fatalf("er: %s", err)
+			t.Fatalf("cannot gunzip vmagent config: %s", err)
 		}
-		data, err := io.ReadAll(gr)
-		if err != nil {
-			t.Fatalf("cannot read cfg: %s", err)
-		}
-		gr.Close()
 		assert.Equal(t, expectedConfig, string(data))
 
 		if err := testClient.Get(ctx, types.NamespacedName{Name: so.GetName(), Namespace: so.GetNamespace()}, so); err != nil {

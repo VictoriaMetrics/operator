@@ -1,8 +1,6 @@
 package vmauth
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"path"
@@ -418,11 +416,11 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		}
 	}
 
-	var buf bytes.Buffer
-	if err := gzipConfig(&buf, generatedConfig); err != nil {
-		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+	data, err := build.GzipConfig(generatedConfig)
+	if err != nil {
+		return fmt.Errorf("cannot gzip config for vmauth: %w", err)
 	}
-	s.Data[vmAuthConfigNameGz] = buf.Bytes()
+	s.Data[vmAuthConfigNameGz] = data
 	var prevSecretMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
@@ -548,15 +546,6 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 		},
 		Spec: spec,
 	}
-}
-
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
-	return nil
 }
 
 func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {

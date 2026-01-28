@@ -1,8 +1,6 @@
 package vmalertmanager
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"path"
@@ -528,14 +526,14 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		return fmt.Errorf("incorrect result configuration, config source=%s: %w", configSourceName, err)
 	}
 
-	var buf bytes.Buffer
-	if err := gzipConfig(&buf, alertmanagerConfig); err != nil {
-		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+	dataGz, err := build.GzipConfig(alertmanagerConfig)
+	if err != nil {
+		return fmt.Errorf("cannot gzip config for vmalertmanager: %w", err)
 	}
 	newAMSecretConfig := &corev1.Secret{
 		ObjectMeta: *buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
-			alertmanagerSecretConfigKeyGz: buf.Bytes(),
+			alertmanagerSecretConfigKeyGz: dataGz,
 		},
 	}
 	creds := ac.GetOutput()
@@ -600,15 +598,6 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 		return d, nil
 	}
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
-}
-
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
-	return nil
 }
 
 func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, ac *build.AssetsCache) (*parsedObjects, []byte, error) {

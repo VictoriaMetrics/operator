@@ -1,8 +1,6 @@
 package vmagent
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"reflect"
@@ -233,11 +231,11 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		}
 		if kind == build.SecretConfigResourceKind {
 			// Compress config to avoid 1mb secret limit for a while
-			var buf bytes.Buffer
-			if err = gzipConfig(&buf, generatedConfig); err != nil {
+			data, err := build.GzipConfig(generatedConfig)
+			if err != nil {
 				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
 			}
-			secret.Data[scrapeGzippedFilename] = buf.Bytes()
+			secret.Data[scrapeGzippedFilename] = data
 		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		secret.Annotations = map[string]string{
@@ -334,15 +332,6 @@ func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 		return fmt.Errorf("it accesses file system via tls config which VMAgent specification prohibits")
 	}
 
-	return nil
-}
-
-func gzipConfig(buf *bytes.Buffer, conf []byte) error {
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-	if _, err := w.Write(conf); err != nil {
-		return err
-	}
 	return nil
 }
 

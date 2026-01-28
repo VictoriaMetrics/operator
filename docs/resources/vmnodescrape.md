@@ -47,13 +47,8 @@ spec:
     insecureSkipVerify: true
     caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  metrics_path: /metrics/cadvisor
   relabelConfigs:
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
-    - targetLabel: __address__
-      replacement: kubernetes.default.svc:443
-    - sourceLabels: [__meta_kubernetes_node_name]
-      regex: (.+)
-      targetLabel: __metrics_path__
-      replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
 ```

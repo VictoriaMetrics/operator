@@ -32,7 +32,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmauth"
 )
@@ -57,8 +56,6 @@ func (r *VMUserReconciler) Init(rclient client.Client, l logr.Logger, sc *runtim
 func (r *VMUserReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
 }
-
-var vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
 
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers,verbs=get;list;watch;create;update;patch;delete
@@ -86,9 +83,12 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 	}
 
-	if vmauthRateLimiter.MustThrottleReconcile() {
+	if authReconcileLimit.MustThrottleReconcile() {
 		return
 	}
+
+	authSync.Lock()
+	defer authSync.Unlock()
 	var objects vmv1beta1.VMAuthList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAuthList) {
 		objects.Items = append(objects.Items, dst.Items...)

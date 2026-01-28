@@ -18,15 +18,20 @@ package operator
 
 import (
 	"context"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 var _ = Describe("VMAgent Controller", func() {
@@ -81,3 +86,86 @@ var _ = Describe("VMAgent Controller", func() {
 		})
 	})
 })
+
+func TestVMAgent_Reconcile_AgentSync_Managed(t *testing.T) {
+	g := NewWithT(t)
+	managed := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "managed",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				SelectAllByDefault: true,
+			},
+		},
+	}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{managed})
+	r := &VMAgentReconciler{
+		Client:       fclient,
+		BaseConf:     &config.BaseOperatorConf{},
+		Log:          ctrl.Log.WithName("test"),
+		OriginScheme: fclient.Scheme(),
+	}
+
+	// start with locked agent reconcile
+	locked := true
+	agentSync.Lock()
+	defer func() {
+		if locked {
+			agentSync.Unlock()
+		}
+	}()
+	// Create a channel to monitor reconcile completion
+	doneCh := make(chan struct{})
+	go func() {
+		nsn := types.NamespacedName{Name: managed.Name, Namespace: managed.Namespace}
+		_, _ = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nsn})
+		// Close done channel when reconcile completes
+		close(doneCh)
+	}()
+	// ensure that reconcile is blocked
+	g.Consistently(doneCh, "1s").ShouldNot(BeClosed())
+
+	// reconcile completes when agentSync is unlocked
+	locked = false
+	agentSync.Unlock()
+	g.Eventually(doneCh, "5s").Should(BeClosed())
+}
+
+func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
+	g := NewWithT(t)
+	unmanaged := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unmanaged",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+		},
+	}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{unmanaged})
+	r := &VMAgentReconciler{
+		Client:       fclient,
+		BaseConf:     &config.BaseOperatorConf{},
+		Log:          ctrl.Log.WithName("test"),
+		OriginScheme: fclient.Scheme(),
+	}
+
+	// Start with locked agent reconcile
+	agentSync.Lock()
+	defer agentSync.Unlock()
+
+	// Create a channel to monitor reconcile completion
+	doneCh := make(chan struct{})
+	go func() {
+		nsn := types.NamespacedName{Name: unmanaged.Name, Namespace: unmanaged.Namespace}
+		_, _ = r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nsn})
+		// Close done channel when reconcile completes
+		close(doneCh)
+	}()
+	// The channel should be closed immediately - resource is unmanaged
+	g.Eventually(doneCh, "5s").Should(BeClosed())
+}

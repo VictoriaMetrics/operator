@@ -2,13 +2,17 @@ package vmdistributed
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 )
 
 func fetchMetricValues(ctx context.Context, httpClient *http.Client, url, metricName, dimension string) (map[string]float64, error) {
@@ -242,78 +246,19 @@ func prevBackslashesCount(s string) int {
 	return n
 }
 
-// mergeDeep merges an override object into a base one.
-// Fields present in the override will overwrite corresponding fields in the base.
-func mergeDeep[T comparable](base, override T) (bool, error) {
-	var zero T
-	if override == zero {
-		return false, nil
+// setOwnerRefIfNeeded ensures obj has VMDistributed owner reference set.
+func setOwnerRefIfNeeded(cr *vmv1alpha1.VMDistributed, obj client.Object, scheme *runtime.Scheme) (bool, error) {
+	key := fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())
+	if err := cr.Owns(obj); err != nil {
+		return false, fmt.Errorf("failed to validate owner references for %T=%s: %w", obj, key, err)
 	}
-
-	baseJSON, err := json.Marshal(base)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal base spec: %w", err)
-	}
-	overrideJSON, err := json.Marshal(override)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal override spec: %w", err)
-	}
-
-	var baseMap map[string]any
-	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal base spec to map: %w", err)
-	}
-	var overrideMap map[string]any
-	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal override spec to map: %w", err)
-	}
-
-	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
-	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
-	updated := mergeMapsRecursive(baseMap, overrideMap)
-	mergedSpecJSON, err := json.Marshal(baseMap)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal merged spec map: %w", err)
-	}
-
-	if err := json.Unmarshal(mergedSpecJSON, base); err != nil {
-		return false, fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
-	}
-
-	return updated, nil
-}
-
-// mergeMapsRecursive deeply merges overrideMap into baseMap.
-// It handles nested maps (which correspond to nested structs after JSON unmarshal).
-// Values from overrideMap overwrite values in baseMap.
-// It returns a boolean indicating if the baseMap was modified.
-func mergeMapsRecursive(baseMap, overrideMap map[string]any) bool {
-	var modified bool
-	if len(overrideMap) == 0 {
-		return modified
-	}
-	for key, overrideValue := range overrideMap {
-		if baseVal, ok := baseMap[key]; ok {
-			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
-				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
-					// Both are nested maps, recurse
-					if mergeMapsRecursive(baseMapNested, overrideMapNested) {
-						modified = true
-					}
-					continue
-				}
-			}
+	if ok, err := controllerutil.HasOwnerReference(obj.GetOwnerReferences(), cr, scheme); err != nil {
+		return false, fmt.Errorf("failed to check owner reference for %T=%s: %w", obj, key, err)
+	} else if !ok {
+		if err := controllerutil.SetOwnerReference(cr, obj, scheme); err != nil {
+			return false, fmt.Errorf("failed to set owner reference for %T=%s: %w", obj, key, err)
 		}
-
-		// For all other cases (scalar values, or when types for nested maps don't match),
-		// override the baseMap value. This handles explicit zero values and ensures
-		// overrides take precedence.
-		// We assign first, then check if it was a modification.
-		oldValue, exists := baseMap[key]
-		baseMap[key] = overrideValue // Force the overwrite for this key
-		if !exists || !reflect.DeepEqual(oldValue, overrideValue) {
-			modified = true
-		}
+		return true, nil
 	}
-	return modified
+	return false, nil
 }

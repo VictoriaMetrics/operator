@@ -9,7 +9,7 @@ spec:
         app: vmagent-app
   vmauth:
     name: with-label-selector
-  commonZone:
+  zoneCommon:
     vmcluster:
       spec:
         vmstorage:

@@ -16140,30 +16140,6 @@ spec:
             type: object
           spec:
             properties:
-              commonZone:
-                properties:
-                  name:
-                    type: string
-                  remoteWrite:
-                    x-kubernetes-preserve-unknown-fields: true
-                  vmcluster:
-                    properties:
-                      name:
-                        type: string
-                      ref:
-                        properties:
-                          name:
-                            default: ""
-                            type: string
-                        type: object
-                        x-kubernetes-map-type: atomic
-                      spec:
-                        x-kubernetes-preserve-unknown-fields: true
-                    type: object
-                    x-kubernetes-validations:
-                    - message: must specify either ref or name, not both
-                      rule: '!(has(self.ref) && has(self.name))'
-                type: object
               license:
                 properties:
                   forceOffline:
@@ -16188,36 +16164,10 @@ spec:
                 type: object
               paused:
                 type: boolean
-              readyDeadline:
-                type: string
+              retain:
+                type: boolean
               vmagent:
                 properties:
-                  labelSelector:
-                    properties:
-                      matchExpressions:
-                        items:
-                          properties:
-                            key:
-                              type: string
-                            operator:
-                              type: string
-                            values:
-                              items:
-                                type: string
-                              type: array
-                              x-kubernetes-list-type: atomic
-                          required:
-                          - key
-                          - operator
-                          type: object
-                        type: array
-                        x-kubernetes-list-type: atomic
-                      matchLabels:
-                        additionalProperties:
-                          type: string
-                        type: object
-                    type: object
-                    x-kubernetes-map-type: atomic
                   name:
                     type: string
                   spec:
@@ -20104,8 +20054,6 @@ spec:
                         type: array
                     type: object
                 type: object
-              vmagentFlushDeadline:
-                type: string
               vmauth:
                 properties:
                   name:
@@ -25144,8 +25092,22 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
-              zoneUpdatePause:
-                type: string
+              zoneCommon:
+                properties:
+                  readyTimeout:
+                    type: string
+                  remoteWrite:
+                    x-kubernetes-preserve-unknown-fields: true
+                  updatePause:
+                    type: string
+                  vmcluster:
+                    properties:
+                      name:
+                        type: string
+                      spec:
+                        x-kubernetes-preserve-unknown-fields: true
+                    type: object
+                type: object
               zones:
                 items:
                   properties:
@@ -25157,19 +25119,11 @@ spec:
                       properties:
                         name:
                           type: string
-                        ref:
-                          properties:
-                            name:
-                              default: ""
-                              type: string
-                          type: object
-                          x-kubernetes-map-type: atomic
                         spec:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
-                      x-kubernetes-validations:
-                      - message: must specify either ref or name, not both
-                        rule: '!(has(self.ref) && has(self.name))'
+                  required:
+                  - name
                   type: object
                 type: array
             type: object

@@ -47,7 +47,7 @@ spec:
     name: global-read-vmauth
     spec:
       replicaCount: 1
-  commonZone:
+  zoneCommon:
     vmcluster:
       ref:
         name: vmcluster-%ZONE%

@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -84,7 +85,7 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	return nil
 }
 
-func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
+func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -118,45 +119,78 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 			l.Info(fmt.Sprintf("possible BUG, cannot find target PVC=%s in new statefulset by claim name=%s", pvc.Name, stsClaimName))
 			continue
 		}
-		// check if pvc need to grow
-		newSize := stsClaim.Spec.Resources.Requests.Storage()
-		oldSize := pvc.Spec.Resources.Requests.Storage()
-		if !mayGrow(ctx, &pvc, newSize, oldSize) {
-			continue
+		// update PVC size and metadata if it's needed
+		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil); err != nil {
+			return err
 		}
-		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", pvc.Name, oldSize, newSize))
-		// check if storage class is expandable
-		isExpandable, err := isStorageClassExpandable(ctx, rclient, &stsClaim)
-		if err != nil {
-			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
+	}
+	return nil
+}
+
+func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev1.PersistentVolumeClaim) error {
+	srcSize := src.Spec.Resources.Requests.Storage()
+	dstSize := dst.Spec.Resources.Requests.Storage()
+	if srcSize == nil || dstSize == nil {
+		return nil
+	}
+	direction := dstSize.Cmp(*srcSize)
+	if direction == 0 && equality.Semantic.DeepEqual(src.Labels, dst.Labels) && isObjectMetaEqual(src, dst, prev) {
+		return nil
+	}
+
+	pvc := src.DeepCopy()
+	pvc.Labels = maps.Clone(dst.Labels)
+	pvc.Annotations = maps.Clone(dst.Annotations)
+	if direction != 0 {
+		// do not perform any checks if user set annotation explicitly.
+		var expandable bool
+		v, ok := dst.Annotations[vmv1beta1.PVCExpandableLabel]
+		if ok {
+			switch strings.ToLower(v) {
+			case "false":
+				return nil
+			case "true":
+				expandable = true
+			default:
+				return fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
+			}
 		}
-		if !isExpandable {
+
+		l := logger.WithContext(ctx)
+		if direction < 0 {
+			// probably, user updated pvc manually
+			// without applying this changes to the configuration.
+			l.Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", dst.Name, srcSize.String(), dstSize.String()))
+			return nil
+		}
+
+		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", dst.Name, srcSize, dstSize))
+		if !expandable {
+			// check if storage class is expandable
+			var err error
+			expandable, err = isStorageClassExpandable(ctx, rclient, dst)
+			if err != nil {
+				return fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", dst.Name, err)
+			}
+		}
+		if !expandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", ptr.Deref(pvc.Spec.StorageClassName, "default"), pvc.Name))
-			continue
+			sc := ptr.Deref(dst.Spec.StorageClassName, "default")
+			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", sc, dst.Name))
+			return nil
 		}
-		err = growPVCs(ctx, rclient, newSize, &pvc)
-		if err != nil {
-			return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
-		}
+		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
+	}
+	vmv1beta1.AddFinalizer(pvc, src)
+	mergeObjectMetadataIntoNew(dst, pvc, prev)
+	if err := rclient.Update(ctx, pvc); err != nil {
+		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)
 	}
 	return nil
 }
 
 // isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
-	// do not perform any checks if user set annotation explicitly.
-	v, ok := pvc.Annotations[vmv1beta1.PVCExpandableLabel]
-	if ok {
-		switch v {
-		case "true", "True":
-			return true, nil
-		case "false", "False":
-			return false, nil
-		default:
-			return false, fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
-		}
-	}
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {
 		// don't return error to caller, since there is no point to requeue and reconcile this
@@ -165,68 +199,28 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 			vmv1beta1.PVCExpandableLabel))
 		return false, nil
 	}
-	var isNotDefault bool
-	var className string
-	if pvc.Spec.StorageClassName != nil {
-		className = *pvc.Spec.StorageClassName
-		isNotDefault = true
-	}
-	if name, ok := pvc.Annotations["volume.beta.kubernetes.io/storage-class"]; ok {
-		className = name
-		isNotDefault = true
-	}
 	var storageClasses storagev1.StorageClassList
 	if err := rclient.List(ctx, &storageClasses); err != nil {
 		return false, fmt.Errorf("cannot list storageClass: %w", err)
 	}
-	allowExpansion := func(class storagev1.StorageClass) bool {
-		if class.AllowVolumeExpansion != nil && *class.AllowVolumeExpansion {
-			return true
-		}
-		return false
+	var className string
+	if pvc.Spec.StorageClassName != nil {
+		className = *pvc.Spec.StorageClassName
+	}
+	if name, ok := pvc.Annotations["volume.beta.kubernetes.io/storage-class"]; ok {
+		className = name
 	}
 	for i := range storageClasses.Items {
-		class := storageClasses.Items[i]
-		// look for default storageClass.
-		if !isNotDefault {
-			if annotation, ok := class.Annotations["storageclass.kubernetes.io/is-default-class"]; ok {
-				if annotation == "true" {
-					return allowExpansion(class), nil
-				}
-			}
-		}
-		// check class name.
-		if isNotDefault {
+		class := &storageClasses.Items[i]
+		if len(className) > 0 {
 			if class.Name == className {
-				return allowExpansion(class), nil
+				return ptr.Deref(class.AllowVolumeExpansion, false), nil
 			}
+		} else if annotation, ok := class.Annotations["storageclass.kubernetes.io/is-default-class"]; ok && annotation == "true" {
+			return ptr.Deref(class.AllowVolumeExpansion, false), nil
 		}
 	}
 	return false, nil
-}
-
-func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, pvc *corev1.PersistentVolumeClaim) error {
-	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
-	return rclient.Update(ctx, pvc)
-}
-
-// checks if pvc needs to be resized.
-func mayGrow(ctx context.Context, pvc *corev1.PersistentVolumeClaim, newSize, existSize *resource.Quantity) bool {
-	if newSize == nil || existSize == nil {
-		return false
-	}
-	switch newSize.Cmp(*existSize) {
-	case 0:
-		return false
-	case -1:
-		// do no return error
-		// probably, user updated pvc manually
-		// without applying this changes to the configuration.
-		logger.WithContext(ctx).Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", pvc.Name, existSize.String(), newSize.String()))
-		return false
-	default: // increase
-		return true
-	}
 }
 
 func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {

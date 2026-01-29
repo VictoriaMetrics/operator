@@ -379,7 +379,7 @@ spec:
 ## Relabeling
 
 `VMAgent` supports global [service discovery relabeling](https://docs.victoriametrics.com/victoriametrics/relabeling/#service-discovery-relabeling), global remote write relabeling for all remoteWrite targets and relabeling per remoteWrite target.
-See [these](https://docs.victoriametrics.com/vmagent/#life-of-a-sample) docs for details about stages of relabeling in vmagent.
+See [these](https://docs.victoriametrics.com/victoriametrics/vmagent/#life-of-a-sample) docs for details about stages of relabeling in vmagent.
 
 Note in some cases, you don't need relabeling, `key=value` label pairs can be added to the all scrapped metrics with `spec.externalLabels` for `VMAgent`:
 

@@ -1210,7 +1210,7 @@ type CommonConfigReloaderParams struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	ConfigReloaderResources corev1.ResourceRequirements `json:"configReloaderResources,omitempty"`
 	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
-	// for example resyncInterval: "30s"
+	// for example resync-interval: "30s"
 	// +optional
 	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
 	// ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.

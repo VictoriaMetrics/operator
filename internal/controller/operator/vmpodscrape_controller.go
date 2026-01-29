@@ -62,6 +62,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	l := r.Log.WithValues("vmpodscrape", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAgent") {
 		l.Info("skipping VMPodScrape reconcile since VMAgent controller is disabled")
+		return
 	}
 	instance := &vmv1beta1.VMPodScrape{}
 	ctx = logger.AddToContext(ctx, l)

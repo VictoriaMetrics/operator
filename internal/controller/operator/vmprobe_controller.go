@@ -62,6 +62,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	l := r.Log.WithValues("vmprobe", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAgent") {
 		l.Info("skipping VMProbe reconcile since VMAgent controller is disabled")
+		return
 	}
 	instance := &vmv1beta1.VMProbe{}
 	ctx = logger.AddToContext(ctx, l)

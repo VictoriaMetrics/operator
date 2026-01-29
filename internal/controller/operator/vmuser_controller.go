@@ -65,6 +65,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAuth") {
 		l.Info("skipping VMUser reconcile since VMAuth controller is disabled")
+		return
 	}
 	var instance vmv1beta1.VMUser
 	defer func() {

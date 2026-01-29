@@ -63,6 +63,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	l := r.Log.WithValues("vmnodescrape", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAgent") {
 		l.Info("skipping VMNodeScrape reconcile since VMAgent controller is disabled")
+		return
 	}
 	instance := &vmv1beta1.VMNodeScrape{}
 	ctx = logger.AddToContext(ctx, l)

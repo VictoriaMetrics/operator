@@ -62,6 +62,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAlertmanager") {
 		l.Info("skipping VMAlertmanagerConfig reconcile since VMAlertmanager controller is disabled")
+		return
 	}
 	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {

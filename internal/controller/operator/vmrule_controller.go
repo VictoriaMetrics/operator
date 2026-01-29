@@ -62,6 +62,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	l := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAlert") {
 		l.Info("skipping VMRule reconcile since VMAlert controller is disabled")
+		return
 	}
 	instance := &vmv1beta1.VMRule{}
 	ctx = logger.AddToContext(ctx, l)

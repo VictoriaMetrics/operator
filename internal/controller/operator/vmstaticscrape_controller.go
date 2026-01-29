@@ -46,6 +46,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
 	if build.IsControllerDisabled("VMAgent") {
 		l.Info("skipping VMStaticScrape reconcile since VMAgent controller is disabled")
+		return
 	}
 	instance := &vmv1beta1.VMStaticScrape{}
 	defer func() {

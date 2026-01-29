@@ -187,7 +187,7 @@ type parsedObjects struct {
 func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, map[string]string, error) {
 	var rules []*vmv1beta1.VMRule
 	var nsn []string
-	if !build.IsControllerDisabled("VMRul") {
+	if !build.IsControllerDisabled("VMRule") {
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         cr.Spec.SelectAllByDefault,
 			ObjectSelector:    cr.Spec.RuleSelector,

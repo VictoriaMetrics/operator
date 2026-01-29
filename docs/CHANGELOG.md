@@ -24,6 +24,7 @@ aliases:
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): previously the operator emitted quoted `spec.k8sCollector.{msgField,timeField,ignoreFields,decolorizeFields}` values, which caused vlagent to misparse these fields; now these fields are emitted unquoted so collector settings are applied correctly. See [#1749](https://github.com/VictoriaMetrics/operator/issues/1749).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed conflicts for `VMAlert`, `VMAlertmanager` and `VMAuth` reconcilers, which are updating same objects concurrently with reconcilers for their child objects.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

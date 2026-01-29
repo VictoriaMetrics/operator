@@ -29,7 +29,7 @@ type mockVMAgent struct {
 func (m *mockVMAgent) AsURL() string {
 	return m.url
 }
-func (m *mockVMAgent) GetMetricPath() string {
+func (m *mockVMAgent) GetMetricsPath() string {
 	return ""
 }
 func (m *mockVMAgent) GetReplicas() int32 {

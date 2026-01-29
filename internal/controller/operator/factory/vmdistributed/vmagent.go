@@ -31,7 +31,7 @@ const (
 // VMAgentMetrics defines the interface for VMAgent objects that can provide metrics URLs
 type VMAgentMetrics interface {
 	AsURL() string
-	GetMetricPath() string
+	GetMetricsPath() string
 }
 
 // VMAgentWithStatus extends VMAgentMetrics to include status checking
@@ -83,7 +83,7 @@ func buildPerIPMetricURL(baseURL, metricPath, ip string) string {
 //
 // The function will try to discover pod IPs via an EndpointSlice named the same as the service
 // (prefixed name). If discovery yields addresses, it polls each IP. Otherwise, it falls back to the
-// single AsURL()+GetMetricPath() behavior.
+// single AsURL()+GetMetricsPath() behavior.
 func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client, vmAgent VMAgentWithStatus, deadline, interval time.Duration, rclient client.Client) error {
 	// Wait for vmAgent to become ready
 	nsn := types.NamespacedName{Name: vmAgent.GetName(), Namespace: vmAgent.GetNamespace()}
@@ -103,7 +103,7 @@ func waitForVMClusterVMAgentMetrics(ctx context.Context, httpClient *http.Client
 
 	// Base values for fallback URL
 	baseURL := vmAgent.AsURL()
-	metricPath := vmAgent.GetMetricPath()
+	metricPath := vmAgent.GetMetricsPath()
 
 	logger.WithContext(ctx).Info("Found VMAgent metrics path", "metricPath", metricPath)
 

@@ -32,7 +32,7 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	f(opts{
 		host:      "127.0.0.1",
 		port:      "8428",
-		extraArgs: map[string]string{vmPathPrefixFlagName: "/pref-1", "other-flag": "other-value"},
+		extraArgs: map[string]string{httpPathPrefixFlag: "/pref-1", "other-flag": "other-value"},
 		want:      "http://127.0.0.1:8428/pref-1/snapshot/delete",
 	})
 
@@ -40,7 +40,7 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	f(opts{
 		host:      "127.0.0.1",
 		port:      "8428",
-		extraArgs: map[string]string{vmPathPrefixFlagName: "/pref-1", "other-flag": "other-value", snapshotAuthKey: "test"},
+		extraArgs: map[string]string{httpPathPrefixFlag: "/pref-1", "other-flag": "other-value", snapshotAuthKeyFlag: "test"},
 		want:      "http://127.0.0.1:8428/pref-1/snapshot/delete?authKey=test",
 	})
 }

@@ -80,7 +80,6 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
-	cfg := config.MustGetBaseConfig()
 	var prevCR *vmv1beta1.VMAlert
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -112,10 +111,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
-		if err != nil {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr)); err != nil {
 			return fmt.Errorf("cannot create vmservicescrape: %w", err)
 		}
 	}
@@ -170,8 +167,7 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		},
 		Spec: *generatedSpec,
 	}
-	cfg := config.MustGetBaseConfig()
-	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 	return deploy, nil
 }
 
@@ -303,8 +299,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		vmalertContainers = append(vmalertContainers, crc)
 	}
 
-	cfg := config.MustGetBaseConfig()
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, vmalertContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
@@ -712,7 +707,6 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
-	cfg := config.MustGetBaseConfig()
 	owner := cr.AsOwner()
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
@@ -721,24 +715,23 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
 		}
 	}
-
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceScrape: %w", err)
-		}
-	}
-
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
+	}
+	keepServicesScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepServicesScrapes[svcName] = struct{}{}
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices[extraSvcName] = struct{}{}
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
+		return fmt.Errorf("cannot remove services: %w", err)
+	}
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {

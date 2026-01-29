@@ -16,13 +16,35 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// MustSkipRuntimeValidation defines whether runtime object validation must be skipped
-// the most usual case for it, if webhook validation is configured
-var MustSkipRuntimeValidation bool
+// disabledControllers defines set of disabled VM operator controllers
+var disabledControllers map[string]struct{}
 
-// SetSkipRuntimeValidation configures MustSkipRuntimeValidation param
+// SetDisabledControllers configures set of disabled controllers
+func SetDisabledControllers(controllers map[string]struct{}) {
+	disabledControllers = controllers
+}
+
+// IsControllerDisabled checks if controller for given kind is disabled
+func IsControllerDisabled(kind string) bool {
+	if len(disabledControllers) > 0 {
+		_, ok := disabledControllers[kind]
+		return ok
+	}
+	return false
+}
+
+// mustSkipRuntimeValidation defines whether runtime object validation must be skipped
+// the most usual case for it, if webhook validation is configured
+var mustSkipRuntimeValidation bool
+
+// SetSkipRuntimeValidation configures mustSkipRuntimeValidation param
 func SetSkipRuntimeValidation(mustSkip bool) {
-	MustSkipRuntimeValidation = mustSkip
+	mustSkipRuntimeValidation = mustSkip
+}
+
+// MustSkipRuntimeValidation returns value of mustSkipRuntimeValidation param
+func MustSkipRuntimeValidation() bool {
+	return mustSkipRuntimeValidation
 }
 
 type builderOpts interface {

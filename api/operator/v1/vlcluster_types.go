@@ -282,17 +282,22 @@ func (*VLInsert) ProbeNeedLiveness() bool {
 	return true
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VLInsert) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VLInsert) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VLInsert) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VLInsert) UseTLS() bool {
+	return vmv1beta1.UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
@@ -434,17 +439,22 @@ type VLSelect struct {
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VLSelect) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VLSelect) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VLSelect) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VLSelect) UseTLS() bool {
+	return vmv1beta1.UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
@@ -572,17 +582,22 @@ func (cr *VLStorage) GetStorageVolumeName() string {
 	return "vlstorage-db"
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VLStorage) GetMetricPath() string {
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VLStorage) GetMetricsPath() string {
 	if cr == nil {
 		return healthPath
 	}
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VLStorage) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VLStorage) UseTLS() bool {
+	return vmv1beta1.UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder

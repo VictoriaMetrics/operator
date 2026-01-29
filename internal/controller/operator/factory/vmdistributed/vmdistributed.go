@@ -40,7 +40,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		return nil
 	}
 
-	if !build.MustSkipRuntimeValidation {
+	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err
 		}

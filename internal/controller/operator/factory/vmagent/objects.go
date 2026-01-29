@@ -64,7 +64,7 @@ func (pos *parsedObjects) init(ctx context.Context, rclient client.Client, sp *v
 func (pos *parsedObjects) selectScrapeConfigs(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMScrapeConfig
 	var nsn []string
-	if !pos.MustUseNodeSelector {
+	if !build.IsControllerDisabled("VMScrapeConfig") && !pos.MustUseNodeSelector {
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         sp.SelectAllByDefault,
 			NamespaceSelector: sp.ScrapeConfigNamespaceSelector,
@@ -91,23 +91,25 @@ func (pos *parsedObjects) selectScrapeConfigs(ctx context.Context, rclient clien
 func (pos *parsedObjects) selectPodScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMPodScrape
 	var nsn []string
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         sp.SelectAllByDefault,
-		NamespaceSelector: sp.PodScrapeNamespaceSelector,
-		ObjectSelector:    sp.PodScrapeSelector,
-		DefaultNamespace:  pos.Namespace,
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMPodScrapeList) {
-		for i := range list.Items {
-			item := &list.Items[i]
-			if !item.DeletionTimestamp.IsZero() {
-				continue
-			}
-			selectedConfigs = append(selectedConfigs, item)
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+	if !build.IsControllerDisabled("VMPodScrape") {
+		opts := &k8stools.SelectorOpts{
+			SelectAll:         sp.SelectAllByDefault,
+			NamespaceSelector: sp.PodScrapeNamespaceSelector,
+			ObjectSelector:    sp.PodScrapeSelector,
+			DefaultNamespace:  pos.Namespace,
 		}
-	}); err != nil {
-		return err
+		if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMPodScrapeList) {
+			for i := range list.Items {
+				item := &list.Items[i]
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				selectedConfigs = append(selectedConfigs, item)
+				nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			}
+		}); err != nil {
+			return err
+		}
 	}
 	pos.podScrapes = build.NewChildObjects("vmpodscrape", selectedConfigs, nsn)
 	return nil
@@ -116,7 +118,7 @@ func (pos *parsedObjects) selectPodScrapes(ctx context.Context, rclient client.C
 func (pos *parsedObjects) selectProbes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMProbe
 	var nsn []string
-	if !pos.MustUseNodeSelector {
+	if !build.IsControllerDisabled("VMProbe") && !pos.MustUseNodeSelector {
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         sp.SelectAllByDefault,
 			NamespaceSelector: sp.ProbeNamespaceSelector,
@@ -143,7 +145,7 @@ func (pos *parsedObjects) selectProbes(ctx context.Context, rclient client.Clien
 func (pos *parsedObjects) selectNodeScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMNodeScrape
 	var nsn []string
-	if !pos.MustUseNodeSelector {
+	if !build.IsControllerDisabled("VMNodeScrape") && !pos.MustUseNodeSelector {
 		if pos.HasClusterWideAccess {
 			opts := &k8stools.SelectorOpts{
 				SelectAll:         sp.SelectAllByDefault,
@@ -176,7 +178,7 @@ func (pos *parsedObjects) selectNodeScrapes(ctx context.Context, rclient client.
 func (pos *parsedObjects) selectStaticScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMStaticScrape
 	var nsn []string
-	if !pos.MustUseNodeSelector {
+	if !build.IsControllerDisabled("VMStaticScrape") && !pos.MustUseNodeSelector {
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         sp.SelectAllByDefault,
 			NamespaceSelector: sp.StaticScrapeNamespaceSelector,
@@ -203,7 +205,7 @@ func (pos *parsedObjects) selectStaticScrapes(ctx context.Context, rclient clien
 func (pos *parsedObjects) selectServiceScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMServiceScrape
 	var nsn []string
-	if !pos.MustUseNodeSelector {
+	if !build.IsControllerDisabled("VMServiceScrape") && !pos.MustUseNodeSelector {
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         sp.SelectAllByDefault,
 			NamespaceSelector: sp.ServiceScrapeNamespaceSelector,
@@ -240,7 +242,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -256,7 +258,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -272,7 +274,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -286,7 +288,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -300,7 +302,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil
@@ -315,7 +317,7 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 		if err := validateScrapeClassExists(sc.Spec.ScrapeClassName, sp); err != nil {
 			return err
 		}
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			return sc.Validate()
 		}
 		return nil

@@ -609,17 +609,19 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		NamespaceSelector: cr.Spec.ConfigNamespaceSelector,
 		DefaultNamespace:  cr.Namespace,
 	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
-		for i := range ams.Items {
-			item := &ams.Items[i]
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if !build.IsControllerDisabled("VMAlertmanagerConfig") {
+		if err := k8stools.VisitSelected(ctx, rclient, opts, func(ams *vmv1beta1.VMAlertmanagerConfigList) {
+			for i := range ams.Items {
+				item := &ams.Items[i]
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+				configs = append(configs, item.DeepCopy())
 			}
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-			configs = append(configs, item.DeepCopy())
+		}); err != nil {
+			return nil, nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 		}
-	}); err != nil {
-		return nil, nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 	pos := &parsedObjects{configs: build.NewChildObjects("vmalertmanagerconfig", configs, nsn)}
 	data, err := pos.buildConfig(cr, originConfig, ac)

@@ -18,7 +18,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -45,10 +44,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	cfg := config.MustGetBaseConfig()
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrapeForObjectWithSpec(cr, cr.Spec.ServiceScrapeSpec, cr.Spec.ExtraArgs))
-		if err != nil {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrape(cr)); err != nil {
 			return err
 		}
 	}
@@ -114,8 +111,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	if err != nil {
 		return nil, err
 	}
-	cfg := config.MustGetBaseConfig()
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	podAnnotations := cr.PodAnnotations()
 	if len(configHash) > 0 {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
@@ -162,11 +158,12 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
 	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	cfg := config.MustGetBaseConfig()
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vmv1beta1.VMPodScrape{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove podScrape: %w", err)
-		}
+	keepPodScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepPodScrapes[cr.PrefixedName()] = struct{}{}
+	}
+	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
+		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {

@@ -28,6 +28,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
@@ -58,8 +59,11 @@ func (r *VMScrapeConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmscrapeconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmscrapeconfigs/status,verbs=get;update;patch
 func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	instance := &vmv1beta1.VMScrapeConfig{}
 	l := r.Log.WithValues("vmscrapeconfig", req.Name, "namespace", req.Namespace)
+	if build.IsControllerDisabled("VMAgent") {
+		l.Info("skipping VMScrapeConfig reconcile since VMAgent controller is disabled")
+	}
+	instance := &vmv1beta1.VMScrapeConfig{}
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)

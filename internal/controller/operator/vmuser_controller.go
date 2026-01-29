@@ -30,6 +30,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -61,8 +62,11 @@ func (r *VMUserReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers/status,verbs=get;update;patch
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	var instance vmv1beta1.VMUser
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
+	if build.IsControllerDisabled("VMAuth") {
+		l.Info("skipping VMUser reconcile since VMAuth controller is disabled")
+	}
+	var instance vmv1beta1.VMUser
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, err)
 	}()

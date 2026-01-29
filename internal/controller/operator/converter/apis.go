@@ -431,21 +431,22 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 // ConvertProbe creates VMProbe from prometheus probe
 func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1.VMProbe {
 	var (
-		ingressTarget *vmv1beta1.ProbeTargetIngress
-		staticTargets *vmv1beta1.VMProbeTargetStaticConfig
+		k8sTargets    []*vmv1beta1.VMProbeTargetKubernetes
+		staticTargets *vmv1beta1.VMProbeTargetStatic
 	)
 	if probe.Spec.Targets.Ingress != nil {
-		ingressTarget = &vmv1beta1.ProbeTargetIngress{
+		k8sTargets = append(k8sTargets, &vmv1beta1.VMProbeTargetKubernetes{
+			Role:     "ingress",
 			Selector: probe.Spec.Targets.Ingress.Selector,
 			NamespaceSelector: vmv1beta1.NamespaceSelector{
 				Any:        probe.Spec.Targets.Ingress.NamespaceSelector.Any,
 				MatchNames: probe.Spec.Targets.Ingress.NamespaceSelector.MatchNames,
 			},
 			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.Ingress.RelabelConfigs),
-		}
+		})
 	}
 	if probe.Spec.Targets.StaticConfig != nil {
-		staticTargets = &vmv1beta1.VMProbeTargetStaticConfig{
+		staticTargets = &vmv1beta1.VMProbeTargetStatic{
 			Targets:        probe.Spec.Targets.StaticConfig.Targets,
 			Labels:         probe.Spec.Targets.StaticConfig.Labels,
 			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.StaticConfig.RelabelConfigs),
@@ -471,8 +472,8 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 			},
 			Module: probe.Spec.Module,
 			Targets: vmv1beta1.VMProbeTargets{
-				Ingress:      ingressTarget,
-				StaticConfig: staticTargets,
+				Kubernetes: k8sTargets,
+				Static:     staticTargets,
 			},
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Interval:      string(probe.Spec.Interval),

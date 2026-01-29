@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 func generateProbeConfig(
 	ctx context.Context,
 	sp *vmv1beta1.CommonScrapeParams,
-	pos *parsedObjects,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMProbe,
 	ac *build.AssetsCache,
 ) (yaml.MapSlice, error) {

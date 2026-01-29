@@ -528,9 +528,8 @@ type CommonScrapeParams struct {
 	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
-	// Deprecated: use externalLabelName instead. will be removed in v0.69.0
+	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {externalLabelName}}
 	// +optional
-	// +deprecated
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 	// ExternalLabelName Name of external label used to denote scraping agent instance
 	// name. Defaults to the value of `prometheus`. External label will

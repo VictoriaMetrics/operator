@@ -54,17 +54,16 @@ func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.Deployment{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert),
-			Namespace: ns,
-		}},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
 	return nil
 }
@@ -81,17 +80,16 @@ func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect),
-			Namespace: ns,
-		}},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
 	return nil
 }
@@ -107,13 +105,16 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: objMeta},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
 	return nil
 }
@@ -128,22 +129,17 @@ func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr 
 	objsToRemove := []client.Object{
 		&appsv1.Deployment{ObjectMeta: objMeta},
 		&corev1.Secret{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect),
-			Namespace: ns,
-		}},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert),
-			Namespace: ns,
-		}},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
 		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
 			return fmt.Errorf("failed to remove lb object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
 		}
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
 	return nil
 }

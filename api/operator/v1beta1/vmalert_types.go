@@ -160,7 +160,7 @@ func (cr *VMAlert) SetLastSpec(prevSpec VMAlertSpec) {
 
 // GetReloadURL implements reloadable interface
 func (cr *VMAlert) GetReloadURL(host string) string {
-	return BuildLocalURL(reloadAuthKey, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
+	return BuildLocalURL(reloadAuthKeyFlag, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
 }
 
 // GetReloaderParams implements reloadable interface
@@ -451,9 +451,14 @@ func (cr *VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VMAlert) GetMetricPath() string {
-	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VMAlert) GetMetricsPath() string {
+	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VMAlert) UseTLS() bool {
+	return UseTLS(cr.Spec.ExtraArgs)
 }
 
 // GetExtraArgs returns additionally configured command-line arguments

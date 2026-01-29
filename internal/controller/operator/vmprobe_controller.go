@@ -28,6 +28,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
@@ -58,8 +59,12 @@ func (r *VMProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	instance := &vmv1beta1.VMProbe{}
 	l := r.Log.WithValues("vmprobe", req.Name, "namespace", req.Namespace)
+	if build.IsControllerDisabled("VMAgent") {
+		l.Info("skipping VMProbe reconcile since VMAgent controller is disabled")
+		return
+	}
+	instance := &vmv1beta1.VMProbe{}
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)

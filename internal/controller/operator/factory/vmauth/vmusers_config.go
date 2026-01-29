@@ -333,7 +333,7 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta
 // fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
 func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client, crdURLCache map[string]string) {
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := user.Validate(); err != nil {
 				return err
 			}
@@ -855,23 +855,25 @@ func genPassword() (string, error) {
 func selectUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) (*parsedObjects, error) {
 	var res []*vmv1beta1.VMUser
 	var nsn []string
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.UserSelector,
-		NamespaceSelector: cr.Spec.UserNamespaceSelector,
-		DefaultNamespace:  cr.Namespace,
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMUserList) {
-		for _, item := range list.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
-			}
-			item.Status.ObservedGeneration = item.GetGeneration()
-			res = append(res, item.DeepCopy())
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+	if !build.IsControllerDisabled("VMUser") {
+		opts := &k8stools.SelectorOpts{
+			SelectAll:         cr.Spec.SelectAllByDefault,
+			ObjectSelector:    cr.Spec.UserSelector,
+			NamespaceSelector: cr.Spec.UserNamespaceSelector,
+			DefaultNamespace:  cr.Namespace,
 		}
-	}); err != nil {
-		return nil, err
+		if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMUserList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				item.Status.ObservedGeneration = item.GetGeneration()
+				res = append(res, item.DeepCopy())
+				nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			}
+		}); err != nil {
+			return nil, err
+		}
 	}
 	return &parsedObjects{users: build.NewChildObjects("vmuser", res, nsn)}, nil
 }

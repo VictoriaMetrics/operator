@@ -273,9 +273,14 @@ func (cr *VTSingle) PrefixedName() string {
 	return fmt.Sprintf("vtsingle-%s", cr.Name)
 }
 
-// GetMetricPath returns prefixed path for metric requests
-func (cr *VTSingle) GetMetricPath() string {
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+// GetMetricsPath returns prefixed path for metric requests
+func (cr *VTSingle) GetMetricsPath() string {
+	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricsPath)
+}
+
+// UseTLS returns true if TLS is enabled
+func (cr *VTSingle) UseTLS() bool {
+	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
 }
 
 // Validate checks if spec is correct

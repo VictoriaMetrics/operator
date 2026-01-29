@@ -77,12 +77,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
 	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, cfg.DisableSelfServiceScrapeCreation) {
-		// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
-		if !cr.UseProxyProtocol() {
-			if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
-				return err
-			}
+
+	// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
+			return err
 		}
 	}
 
@@ -145,7 +144,6 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
-	cfg := config.MustGetBaseConfig()
 	podSpec, err := makeSpecForVMAuth(cr)
 	if err != nil {
 		return nil, err
@@ -174,7 +172,7 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 
 	return depSpec, nil
 }
@@ -224,7 +222,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -630,30 +628,24 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
 		}
 	}
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
-	if ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceScrape: %w", err)
-		}
-	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, disableSelfScrape) {
-		if cr.UseProxyProtocol() {
-			if err := finalize.SafeDeleteForSelectorsWithFinalizer(ctx, rclient, &vmv1beta1.VMServiceScrape{ObjectMeta: objMeta}, cr.SelectorLabels(), &owner); err != nil {
-				return fmt.Errorf("cannot remove serviceScrape: %w", err)
-			}
-		}
-	}
 
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
+	}
+	keepServiceScrapes := make(map[string]struct{})
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
+		keepServiceScrapes[svcName] = struct{}{}
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices[extraSvcName] = struct{}{}
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
-		return fmt.Errorf("cannot remove additional service: %w", err)
+		return fmt.Errorf("cannot remove services: %w", err)
+	}
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes); err != nil {
+		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 	if !cr.IsOwnsServiceAccount() {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
@@ -664,7 +656,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 }
 
 func buildServiceScrape(svc *corev1.Service, cr *vmv1beta1.VMAuth) *vmv1beta1.VMServiceScrape {
-	b := build.VMServiceScrapeForServiceWithSpec(svc, cr)
+	b := build.VMServiceScrape(svc, cr)
 	if len(cr.Spec.InternalListenPort) == 0 {
 		return b
 	}

@@ -11,7 +11,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -19,7 +18,7 @@ import (
 
 // CreateOrUpdate syncs VTCluster object to the desired state
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
-	if !build.MustSkipRuntimeValidation {
+	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err
 		}
@@ -74,8 +73,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	newInsert := cr.Spec.Insert
 	newLB := cr.Spec.RequestsLoadBalancer
 
-	cfg := config.MustGetBaseConfig()
-	disableSelfScrape := cfg.DisableSelfServiceScrapeCreation
 	cc := finalize.NewChildCleaner()
 
 	if newStorage == nil {
@@ -90,7 +87,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
-		if !ptr.Deref(newStorage.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newStorage.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)
@@ -120,7 +117,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)
 			cc.KeepService(scrapeName)
 		}
-		if !ptr.Deref(newSelect.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newSelect.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(scrapeName)
 		}
 	}
@@ -146,7 +143,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
 			cc.KeepService(scrapeName)
 		}
-		if !ptr.Deref(newInsert.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newInsert.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(scrapeName)
 		}
 	}
@@ -155,7 +152,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 		if newLB.Spec.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
-		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, disableSelfScrape) {
+		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)

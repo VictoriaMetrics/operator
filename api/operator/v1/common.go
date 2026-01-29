@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	healthPath = "/health"
-	metricPath = "/metrics"
+	healthPath  = "/health"
+	metricsPath = "/metrics"
 )
 
 // TLSServerConfig defines VictoriaMetrics TLS configuration for the application's server

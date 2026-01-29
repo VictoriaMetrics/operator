@@ -24,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/converter"
 	converterv1alpha1 "github.com/VictoriaMetrics/operator/internal/controller/operator/converter/v1alpha1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -83,159 +84,174 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		},
 	}
 
-	c.ruleInf = cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1.PrometheusRuleList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PrometheusRuleList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list prometheus_rules: %w", err)
-				}
-				return &objects, nil
+	if !build.IsControllerDisabled("VMRule") || !build.IsControllerDisabled("VMAlert") {
+		c.ruleInf = cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1.PrometheusRuleList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PrometheusRuleList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list prometheus_rules: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1.PrometheusRuleList](ctx, rclient, "prometheus_rules", baseConf.WatchNamespaces)
+				},
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1.PrometheusRuleList](ctx, rclient, "prometheus_rules", baseConf.WatchNamespaces)
-			},
-		},
-		&promv1.PrometheusRule{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := c.ruleInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreatePrometheusRule,
-		UpdateFunc: c.UpdatePrometheusRule,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add prometheus_rule handler: %w", err)
-	}
-	c.podInf = cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1.PodMonitorList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PodMonitorList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list pod_monitors: %w", err)
-				}
-				return &objects, nil
-			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1.PodMonitorList](ctx, rclient, "pod_monitors", baseConf.WatchNamespaces)
-			},
-		},
-		&promv1.PodMonitor{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := c.podInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreatePodMonitor,
-		UpdateFunc: c.UpdatePodMonitor,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add pod_monitor handler: %w", err)
-	}
-	c.serviceInf = cache.NewSharedIndexInformer(
-
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1.ServiceMonitorList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ServiceMonitorList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list service_monitors: %w", err)
-				}
-				return &objects, nil
-			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1.ServiceMonitorList](ctx, rclient, "service_monitors", baseConf.WatchNamespaces)
-			},
-		},
-		&promv1.ServiceMonitor{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreateServiceMonitor,
-		UpdateFunc: c.UpdateServiceMonitor,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add service_monitor handler: %w", err)
+			&promv1.PrometheusRule{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := c.ruleInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreatePrometheusRule,
+			UpdateFunc: c.UpdatePrometheusRule,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add prometheus_rule handler: %w", err)
+		}
 	}
 
-	amConfigInf := cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1alpha1.AlertmanagerConfigList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.AlertmanagerConfigList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list alertmanager_configs: %w", err)
-				}
-				return &objects, nil
+	if !build.IsControllerDisabled("VMPodScrape") || !build.IsControllerDisabled("VMAgent") {
+		c.podInf = cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1.PodMonitorList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PodMonitorList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list pod_monitors: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1.PodMonitorList](ctx, rclient, "pod_monitors", baseConf.WatchNamespaces)
+				},
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", baseConf.WatchNamespaces)
-			},
-		},
-		&promv1alpha1.AlertmanagerConfig{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreateAlertmanagerConfig,
-		UpdateFunc: c.UpdateAlertmanagerConfig,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add alertmanager_config handler: %w", err)
+			&promv1.PodMonitor{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := c.podInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreatePodMonitor,
+			UpdateFunc: c.UpdatePodMonitor,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add pod_monitor handler: %w", err)
+		}
 	}
-	c.amConfigInf = amConfigInf
 
-	c.probeInf = cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1.ProbeList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ProbeList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list probes: %w", err)
-				}
-				return &objects, nil
+	if !build.IsControllerDisabled("VMServiceScrape") || !build.IsControllerDisabled("VMAgent") {
+		c.serviceInf = cache.NewSharedIndexInformer(
+
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1.ServiceMonitorList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ServiceMonitorList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list service_monitors: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1.ServiceMonitorList](ctx, rclient, "service_monitors", baseConf.WatchNamespaces)
+				},
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1.ProbeList](ctx, rclient, "probes", baseConf.WatchNamespaces)
-			},
-		},
-		&promv1.Probe{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreateProbe,
-		UpdateFunc: c.UpdateProbe,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add probe handler: %w", err)
+			&promv1.ServiceMonitor{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreateServiceMonitor,
+			UpdateFunc: c.UpdateServiceMonitor,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add service_monitor handler: %w", err)
+		}
 	}
-	c.scrapeConfigInf = cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				var objects promv1alpha1.ScrapeConfigList
-				if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.ScrapeConfigList) {
-					objects.Items = append(objects.Items, dst.Items...)
-				}); err != nil {
-					return nil, fmt.Errorf("cannot list scrapeConfig: %w", err)
-				}
-				return &objects, nil
+
+	if !build.IsControllerDisabled("VMAlertmanagerConfig") || !build.IsControllerDisabled("VMAlertmanager") {
+		amConfigInf := cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1alpha1.AlertmanagerConfigList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.AlertmanagerConfigList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list alertmanager_configs: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", baseConf.WatchNamespaces)
+				},
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", baseConf.WatchNamespaces)
+			&promv1alpha1.AlertmanagerConfig{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreateAlertmanagerConfig,
+			UpdateFunc: c.UpdateAlertmanagerConfig,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add alertmanager_config handler: %w", err)
+		}
+		c.amConfigInf = amConfigInf
+	}
+
+	if !build.IsControllerDisabled("VMProbe") || !build.IsControllerDisabled("VMAgent") {
+		c.probeInf = cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1.ProbeList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ProbeList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list probes: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1.ProbeList](ctx, rclient, "probes", baseConf.WatchNamespaces)
+				},
 			},
-		},
-		&promv1alpha1.ScrapeConfig{},
-		resyncPeriod,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	if _, err := c.scrapeConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.CreateScrapeConfig,
-		UpdateFunc: c.UpdateScrapeConfig,
-	}); err != nil {
-		return nil, fmt.Errorf("cannot add scrapeConfig handler: %w", err)
+			&promv1.Probe{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreateProbe,
+			UpdateFunc: c.UpdateProbe,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add probe handler: %w", err)
+		}
+	}
+
+	if !build.IsControllerDisabled("VMScrapeConfig") || !build.IsControllerDisabled("VMAgent") {
+		c.scrapeConfigInf = cache.NewSharedIndexInformer(
+			&cache.ListWatch{
+				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+					var objects promv1alpha1.ScrapeConfigList
+					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.ScrapeConfigList) {
+						objects.Items = append(objects.Items, dst.Items...)
+					}); err != nil {
+						return nil, fmt.Errorf("cannot list scrapeConfig: %w", err)
+					}
+					return &objects, nil
+				},
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", baseConf.WatchNamespaces)
+				},
+			},
+			&promv1alpha1.ScrapeConfig{},
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+		if _, err := c.scrapeConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.CreateScrapeConfig,
+			UpdateFunc: c.UpdateScrapeConfig,
+		}); err != nil {
+			return nil, fmt.Errorf("cannot add scrapeConfig handler: %w", err)
+		}
 	}
 	return c, nil
 }

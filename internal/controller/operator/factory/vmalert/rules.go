@@ -187,31 +187,33 @@ type parsedObjects struct {
 func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, map[string]string, error) {
 	var rules []*vmv1beta1.VMRule
 	var nsn []string
-	opts := &k8stools.SelectorOpts{
-		SelectAll:         cr.Spec.SelectAllByDefault,
-		ObjectSelector:    cr.Spec.RuleSelector,
-		NamespaceSelector: cr.Spec.RuleNamespaceSelector,
-		DefaultNamespace:  cr.Namespace,
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMRuleList) {
-		for _, item := range list.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
-			}
-			rules = append(rules, item.DeepCopy())
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+	if !build.IsControllerDisabled("VMRule") {
+		opts := &k8stools.SelectorOpts{
+			SelectAll:         cr.Spec.SelectAllByDefault,
+			ObjectSelector:    cr.Spec.RuleSelector,
+			NamespaceSelector: cr.Spec.RuleNamespaceSelector,
+			DefaultNamespace:  cr.Namespace,
 		}
-	}); err != nil {
-		return nil, nil, err
-	}
-	if cr.NeedDedupRules() {
-		logger.WithContext(ctx).Info("deduplicating vmalert rules")
-		rules = deduplicateRules(ctx, rules)
+		if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1beta1.VMRuleList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				rules = append(rules, item.DeepCopy())
+				nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			}
+		}); err != nil {
+			return nil, nil, err
+		}
+		if cr.NeedDedupRules() {
+			logger.WithContext(ctx).Info("deduplicating vmalert rules")
+			rules = deduplicateRules(ctx, rules)
+		}
 	}
 	pos := &parsedObjects{rules: build.NewChildObjects("vmrule", rules, nsn)}
 	data := make(map[string]string)
 	pos.rules.ForEachCollectSkipInvalid(func(rule *vmv1beta1.VMRule) error {
-		if !build.MustSkipRuntimeValidation {
+		if !build.MustSkipRuntimeValidation() {
 			if err := rule.Validate(); err != nil {
 				return err
 			}

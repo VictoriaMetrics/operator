@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 func generatePodScrapeConfig(
 	ctx context.Context,
 	sp *vmv1beta1.CommonScrapeParams,
-	pos *parsedObjects,
+	pos *ParsedObjects,
 	sc *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,

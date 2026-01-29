@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,9 +27,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 // VMPodScrapeReconciler reconciles a VMPodScrape object
@@ -75,52 +72,15 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return result, &parsingError{instance.Spec.ParsingError, "vmpodscrape"}
 	}
 	if agentReconcileLimit.MustThrottleReconcile() {
-		return
-	}
-
-	agentSync.Lock()
-	defer agentSync.Unlock()
-
-	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
-		objects.Items = append(objects.Items, dst.Items...)
-	}); err != nil {
-		return result, fmt.Errorf("cannot list vmagents for vmpodscrape: %w", err)
-	}
-
-	for i := range objects.Items {
-		item := &objects.Items[i]
-		if item.IsUnmanaged(instance) {
-			continue
-		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
-
-		// only check selector when deleting object,
-		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
-		if !instance.DeletionTimestamp.IsZero() {
-			objectSelector, namespaceSelector := item.ScrapeSelectors(instance)
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: namespaceSelector,
-				ObjectSelector:    objectSelector,
-				DefaultNamespace:  instance.Namespace,
-			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
-			if err != nil {
-				l.Error(err, "cannot match vmagent and vmpodscrape")
-				continue
-			}
-			if !match {
-				continue
-			}
-		}
-
-		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
-			continue
+		if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+			return
 		}
 	}
-
+	if !vmsingleReconcileLimit.MustThrottleReconcile() {
+		if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+			return
+		}
+	}
 	return
 }
 

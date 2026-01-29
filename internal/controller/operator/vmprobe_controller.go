@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,9 +27,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 // VMProbeReconciler reconciles a VMProbe object
@@ -75,50 +72,13 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
 	}
 	if agentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return
-	}
-
-	agentSync.Lock()
-	defer agentSync.Unlock()
-
-	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
-		objects.Items = append(objects.Items, dst.Items...)
-	}); err != nil {
-		return result, fmt.Errorf("cannot list vmagents for vmprobe: %w", err)
-	}
-
-	for i := range objects.Items {
-		item := &objects.Items[i]
-		if item.IsUnmanaged(instance) {
-			continue
+		if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+			return
 		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
-
-		// only check selector when deleting object,
-		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
-		if !instance.DeletionTimestamp.IsZero() {
-			objectSelector, namespaceSelector := item.ScrapeSelectors(item)
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: namespaceSelector,
-				ObjectSelector:    objectSelector,
-				DefaultNamespace:  instance.Namespace,
-			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
-			if err != nil {
-				l.Error(err, "cannot match vmagent and vmprobe")
-				continue
-			}
-			if !match {
-				continue
-			}
-		}
-
-		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
-			continue
+	}
+	if !vmsingleReconcileLimit.MustThrottleReconcile() {
+		if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+			return
 		}
 	}
 	return

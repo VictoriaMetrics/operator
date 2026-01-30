@@ -131,6 +131,7 @@ api-gen: client-gen lister-gen informer-gen
 .PHONY: docs
 docs: build crd-ref-docs manifests
 	$(CRD_REF_DOCS) --config ./docs/config.yaml \
+		--max-depth 60 \
 		--templates-dir ./docs/templates/api \
 		--renderer markdown
 	mv out.md docs/api.md
@@ -383,20 +384,20 @@ GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.6.0
-CONTROLLER_TOOLS_VERSION ?= v0.18.0
-ENVTEST_VERSION ?= release-0.20
-GOLANGCI_LINT_VERSION ?= v2.4.0
-CODEGENERATOR_VERSION ?= v0.32.2
-KIND_VERSION ?= v0.27.0
-OLM_VERSION ?= 0.31.0
-OPERATOR_SDK_VERSION ?= v1.39.1
-OPM_VERSION ?= v1.51.0
-YQ_VERSION ?= v4.45.1
-GINKGO_VERSION ?= v2.23.0
+KUSTOMIZE_VERSION ?= v5.8.0
+CONTROLLER_TOOLS_VERSION ?= v0.20.0
+ENVTEST_VERSION ?= release-0.23
+GOLANGCI_LINT_VERSION ?= v2.8.0
+CODEGENERATOR_VERSION ?= v0.35.0
+KIND_VERSION ?= v0.31.0
+OLM_VERSION ?= 0.39.0
+OPERATOR_SDK_VERSION ?= v1.42.0
+OPM_VERSION ?= v1.62.0
+YQ_VERSION ?= v4.50.1
+GINKGO_VERSION ?= v2.27.5
 CRUST_GATHER_VERSION ?= v0.11.0
 
-CRD_REF_DOCS_VERSION ?= latest
+CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -414,7 +415,8 @@ install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen ku
 .PHONY: crd-ref-docs
 crd-ref-docs: $(CRD_REF_DOCS)
 $(CRD_REF_DOCS): $(LOCALBIN)
-	$(call go-install-tool,$(CRD_REF_DOCS),github.com/elastic/crd-ref-docs,$(CRD_REF_DOCS_VERSION))
+	# Required to support custom markers with values - https://github.com/elastic/crd-ref-docs/pull/194
+	$(call go-install-tool,$(CRD_REF_DOCS),github.com/AndrewChubatiuk/crd-ref-docs,$(CRD_REF_DOCS_VERSION))
 
 .PHONY: client-gen
 client-gen: $(CLIENT_GEN)

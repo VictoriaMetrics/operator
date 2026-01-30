@@ -240,10 +240,6 @@ type EmbeddedObjectMetadata struct {
 // If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 // +k8s:openapi-gen=true
 type StorageSpec struct {
-	// Deprecated: subPath usage will be disabled by default in a future release, this option will become unnecessary.
-	// DisableMountSubPath allows to remove any subPath usage in volume mounts.
-	// +optional
-	DisableMountSubPath bool `json:"disableMountSubPath,omitempty"`
 	// EmptyDirVolumeSource to be used by the Prometheus StatefulSets. If specified, used in place of any volumeClaimTemplate. More
 	// info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
 	// +optional
@@ -1198,7 +1194,7 @@ type CommonConfigReloaderParams struct {
 	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
-	// Deprecated: use configReloaderImage instead
+	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {configReloaderImage}}
 	// +optional
 	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
 	// ConfigReloaderImage defines image:tag for config-reloader container

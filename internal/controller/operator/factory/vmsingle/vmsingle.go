@@ -415,7 +415,8 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if prevCR != nil {
 		prevCMMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+	return err
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) error {

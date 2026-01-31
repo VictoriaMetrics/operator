@@ -9,86 +9,85 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
-func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, hasHPA bool) error {
+func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.Deployment, hasHPA bool) error {
 
 	var isPrevEqual bool
 	var prevSpecDiff string
-	if prevDeploy != nil {
-		isPrevEqual = equality.Semantic.DeepDerivative(prevDeploy.Spec, newDeploy.Spec)
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
 		if !isPrevEqual {
-			prevSpecDiff = diffDeepDerivative(prevDeploy.Spec, newDeploy.Spec)
+			prevSpecDiff = diffDeepDerivative(prevObj.Spec, newObj.Spec)
 		}
 	}
-	rclient.Scheme().Default(newDeploy)
+	rclient.Scheme().Default(newObj)
 
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var currentDeploy appsv1.Deployment
-		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
-		if err != nil {
+		var existingObj appsv1.Deployment
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment %s", newDeploy.Name))
-				if err := rclient.Create(ctx, newDeploy); err != nil {
-					return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment=%s", nsn))
+				if err := rclient.Create(ctx, newObj); err != nil {
+					return fmt.Errorf("cannot create new Deployment=%s: %w", nsn, err)
 				}
-				return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+				return waitDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
 			}
-			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
+			return fmt.Errorf("cannot get Deployment=%s: %w", nsn, err)
 		}
-		if !currentDeploy.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentDeploy)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDeploy); err != nil {
+		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 		if hasHPA {
-			newDeploy.Spec.Replicas = currentDeploy.Spec.Replicas
+			newObj.Spec.Replicas = existingObj.Spec.Replicas
 		}
-		newDeploy.Status = currentDeploy.Status
+		newObj.Status = existingObj.Status
 		var prevTemplateAnnotations map[string]string
-		if prevDeploy != nil {
-			prevTemplateAnnotations = prevDeploy.Spec.Template.Annotations
+		if prevObj != nil {
+			prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 		}
-		isEqual := equality.Semantic.DeepDerivative(newDeploy.Spec, currentDeploy.Spec)
+		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 		if isEqual &&
 			isPrevEqual &&
-			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
-			isObjectMetaEqual(&currentDeploy, newDeploy, prevDeploy) {
-			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+			isObjectMetaEqual(&existingObj, newObj, prevMeta) {
+			return waitDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
 		}
 
-		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
-		newDeploy.Spec.Template.Annotations = mergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations, prevTemplateAnnotations)
-		mergeObjectMetadataIntoNew(&currentDeploy, newDeploy, prevDeploy)
+		vmv1beta1.AddFinalizer(newObj, &existingObj)
+		newObj.Spec.Template.Annotations = mergeAnnotations(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		mergeObjectMetadataIntoNew(&existingObj, newObj, prevMeta)
 
-		logMsg := fmt.Sprintf("updating Deployment %s configuration"+
+		logMsg := fmt.Sprintf("updating Deployment=%s configuration"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
-			newDeploy.Name, isPrevEqual, isEqual, prevDeploy == nil)
+			nsn, isPrevEqual, isEqual, prevObj == nil)
 
 		if len(prevSpecDiff) > 0 {
 			logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
 		}
 		if !isEqual {
-			logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newDeploy.Spec, currentDeploy.Spec))
+			logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newObj.Spec, existingObj.Spec))
 		}
 
 		logger.WithContext(ctx).Info(logMsg)
 
-		if err := rclient.Update(ctx, newDeploy); err != nil {
-			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
+		if err := rclient.Update(ctx, newObj); err != nil {
+			return fmt.Errorf("cannot update Deployment=%s: %w", nsn, err)
 		}
 
-		return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+		return waitDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
 	})
 }
 
@@ -166,6 +165,6 @@ func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, o
 		return podStatusesToError(origin, &dp)
 	}
 	return &errWaitReady{
-		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
+		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events: %w", selector.String(), origin),
 	}
 }

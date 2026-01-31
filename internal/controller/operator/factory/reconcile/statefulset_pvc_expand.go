@@ -134,7 +134,11 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		return nil
 	}
 	direction := dstSize.Cmp(*srcSize)
-	if direction == 0 && equality.Semantic.DeepEqual(src.Labels, dst.Labels) && isObjectMetaEqual(src, dst, prev) {
+	var prevMeta *metav1.ObjectMeta
+	if prev != nil {
+		prevMeta = &prev.ObjectMeta
+	}
+	if direction == 0 && equality.Semantic.DeepEqual(src.Labels, dst.Labels) && isObjectMetaEqual(src, dst, prevMeta) {
 		return nil
 	}
 
@@ -182,7 +186,7 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
 	}
 	vmv1beta1.AddFinalizer(pvc, src)
-	mergeObjectMetadataIntoNew(dst, pvc, prev)
+	mergeObjectMetadataIntoNew(dst, pvc, prevMeta)
 	if err := rclient.Update(ctx, pvc); err != nil {
 		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)
 	}
@@ -316,9 +320,9 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 		// try to restore previous one and throw error
 		oldStatefulSet.ResourceVersion = ""
 		if err2 := rclient.Create(ctx, oldStatefulSet); err2 != nil {
-			return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", oldStatefulSet.Name, err, err2)
+			return fmt.Errorf("cannot restore previous StatefulSet=%s configuration after remove original error: %s: restore error %w", nsn, err, err2)
 		}
-		return fmt.Errorf("cannot create new sts: %s instead of replaced, perform manual action to handle this error or report BUG, err: %w", statefulSet.Name, err)
+		return fmt.Errorf("cannot create new StatefulSet=%s instead of replaced, perform manual action to handle this error or report BUG: %w", nsn, err)
 	}
 	return nil
 }

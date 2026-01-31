@@ -806,7 +806,8 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 	if prevCR != nil {
 		prevConfigMeta = ptr.To(build.ResourceMeta(build.RelabelConfigResourceKind, prevCR))
 	}
-	return reconcile.ConfigMap(ctx, rclient, assetsCM, prevConfigMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, assetsCM, prevConfigMeta)
+	return err
 }
 
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
@@ -880,7 +881,8 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if prevCR != nil {
 		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	return err
 }
 
 type item struct {

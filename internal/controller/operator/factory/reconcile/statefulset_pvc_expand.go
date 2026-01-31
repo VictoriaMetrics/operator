@@ -120,21 +120,23 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 			continue
 		}
 		// update PVC size and metadata if it's needed
-		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil); err != nil {
+		if err := updatePVC(ctx, rclient, &pvc, &stsClaim); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev1.PersistentVolumeClaim) error {
+func updatePVC(ctx context.Context, rclient client.Client, src, dst *corev1.PersistentVolumeClaim) error {
 	srcSize := src.Spec.Resources.Requests.Storage()
 	dstSize := dst.Spec.Resources.Requests.Storage()
 	if srcSize == nil || dstSize == nil {
 		return nil
 	}
 	direction := dstSize.Cmp(*srcSize)
-	if direction == 0 && equality.Semantic.DeepEqual(src.Labels, dst.Labels) && isObjectMetaEqual(src, dst, prev) {
+	if direction == 0 &&
+		equality.Semantic.DeepEqual(src.Labels, dst.Labels) &&
+		equality.Semantic.DeepEqual(src.Annotations, dst.Annotations) {
 		return nil
 	}
 
@@ -164,7 +166,7 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 			return nil
 		}
 
-		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", dst.Name, srcSize, dstSize))
+		l.Info(fmt.Sprintf("need to expand PVC=%s size from=%s to=%s", dst.Name, srcSize, dstSize))
 		if !expandable {
 			// check if storage class is expandable
 			var err error
@@ -182,7 +184,6 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
 	}
 	vmv1beta1.AddFinalizer(pvc, src)
-	mergeObjectMetadataIntoNew(dst, pvc, prev)
 	if err := rclient.Update(ctx, pvc); err != nil {
 		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)
 	}
@@ -316,9 +317,9 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 		// try to restore previous one and throw error
 		oldStatefulSet.ResourceVersion = ""
 		if err2 := rclient.Create(ctx, oldStatefulSet); err2 != nil {
-			return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", oldStatefulSet.Name, err, err2)
+			return fmt.Errorf("cannot restore previous StatefulSet=%s configuration after remove original error: %s: restore error %w", nsn, err, err2)
 		}
-		return fmt.Errorf("cannot create new sts: %s instead of replaced, perform manual action to handle this error or report BUG, err: %w", statefulSet.Name, err)
+		return fmt.Errorf("cannot create new StatefulSet=%s instead of replaced, perform manual action to handle this error or report BUG: %w", nsn, err)
 	}
 	return nil
 }

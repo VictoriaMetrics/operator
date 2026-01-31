@@ -14,6 +14,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -21,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -37,81 +37,81 @@ type STSOptions struct {
 	UpdateBehavior     *vmv1beta1.StatefulSetUpdateStrategyBehavior
 }
 
-func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet) error {
+func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
+	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
 	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
 		// fast path
-		if newSts.Spec.Replicas == nil {
+		if newObj.Spec.Replicas == nil {
 			return true, nil
 		}
 		var stsForStatus appsv1.StatefulSet
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newSts.Namespace, Name: newSts.Name}, &stsForStatus); err != nil {
+		if err := rclient.Get(ctx, nsn, &stsForStatus); err != nil {
 			return false, err
 		}
 		if stsForStatus.Generation > stsForStatus.Status.ObservedGeneration ||
 			// special case to prevent possible race condition between updated object and local cache
 			// See this issue https://github.com/VictoriaMetrics/operator/issues/1579
-			newSts.Generation > stsForStatus.Generation {
+			newObj.Generation > stsForStatus.Generation {
 			return false, nil
 		}
-		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newSts.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {
+		if *newObj.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newObj.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for statefulSet=%s to become ready: %w", newSts.Name, err), newSts.Namespace, labels.SelectorFromSet(newSts.Spec.Selector.MatchLabels), newSts.Spec.MinReadySeconds)
+		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for statefulSet=%s to become ready: %w", newObj.Name, err), newObj.Namespace, labels.SelectorFromSet(newObj.Spec.Selector.MatchLabels), newObj.Spec.MinReadySeconds)
 	}
 	return nil
 }
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
-func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
-	if err := validateStatefulSet(newSts); err != nil {
+func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newObj, prevObj *appsv1.StatefulSet) error {
+	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
 	var isPrevEqual bool
 	var prevSpecDiff string
-	if prevSts != nil {
-		isPrevEqual = equality.Semantic.DeepDerivative(prevSts.Spec, newSts.Spec)
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
 		if !isPrevEqual {
-			prevSpecDiff = diffDeepDerivative(prevSts.Spec, newSts.Spec)
+			prevSpecDiff = diffDeepDerivative(prevObj.Spec, newObj.Spec)
 		}
 	}
-	rclient.Scheme().Default(newSts)
-
+	rclient.Scheme().Default(newObj)
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var currentSts appsv1.StatefulSet
-		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
+		var existingObj appsv1.StatefulSet
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet %s", newSts.Name))
-				if err = rclient.Create(ctx, newSts); err != nil {
-					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn))
+				if err = rclient.Create(ctx, newObj); err != nil {
+					return fmt.Errorf("cannot create new StatefulSet=%s: %w", nsn, err)
 				}
-				return waitForStatefulSetReady(ctx, rclient, newSts)
+				return waitForStatefulSetReady(ctx, rclient, newObj)
 			}
-			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn, err)
 		}
-		if !currentSts.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentSts)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSts); err != nil {
+		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 
 		// will update the original cr replicaCount to propagate right num,
 		// for now, it's only used in vmselect
 		if cr.UpdateReplicaCount != nil {
-			cr.UpdateReplicaCount(currentSts.Spec.Replicas)
+			cr.UpdateReplicaCount(existingObj.Spec.Replicas)
 		}
 
 		// do not change replicas count.
 		if cr.HPA != nil {
-			newSts.Spec.Replicas = currentSts.Spec.Replicas
+			newObj.Spec.Replicas = existingObj.Spec.Replicas
 		}
 		// hack for kubernetes 1.18
-		newSts.Status.Replicas = currentSts.Status.Replicas
+		newObj.Status.Replicas = existingObj.Status.Replicas
 
-		stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
+		stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newObj, &existingObj)
 		if err != nil {
 			return err
 		}
@@ -120,25 +120,24 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// before making call for performRollingUpdateOnSts
 		if !stsRecreated {
 			var prevTemplateAnnotations map[string]string
-			if prevSts != nil {
-				prevTemplateAnnotations = prevSts.Spec.Template.Annotations
+			if prevObj != nil {
+				prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 			}
-			isEqual := equality.Semantic.DeepDerivative(newSts.Spec, currentSts.Spec)
+			isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 			shouldSkipUpdate := isPrevEqual &&
 				isEqual &&
-				equality.Semantic.DeepEqual(newSts.Labels, currentSts.Labels) &&
-				isObjectMetaEqual(&currentSts, newSts, prevSts)
+				equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+				isObjectMetaEqual(&existingObj, newObj, prevMeta)
 
 			if !shouldSkipUpdate {
+				vmv1beta1.AddFinalizer(newObj, &existingObj)
+				newObj.Spec.Template.Annotations = mergeAnnotations(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+				mergeObjectMetadataIntoNew(&existingObj, newObj, prevMeta)
 
-				vmv1beta1.AddFinalizer(newSts, &currentSts)
-				newSts.Spec.Template.Annotations = mergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations, prevTemplateAnnotations)
-				mergeObjectMetadataIntoNew(&currentSts, newSts, prevSts)
-
-				logMsg := fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
-					newSts.Name, isEqual, isPrevEqual, prevSts == nil)
+				logMsg := fmt.Sprintf("updating StatefulSet=%s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
+					nsn, isEqual, isPrevEqual, prevMeta == nil)
 				if !isEqual {
-					logMsg += fmt.Sprintf(", current_spec_diff=%s", diffDeepDerivative(newSts.Spec, currentSts.Spec))
+					logMsg += fmt.Sprintf(", current_spec_diff=%s", diffDeepDerivative(newObj.Spec, existingObj.Spec))
 				}
 				if len(prevSpecDiff) > 0 {
 					logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
@@ -146,8 +145,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 				logger.WithContext(ctx).Info(logMsg)
 
-				if err := rclient.Update(ctx, newSts); err != nil {
-					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
+				if err := rclient.Update(ctx, newObj); err != nil {
+					return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn, err)
 				}
 			}
 		}
@@ -155,30 +154,30 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// determine manual update behavior only with OnDelete policy, one by one by default
 		podMaxUnavailable := 1
 		if cr.UpdateBehavior != nil {
-			if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-				podMaxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newSts.Spec.Replicas), false)
+			if newObj.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+				podMaxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
 				if err != nil {
 					return err
 				}
 			} else {
-				logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on sts: %s", newSts.Spec.UpdateStrategy.Type, newSts.Name))
+				logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on sts: %s", newObj.Spec.UpdateStrategy.Type, newObj.Name))
 			}
 		}
 
 		// perform manual update only with OnDelete policy, which is default.
-		if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), podMaxUnavailable); err != nil {
-				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
+		if newObj.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, nsn, cr.SelectorLabels(), podMaxUnavailable); err != nil {
+				return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn, err)
 			}
 		} else {
-			if err := waitForStatefulSetReady(ctx, rclient, newSts); err != nil {
-				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", newSts.Spec.UpdateStrategy.Type, err)
+			if err := waitForStatefulSetReady(ctx, rclient, newObj); err != nil {
+				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", newObj.Spec.UpdateStrategy.Type, err)
 			}
 		}
 
 		// check if pvcs need to resize
 		if cr.HasClaim {
-			err = updateSTSPVC(ctx, rclient, newSts)
+			err = updateSTSPVC(ctx, rclient, newObj)
 		}
 
 		return err
@@ -214,9 +213,9 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 //
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
-func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, podMaxUnavailable int) error {
+func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, nsn types.NamespacedName, podLabels map[string]string, podMaxUnavailable int) error {
 	time.Sleep(podWaitReadyIntervalCheck)
-	sts, err := getLatestStsState(ctx, rclient, types.NamespacedName{Name: stsName, Namespace: ns})
+	sts, err := getLatestStsState(ctx, rclient, nsn)
 	if err != nil {
 		return err
 	}
@@ -238,7 +237,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, podMustRecreate))
 	podList := &corev1.PodList{}
 	labelSelector := labels.SelectorFromSet(podLabels)
-	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
+	listOps := &client.ListOptions{Namespace: nsn.Namespace, LabelSelector: labelSelector}
 	if err := rclient.List(ctx, podList, listOps); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
@@ -302,7 +301,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
-		podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+		podNsn := types.NamespacedName{Namespace: nsn.Namespace, Name: pod.Name}
 		err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds)
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
@@ -344,7 +343,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 					return fmt.Errorf("cannot perform pod eviction: %w", evictErr)
 				}
 				// wait for pod to be re-created
-				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+				podNsn := types.NamespacedName{Namespace: nsn.Namespace, Name: pod.Name}
 				if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 					return fmt.Errorf("cannot wait for pod ready state during re-creation for pod %s: %w", pod.Name, err)
 				}

@@ -28,16 +28,6 @@ const (
 	streamAggrSecretKey = "config.yaml"
 )
 
-func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
-	newPvc := makePvc(cr)
-	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
-		prevPVC = makePvc(prevCR)
-	}
-
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
-}
-
 func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,21 +60,17 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 	ac := getAssetsCache(ctx, rclient)
-	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
 	if cr.Spec.Storage != nil {
-		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
+		if err := reconcile.PersistentVolumeClaim(ctx, rclient, makePvc(cr)); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
 	}
@@ -403,7 +389,7 @@ func buildStreamAggrConfig(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*core
 }
 
 // createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
@@ -411,11 +397,8 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if err != nil {
 		return err
 	}
-	var prevCMMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevCMMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
-	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM)
+	return err
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) error {

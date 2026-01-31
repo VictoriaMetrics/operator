@@ -8,7 +8,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -24,12 +23,7 @@ import (
 )
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
-
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
-	}
-	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr), prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr)); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 	lbDep, err := buildVMauthLBDeployment(cr)
@@ -50,7 +44,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}
 	}
@@ -260,15 +254,10 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	return nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }
 
 // createOrUpdateLBProxyService builds vlinsert and vlselect external services to expose vlcluster components for access by vmauth

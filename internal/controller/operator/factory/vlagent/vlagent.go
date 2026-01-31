@@ -84,11 +84,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		}
 	}
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if cr.Spec.K8sCollector.Enabled {
@@ -109,11 +105,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.K8sCollector.Enabled {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vlagent: %w", err)
 		}
 	}
@@ -135,11 +127,7 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 	switch newApp := newAppObj.(type) {
 	case *appsv1.DaemonSet:
-		var prevApp *appsv1.DaemonSet
-		if prevAppObj != nil {
-			prevApp, _ = prevAppObj.(*appsv1.DaemonSet)
-		}
-		if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+		if err := reconcile.DaemonSet(ctx, rclient, newApp); err != nil {
 			return fmt.Errorf("cannot reconcile daemonset for vlagent: %w", err)
 		}
 		return nil

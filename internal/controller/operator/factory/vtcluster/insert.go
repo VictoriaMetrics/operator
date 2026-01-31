@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -28,7 +27,7 @@ func createOrUpdateVTInsert(ctx context.Context, rclient client.Client, cr, prev
 		return nil
 	}
 
-	if err := createOrUpdatePodDisruptionBudgetForVTInsert(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdatePodDisruptionBudgetForVTInsert(ctx, rclient, cr); err != nil {
 		return err
 	}
 	if err := createOrUpdateVTInsertDeployment(ctx, rclient, cr, prevCR); err != nil {
@@ -38,7 +37,7 @@ func createOrUpdateVTInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err != nil {
 		return err
 	}
-	if err := createOrUpdateVTInsertHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVTInsertHPA(ctx, rclient, cr); err != nil {
 		return err
 	}
 	if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
@@ -56,18 +55,13 @@ func createOrUpdateVTInsert(ctx context.Context, rclient client.Client, cr, prev
 	return nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVTInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
+func createOrUpdatePodDisruptionBudgetForVTInsert(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
 	if cr.Spec.Insert.PodDisruptionBudget == nil {
 		return nil
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.Insert.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.Insert.PodDisruptionBudget != nil {
-		b := build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.Insert.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }
 
 func createOrUpdateVTInsertDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
@@ -257,7 +251,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	return podSpec, nil
 }
 
-func createOrUpdateVTInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
+func createOrUpdateVTInsertHPA(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
 	if cr.Spec.Insert.HPA == nil {
 		return nil
 	}
@@ -268,12 +262,7 @@ func createOrUpdateVTInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	newHPA := build.HPA(b, targetRef, cr.Spec.Insert.HPA)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.Insert.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.Insert.HPA)
-	}
-	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, newHPA)
 }
 
 func createOrUpdateVTInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) (*corev1.Service, error) {

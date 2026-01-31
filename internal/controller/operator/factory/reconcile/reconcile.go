@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -58,7 +59,7 @@ func mergeAnnotations(currentA, newA, prevA map[string]string) map[string]string
 
 // isObjectMetaEqual properly track changes at object annotations
 // it preserves 3rd party annotations
-func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
+func isObjectMetaEqual(currObj, newObj client.Object, prevMeta *metav1.ObjectMeta) bool {
 	isMapsEqual := func(currentA, newA, prevA map[string]string) bool {
 		for k, v := range newA {
 			cv, ok := currentA[k]
@@ -80,9 +81,9 @@ func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
 		return true
 	}
 	var prevLabels, prevAnnotations map[string]string
-	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
-		prevLabels = prevObj.GetLabels()
-		prevAnnotations = prevObj.GetAnnotations()
+	if prevMeta != nil {
+		prevLabels = prevMeta.Labels
+		prevAnnotations = prevMeta.Annotations
 	}
 	annotationsEqual := isMapsEqual(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
 	labelsEqual := isMapsEqual(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
@@ -90,7 +91,7 @@ func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
 	return annotationsEqual && labelsEqual
 }
 
-func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
+func mergeObjectMetadataIntoNew(currObj, newObj client.Object, prevMeta *metav1.ObjectMeta) {
 	// empty ResourceVersion for some resources produces the following error
 	// is invalid: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
 	// so keep it from current resource
@@ -103,9 +104,9 @@ func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 	newObj.SetSelfLink(currObj.GetSelfLink())
 
 	var prevLabels, prevAnnotations map[string]string
-	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
-		prevLabels = prevObj.GetLabels()
-		prevAnnotations = prevObj.GetAnnotations()
+	if prevMeta != nil {
+		prevLabels = prevMeta.Labels
+		prevAnnotations = prevMeta.Annotations
 	}
 	annotations := mergeAnnotations(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
 	labels := mergeAnnotations(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
@@ -170,4 +171,16 @@ func isConflict(err error) bool {
 
 func retryOnConflict(fn func() error) error {
 	return retry.OnError(retry.DefaultRetry, isConflict, fn)
+}
+
+// freeIfNeeded checks if resource must be freed from finalizer and garbage collected by kubernetes
+func freeIfNeeded(ctx context.Context, rclient client.Client, obj client.Object) error {
+	if obj.GetDeletionTimestamp().IsZero() {
+		// fast path
+		return nil
+	}
+	if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
+		return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+	}
+	return newErrRecreate(ctx, obj)
 }

@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,91 +22,90 @@ import (
 // NOTE it doesn't perform validation:
 // in case of spec.type= LoadBalancer or NodePort, clusterIP: None is not allowed,
 // its users responsibility to define it correctly.
-func Service(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
-	svcForReconcile := newService.DeepCopy()
+func Service(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.Service) error {
+	svcForReconcile := newObj.DeepCopy()
 	return retryOnConflict(func() error {
-		return reconcileService(ctx, rclient, svcForReconcile, prevService)
+		return reconcileService(ctx, rclient, svcForReconcile, prevObj)
 	})
 }
 
-func reconcileService(ctx context.Context, rclient client.Client, newService, prevService *corev1.Service) error {
+func reconcileService(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.Service) error {
 	// helper for proper service deletion.
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	recreateService := func(svc *corev1.Service) error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, svc); err != nil {
 			return err
 		}
 		if err := finalize.SafeDelete(ctx, rclient, svc); err != nil {
-			return fmt.Errorf("cannot delete service at recreate: %w", err)
+			return fmt.Errorf("cannot delete Service=%s at recreate: %w", nsn, err)
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("recreating new Service %s", newService.Name))
-		if err := rclient.Create(ctx, newService); err != nil {
-			return fmt.Errorf("cannot create service at recreate: %w", err)
+		logger.WithContext(ctx).Info(fmt.Sprintf("recreating new Service=%s", nsn))
+		if err := rclient.Create(ctx, newObj); err != nil {
+			return fmt.Errorf("cannot create Service=%s at recreate: %w", nsn, err)
 		}
 		return nil
 	}
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
-	if err != nil {
+	var existingObj corev1.Service
+	if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service %s", newService.Name))
-			err := rclient.Create(ctx, newService)
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service=%s", nsn))
+			err := rclient.Create(ctx, newObj)
 			if err != nil {
-				return fmt.Errorf("cannot create new service: %w", err)
+				return fmt.Errorf("cannot create new Service=%s: %w", nsn, err)
 			}
 			return nil
 		}
-		return fmt.Errorf("cannot get service for existing service: %w", err)
+		return fmt.Errorf("cannot get service for existing Service=%s: %w", nsn, err)
 	}
-	if !currentService.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, currentService)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, currentService); err != nil {
+	if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 		return err
 	}
 	var isPrevServiceEqual bool
 	var prevSpecDiff string
-	if prevService != nil {
-		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevService, newService)
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevObj, newObj)
 		if !isPrevServiceEqual {
-			prevSpecDiff = diffDeepDerivative(prevService, newService)
+			prevSpecDiff = diffDeepDerivative(prevObj, newObj)
 		}
 		// keep LoadBalancerClass assigned by cloud-controller
 		// See https://github.com/VictoriaMetrics/operator/issues/1550
-		if prevService.Spec.LoadBalancerClass == nil && newService.Spec.LoadBalancerClass == nil {
-			newService.Spec.LoadBalancerClass = currentService.Spec.LoadBalancerClass
+		if prevObj.Spec.LoadBalancerClass == nil && newObj.Spec.LoadBalancerClass == nil {
+			newObj.Spec.LoadBalancerClass = existingObj.Spec.LoadBalancerClass
 		}
 	}
 	// invariants
 	switch {
-	case newService.Spec.Type != currentService.Spec.Type:
+	case newObj.Spec.Type != existingObj.Spec.Type:
 		// type mismatch.
 		// need to remove it and recreate.
-		return recreateService(currentService)
-	case newService.Spec.ClusterIP != "" &&
-		newService.Spec.ClusterIP != "None" &&
-		newService.Spec.ClusterIP != currentService.Spec.ClusterIP:
+		return recreateService(&existingObj)
+	case newObj.Spec.ClusterIP != "" &&
+		newObj.Spec.ClusterIP != "None" &&
+		newObj.Spec.ClusterIP != existingObj.Spec.ClusterIP:
 		// ip was changed by user, remove old service and create new one.
-		return recreateService(currentService)
-	case newService.Spec.ClusterIP == "None" && currentService.Spec.ClusterIP != "None":
+		return recreateService(&existingObj)
+	case newObj.Spec.ClusterIP == "None" && existingObj.Spec.ClusterIP != "None":
 		// serviceType changed from clusterIP to headless
-		return recreateService(currentService)
-	case newService.Spec.ClusterIP == "" && currentService.Spec.ClusterIP == "None":
+		return recreateService(&existingObj)
+	case newObj.Spec.ClusterIP == "" && existingObj.Spec.ClusterIP == "None":
 		// serviceType changes from headless to clusterIP
-		return recreateService(currentService)
-	case ptr.Deref(newService.Spec.LoadBalancerClass, "") != ptr.Deref(currentService.Spec.LoadBalancerClass, ""):
-		return recreateService(currentService)
+		return recreateService(&existingObj)
+	case ptr.Deref(newObj.Spec.LoadBalancerClass, "") != ptr.Deref(existingObj.Spec.LoadBalancerClass, ""):
+		return recreateService(&existingObj)
 	}
 
 	// keep given clusterIP for service.
-	if newService.Spec.ClusterIP != "None" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
+	if newObj.Spec.ClusterIP != "None" {
+		newObj.Spec.ClusterIP = existingObj.Spec.ClusterIP
 	}
 	// keep allocated node ports.
-	if newService.Spec.Type == currentService.Spec.Type {
-		for i := range currentService.Spec.Ports {
-			existPort := currentService.Spec.Ports[i]
-			for j := range newService.Spec.Ports {
-				newPort := &newService.Spec.Ports[j]
+	if newObj.Spec.Type == existingObj.Spec.Type {
+		for i := range existingObj.Spec.Ports {
+			existPort := existingObj.Spec.Ports[i]
+			for j := range newObj.Spec.Ports {
+				newPort := &newObj.Spec.Ports[j]
 				// add missing port, only if its not defined by user.
 				if existPort.Name == newPort.Name && newPort.NodePort == 0 {
 					newPort.NodePort = existPort.NodePort
@@ -115,33 +115,28 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 	}
 
-	rclient.Scheme().Default(newService)
-	isEqual := equality.Semantic.DeepDerivative(newService.Spec, currentService.Spec)
+	rclient.Scheme().Default(newObj)
+	isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 	if isEqual &&
 		isPrevServiceEqual &&
-		equality.Semantic.DeepEqual(newService.Labels, currentService.Labels) &&
-		isObjectMetaEqual(currentService, newService, prevService) {
+		equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+		isObjectMetaEqual(&existingObj, newObj, prevMeta) {
 		return nil
 	}
 
-	vmv1beta1.AddFinalizer(newService, currentService)
-	mergeObjectMetadataIntoNew(currentService, newService, prevService)
+	vmv1beta1.AddFinalizer(newObj, &existingObj)
+	mergeObjectMetadataIntoNew(&existingObj, newObj, prevMeta)
 
-	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
-		newService.Name, isEqual, isPrevServiceEqual, prevService == nil)
+	logMsg := fmt.Sprintf("updating service=%s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
+		nsn, isEqual, isPrevServiceEqual, prevObj == nil)
 
 	if len(prevSpecDiff) > 0 {
 		logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
 	}
 	if !isEqual {
-		logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newService.Spec, currentService.Spec))
+		logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newObj.Spec, existingObj.Spec))
 	}
 	logger.WithContext(ctx).Info(logMsg)
 
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return rclient.Update(ctx, newObj)
 }

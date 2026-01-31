@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -31,17 +30,11 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 	if cr.Spec.Storage.PodDisruptionBudget != nil {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 		pdb := build.PodDisruptionBudget(b, cr.Spec.Storage.PodDisruptionBudget)
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.Storage.PodDisruptionBudget != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.Storage.PodDisruptionBudget)
-		}
-		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
-		if err != nil {
+		if err := reconcile.PDB(ctx, rclient, pdb); err != nil {
 			return err
 		}
 	}
-	if err := createOrUpdateVTStorageHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVTStorageHPA(ctx, rclient, cr); err != nil {
 		return err
 	}
 	if err := createOrUpdateVTStorageSTS(ctx, rclient, cr, prevCR); err != nil {
@@ -96,7 +89,7 @@ func createOrUpdateVTStorageService(ctx context.Context, rclient client.Client, 
 	return newHeadless, nil
 }
 
-func createOrUpdateVTStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
+func createOrUpdateVTStorageHPA(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
 	hpa := cr.Spec.Storage.HPA
 	if hpa == nil {
 		return nil
@@ -108,13 +101,7 @@ func createOrUpdateVTStorageHPA(ctx context.Context, rclient client.Client, cr, 
 		APIVersion: "apps/v1",
 	}
 	defaultHPA := build.HPA(b, targetRef, hpa)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.Storage.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.Storage.HPA)
-	}
-
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, defaultHPA)
 }
 
 func createOrUpdateVTStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {

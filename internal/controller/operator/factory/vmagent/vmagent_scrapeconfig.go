@@ -23,19 +23,14 @@ import (
 
 // CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
 func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
-	var prevCR *vmv1beta1.VMAgent
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, childObject, ac); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		return nil
 	}
@@ -79,10 +74,6 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	for kind, secret := range ac.GetOutput() {
-		var prevSecretMeta *metav1.ObjectMeta
-		if prevCR != nil {
-			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
-		}
 		if kind == build.SecretConfigResourceKind {
 			// Compress config to avoid 1mb secret limit for a while
 			data, err := build.GzipConfig(generatedConfig)
@@ -95,7 +86,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		secret.Annotations = map[string]string{
 			"generated": "true",
 		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret); err != nil {
 			return err
 		}
 	}

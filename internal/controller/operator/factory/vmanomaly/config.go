@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -17,7 +15,7 @@ import (
 )
 
 // createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
 	data, err := config.Load(cr, ac)
 	if err != nil {
 		return "", err
@@ -30,22 +28,13 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 
 	for kind, secret := range ac.GetOutput() {
-		var prevSecretMeta *metav1.ObjectMeta
-		if prevCR != nil {
-			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
-		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret); err != nil {
 			return "", err
 		}
 	}
 
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = ptr.To(build.ResourceMeta(build.SecretConfigResourceKind, prevCR))
-	}
-
-	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, newSecretConfig); err != nil {
 		return "", err
 	}
 

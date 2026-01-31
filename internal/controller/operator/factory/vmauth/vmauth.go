@@ -11,10 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,11 +46,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	}
 	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
@@ -70,11 +64,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if cr.Spec.HTTPRoute != nil && !cfg.GatewayAPIEnabled {
 		return fmt.Errorf("spec.httpRoute is set but VM_GATEWAY_API_ENABLED=true env var was not provided")
 	}
-	if err := createOrUpdateHTTPRoute(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateHTTPRoute(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update httpRoute for vmauth: %w", err)
 	}
 
-	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateHPA(ctx, rclient, cr); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
 	}
 
@@ -90,11 +84,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
@@ -121,7 +111,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	return nil
 }
 
-func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, prevCr *vmv1beta1.VMAuth) error {
+func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.HTTPRoute == nil {
 		return nil
 	}
@@ -130,16 +120,7 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 	if err != nil {
 		return err
 	}
-
-	var prevHTTPRoute *gwapiv1.HTTPRoute
-	if prevCr != nil && prevCr.Spec.HTTPRoute != nil {
-		prevHTTPRoute, err = build.HTTPRoute(cr, cr.Spec.Port, prevCr.Spec.HTTPRoute)
-		if err != nil {
-			return err
-		}
-	}
-
-	return reconcile.HTTPRoute(ctx, rclient, newHTTPRoute, prevHTTPRoute)
+	return reconcile.HTTPRoute(ctx, rclient, newHTTPRoute)
 }
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
@@ -386,11 +367,6 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if cr.Spec.SecretRef != nil || cr.Spec.LocalPath != "" {
 		return nil
 	}
-	var prevCR *vmv1beta1.VMAuth
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigSecretMeta(cr),
 		Data: map[string][]byte{
@@ -419,11 +395,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		return fmt.Errorf("cannot gzip config for vmauth: %w", err)
 	}
 	s.Data[vmAuthConfigNameGz] = data
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
-	}
-	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, s); err != nil {
 		return err
 	}
 	pos.users.UpdateMetrics(ctx)
@@ -460,21 +432,9 @@ func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1b
 	if cr.Spec.Ingress == nil {
 		return nil
 	}
+
 	newIngress := buildIngressConfig(cr)
-	var existIngress networkingv1.Ingress
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newIngress.Namespace, Name: newIngress.Name}, &existIngress); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return rclient.Create(ctx, newIngress)
-		}
-		return err
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existIngress); err != nil {
-		return err
-	}
-	// TODO compare
-	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
-	vmv1beta1.AddFinalizer(newIngress, &existIngress)
-	return rclient.Update(ctx, newIngress)
+	return reconcile.Ingress(ctx, rclient, newIngress)
 }
 
 func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
@@ -585,7 +545,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	}
 	return newService, nil
 }
-func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.HPA == nil {
 		return nil
 	}
@@ -595,11 +555,7 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 		APIVersion: "apps/v1",
 	}
 	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.HPA != nil {
-		prevHPA = build.HPA(prevCR, targetRef, prevCR.Spec.HPA)
-	}
-	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, newHPA)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {

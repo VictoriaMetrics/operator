@@ -458,12 +458,6 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 // if not create with predefined or user value.
 func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, childCR *vmv1beta1.VMAlertmanagerConfig) error {
 	l := logger.WithContext(ctx)
-	var prevCR *vmv1beta1.VMAlertmanager
-	if cr.ParsedLastAppliedSpec != nil {
-		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
-	}
-
 	ac := getAssetsCache(ctx, rclient, cr)
 	var configSourceName string
 	var alertmanagerConfig []byte
@@ -549,12 +543,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		newAMSecretConfig.Data[gossipConfigKey] = gossipCfg
 	}
 
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = buildConfigSecretMeta(prevCR)
-	}
-
-	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig); err != nil {
 		return err
 	}
 

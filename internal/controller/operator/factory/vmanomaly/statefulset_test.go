@@ -297,7 +297,7 @@ func Test_createDefaultConfig(t *testing.T) {
 		}
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
-		if _, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, ac); (err != nil) != o.wantErr {
+		if _, err := createOrUpdateConfig(ctx, fclient, o.cr, ac); (err != nil) != o.wantErr {
 			t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
 		}
 		if o.wantErr {

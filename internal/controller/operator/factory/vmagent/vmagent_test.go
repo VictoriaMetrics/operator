@@ -1898,7 +1898,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		if err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac); err != nil {
+		if err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, ac); err != nil {
 			t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v", err)
 		}
 		var createdCM corev1.ConfigMap
@@ -2011,7 +2011,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		if err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac); err != nil {
+		if err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, ac); err != nil {
 			t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v", err)
 		}
 		var createdCM corev1.ConfigMap

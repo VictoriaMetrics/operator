@@ -13,7 +13,6 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -98,11 +97,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
@@ -129,15 +124,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err = createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
+	if err = createOrUpdateScrapeConfig(ctx, rclient, cr, nil, ac); err != nil {
 		return err
 	}
 
-	if err = createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR, ac); err != nil {
+	if err = createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, ac); err != nil {
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
-	if err = createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
+	if err = createOrUpdateStreamAggrConfig(ctx, rclient, cr, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
@@ -194,11 +189,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 
 		if cr.Spec.PodDisruptionBudget != nil && !cr.Spec.DaemonSetMode {
 			pdb := build.ShardPodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget, shardNum)
-			var prevPDB *policyv1.PodDisruptionBudget
-			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, shardNum)
-			}
-			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+			if err := reconcile.PDB(ctx, rclient, pdb); err != nil {
 				rv.err = err
 				return
 			}
@@ -289,11 +280,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			rv.stsName = newApp.Name
 		case *appsv1.DaemonSet:
 			newApp := newAppTpl
-			var prevApp *appsv1.DaemonSet
-			if prevAppTpl != nil {
-				prevApp, _ = prevAppTpl.(*appsv1.DaemonSet)
-			}
-			if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+			if err := reconcile.DaemonSet(ctx, rclient, newApp); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile daemonset for vmagent: %w", err)
 				return
 			}
@@ -794,7 +781,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 }
 
 // createOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
+func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
 	}
@@ -802,11 +789,8 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 	if err != nil {
 		return err
 	}
-	var prevConfigMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevConfigMeta = ptr.To(build.ResourceMeta(build.RelabelConfigResourceKind, prevCR))
-	}
-	return reconcile.ConfigMap(ctx, rclient, assetsCM, prevConfigMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, assetsCM)
+	return err
 }
 
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
@@ -867,7 +851,7 @@ func buildStreamAggrConfig(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev
 }
 
 // createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
-func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
+func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	// fast path
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
@@ -876,11 +860,8 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if err != nil {
 		return err
 	}
-	var prevConfigMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
-	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM)
+	return err
 }
 
 type item struct {

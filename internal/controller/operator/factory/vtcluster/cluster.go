@@ -31,12 +31,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	if cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		sa := build.ServiceAccount(b)
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
-			prevSA = build.ServiceAccount(b)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, sa, prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, sa); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}

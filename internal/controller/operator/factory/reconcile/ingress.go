@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,29 +13,33 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// ServiceAccount creates service account or updates exist one
-func ServiceAccount(ctx context.Context, rclient client.Client, newObj *corev1.ServiceAccount) error {
+// Ingress creates or updates Ingress object
+func Ingress(ctx context.Context, rclient client.Client, newObj *networkingv1.Ingress) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var existingObj corev1.ServiceAccount
+		var existingObj networkingv1.Ingress
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating Ingress=%s", nsn))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get ServiceAccount=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get existing Ingress=%s: %w", nsn, err)
 		}
 		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 
-		if equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+		isEqual := equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec)
+		if isEqual &&
+			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
 			equality.Semantic.DeepEqual(newObj.Annotations, existingObj.Annotations) {
 			return nil
 		}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		existingObj.Labels = newObj.Labels
 		existingObj.Annotations = newObj.Annotations
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount=%s", nsn))
+		existingObj.Spec = newObj.Spec
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Ingress=%s, spec_diff=%s", nsn, specDiff))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

@@ -13,78 +13,43 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // DaemonSet performs an update or create operator for daemonset and waits until it finishes update rollout
-func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1.DaemonSet) error {
-	var isPrevEqual bool
-	var prevSpecDiff string
-	if prevDs != nil {
-		isPrevEqual = equality.Semantic.DeepDerivative(prevDs.Spec, newDs.Spec)
-		if !isPrevEqual {
-			prevSpecDiff = diffDeepDerivative(prevDs.Spec, newDs.Spec)
-		}
-	}
-	rclient.Scheme().Default(newDs)
-
+func DaemonSet(ctx context.Context, rclient client.Client, newObj *appsv1.DaemonSet) error {
+	rclient.Scheme().Default(newObj)
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var currentDs appsv1.DaemonSet
-		err := rclient.Get(ctx, types.NamespacedName{Name: newDs.Name, Namespace: newDs.Namespace}, &currentDs)
-		if err != nil {
+		var existingObj appsv1.DaemonSet
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new DaemonSet %s", newDs.Name))
-				if err := rclient.Create(ctx, newDs); err != nil {
-					return fmt.Errorf("cannot create new DaemonSet for app: %s, err: %w", newDs.Name, err)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new DaemonSet=%s", nsn))
+				if err := rclient.Create(ctx, newObj); err != nil {
+					return fmt.Errorf("cannot create new DaemonSet=%s: %w", nsn, err)
 				}
-				return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+				return waitDaemonSetReady(ctx, rclient, newObj, appWaitReadyDeadline)
 			}
-			return fmt.Errorf("cannot get DaemonSet for app: %s err: %w", newDs.Name, err)
+			return fmt.Errorf("cannot get DaemonSet=%s: %w", nsn, err)
 		}
-		if !currentDs.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentDs)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDs); err != nil {
+		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		newDs.Status = currentDs.Status
-
-		isEqual := equality.Semantic.DeepDerivative(newDs.Spec, currentDs.Spec)
+		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 		if isEqual &&
-			isPrevEqual &&
-			equality.Semantic.DeepEqual(newDs.Labels, currentDs.Labels) &&
-			isObjectMetaEqual(&currentDs, newDs, prevDs) {
-			return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+			equality.Semantic.DeepEqual(newObj.Annotations, existingObj.Annotations) {
+			return waitDaemonSetReady(ctx, rclient, &existingObj, appWaitReadyDeadline)
 		}
-		var prevTemplateAnnotations map[string]string
-		if prevDs != nil {
-			prevTemplateAnnotations = prevDs.Annotations
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		existingObj.Spec = newObj.Spec
+		existingObj.Labels = newObj.Labels
+		existingObj.Annotations = newObj.Annotations
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating DaemonSet=%s, spec_diff=%s", nsn, specDiff))
+		if err := rclient.Update(ctx, &existingObj); err != nil {
+			return fmt.Errorf("cannot update DaemonSet=%s: %w", nsn, err)
 		}
-
-		vmv1beta1.AddFinalizer(newDs, &currentDs)
-		newDs.Spec.Template.Annotations = mergeAnnotations(currentDs.Spec.Template.Annotations, newDs.Spec.Template.Annotations, prevTemplateAnnotations)
-		mergeObjectMetadataIntoNew(&currentDs, newDs, prevDs)
-
-		logMsg := fmt.Sprintf("updating DaemonSet %s configuration"+
-			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
-			newDs.Name, isPrevEqual, isEqual, prevDs == nil)
-
-		if len(prevSpecDiff) > 0 {
-			logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
-		}
-		if !isEqual {
-			logMsg += fmt.Sprintf(", curr_spec_diff=%s", diffDeepDerivative(newDs.Spec, currentDs.Spec))
-		}
-
-		logger.WithContext(ctx).Info(logMsg)
-
-		if err := rclient.Update(ctx, newDs); err != nil {
-			return fmt.Errorf("cannot update DaemonSet for app: %s, err: %w", newDs.Name, err)
-		}
-
-		return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+		return waitDaemonSetReady(ctx, rclient, &existingObj, appWaitReadyDeadline)
 	})
 }
 

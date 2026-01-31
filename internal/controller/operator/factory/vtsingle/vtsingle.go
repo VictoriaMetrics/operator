@@ -28,15 +28,6 @@ const (
 	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
 
-func createOrUpdatePVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTSingle) error {
-	newPvc := newPVC(cr)
-	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
-		prevPVC = newPVC(prevCR)
-	}
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
-}
-
 func newPVC(r *vmv1.VTSingle) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -69,17 +60,13 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 		}
 	}
 	if cr.Spec.Storage != nil {
-		if err := createOrUpdatePVC(ctx, rclient, cr, prevCR); err != nil {
+		if err := reconcile.PersistentVolumeClaim(ctx, rclient, newPVC(cr)); err != nil {
 			return err
 		}
 	}
 
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}

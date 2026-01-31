@@ -24,15 +24,6 @@ import (
 // VLogs component is deprecated and will be transited into no-op
 // TODO: transit it into no-op at v0.60.0
 
-func createOrUpdateVLogsPVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) error {
-	newPvc := newVLogsPVC(cr)
-	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
-		prevPVC = newVLogsPVC(prevCR)
-	}
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
-}
-
 func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -65,17 +56,13 @@ func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1bet
 		}
 	}
 	if cr.Spec.Storage != nil && cr.Spec.StorageDataPath == "" {
-		if err := createOrUpdateVLogsPVC(ctx, rclient, cr, prevCR); err != nil {
+		if err := reconcile.PersistentVolumeClaim(ctx, rclient, newVLogsPVC(cr)); err != nil {
 			return err
 		}
 	}
 
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}

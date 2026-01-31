@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -30,17 +29,11 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	if cr.Spec.VLSelect.PodDisruptionBudget != nil {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 		pdb := build.PodDisruptionBudget(b, cr.Spec.VLSelect.PodDisruptionBudget)
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.VLSelect.PodDisruptionBudget != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
-			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLSelect.PodDisruptionBudget)
-		}
-		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
-		if err != nil {
+		if err := reconcile.PDB(ctx, rclient, pdb); err != nil {
 			return err
 		}
 	}
-	if err := createOrUpdateVLSelectHPA(ctx, rclient, cr, prevCR); err != nil {
+	if err := createOrUpdateVLSelectHPA(ctx, rclient, cr); err != nil {
 		return err
 	}
 	selectSvc, err := createOrUpdateVLSelectService(ctx, rclient, cr, prevCR)
@@ -64,7 +57,7 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	return nil
 }
 
-func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) error {
 	if cr.Spec.VLSelect.HPA == nil {
 		return nil
 	}
@@ -75,12 +68,7 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VLSelect.HPA)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VLSelect.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLSelect.HPA)
-	}
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, defaultHPA)
 }
 
 func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {

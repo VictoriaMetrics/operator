@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -46,12 +45,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 	if cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		sa := build.ServiceAccount(b)
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
-			prevSA = build.ServiceAccount(b)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, sa, prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, sa); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -65,7 +59,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
-			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr, prevCR)
+			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr)
 			if err != nil {
 				return err
 			}
@@ -78,7 +72,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err != nil {
 			return err
 		}
-		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr, prevCR); err != nil {
+		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr); err != nil {
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
@@ -90,7 +84,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr, prevCR); err != nil {
+			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr); err != nil {
 				return err
 			}
 		}
@@ -98,7 +92,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 			return err
 		}
 
-		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr, prevCR); err != nil {
+		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr); err != nil {
 			return err
 		}
 		// create vmselect service
@@ -121,7 +115,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, rclient, cr, prevCR); err != nil {
+			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, rclient, cr); err != nil {
 				return err
 			}
 		}
@@ -132,7 +126,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err != nil {
 			return err
 		}
-		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
+		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr); err != nil {
 			return err
 		}
 		if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
@@ -650,15 +644,10 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	return vmSelectPodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMSelect.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMSelect.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }
 
 func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
@@ -853,15 +842,10 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	return vmInsertPodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMInsert.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMInsert.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }
 
 func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
@@ -1102,18 +1086,13 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	return vmStoragePodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMStorage.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMStorage.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }
 
-func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
@@ -1124,15 +1103,10 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 		APIVersion: "apps/v1",
 	}
 	newHPA := build.HPA(b, targetRef, cr.Spec.VMInsert.HPA)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMInsert.HPA)
-	}
-	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, newHPA)
 }
 
-func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	if cr.Spec.VMSelect.HPA == nil {
 		return nil
 	}
@@ -1143,16 +1117,10 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 		APIVersion: "apps/v1",
 	}
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
-	}
-
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, defaultHPA)
 }
 
-func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	hpa := cr.Spec.VMStorage.HPA
 	if hpa == nil {
 		return nil
@@ -1164,13 +1132,7 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 		APIVersion: "apps/v1",
 	}
 	defaultHPA := build.HPA(b, targetRef, hpa)
-	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMStorage.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMStorage.HPA)
-	}
-
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	return reconcile.HPA(ctx, rclient, defaultHPA)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
@@ -1479,12 +1441,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-
-	var prevSecretMeta *metav1.ObjectMeta
-	if prevCR != nil {
-		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
-	}
-	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr), prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr)); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 	lbDep, err := buildVMAuthLBDeployment(cr)
@@ -1505,20 +1462,15 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}
 	}
 	return nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
-	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
-		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
-	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb)
 }

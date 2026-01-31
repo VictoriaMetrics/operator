@@ -10,7 +10,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -35,11 +34,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -57,7 +52,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		},
 	}
 	ac := build.NewAssetsCache(ctx, rclient, rcfg)
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, ac)
 	if err != nil {
 		return err
 	}
@@ -204,11 +199,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		}()
 		if cr.Spec.PodDisruptionBudget != nil {
 			pdb := build.ShardPodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget, num)
-			var prevPDB *policyv1.PodDisruptionBudget
-			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, num)
-			}
-			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+			if err := reconcile.PDB(ctx, rclient, pdb); err != nil {
 				rv.err = err
 				return
 			}

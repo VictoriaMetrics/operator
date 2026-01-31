@@ -123,7 +123,7 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 		}
 		build.AddDefaults(testClient.Scheme())
 		ac := getAssetsCache(ctx, testClient, o.cr)
-		if err := createOrUpdateScrapeConfig(ctx, testClient, o.cr, nil, nil, ac); err != nil {
+		if err := createOrUpdateScrapeConfig(ctx, testClient, o.cr, nil, ac); err != nil {
 			t.Errorf("CreateOrUpdateConfigurationSecret() error = %v", err)
 		}
 		var expectSecret corev1.Secret
@@ -2230,7 +2230,7 @@ scrape_configs: []
 			},
 		}
 		ac := getAssetsCache(ctx, testClient, cr)
-		if err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac); err != nil {
+		if err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, ac); err != nil {
 			t.Errorf("CreateOrUpdateConfigurationSecret() error = %s", err)
 		}
 		var configSecret corev1.Secret

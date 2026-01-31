@@ -92,11 +92,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		}
 	}
 	if cr.IsOwnsServiceAccount() {
-		var prevSA *corev1.ServiceAccount
-		if prevCR != nil {
-			prevSA = build.ServiceAccount(prevCR)
-		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -118,11 +114,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
-			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
-		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
 	}
@@ -140,7 +132,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
-	err = createOrUpdateAssets(ctx, rclient, cr, prevCR, ac)
+	err = createOrUpdateAssets(ctx, rclient, cr, ac)
 	if err != nil {
 		return err
 	}
@@ -520,14 +512,10 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	return args, nil
 }
 
-func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
+func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
 	for kind, secret := range ac.GetOutput() {
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		var prevSecretMeta *metav1.ObjectMeta
-		if prevCR != nil {
-			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
-		}
-		err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta)
+		err := reconcile.Secret(ctx, rclient, &secret)
 		if err != nil {
 			return err
 		}

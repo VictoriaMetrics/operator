@@ -10,40 +10,34 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // HPA creates or update horizontalPodAutoscaler object
-func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.HorizontalPodAutoscaler) error {
+func HPA(ctx context.Context, rclient client.Client, newObj *v2.HorizontalPodAutoscaler) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var currentHPA v2.HorizontalPodAutoscaler
-		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
+		var existingObj v2.HorizontalPodAutoscaler
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA %s configuration", newHPA.Name))
-				return rclient.Create(ctx, newHPA)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA=%s configuration", nsn))
+				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get exist hpa object: %w", err)
+			return fmt.Errorf("cannot get existing HPA=%s: %w", nsn, err)
 		}
-		if !currentHPA.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentHPA)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
+		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-
-		if equality.Semantic.DeepEqual(newHPA.Spec, currentHPA.Spec) &&
-			equality.Semantic.DeepEqual(newHPA.Labels, currentHPA.Labels) &&
-			isObjectMetaEqual(&currentHPA, newHPA, prevHPA) {
+		if equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec) &&
+			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+			equality.Semantic.DeepEqual(newObj.Annotations, existingObj.Annotations) {
 			return nil
 		}
-
-		mergeObjectMetadataIntoNew(&currentHPA, newHPA, prevHPA)
-		newHPA.Status = currentHPA.Status
-
-		logMsg := fmt.Sprintf("updating HPA %s configuration spec_diff: %s", newHPA.Name, diffDeepDerivative(newHPA.Spec, currentHPA.Spec))
-		logger.WithContext(ctx).Info(logMsg)
-
-		return rclient.Update(ctx, newHPA)
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		existingObj.Labels = newObj.Labels
+		existingObj.Annotations = newObj.Annotations
+		existingObj.Spec = newObj.Spec
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA=%s, spec_diff: %s", nsn, specDiff))
+		return rclient.Update(ctx, &existingObj)
 	})
 }

@@ -23194,6 +23194,7 @@ spec:
                             - endpoints
                             - service
                             - endpointslices
+                            - endpointslice
                             type: string
                           endpoints:
                             items:
@@ -28981,6 +28982,7 @@ spec:
                 - endpoints
                 - service
                 - endpointslices
+                - endpointslice
                 type: string
               endpoints:
                 items:

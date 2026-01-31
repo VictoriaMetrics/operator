@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // SetupVMServiceScrapeWebhookWithManager will setup the manager to manage the webhooks
@@ -42,7 +43,7 @@ type VMServiceScrapeCustomValidator struct{}
 var _ admission.CustomValidator = &VMServiceScrapeCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (*VMServiceScrapeCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (*VMServiceScrapeCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*vmv1beta1.VMServiceScrape)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
@@ -53,11 +54,14 @@ func (*VMServiceScrapeCustomValidator) ValidateCreate(_ context.Context, obj run
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}
+	if r.Spec.DiscoveryRole == "endpointslices" {
+		logger.WithContext(ctx).Info("deprecated discoverRole value `endpointslices`, use `endpointslice` instead.")
+	}
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (*VMServiceScrapeCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (*VMServiceScrapeCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	r, ok := newObj.(*vmv1beta1.VMServiceScrape)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
@@ -67,6 +71,9 @@ func (*VMServiceScrapeCustomValidator) ValidateUpdate(_ context.Context, oldObj,
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err
+	}
+	if r.Spec.DiscoveryRole == "endpointslices" {
+		logger.WithContext(ctx).Info("deprecated discoverRole value `endpointslices`, use `endpointslice` instead.")
 	}
 	return nil, nil
 }

@@ -87,7 +87,7 @@ func generateServiceScrapeConfig(
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_endpoint_port_name"}},
 				{Key: "regex", Value: ep.Port},
 			})
-		case k8sSDRoleEndpointslice:
+		case k8sSDRoleEndpointslice, k8sSDRoleLegacyEndpointslices:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_endpointslice_port_name"}},
@@ -120,7 +120,7 @@ func generateServiceScrapeConfig(
 	switch spec.DiscoveryRole {
 	case k8sSDRoleService:
 		// nothing to do, service doesn't have relations with pods.
-	case k8sSDRoleEndpointslice:
+	case k8sSDRoleEndpointslice, k8sSDRoleLegacyEndpointslices:
 		// Relabel namespace and pod and service labels into proper labels.
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{ // Relabel node labels for pre v2.3 meta labels

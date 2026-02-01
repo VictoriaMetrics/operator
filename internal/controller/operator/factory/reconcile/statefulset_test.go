@@ -262,8 +262,7 @@ func Test_podIsReady(t *testing.T) {
 
 func Test_performRollingUpdateOnSts(t *testing.T) {
 	type opts struct {
-		stsName           string
-		ns                string
+		nsn               types.NamespacedName
 		podLabels         map[string]string
 		podMaxUnavailable int
 		wantErr           bool
@@ -272,16 +271,17 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-
-		if err := performRollingUpdateOnSts(context.Background(), false, fclient, o.stsName, o.ns, o.podLabels, o.podMaxUnavailable); (err != nil) != o.wantErr {
+		if err := performRollingUpdateOnSts(context.Background(), false, fclient, o.nsn, o.podLabels, o.podMaxUnavailable); (err != nil) != o.wantErr {
 			t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, o.wantErr)
 		}
 	}
 
 	// rolling update is not needed
 	f(opts{
-		stsName:           "vmselect-sts",
-		ns:                "default",
+		nsn: types.NamespacedName{
+			Name:      "vmselect-sts",
+			Namespace: "default",
+		},
 		podLabels:         map[string]string{"app": "vmselect"},
 		podMaxUnavailable: 1,
 		predefinedObjects: []runtime.Object{
@@ -317,8 +317,10 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 
 	// rolling update is timeout
 	f(opts{
-		stsName:           "vmselect-sts",
-		ns:                "default",
+		nsn: types.NamespacedName{
+			Name:      "vmselect-sts",
+			Namespace: "default",
+		},
 		podLabels:         map[string]string{"app": "vmselect"},
 		podMaxUnavailable: 1,
 		predefinedObjects: []runtime.Object{

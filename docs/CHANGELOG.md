@@ -26,6 +26,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed conflicts for `VMAlert`, `VMAlertmanager` and `VMAuth` reconcilers, which are updating same objects concurrently with reconcilers for their child objects.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously PVC downscaling always emitted a warning, which is not expected, while using PVC autoresizer; now warning during attempt to downsize PVC is only emitted if `operator.victoriametrics.com/pvc-allow-volume-expansion: false` is not set. See [#1747](https://github.com/VictoriaMetrics/operator/issues/1747).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously, recreating a resource after deletion could hang and block updates; now resource recreation completes normally. See [#1707](https://github.com/VictoriaMetrics/operator/issues/1707).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

@@ -7,44 +7,45 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // PDB creates or updates PodDisruptionBudget
-func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.PodDisruptionBudget) error {
+func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.PodDisruptionBudget) error {
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		currentPDB := &policyv1.PodDisruptionBudget{}
-		err := rclient.Get(ctx, types.NamespacedName{Namespace: newPDB.Namespace, Name: newPDB.Name}, currentPDB)
-		if err != nil {
+		var existingObj policyv1.PodDisruptionBudget
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB %s", newPDB.Name))
-				return rclient.Create(ctx, newPDB)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PDB=%s", nsn))
+				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
+			return fmt.Errorf("cannot get existing PDB=%s: %w", nsn, err)
 		}
-		if !currentPDB.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, currentPDB)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, currentPDB); err != nil {
+		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 
-		if equality.Semantic.DeepEqual(newPDB.Spec, currentPDB.Spec) &&
-			equality.Semantic.DeepEqual(newPDB.Labels, currentPDB.Labels) &&
-			isObjectMetaEqual(currentPDB, newPDB, prevPDB) {
+		if equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec) &&
+			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
+			isObjectMetaEqual(&existingObj, newObj, prevMeta) {
 			return nil
 		}
-		logMsg := fmt.Sprintf("updating PDB %s configuration spec_diff: %s", newPDB.Name, diffDeep(newPDB.Spec, currentPDB.Spec))
+		logMsg := fmt.Sprintf("updating PDB=%s configuration spec_diff: %s", nsn, diffDeep(newObj.Spec, existingObj.Spec))
 		logger.WithContext(ctx).Info(logMsg)
 
-		mergeObjectMetadataIntoNew(currentPDB, newPDB, prevPDB)
+		mergeObjectMetadataIntoNew(&existingObj, newObj, prevMeta)
 		// for some reason Status is not marked as status sub-resource at PDB CRD
-		newPDB.Status = currentPDB.Status
+		newObj.Status = existingObj.Status
 
-		return rclient.Update(ctx, newPDB)
+		return rclient.Update(ctx, newObj)
 	})
 }

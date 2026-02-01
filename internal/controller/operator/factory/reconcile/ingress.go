@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// HTTPRoute creates or updates HTTPRoute object
-func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwapiv1.HTTPRoute) error {
+// Ingress creates or updates Ingress object
+func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.Ingress) error {
 	var isPrevEqual bool
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
@@ -24,20 +24,19 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 	}
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	return retryOnConflict(func() error {
-		var existingObj gwapiv1.HTTPRoute
-		if err := rclient.Get(ctx, types.NamespacedName{Name: newObj.GetName(), Namespace: newObj.GetNamespace()}, &existingObj); err != nil {
+		var existingObj networkingv1.Ingress
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating HTTPRoute=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating Ingress=%s", nsn))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get existing HTTPRoute=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get existing Ingress=%s: %w", nsn, err)
 		}
 		if err := freeIfNeeded(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 
-		// use DeepDerivative compare since gatewayapi controller sets default fields to the parentRefs fields
-		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
+		isEqual := equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec)
 		if isEqual &&
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newObj.Labels, existingObj.Labels) &&
@@ -48,7 +47,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 		mergeObjectMetadataIntoNew(&existingObj, newObj, prevMeta)
 		newObj.Status = existingObj.Status
 
-		logMsg := fmt.Sprintf("updating HTTPRoute=%s configuration spec_diff: %s"+
+		logMsg := fmt.Sprintf("updating Ingress=%s configuration spec_diff: %s"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
 			nsn, diffDeepDerivative(newObj.Spec, existingObj.Spec), isPrevEqual, isEqual, prevMeta == nil)
 

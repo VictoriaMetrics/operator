@@ -24,6 +24,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
+	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMPodScrape(cr)
+}
+
 // CreateOrUpdate creates vmanomalyand and builds config for it
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Client) error {
 	var prevCR *vmv1.VMAnomaly
@@ -34,18 +41,21 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 			return fmt.Errorf("cannot delete orphaned resources: %w", err)
 		}
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrape(cr)); err != nil {
+		svs := buildScrape(cr)
+		prevSvs := buildScrape(prevCR)
+		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return err
 		}
 	}
@@ -196,6 +206,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
+	owner := cr.AsOwner()
 	updateShard := func(num int) {
 		var rv returnValue
 		defer func() {
@@ -208,7 +219,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, num)
 			}
-			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner); err != nil {
 				rv.err = err
 				return
 			}
@@ -230,7 +241,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				return selectorLabels
 			},
 		}
-		if err := reconcile.StatefulSet(shardCtx, rclient, opts, newApp, prevApp); err != nil {
+		if err := reconcile.StatefulSet(shardCtx, rclient, opts, newApp, prevApp, &owner); err != nil {
 			rv.err = err
 			return
 		}

@@ -3,142 +3,149 @@ package reconcile
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/ptr"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestDeployOk(t *testing.T) {
-	f := func(dep *appsv1.Deployment) {
-		t.Helper()
-		ctx := context.Background()
-		rclient := k8stools.GetTestClientWithObjects(nil)
-
-		waitTimeout := 5 * time.Second
-		prevDeploy := dep.DeepCopy()
-		createErr := make(chan error)
-		go func() {
-			err := Deployment(ctx, rclient, dep, nil, false)
-			createErr <- err
-		}()
-		reloadDep := func() {
-			t.Helper()
-			if err := rclient.Get(ctx, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, dep); err != nil {
-				t.Fatalf("cannot reload created deployment: %s", err)
-			}
-		}
-
-		err := wait.PollUntilContextTimeout(ctx, time.Millisecond*50,
-			waitTimeout, true, func(ctx context.Context) (done bool, err error) {
-				var createdDep appsv1.Deployment
-				if err := rclient.Get(ctx, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, &createdDep); err != nil {
-					if k8serrors.IsNotFound(err) {
-						return false, nil
-					}
-					return false, err
-				}
-				createdDep.Status.Conditions = []appsv1.DeploymentCondition{
+func TestDeployReconcile(t *testing.T) {
+	type opts struct {
+		new, prev         *appsv1.Deployment
+		predefinedObjects []runtime.Object
+		validate          func(*k8stools.TestClientWithStatsTrack, *appsv1.Deployment)
+		wantErr           bool
+	}
+	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
+		d := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-1",
+				Namespace: "default",
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"label": "value",
+					},
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{"label": "value"},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:            "vmalert",
+								ImagePullPolicy: "IfNowPresent",
+								Image:           "some-image:tag",
+							},
+						},
+					},
+				},
+			},
+			Status: appsv1.DeploymentStatus{
+				Conditions: []appsv1.DeploymentCondition{
 					{
 						Type:   appsv1.DeploymentProgressing,
 						Reason: "NewReplicaSetAvailable",
 						Status: "True",
 					},
-				}
-				createdDep.Status.ReadyReplicas = 1
-				createdDep.Status.UpdatedReplicas = 1
-				createdDep.Status.AvailableReplicas = 1
-				createdDep.Status.Replicas = 1
-				if err := rclient.Status().Update(ctx, &createdDep); err != nil {
-					return false, err
-				}
-				return true, nil
-			})
+				},
+				ReadyReplicas:     1,
+				UpdatedReplicas:   1,
+				AvailableReplicas: 1,
+				Replicas:          1,
+			},
+		}
+		for _, fn := range fns {
+			fn(d)
+		}
+		return d
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		err := Deployment(ctx, rclient, o.new, o.prev, false, nil)
 		if err != nil {
 			t.Fatalf("failed to wait deployment created: %s", err)
 		}
-
-		err = <-createErr
-		if err != nil {
-			t.Fatalf("failed to create deploy: %s", err)
+		if o.wantErr {
+			assert.Error(t, err)
+			return
+		} else {
+			assert.NoError(t, err)
 		}
-		// expect 1 create
-		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
-		// expect 0 update
-		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
-			t.Fatalf("failed to update created deploy: %s", err)
+		nsn := types.NamespacedName{
+			Name:      o.new.Name,
+			Namespace: o.new.Namespace,
 		}
-		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
-		assert.Equal(t, 0, rclient.UpdateCalls.Count(dep))
-
-		// expect 1 UpdateCalls
-		reloadDep()
-		dep.Status.AvailableReplicas = 10
-		dep.Status.UpdatedReplicas = 10
-		if err = rclient.Status().Update(ctx, dep); err != nil {
-			t.Fatalf("cannot update deployment status: %s", err)
+		var got appsv1.Deployment
+		assert.NoError(t, rclient.Get(ctx, nsn, &got))
+		if o.validate != nil {
+			o.validate(rclient, &got)
 		}
-
-		dep.Spec.Replicas = ptr.To[int32](10)
-		dep.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
-		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
-			t.Fatalf("expect 1 failed to update created deploy: %s", err)
-		}
-		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
-		assert.Equal(t, 1, rclient.UpdateCalls.Count(dep))
-
-		// expected still same 1 update
-		reloadDep()
-		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
-			t.Fatalf("expect still 1 failed to update created deploy: %s", err)
-		}
-		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
-		assert.Equal(t, 1, rclient.UpdateCalls.Count(dep))
-
-		// expected 2 updates
-		prevDeploy.Spec.Template.Annotations = dep.Spec.Template.Annotations
-		dep.Spec.Template.Annotations = nil
-
-		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
-			t.Fatalf("expect 2 failed to update deploy: %s", err)
-		}
-		assert.Equal(t, 1, rclient.CreateCalls.Count(dep))
-		assert.Equal(t, 2, rclient.UpdateCalls.Count(dep))
 	}
 
-	f(&appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "default",
+	// create deployment
+	f(opts{
+		new: getDeploy(),
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
+			assert.Equal(t, 2, rclient.GetCalls.Count(d))
+			assert.Equal(t, 1, rclient.CreateCalls.Count(d))
+			assert.Equal(t, 0, rclient.UpdateCalls.Count(d))
 		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"label": "value",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"label": "value"},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            "vmalert",
-							ImagePullPolicy: "IfNowPresent",
-							Image:           "some-image:tag",
-						},
-					},
-				},
-			},
+	})
+
+	// no updates
+	f(opts{
+		new:  getDeploy(),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Finalizers = []string{vmv1beta1.FinalizerName}
+			}),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
+			assert.Equal(t, 3, rclient.GetCalls.Count(d))
+			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
+			assert.Equal(t, 0, rclient.UpdateCalls.Count(d))
+		},
+	})
+
+	// update spec
+	f(opts{
+		new: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+		}),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
+			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
+			assert.Equal(t, 1, rclient.UpdateCalls.Count(d))
+		},
+	})
+
+	// remove template annotations
+	f(opts{
+		new:  getDeploy(),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+			}),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
+			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
+			assert.Equal(t, 1, rclient.UpdateCalls.Count(d))
 		},
 	})
 }

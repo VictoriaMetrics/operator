@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,12 +36,12 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duratio
 // mergeMaps performs 3-way merge for labels and annotations
 // it deletes only labels and annotations managed by operator CRDs
 // 3-rd party kubernetes annotations and labels must be preserved
-func mergeMaps(currentA, newA, prevA map[string]string) map[string]string {
+func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string {
 	dst := make(map[string]string)
 	var deleted map[string]struct{}
 
-	for k := range prevA {
-		if _, ok := newA[k]; !ok {
+	for k := range prevMap {
+		if _, ok := newMap[k]; !ok {
 			if deleted == nil {
 				deleted = make(map[string]struct{})
 			}
@@ -48,77 +49,38 @@ func mergeMaps(currentA, newA, prevA map[string]string) map[string]string {
 		}
 	}
 
-	for k, v := range currentA {
+	for k, v := range existingMap {
 		if _, ok := deleted[k]; ok {
 			continue
 		}
 		dst[k] = v
 	}
-	for k, v := range newA {
+	for k, v := range newMap {
 		dst[k] = v
 	}
 	return dst
 }
 
-// areMapsEqual properly track changes in maps
-// it doesn't take into account 3rd party values
-func areMapsEqual(existingMap, newMap, prevMap map[string]string) bool {
-	for k, v := range newMap {
-		cv, ok := existingMap[k]
-		if !ok {
-			return false
-		}
-		if v != cv {
-			return false
-		}
+func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
+	refChanged, err := addOwnerReferenceIfAbsent(existingObj, owner)
+	if err != nil {
+		return false, err
 	}
-	for k := range prevMap {
-		_, nok := newMap[k]
-		_, cok := existingMap[k]
-		// case for annotations delete
-		if nok != cok {
-			return false
-		}
-	}
-	return true
-}
-
-// isObjectMetaEqual properly track changes at object annotations
-// it preserves 3rd party annotations
-func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
+	finChanged := controllerutil.AddFinalizer(existingObj, vmv1beta1.FinalizerName)
+	existingLabels := existingObj.GetLabels()
+	existingAnnotations := existingObj.GetAnnotations()
 	var prevLabels, prevAnnotations map[string]string
-	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
-		prevLabels = prevObj.GetLabels()
-		prevAnnotations = prevObj.GetAnnotations()
+	if prevMeta != nil {
+		prevLabels = prevMeta.Labels
+		prevAnnotations = prevMeta.Annotations
 	}
-	annotationsEqual := areMapsEqual(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
-	labelsEqual := areMapsEqual(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
-
-	return annotationsEqual && labelsEqual
-}
-
-func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
-	// empty ResourceVersion for some resources produces the following error
-	// is invalid: metadata.resourceVersion: Invalid value: 0x0: must be specified for an update
-	// so keep it from current resource
-	//
-	newObj.SetResourceVersion(currObj.GetResourceVersion())
-	// Keep common metadata for consistency sake
-	newObj.SetGeneration(currObj.GetGeneration())
-	newObj.SetCreationTimestamp(currObj.GetCreationTimestamp())
-	newObj.SetUID(currObj.GetUID())
-	newObj.SetSelfLink(currObj.GetSelfLink())
-
-	var prevLabels, prevAnnotations map[string]string
-	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
-		prevLabels = prevObj.GetLabels()
-		prevAnnotations = prevObj.GetAnnotations()
-	}
-	annotations := mergeMaps(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
-	labels := mergeMaps(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
-
-	newObj.SetAnnotations(annotations)
-	newObj.SetLabels(labels)
+	newLabels := mergeMaps(existingLabels, newObj.GetLabels(), prevLabels)
+	newAnnotations := mergeMaps(existingAnnotations, newObj.GetAnnotations(), prevAnnotations)
+	changed := refChanged || finChanged || !equality.Semantic.DeepEqual(existingLabels, newLabels) ||
+		!equality.Semantic.DeepEqual(existingAnnotations, newAnnotations)
+	existingObj.SetLabels(newLabels)
+	existingObj.SetAnnotations(newAnnotations)
+	return changed, nil
 }
 
 func isRecreate(err error) bool {
@@ -160,12 +122,28 @@ func retryOnConflict(fn func() error) error {
 	return retry.OnError(retry.DefaultRetry, isConflict, fn)
 }
 
-func addFinalizerIfAbsent(obj client.Object) {
-	_ = controllerutil.AddFinalizer(obj, vmv1beta1.FinalizerName)
+func addOwnerReferenceIfAbsent(obj client.Object, owner *metav1.OwnerReference) (bool, error) {
+	if owner == nil {
+		return false, nil
+	}
+	owners := obj.GetOwnerReferences()
+	for _, o := range owners {
+		if o.APIVersion == owner.APIVersion && o.Kind == owner.Kind {
+			if o.Name == owner.Name {
+				return false, nil
+			} else {
+				msg := fmt.Sprintf("object %T=%s/%s has another owner reference of same kind", obj, obj.GetNamespace(), obj.GetName())
+				return false, fmt.Errorf("%s: %s/%s=%s", msg, o.APIVersion, o.Kind, o.Name)
+			}
+		}
+	}
+	owners = append(owners, *owner)
+	obj.SetOwnerReferences(owners)
+	return true, nil
 }
 
-// needsGarbageCollection checks if resource must be freed from finalizer and garbage collected by kubernetes
-func needsGarbageCollection(ctx context.Context, rclient client.Client, obj client.Object) error {
+// collectGarbage checks if resource must be freed from finalizer and prepares it for garbage collection by kubernetes
+func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object) error {
 	if obj.GetDeletionTimestamp().IsZero() {
 		// fast path
 		return nil

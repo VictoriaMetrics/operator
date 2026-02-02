@@ -7,6 +7,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -14,108 +15,133 @@ import (
 )
 
 // RoleBinding reconciles rolebindg object
-func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbacv1.RoleBinding) error {
-	var currentRB rbacv1.RoleBinding
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRB.Namespace, Name: newRB.Name}, &currentRB); err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding %s", newRB.Name))
-			return rclient.Create(ctx, newRB)
+func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.RoleBinding, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
+	return retryOnConflict(func() error {
+		var existingObj rbacv1.RoleBinding
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding=%s", nsn))
+				return rclient.Create(ctx, newObj)
+			}
+			return fmt.Errorf("cannot get exist RoleBinding=%s: %w", nsn, err)
 		}
-		return fmt.Errorf("cannot get exist rolebinding: %w", err)
-	}
-	if err := needsGarbageCollection(ctx, rclient, &currentRB); err != nil {
-		return err
-	}
-
-	if equality.Semantic.DeepEqual(newRB.Subjects, currentRB.Subjects) &&
-		equality.Semantic.DeepEqual(newRB.RoleRef, currentRB.RoleRef) &&
-		isObjectMetaEqual(&currentRB, newRB, prevRB) {
-		return nil
-	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding %s configuration", newRB.Name))
-	mergeObjectMetadataIntoNew(&currentRB, newRB, prevRB)
-	newRB.Finalizers = currentRB.Finalizers
-	addFinalizerIfAbsent(newRB)
-	return rclient.Update(ctx, newRB)
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged && equality.Semantic.DeepEqual(newObj.Subjects, existingObj.Subjects) &&
+			equality.Semantic.DeepEqual(newObj.RoleRef, existingObj.RoleRef) {
+			return nil
+		}
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding=%s", nsn))
+		existingObj.RoleRef = newObj.RoleRef
+		existingObj.Subjects = newObj.Subjects
+		return rclient.Update(ctx, &existingObj)
+	})
 }
 
 // Role reconciles role object
-func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role) error {
-	var currentRL rbacv1.Role
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newRL.Namespace, Name: newRL.Name}, &currentRL); err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role %s", newRL.Name))
-			return rclient.Create(ctx, newRL)
+func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Role, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
+	return retryOnConflict(func() error {
+		var existingObj rbacv1.Role
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role=%s", nsn))
+				return rclient.Create(ctx, newObj)
+			}
+			return fmt.Errorf("cannot get exist Role=%s: %w", nsn, err)
 		}
-		return fmt.Errorf("cannot get exist role: %w", err)
-	}
-	if err := needsGarbageCollection(ctx, rclient, &currentRL); err != nil {
-		return err
-	}
-
-	if equality.Semantic.DeepEqual(newRL.Rules, currentRL.Rules) &&
-		isObjectMetaEqual(&currentRL, newRL, prevRL) {
-		return nil
-	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating Role %s configuration", newRL.Name))
-	mergeObjectMetadataIntoNew(&currentRL, newRL, prevRL)
-	newRL.Finalizers = currentRL.Finalizers
-	addFinalizerIfAbsent(newRL)
-	return rclient.Update(ctx, newRL)
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged && equality.Semantic.DeepEqual(newObj.Rules, existingObj.Rules) {
+			return nil
+		}
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Role=%s", nsn))
+		existingObj.Rules = newObj.Rules
+		return rclient.Update(ctx, &existingObj)
+	})
 }
 
 // ClusterRoleBinding reconciles cluster role binding object
-func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prevCRB *rbacv1.ClusterRoleBinding) error {
-	var currentCRB rbacv1.ClusterRoleBinding
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: newCRB.Name, Namespace: newCRB.Namespace}, &currentCRB); err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding %s", newCRB.Name))
-			return rclient.Create(ctx, newCRB)
+func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRoleBinding, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
+	return retryOnConflict(func() error {
+		var existingObj rbacv1.ClusterRoleBinding
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding=%s", nsn))
+				return rclient.Create(ctx, newObj)
+			}
+			return fmt.Errorf("cannot get ClusterRoleBinding=%s: %w", nsn, err)
 		}
-		return fmt.Errorf("cannot get crb: %w", err)
-	}
-	if err := needsGarbageCollection(ctx, rclient, &currentCRB); err != nil {
-		return err
-	}
-
-	// fast path
-	if equality.Semantic.DeepEqual(newCRB.Subjects, currentCRB.Subjects) &&
-		equality.Semantic.DeepEqual(newCRB.RoleRef, currentCRB.RoleRef) &&
-		isObjectMetaEqual(&currentCRB, newCRB, prevCRB) {
-		return nil
-	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding %s", newCRB.Name))
-	mergeObjectMetadataIntoNew(&currentCRB, newCRB, prevCRB)
-	newCRB.Finalizers = currentCRB.Finalizers
-	addFinalizerIfAbsent(newCRB)
-	return rclient.Update(ctx, newCRB)
-
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged && equality.Semantic.DeepEqual(newObj.Subjects, existingObj.Subjects) &&
+			equality.Semantic.DeepEqual(newObj.RoleRef, existingObj.RoleRef) {
+			return nil
+		}
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding=%s", nsn))
+		existingObj.RoleRef = newObj.RoleRef
+		existingObj.Subjects = newObj.Subjects
+		return rclient.Update(ctx, &existingObj)
+	})
 }
 
 // ClusterRole reconciles cluster role object
-func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, prevClusterRole *rbacv1.ClusterRole) error {
-	var currentClusterRole rbacv1.ClusterRole
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: newClusterRole.Name, Namespace: newClusterRole.Namespace}, &currentClusterRole); err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole %s", newClusterRole.Name))
-			return rclient.Create(ctx, newClusterRole)
+func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRole, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
+	return retryOnConflict(func() error {
+		var existingObj rbacv1.ClusterRole
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole=%s", nsn))
+				return rclient.Create(ctx, newObj)
+			}
+			return fmt.Errorf("cannot get exist ClusterRole=%s: %w", nsn, err)
 		}
-		return fmt.Errorf("cannot get exist cluster role: %w", err)
-	}
-	if err := needsGarbageCollection(ctx, rclient, &currentClusterRole); err != nil {
-		return err
-	}
-	// fast path
-	if equality.Semantic.DeepEqual(newClusterRole.Rules, currentClusterRole.Rules) &&
-		isObjectMetaEqual(&currentClusterRole, newClusterRole, prevClusterRole) {
-		return nil
-	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole %s", newClusterRole.Name))
-
-	mergeObjectMetadataIntoNew(&currentClusterRole, newClusterRole, prevClusterRole)
-	newClusterRole.Finalizers = currentClusterRole.Finalizers
-	addFinalizerIfAbsent(newClusterRole)
-	return rclient.Update(ctx, newClusterRole)
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged && equality.Semantic.DeepEqual(newObj.Rules, existingObj.Rules) {
+			return nil
+		}
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole=%s", nsn))
+		existingObj.Rules = newObj.Rules
+		return rclient.Update(ctx, &existingObj)
+	})
 }

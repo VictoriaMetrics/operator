@@ -29,7 +29,8 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
 	}
-	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr), prevSecretMeta); err != nil {
+	owner := cr.AsOwner()
+	if err := reconcile.Secret(ctx, rclient, buildVMauthLBSecret(cr), prevSecretMeta, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 	lbDep, err := buildVMauthLBDeployment(cr)
@@ -43,7 +44,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
@@ -230,6 +231,18 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 
 }
 
+func buildVMAuthScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	svs := build.VMServiceScrape(svc, &cr.Spec.RequestsLoadBalancer.Spec)
+	if svs.Spec.Selector.MatchLabels == nil {
+		svs.Spec.Selector.MatchLabels = make(map[string]string)
+	}
+	svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
+	return svs
+}
+
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	builder := func(r *vmv1.VLCluster) *build.ChildBuilder {
 		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
@@ -246,14 +259,14 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 		b := builder(prevCR)
 		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
 	}
-
-	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
+	owner := cr.AsOwner()
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)
 	}
 	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
-		svs := build.VMServiceScrape(svc, &cr.Spec.RequestsLoadBalancer.Spec)
-		svs.Spec.Selector.MatchLabels[vmv1beta1.VMAuthLBServiceProxyTargetLabel] = "vmauth"
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs); err != nil {
+		svs := buildVMAuthScrape(cr, svc)
+		prevSvs := buildVMAuthScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 		}
 	}
@@ -264,11 +277,12 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
+	owner := cr.AsOwner()
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
 // createOrUpdateLBProxyService builds vlinsert and vlselect external services to expose vlcluster components for access by vmauth
@@ -292,8 +306,8 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 			svc.Spec.Ports[0].Port = intstr.Parse(prevPort).IntVal
 		})
 	}
-
-	if err := reconcile.Service(ctx, rclient, svc, prevSvc); err != nil {
+	owner := cr.AsOwner()
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile lb service: %w", err)
 	}
 	return nil

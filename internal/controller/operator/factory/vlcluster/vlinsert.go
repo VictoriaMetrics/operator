@@ -34,26 +34,10 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVLInsertDeployment(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	insertSvc, err := createOrUpdateVLInsertService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateVLInsertService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if err := createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR); err != nil {
-		return err
-	}
-	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
-		svs := build.VMServiceScrape(insertSvc, cr.Spec.VLInsert)
-		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
-			// for backward compatibility we must keep job label value
-			svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
-		}
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs)
-		if err != nil {
-			return fmt.Errorf("cannot create VMServiceScrape for VLInsert: %w", err)
-		}
-	}
-
-	return nil
+	return createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR)
 }
 
 func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
@@ -67,7 +51,8 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLInsert.PodDisruptionBudget)
 	}
-	return reconcile.PDB(ctx, rclient, pdb, prevPDB)
+	owner := cr.AsOwner()
+	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
 func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
@@ -84,7 +69,8 @@ func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client
 	if err != nil {
 		return err
 	}
-	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VLInsert.HPA != nil)
+	owner := cr.AsOwner()
+	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VLInsert.HPA != nil, &owner)
 }
 
 func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
@@ -281,31 +267,44 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLInsert.HPA)
 	}
-	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }
 
-func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
-	newService := buildVLInsertService(cr)
-	var prevService, prevAdditionalService *corev1.Service
-	if prevCR != nil && prevCR.Spec.VLInsert != nil {
-		prevService = buildVLInsertService(prevCR)
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLInsert.ServiceSpec)
+func buildVLInsertScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || cr.Spec.VLInsert == nil || ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
+		return nil
 	}
+	svs := build.VMServiceScrape(svc, cr.Spec.VLInsert)
+	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
+		svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
+	}
+	return svs
+}
+
+func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	svc := buildVLInsertService(cr)
+	var prevSvc, prevAdditionalSvc *corev1.Service
+	if prevCR != nil && prevCR.Spec.VLInsert != nil {
+		prevSvc = buildVLInsertService(prevCR)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VLInsert.ServiceSpec)
+	}
+	owner := cr.AsOwner()
 	if err := cr.Spec.VLInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("VLInsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("VLInsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile insert additional service: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile insert service: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile insert service: %w", err)
 	}
 
 	// create extra service for loadbalancing
@@ -316,11 +315,19 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 		}
 		kind := vmv1beta1.ClusterComponentInsert
 		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VLInsert.Port, prevPort); err != nil {
-			return nil, fmt.Errorf("cannot create lb svc for insert: %w", err)
+			return fmt.Errorf("cannot create lb svc for insert: %w", err)
 		}
 	}
 
-	return newService, nil
+	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
+		svs := buildVLInsertScrape(cr, svc)
+		prevSvs := buildVLInsertScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create VMServiceScrape for VLInsert: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {

@@ -11,9 +11,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -94,11 +96,15 @@ func TestCreateOrUpdateService(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, err := createOrUpdateService(context.TODO(), fclient, o.cr, nil)
-		if err != nil {
-			t.Errorf("createOrUpdateService() error = %v", err)
-			return
+		ctx := context.TODO()
+		assert.NoError(t, createOrUpdateService(ctx, fclient, o.cr, nil))
+		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
+		var got corev1.Service
+		nsn := types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
 		}
+		assert.NoError(t, fclient.Get(ctx, nsn, &got))
 		if !reflect.DeepEqual(got.Name, o.want.Name) {
 			t.Errorf("createOrUpdateService(): %s", cmp.Diff(got, o.want))
 		}

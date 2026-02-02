@@ -48,9 +48,10 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 	})
 	var needReload bool
 	newConfigMapNames := make([]string, 0, len(newConfigMaps))
+	owner := cr.AsOwner()
 	for i := range newConfigMaps {
 		cm := &newConfigMaps[i]
-		if updated, err := reconcile.ConfigMap(ctx, rclient, cm, nil); err != nil {
+		if updated, err := reconcile.ConfigMap(ctx, rclient, cm, nil, &owner); err != nil {
 			return nil, err
 		} else if updated {
 			needReload = true

@@ -3,7 +3,6 @@ package reconcile
 import (
 	"context"
 	"fmt"
-	"maps"
 	"strings"
 	"time"
 
@@ -82,7 +81,7 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	return nil
 }
 
-func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
+func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, owner *metav1.OwnerReference) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -117,27 +116,32 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 			continue
 		}
 		// update PVC size and metadata if it's needed
-		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil); err != nil {
+		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil, owner); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev1.PersistentVolumeClaim) error {
+func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
 	srcSize := src.Spec.Resources.Requests.Storage()
 	dstSize := dst.Spec.Resources.Requests.Storage()
 	if srcSize == nil || dstSize == nil {
 		return nil
 	}
+	var prevMeta *metav1.ObjectMeta
+	if prev != nil {
+		prevMeta = &prev.ObjectMeta
+	}
 	direction := dstSize.Cmp(*srcSize)
-	if direction == 0 && equality.Semantic.DeepEqual(src.Labels, dst.Labels) && isObjectMetaEqual(src, dst, prev) {
+	metaChanged, err := mergeMeta(src, dst, prevMeta, owner)
+	if err != nil {
+		return err
+	}
+	if !metaChanged && direction == 0 {
 		return nil
 	}
-
 	pvc := src.DeepCopy()
-	pvc.Labels = maps.Clone(dst.Labels)
-	pvc.Annotations = maps.Clone(dst.Annotations)
 	if direction != 0 {
 		// do not perform any checks if user set annotation explicitly.
 		var expandable bool
@@ -178,9 +182,6 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		}
 		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
 	}
-	pvc.Finalizers = src.Finalizers
-	addFinalizerIfAbsent(pvc)
-	mergeObjectMetadataIntoNew(dst, pvc, prev)
 	if err := rclient.Update(ctx, pvc); err != nil {
 		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)
 	}
@@ -282,8 +283,9 @@ func shouldRecreateSTSOnImmutableFieldChange(ctx context.Context, statefulSet, o
 
 func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, statefulSet, oldStatefulSet *appsv1.StatefulSet) error {
 	// removes finalizer from exist sts, it allows to delete it
+	nsn := types.NamespacedName{Name: oldStatefulSet.Name, Namespace: oldStatefulSet.Namespace}
 	if err := finalize.RemoveFinalizer(ctx, rclient, oldStatefulSet); err != nil {
-		return fmt.Errorf("failed to remove finalizer from sts: %w", err)
+		return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn, err)
 	}
 	opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
 		p := metav1.DeletePropagationOrphan
@@ -292,7 +294,6 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 	if err := rclient.Delete(ctx, oldStatefulSet, &opts); err != nil {
 		return err
 	}
-	nsn := types.NamespacedName{Name: oldStatefulSet.Name, Namespace: oldStatefulSet.Namespace}
 
 	// wait until sts disappears
 	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, true, func(_ context.Context) (done bool, err error) {
@@ -312,9 +313,9 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 		// try to restore previous one and throw error
 		oldStatefulSet.ResourceVersion = ""
 		if err2 := rclient.Create(ctx, oldStatefulSet); err2 != nil {
-			return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", oldStatefulSet.Name, err, err2)
+			return fmt.Errorf("cannot restore previous StatefulSet=%s configuration after remove original error: %s: restore error %w", nsn, err, err2)
 		}
-		return fmt.Errorf("cannot create new sts: %s instead of replaced, perform manual action to handle this error or report BUG, err: %w", statefulSet.Name, err)
+		return fmt.Errorf("cannot create new StatefulSet=%s instead of replaced, perform manual action to handle this error or report BUG: %w", nsn, err)
 	}
 	return nil
 }

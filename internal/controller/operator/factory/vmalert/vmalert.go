@@ -34,34 +34,47 @@ const (
 	tlsAssetsDir            = "/etc/vmalert-tls/certs"
 )
 
-// createOrUpdateService creates service for vmalert
-func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) (*corev1.Service, error) {
+func buildScrape(cr *vmv1beta1.VMAlert, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMServiceScrape(svc, cr)
+}
 
-	var prevService, prevAdditionalService *corev1.Service
+// createOrUpdateService creates service for vmalert
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 
-	newService := build.Service(cr, cr.Spec.Port, nil)
-
+	svc := build.Service(cr, cr.Spec.Port, nil)
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(newService, s)
-		if additionalSvc.Name == newService.Name {
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName())
 		}
-		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmalert: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmalert: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vmalert: %w", err)
 	}
-	return newService, nil
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		svs := buildScrape(cr, svc)
+		prevSvs := buildScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create vmservicescrape: %w", err)
+		}
+	}
+	return nil
 }
 
 func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) *build.AssetsCache {
@@ -91,12 +104,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 			return fmt.Errorf("cannot delete objects from previous state: %w", err)
 		}
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -106,15 +120,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 
 	ac := getAssetsCache(ctx, rclient, cr)
 
-	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return err
-	}
-
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr)); err != nil {
-			return fmt.Errorf("cannot create vmservicescrape: %w", err)
-		}
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
@@ -122,13 +129,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
 		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB, &owner); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
 	}
 
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
+		var err error
 		prevDeploy, err = newDeploy(prevCR, cmNames, ac)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -145,7 +153,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
 }
 
 // newDeploy returns a busybox pod with the same name/namespace as the cr
@@ -521,13 +529,14 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 }
 
 func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
+	owner := cr.AsOwner()
 	for kind, secret := range ac.GetOutput() {
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
-		err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta)
+		err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner)
 		if err != nil {
 			return err
 		}
@@ -708,7 +717,6 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
 	owner := cr.AsOwner()
-
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	if cr.Spec.PodDisruptionBudget == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {

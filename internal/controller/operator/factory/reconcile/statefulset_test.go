@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -382,7 +383,7 @@ func TestSortPodsByID(t *testing.T) {
 	)
 }
 
-func TestStatefulsetReconcileOk(t *testing.T) {
+func TestStatefulsetReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.StatefulSet
 		predefinedObjects []runtime.Object
@@ -436,7 +437,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		ctx := context.Background()
 		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		var emptyOpts STSOptions
-		err := StatefulSet(ctx, rclient, emptyOpts, o.new, o.prev)
+		err := StatefulSet(ctx, rclient, emptyOpts, o.new, o.prev, nil)
 		if o.wantErr {
 			assert.Error(t, err)
 			return
@@ -477,7 +478,9 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		new:  getSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(),
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Finalizers = []string{vmv1beta1.FinalizerName}
+			}),
 		},
 		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
 			assert.Equal(t, 3, rclient.GetCalls.Count(s))

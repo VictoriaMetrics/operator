@@ -27,7 +27,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
 		ctx := context.Background()
-		err := Service(ctx, cl, opts.newService, opts.prevService)
+		err := Service(ctx, cl, opts.newService, opts.prevService, nil)
 		if err != nil {
 			t.Fatalf("unexpected reconcileServiceForCRD() error = %s", err)
 		}
@@ -95,6 +95,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "prefixed-1",
 				Namespace: "default",
+				Labels:    map[string]string{"custom": "label"},
 			},
 			Spec: corev1.ServiceSpec{
 				Type: corev1.ServiceTypeLoadBalancer,
@@ -339,6 +340,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "prefixed-1",
 				Namespace: "default",
+				Labels:    map[string]string{"custom": "label"},
 			},
 			Spec: corev1.ServiceSpec{
 				Type: corev1.ServiceTypeClusterIP,

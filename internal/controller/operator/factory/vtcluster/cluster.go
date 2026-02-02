@@ -23,6 +23,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			return err
 		}
 	}
+	owner := cr.AsOwner()
 	var prevCR *vmv1.VTCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -36,7 +37,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
 			prevSA = build.ServiceAccount(b)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, sa, prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, sa, prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}

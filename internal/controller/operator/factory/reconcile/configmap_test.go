@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -17,6 +18,7 @@ func TestConfigMapReconcile(t *testing.T) {
 	type opts struct {
 		new               *corev1.ConfigMap
 		prevMeta          *metav1.ObjectMeta
+		owner             *metav1.OwnerReference
 		predefinedObjects []runtime.Object
 		validate          func(*k8stools.TestClientWithStatsTrack, *corev1.ConfigMap)
 	}
@@ -24,7 +26,7 @@ func TestConfigMapReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		_, err := ConfigMap(ctx, rclient, o.new, o.prevMeta)
+		_, err := ConfigMap(ctx, rclient, o.new, o.prevMeta, o.owner)
 		assert.NoError(t, err)
 		var got corev1.ConfigMap
 		nsn := types.NamespacedName{
@@ -73,8 +75,9 @@ func TestConfigMapReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:       "test",
+					Namespace:  "default",
+					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
 					"data": "test",
@@ -157,7 +160,7 @@ func TestConfigMapReconcile(t *testing.T) {
 		},
 	})
 
-	// np update with 3-rd party annotations
+	// no update with 3-rd party annotations
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -187,6 +190,7 @@ func TestConfigMapReconcile(t *testing.T) {
 						"key":      "value",
 						"external": "value",
 					},
+					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
 					"data": "test",

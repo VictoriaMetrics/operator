@@ -1735,12 +1735,15 @@ func TestCreateOrUpdateService(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		got, err := createOrUpdateService(ctx, cl, o.cr, nil)
-		if err != nil {
-			t.Errorf("CreateOrUpdateService() error = %v", err)
-			return
+		assert.NoError(t, createOrUpdateService(ctx, cl, o.cr, nil))
+		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
+		var got corev1.Service
+		nsn := types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
 		}
-		if err := o.want(got); err != nil {
+		assert.NoError(t, cl.Get(ctx, nsn, &got))
+		if err := o.want(&got); err != nil {
 			t.Errorf("CreateOrUpdateService() unexpected error: %v", err)
 		}
 		if o.wantAdditionalService != nil {

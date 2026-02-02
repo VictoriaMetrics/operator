@@ -7,6 +7,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -14,13 +15,12 @@ import (
 )
 
 // Ingress creates or updates Ingress object
-func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.Ingress) error {
+func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.Ingress, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
-	var prevAnnotations, prevLabels map[string]string
+	var prevMeta *metav1.ObjectMeta
 	var isPrevEqual bool
 	if prevObj != nil {
-		prevAnnotations = prevObj.Annotations
-		prevLabels = prevObj.Labels
+		prevMeta = &prevObj.ObjectMeta
 		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
 	}
 	return retryOnConflict(func() error {
@@ -32,21 +32,19 @@ func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networ
 			}
 			return fmt.Errorf("cannot get existing Ingress=%s: %w", nsn, err)
 		}
-		if err := needsGarbageCollection(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
 			return err
 		}
 		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
-		if isEqual &&
-			isPrevEqual &&
-			areMapsEqual(existingObj.Labels, newObj.Labels, prevLabels) &&
-			areMapsEqual(existingObj.Annotations, newObj.Annotations, prevAnnotations) {
+		if isEqual && isPrevEqual && !metaChanged {
 			return nil
 		}
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
-		existingObj.Labels = mergeMaps(existingObj.Labels, newObj.Labels, prevLabels)
-		existingObj.Annotations = mergeMaps(existingObj.Annotations, newObj.Annotations, prevAnnotations)
 		existingObj.Spec = newObj.Spec
-		addFinalizerIfAbsent(&existingObj)
 		logMsg := fmt.Sprintf("updating Ingress=%s spec_diff: %s"+
 			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
 			nsn, specDiff, isPrevEqual, isEqual, prevObj == nil)

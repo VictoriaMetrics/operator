@@ -29,12 +29,13 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 			return fmt.Errorf("cannot delete orphaned resources: %w", err)
 		}
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if err := createConfigSecretAccess(ctx, rclient, cr, prevCR); err != nil {
@@ -42,14 +43,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		}
 	}
 
-	service, err := createOrUpdateAlertManagerService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateAlertManagerService(ctx, rclient, cr, prevCR); err != nil {
 		return err
-	}
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(service, cr)); err != nil {
-			return err
-		}
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
@@ -57,7 +52,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
 		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB, &owner); err != nil {
 			return err
 		}
 	}
@@ -78,7 +73,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {

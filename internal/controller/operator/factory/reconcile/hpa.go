@@ -7,6 +7,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -14,32 +15,34 @@ import (
 )
 
 // HPA creates or update horizontalPodAutoscaler object
-func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.HorizontalPodAutoscaler) error {
+func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.HorizontalPodAutoscaler, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
 	return retryOnConflict(func() error {
-		var currentHPA v2.HorizontalPodAutoscaler
-		if err := rclient.Get(ctx, types.NamespacedName{Name: newHPA.GetName(), Namespace: newHPA.GetNamespace()}, &currentHPA); err != nil {
+		var existingObj v2.HorizontalPodAutoscaler
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA %s configuration", newHPA.Name))
-				return rclient.Create(ctx, newHPA)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA=%s", nsn))
+				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get exist hpa object: %w", err)
+			return fmt.Errorf("cannot get HPA=%s: %w", nsn, err)
 		}
-		if err := needsGarbageCollection(ctx, rclient, &currentHPA); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-
-		if equality.Semantic.DeepEqual(newHPA.Spec, currentHPA.Spec) &&
-			equality.Semantic.DeepEqual(newHPA.Labels, currentHPA.Labels) &&
-			isObjectMetaEqual(&currentHPA, newHPA, prevHPA) {
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged && equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec) {
 			return nil
 		}
-
-		mergeObjectMetadataIntoNew(&currentHPA, newHPA, prevHPA)
-		newHPA.Status = currentHPA.Status
-
-		logMsg := fmt.Sprintf("updating HPA %s configuration spec_diff: %s", newHPA.Name, diffDeepDerivative(newHPA.Spec, currentHPA.Spec))
-		logger.WithContext(ctx).Info(logMsg)
-
-		return rclient.Update(ctx, newHPA)
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		existingObj.Spec = newObj.Spec
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA=%s spec_diff=%s", nsn, specDiff))
+		return rclient.Update(ctx, &existingObj)
 	})
 }

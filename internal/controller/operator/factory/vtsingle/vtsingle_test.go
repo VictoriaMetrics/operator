@@ -6,14 +6,17 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -151,19 +154,25 @@ func TestCreateOrUpdateService(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}
 
-	f := func(opts opts) {
-		fclient := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
-		got, err := createOrUpdateService(context.TODO(), fclient, opts.cr, nil)
-		if (err != nil) != opts.wantErr {
-			t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, opts.wantErr)
+	f := func(o opts) {
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		ctx := context.TODO()
+		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
+		if err := createOrUpdateService(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
+			t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, o.wantErr)
 			return
 		}
-
-		if !reflect.DeepEqual(got.Name, opts.want.Name) {
-			t.Errorf("CreateOrUpdateService(): %s", cmp.Diff(got, opts.want))
+		var got corev1.Service
+		nsn := types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
 		}
-		if len(got.Spec.Ports) != opts.wantPortsLen {
-			t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), opts.wantPortsLen)
+		assert.NoError(t, fclient.Get(ctx, nsn, &got))
+		if !reflect.DeepEqual(got.Name, o.want.Name) {
+			t.Errorf("CreateOrUpdateService(): %s", cmp.Diff(got, o.want))
+		}
+		if len(got.Spec.Ports) != o.wantPortsLen {
+			t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), o.wantPortsLen)
 		}
 	}
 

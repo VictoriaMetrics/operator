@@ -9,11 +9,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -191,11 +193,19 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		got, err := createOrUpdateService(context.TODO(), fclient, o.cr, nil)
+		ctx := context.TODO()
+		err := createOrUpdateService(ctx, fclient, o.cr, nil)
 		if (err != nil) != o.wantErr {
 			t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, o.wantErr)
 			return
 		}
+		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
+		var got corev1.Service
+		nsn := types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
+		}
+		assert.NoError(t, fclient.Get(ctx, nsn, &got))
 		assert.Equal(t, got.Name, o.want.Name)
 		assert.Len(t, got.Spec.Ports, o.wantPortsLen)
 	}

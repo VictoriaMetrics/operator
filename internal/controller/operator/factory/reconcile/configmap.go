@@ -15,14 +15,9 @@ import (
 )
 
 // ConfigMap reconciles configmap object
-func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta) (bool, error) {
+func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	updated := true
-	var prevAnnotations, prevLabels map[string]string
-	if prevMeta != nil {
-		prevAnnotations = prevMeta.Annotations
-		prevLabels = prevMeta.Labels
-	}
 	err := retryOnConflict(func() error {
 		var existingObj corev1.ConfigMap
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -32,22 +27,21 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 			}
 			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn, err)
 		}
-		if err := needsGarbageCollection(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-
-		if equality.Semantic.DeepEqual(newObj.Data, existingObj.Data) &&
-			equality.Semantic.DeepEqual(newObj.BinaryData, existingObj.BinaryData) &&
-			areMapsEqual(existingObj.Labels, newObj.Labels, prevLabels) &&
-			areMapsEqual(existingObj.Annotations, newObj.Annotations, prevAnnotations) {
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged &&
+			equality.Semantic.DeepEqual(newObj.Data, existingObj.Data) &&
+			equality.Semantic.DeepEqual(newObj.BinaryData, existingObj.BinaryData) {
 			updated = false
 			return nil
 		}
-		existingObj.Labels = mergeMaps(existingObj.Labels, newObj.Labels, prevLabels)
-		existingObj.Annotations = mergeMaps(existingObj.Annotations, newObj.Annotations, prevMeta.Annotations)
 		existingObj.Data = newObj.Data
 		existingObj.BinaryData = newObj.BinaryData
-		addFinalizerIfAbsent(&existingObj)
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap=%s configuration", nsn))
 		return rclient.Update(ctx, &existingObj)
 	})

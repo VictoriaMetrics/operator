@@ -28,7 +28,8 @@ func ensureVMAlertmanagerRoleExist(ctx context.Context, rclient client.Client, c
 	if prevCR != nil {
 		prevRole = buildRole(prevCR)
 	}
-	return reconcile.Role(ctx, rclient, buildRole(cr), prevRole)
+	owner := cr.AsOwner()
+	return reconcile.Role(ctx, rclient, buildRole(cr), prevRole, &owner)
 }
 
 func ensureVMAlertmanagerRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {
@@ -36,7 +37,8 @@ func ensureVMAlertmanagerRBExist(ctx context.Context, rclient client.Client, cr,
 	if prevCR != nil {
 		prevRB = buildRoleBinding(prevCR)
 	}
-	return reconcile.RoleBinding(ctx, rclient, buildRoleBinding(cr), prevRB)
+	owner := cr.AsOwner()
+	return reconcile.RoleBinding(ctx, rclient, buildRoleBinding(cr), prevRB, &owner)
 }
 
 func buildRole(cr *vmv1beta1.VMAlertmanager) *rbacv1.Role {

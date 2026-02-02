@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -18,7 +19,7 @@ import (
 // Makes attempt to resize pvc if needed
 // in case of deletion timestamp > 0 does nothing
 // user must manually remove finalizer if needed
-func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, prevPVC *corev1.PersistentVolumeClaim) error {
+func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, prevPVC *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
 	l := logger.WithContext(ctx)
 	currentPVC := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: newPVC.Namespace, Name: newPVC.Name}, currentPVC)
@@ -38,5 +39,5 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newPVC, p
 		return nil
 	}
 
-	return updatePVC(ctx, rclient, currentPVC, newPVC, prevPVC)
+	return updatePVC(ctx, rclient, currentPVC, newPVC, prevPVC, owner)
 }

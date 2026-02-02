@@ -34,8 +34,8 @@ func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	if prevCR != nil && prevCR.Spec.Storage != nil {
 		prevPVC = makePvc(prevCR)
 	}
-
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
+	owner := cr.AsOwner()
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC, &owner)
 }
 
 func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
@@ -73,12 +73,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
@@ -88,18 +89,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
 	}
-	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr, "vmbackupmanager")); err != nil {
-			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
-		}
-	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
+		var err error
 		prevDeploy, err = newDeploy(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -110,7 +106,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
 }
 
 func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
@@ -320,8 +316,14 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	return vmSingleSpec, nil
 }
 
-func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) (*corev1.Service, error) {
+func buildScrape(cr *vmv1beta1.VMSingle, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMServiceScrape(svc, cr, "vmbackupmanager")
+}
 
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	addExtraPorts := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
 		if cr.Spec.Port != "8428" {
 			// conditionally add 8428 port to be compatible with binary port
@@ -343,36 +345,44 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 			})
 		}
 	}
-	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		addExtraPorts(svc, cr.Spec.VMBackup)
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
-	var prevService, prevAdditionalService *corev1.Service
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			addExtraPorts(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmsingle: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmsingle: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vmsingle: %w", err)
 	}
-	return newService, nil
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		svs := buildScrape(cr, svc)
+		prevSvs := buildScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
+		}
+	}
+	return nil
 }
 
 // buildStreamAggrConfig build configmap with stream aggregation config for vmsingle.
@@ -415,7 +425,8 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if prevCR != nil {
 		prevCMMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
 	}
-	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta)
+	owner := cr.AsOwner()
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevCMMeta, &owner)
 	return err
 }
 

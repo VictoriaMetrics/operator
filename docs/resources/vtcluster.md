@@ -33,7 +33,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 
 ## Version management
 
-To set `VTCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+To set `VTCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaTraces/releases)
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

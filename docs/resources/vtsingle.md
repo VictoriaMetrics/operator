@@ -39,7 +39,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 
 ## Version management
 
-To set `VTSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+To set `VTSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaTraces/releases)
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

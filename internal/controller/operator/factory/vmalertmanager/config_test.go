@@ -71,9 +71,28 @@ func TestBuildConfig(t *testing.T) {
 	// override the top namespace matcher
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
 				EnforcedNamespaceLabel:  "alert-namespace",
 				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				TracingConfig: &vmv1beta1.VMAlertmanagerTracingConfig{
+					Endpoint: "http://example.com",
+					TLSConfig: &vmv1beta1.TLSClientConfig{
+						CASecretRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "ca",
+							},
+							Key: "key",
+						},
+					},
+					Compression: "gzip",
+					HTTPHeaders: map[string]string{
+						"name": "value",
+					},
+				},
 			},
 		},
 		baseCfg: []byte(`global:
@@ -81,6 +100,15 @@ func TestBuildConfig(t *testing.T) {
  smtp_smarthost: some:443
 `),
 		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ca",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"key": []byte("value"),
+				},
+			},
 			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
@@ -134,6 +162,13 @@ receivers:
     smarthost: some:443
     send_resolved: true
 templates: []
+tracing:
+  tls_config:
+    ca_file: /etc/alertmanager/tls_assets/default_ca_key
+  compression: gzip
+  http_headers:
+    name: value
+  endpoint: http://example.com
 `,
 	})
 
@@ -1845,7 +1880,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 		// Create secret with alert manager config
 		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, o.wantErr)
+			t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
 		}
 		var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 		opts := &k8stools.SelectorOpts{
@@ -1895,7 +1930,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		assert.Len(t, secretConfig.Route.Routes[0], len(amc.Spec.Route.Routes)+2)
 		// Update secret with alert manager config
 		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, o.wantErr)
+			t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
 		}
 
 		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret); err != nil {
@@ -1932,6 +1967,9 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				ConfigSecret:       "vmalertmanager-test-am-config",
 				ConfigRawYaml:      "global: {}",
 				SelectAllByDefault: true,
+				TracingConfig: &vmv1beta1.VMAlertmanagerTracingConfig{
+					Endpoint: "http://example.com",
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -2010,8 +2048,8 @@ func TestBuildWebConfig(t *testing.T) {
 				Name:      "web-cfg",
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-					HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+				WebConfig: &vmv1beta1.VMAlertmanagerWebConfig{
+					HTTPServerConfig: &vmv1beta1.VMAlertmanagerHTTPConfig{
 						Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 					},
 				},
@@ -2032,7 +2070,7 @@ func TestBuildWebConfig(t *testing.T) {
 				Name:      "web-cfg",
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+				GossipConfig: &vmv1beta1.VMAlertmanagerGossipConfig{
 					TLSClientConfig: &vmv1beta1.TLSClientConfig{
 						CAFile: "/etc/client/client_ca",
 						Certs: vmv1beta1.Certs{
@@ -2048,7 +2086,7 @@ func TestBuildWebConfig(t *testing.T) {
 						},
 					},
 				},
-				WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+				WebConfig: &vmv1beta1.VMAlertmanagerWebConfig{
 					TLSServerConfig: &vmv1beta1.TLSServerConfig{
 						ClientCAFile: "/etc/server/client_ca",
 						Certs: vmv1beta1.Certs{
@@ -2056,7 +2094,7 @@ func TestBuildWebConfig(t *testing.T) {
 							KeyFile:  "/etc/server/cert.key",
 						},
 					},
-					HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+					HTTPServerConfig: &vmv1beta1.VMAlertmanagerHTTPConfig{
 						HTTP2:   true,
 						Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 					},
@@ -2083,7 +2121,7 @@ tls_server_config:
 				Name:      "web-cfg",
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+				WebConfig: &vmv1beta1.VMAlertmanagerWebConfig{
 					TLSServerConfig: &vmv1beta1.TLSServerConfig{
 						ClientCASecretRef: &corev1.SecretKeySelector{
 							Key:                  "client_ca",
@@ -2100,7 +2138,7 @@ tls_server_config:
 							},
 						},
 					},
-					HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+					HTTPServerConfig: &vmv1beta1.VMAlertmanagerHTTPConfig{
 						HTTP2:   true,
 						Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
 					},
@@ -2169,7 +2207,7 @@ func TestBuildGossipConfig(t *testing.T) {
 				Name:      "web-cfg",
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+				GossipConfig: &vmv1beta1.VMAlertmanagerGossipConfig{
 					TLSClientConfig: &vmv1beta1.TLSClientConfig{
 						CAFile: "/etc/client/client_ca",
 						Certs: vmv1beta1.Certs{

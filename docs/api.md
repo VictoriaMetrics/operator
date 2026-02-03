@@ -1456,49 +1456,6 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 | useAsDefault<a href="#additionalservicespec-useasdefault" id="additionalservicespec-useasdefault">#</a><br/>_boolean_ | _(Optional)_<br/>UseAsDefault applies changes from given service definition to the main object Service<br />Changing from headless service to clusterIP or loadbalancer may break cross-component communication |
 
 
-#### AlertmanagerGossipConfig
-
-
-
-AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
-
-Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
-
-| Field | Description |
-| --- | --- |
-| tls_client_config<a href="#alertmanagergossipconfig-tls_client_config" id="alertmanagergossipconfig-tls_client_config">#</a><br/>_[TLSClientConfig](#tlsclientconfig)_ | _(Required)_<br/>TLSClientConfig defines client TLS configuration for alertmanager |
-| tls_server_config<a href="#alertmanagergossipconfig-tls_server_config" id="alertmanagergossipconfig-tls_server_config">#</a><br/>_[TLSServerConfig](#tlsserverconfig)_ | _(Required)_<br/>TLSServerConfig defines server TLS configuration for alertmanager |
-
-
-#### AlertmanagerHTTPConfig
-
-
-
-AlertmanagerHTTPConfig defines http server configuration for alertmanager
-
-Appears in: [AlertmanagerWebConfig](#alertmanagerwebconfig)
-
-| Field | Description |
-| --- | --- |
-| headers<a href="#alertmanagerhttpconfig-headers" id="alertmanagerhttpconfig-headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Headers defines list of headers that can be added to HTTP responses. |
-| http2<a href="#alertmanagerhttpconfig-http2" id="alertmanagerhttpconfig-http2">#</a><br/>_boolean_ | _(Optional)_<br/>HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.<br />This can not be changed on the fly. |
-
-
-#### AlertmanagerWebConfig
-
-
-
-AlertmanagerWebConfig defines web server configuration for alertmanager
-
-Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
-
-| Field | Description |
-| --- | --- |
-| basic_auth_users<a href="#alertmanagerwebconfig-basic_auth_users" id="alertmanagerwebconfig-basic_auth_users">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>BasicAuthUsers Usernames and hashed passwords that have full access to the web server<br />Passwords must be hashed with bcrypt |
-| http_server_config<a href="#alertmanagerwebconfig-http_server_config" id="alertmanagerwebconfig-http_server_config">#</a><br/>_[AlertmanagerHTTPConfig](#alertmanagerhttpconfig)_ | _(Optional)_<br/>HTTPServerConfig defines http server configuration for alertmanager web server |
-| tls_server_config<a href="#alertmanagerwebconfig-tls_server_config" id="alertmanagerwebconfig-tls_server_config">#</a><br/>_[TLSServerConfig](#tlsserverconfig)_ | _(Optional)_<br/>TLSServerConfig defines server TLS configuration for alertmanager |
-
-
 #### ArbitraryFSAccessThroughSMsConfig
 
 
@@ -3374,7 +3331,7 @@ Appears in: [GCESDConfig](#gcesdconfig), [RelabelConfig](#relabelconfig), [Strea
 
 TLSClientConfig defines TLS configuration for the application's client
 
-Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig)
+Appears in: [VMAlertmanagerGossipConfig](#vmalertmanagergossipconfig), [VMAlertmanagerTracingConfig](#vmalertmanagertracingconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3416,7 +3373,7 @@ Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfi
 
 TLSServerConfig defines TLS configuration for the application's server
 
-Appears in: [AlertmanagerGossipConfig](#alertmanagergossipconfig), [AlertmanagerWebConfig](#alertmanagerwebconfig)
+Appears in: [VMAlertmanagerGossipConfig](#vmalertmanagergossipconfig), [VMAlertmanagerWebConfig](#vmalertmanagerwebconfig)
 
 | Field | Description |
 | --- | --- |
@@ -4109,6 +4066,34 @@ Appears in: [VMAlertmanagerConfig](#vmalertmanagerconfig)
 
 
 
+#### VMAlertmanagerGossipConfig
+
+
+
+VMAlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
+
+Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
+
+| Field | Description |
+| --- | --- |
+| tls_client_config<a href="#vmalertmanagergossipconfig-tls_client_config" id="vmalertmanagergossipconfig-tls_client_config">#</a><br/>_[TLSClientConfig](#tlsclientconfig)_ | _(Required)_<br/>TLSClientConfig defines client TLS configuration for alertmanager |
+| tls_server_config<a href="#vmalertmanagergossipconfig-tls_server_config" id="vmalertmanagergossipconfig-tls_server_config">#</a><br/>_[TLSServerConfig](#tlsserverconfig)_ | _(Required)_<br/>TLSServerConfig defines server TLS configuration for alertmanager |
+
+
+#### VMAlertmanagerHTTPConfig
+
+
+
+VMAlertmanagerHTTPConfig defines http server configuration for alertmanager
+
+Appears in: [VMAlertmanagerWebConfig](#vmalertmanagerwebconfig)
+
+| Field | Description |
+| --- | --- |
+| headers<a href="#vmalertmanagerhttpconfig-headers" id="vmalertmanagerhttpconfig-headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Headers defines list of headers that can be added to HTTP responses. |
+| http2<a href="#vmalertmanagerhttpconfig-http2" id="vmalertmanagerhttpconfig-http2">#</a><br/>_boolean_ | _(Optional)_<br/>HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.<br />This can not be changed on the fly. |
+
+
 #### VMAlertmanagerSpec
 
 
@@ -4148,7 +4133,7 @@ Appears in: [VMAlertmanager](#vmalertmanager)
 | extraArgs<a href="#vmalertmanagerspec-extraargs" id="vmalertmanagerspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vmalertmanagerspec-extraenvs" id="vmalertmanagerspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
 | extraEnvsFrom<a href="#vmalertmanagerspec-extraenvsfrom" id="vmalertmanagerspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
-| gossipConfig<a href="#vmalertmanagerspec-gossipconfig" id="vmalertmanagerspec-gossipconfig">#</a><br/>_[AlertmanagerGossipConfig](#alertmanagergossipconfig)_ | _(Optional)_<br/>GossipConfig defines gossip TLS configuration for Alertmanager cluster |
+| gossipConfig<a href="#vmalertmanagerspec-gossipconfig" id="vmalertmanagerspec-gossipconfig">#</a><br/>_[VMAlertmanagerGossipConfig](#vmalertmanagergossipconfig)_ | _(Optional)_<br/>GossipConfig defines gossip TLS configuration for Alertmanager cluster |
 | hostAliases<a href="#vmalertmanagerspec-hostaliases" id="vmalertmanagerspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vmalertmanagerspec-hostnetwork" id="vmalertmanagerspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vmalertmanagerspec-host_aliases" id="vmalertmanagerspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -4188,14 +4173,50 @@ Appears in: [VMAlertmanager](#vmalertmanager)
 | terminationGracePeriodSeconds<a href="#vmalertmanagerspec-terminationgraceperiodseconds" id="vmalertmanagerspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
 | tolerations<a href="#vmalertmanagerspec-tolerations" id="vmalertmanagerspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
 | topologySpreadConstraints<a href="#vmalertmanagerspec-topologyspreadconstraints" id="vmalertmanagerspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
+| tracingConfig<a href="#vmalertmanagerspec-tracingconfig" id="vmalertmanagerspec-tracingconfig">#</a><br/>_[VMAlertmanagerTracingConfig](#vmalertmanagertracingconfig)_ | _(Optional)_<br/>TracingConfig defines tracing configuration for Alertmanager |
 | useDefaultResources<a href="#vmalertmanagerspec-usedefaultresources" id="vmalertmanagerspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
 | useStrictSecurity<a href="#vmalertmanagerspec-usestrictsecurity" id="vmalertmanagerspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | useVMConfigReloader<a href="#vmalertmanagerspec-usevmconfigreloader" id="vmalertmanagerspec-usevmconfigreloader">#</a><br/>_boolean_ | _(Optional)_<br/>UseVMConfigReloader replaces prometheus-like config-reloader<br />with vm one. It uses secrets watch instead of file watch<br />which greatly increases speed of config updates<br />Removed since v0.67.0: this property is ignored and no longer needed |
 | volumeMounts<a href="#vmalertmanagerspec-volumemounts" id="vmalertmanagerspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmalertmanagerspec-volumes" id="vmalertmanagerspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
-| webConfig<a href="#vmalertmanagerspec-webconfig" id="vmalertmanagerspec-webconfig">#</a><br/>_[AlertmanagerWebConfig](#alertmanagerwebconfig)_ | _(Optional)_<br/>WebConfig defines configuration for webserver<br />https://github.com/prometheus/alertmanager/blob/main/docs/https.md |
+| webConfig<a href="#vmalertmanagerspec-webconfig" id="vmalertmanagerspec-webconfig">#</a><br/>_[VMAlertmanagerWebConfig](#vmalertmanagerwebconfig)_ | _(Optional)_<br/>WebConfig defines configuration for webserver<br />https://github.com/prometheus/alertmanager/blob/main/docs/https.md |
 
 
+
+
+#### VMAlertmanagerTracingConfig
+
+
+
+VMAlertmanagerTracingConfig defines Tracing configuration for alertmanager
+
+Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
+
+| Field | Description |
+| --- | --- |
+| client_type<a href="#vmalertmanagertracingconfig-client_type" id="vmalertmanagertracingconfig-client_type">#</a><br/>_string_ | _(Optional)_<br/>ClientType defines tracing client protocol |
+| compression<a href="#vmalertmanagertracingconfig-compression" id="vmalertmanagertracingconfig-compression">#</a><br/>_string_ | _(Optional)_<br/>Compression defines compression algorithm for tracing |
+| endpoint<a href="#vmalertmanagertracingconfig-endpoint" id="vmalertmanagertracingconfig-endpoint">#</a><br/>_string_ | _(Required)_<br/>Endpoint defines tracing URL where traces will be sent |
+| http_headers<a href="#vmalertmanagertracingconfig-http_headers" id="vmalertmanagertracingconfig-http_headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>HTTPHeaders defines custom HTTP headers for tracing |
+| insecure<a href="#vmalertmanagertracingconfig-insecure" id="vmalertmanagertracingconfig-insecure">#</a><br/>_boolean_ | _(Optional)_<br/>Insecure allows TLS configuration to be omitted |
+| sampling_fraction<a href="#vmalertmanagertracingconfig-sampling_fraction" id="vmalertmanagertracingconfig-sampling_fraction">#</a><br/>_string_ | _(Optional)_<br/>SamplingFraction defines fraction of the requests that should be sampled |
+| timeout<a href="#vmalertmanagertracingconfig-timeout" id="vmalertmanagertracingconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout defines tracing connection timeout |
+| tls_config<a href="#vmalertmanagertracingconfig-tls_config" id="vmalertmanagertracingconfig-tls_config">#</a><br/>_[TLSClientConfig](#tlsclientconfig)_ | _(Optional)_<br/>TLSConfig defines tracing TLS config |
+
+
+#### VMAlertmanagerWebConfig
+
+
+
+VMAlertmanagerWebConfig defines web server configuration for alertmanager
+
+Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
+
+| Field | Description |
+| --- | --- |
+| basic_auth_users<a href="#vmalertmanagerwebconfig-basic_auth_users" id="vmalertmanagerwebconfig-basic_auth_users">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>BasicAuthUsers Usernames and hashed passwords that have full access to the web server<br />Passwords must be hashed with bcrypt |
+| http_server_config<a href="#vmalertmanagerwebconfig-http_server_config" id="vmalertmanagerwebconfig-http_server_config">#</a><br/>_[VMAlertmanagerHTTPConfig](#vmalertmanagerhttpconfig)_ | _(Optional)_<br/>HTTPServerConfig defines http server configuration for alertmanager web server |
+| tls_server_config<a href="#vmalertmanagerwebconfig-tls_server_config" id="vmalertmanagerwebconfig-tls_server_config">#</a><br/>_[TLSServerConfig](#tlsserverconfig)_ | _(Optional)_<br/>TLSServerConfig defines server TLS configuration for alertmanager |
 
 
 #### VMAuth

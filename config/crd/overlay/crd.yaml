@@ -9876,6 +9876,82 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              tracingConfig:
+                properties:
+                  client_type:
+                    enum:
+                    - http
+                    - grpc
+                    type: string
+                  compression:
+                    type: string
+                  endpoint:
+                    type: string
+                  http_headers:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  insecure:
+                    type: boolean
+                  sampling_fraction:
+                    type: string
+                  timeout:
+                    type: string
+                  tls_config:
+                    properties:
+                      ca_file:
+                        type: string
+                      ca_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      cert_file:
+                        type: string
+                      cert_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      insecure_skip_verify:
+                        type: boolean
+                      key_file:
+                        type: string
+                      key_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      server_name:
+                        type: string
+                    type: object
+                required:
+                - endpoint
+                type: object
               useDefaultResources:
                 type: boolean
               useStrictSecurity:

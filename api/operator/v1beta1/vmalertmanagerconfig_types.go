@@ -1900,6 +1900,9 @@ func init() {
 
 type alertmanagerFlags struct{}
 
+// EnableAlertNamesInMetrics implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableAlertNamesInMetrics() bool { return false }
+
 // EnableReceiverNamesInMetrics implements featurecontrol.Flagger interface
 func (af *alertmanagerFlags) EnableReceiverNamesInMetrics() bool { return false }
 

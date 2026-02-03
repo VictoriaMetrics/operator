@@ -130,7 +130,7 @@
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_CPU: `150m` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-cpu">#</a> |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_EPHEMERAL_STORAGE: `unlimited` <a href="#variables-vm-vmclusterdefault-vminsertdefault-resource-request-ephemeral-storage" id="variables-vm-vmclusterdefault-vminsertdefault-resource-request-ephemeral-storage">#</a> |
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE: `prom/alertmanager` <a href="#variables-vm-vmalertmanager-alertmanagerdefaultbaseimage" id="variables-vm-vmalertmanager-alertmanagerdefaultbaseimage">#</a> |
-| VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.29.0` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
+| VM_VMALERTMANAGER_ALERTMANAGERVERSION: `v0.31.0` <a href="#variables-vm-vmalertmanager-alertmanagerversion" id="variables-vm-vmalertmanager-alertmanagerversion">#</a> |
 | VM_VMALERTMANAGER_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmalertmanager-usedefaultresources" id="variables-vm-vmalertmanager-usedefaultresources">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM: `256Mi` <a href="#variables-vm-vmalertmanager-resource-limit-mem" id="variables-vm-vmalertmanager-resource-limit-mem">#</a> |
 | VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU: `100m` <a href="#variables-vm-vmalertmanager-resource-limit-cpu" id="variables-vm-vmalertmanager-resource-limit-cpu">#</a> |

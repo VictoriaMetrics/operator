@@ -196,11 +196,15 @@ type VMAlertmanagerSpec struct {
 	// WebConfig defines configuration for webserver
 	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md
 	// +optional
-	WebConfig *AlertmanagerWebConfig `json:"webConfig,omitempty"`
+	WebConfig *VMAlertmanagerWebConfig `json:"webConfig,omitempty"`
 
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
 	// +optional
-	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
+	GossipConfig *VMAlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
+
+	// TracingConfig defines tracing configuration for Alertmanager
+	// +optional
+	TracingConfig *VMAlertmanagerTracingConfig `json:"tracingConfig,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
@@ -574,36 +578,78 @@ func (cr *VMAlertmanager) Validate() error {
 			}
 		}
 	}
+
+	if cr.Spec.TracingConfig != nil {
+		if cr.Spec.TracingConfig.TLSConfig != nil {
+			tc := cr.Spec.TracingConfig.TLSConfig
+			if tc.CertFile == "" && tc.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_config")
+			}
+			if tc.KeyFile == "" && tc.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_config")
+			}
+		}
+	}
+
 	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
 		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
 	}
 	return nil
 }
 
-// AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
-type AlertmanagerGossipConfig struct {
+// VMAlertmanagerTracingConfig defines Tracing configuration for alertmanager
+type VMAlertmanagerTracingConfig struct {
+	// ClientType defines tracing client protocol
+	// +optional
+	// +kubebuilder:validation:Enum=http;grpc
+	ClientType string `json:"client_type,omitempty"`
+	// Endpoint defines tracing URL where traces will be sent
+	// +required
+	Endpoint string `json:"endpoint"`
+	// SamplingFraction defines fraction of the requests that should be sampled
+	// +optional
+	SamplingFraction string `json:"sampling_fraction,omitempty"`
+	// Insecure allows TLS configuration to be omitted
+	// +optional
+	Insecure bool `json:"insecure,omitempty"`
+	// TLSConfig defines tracing TLS config
+	// +optional
+	TLSConfig *TLSClientConfig `json:"tls_config,omitempty"`
+	// HTTPHeaders defines custom HTTP headers for tracing
+	// +optional
+	HTTPHeaders map[string]string `json:"http_headers,omitempty"`
+	// Compression defines compression algorithm for tracing
+	// +optional
+	Compression string `json:"compression,omitempty"`
+	// Timeout defines tracing connection timeout
+	// +optional
+	Timeout string `json:"timeout,omitempty"`
+}
+
+// VMAlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
+type VMAlertmanagerGossipConfig struct {
 	// TLSServerConfig defines server TLS configuration for alertmanager
 	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
 	// TLSClientConfig defines client TLS configuration for alertmanager
 	TLSClientConfig *TLSClientConfig `json:"tls_client_config,omitempty"`
 }
 
-// AlertmanagerWebConfig defines web server configuration for alertmanager
-type AlertmanagerWebConfig struct {
+// VMAlertmanagerWebConfig defines web server configuration for alertmanager
+type VMAlertmanagerWebConfig struct {
 	// TLSServerConfig defines server TLS configuration for alertmanager
 	// +optional
 	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
 	// HTTPServerConfig defines http server configuration for alertmanager web server
 	// +optional
-	HTTPServerConfig *AlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
+	HTTPServerConfig *VMAlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
 	// BasicAuthUsers Usernames and hashed passwords that have full access to the web server
 	// Passwords must be hashed with bcrypt
 	// +optional
 	BasicAuthUsers map[string]string `json:"basic_auth_users,omitempty"`
 }
 
-// AlertmanagerHTTPConfig defines http server configuration for alertmanager
-type AlertmanagerHTTPConfig struct {
+// VMAlertmanagerHTTPConfig defines http server configuration for alertmanager
+type VMAlertmanagerHTTPConfig struct {
 	// HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.
 	// This can not be changed on the fly.
 	// +optional

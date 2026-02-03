@@ -397,7 +397,7 @@ The operator supports comma separated namespace names for this setting.
 
 If namespaced mode is enabled, operator uses a limited set of features:
 - it cannot make any cluster wide API calls.
-- it cannot assign rbac permissions for `vmagent`. It must be done manually via serviceAccount for vmagent.
+- it cannot assign rbac permissions for managed resource. It must be done manually via serviceAccount.
 - it ignores namespaceSelector fields at CRD objects and uses `WATCH_NAMESPACE` value for object matching.
 
 At each namespace operator must have a set of required permissions, an example can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).

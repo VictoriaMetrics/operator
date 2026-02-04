@@ -30,6 +30,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support both prometheus-compatible `endpointslice` and old `endpointslices` roles.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix pod metrics port in the default VMPodScrape.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): support Prometheus operator AlertmanagerConfig spec.muteTimeIntervals conversion to VMAlertmanagerConfig spec.timeIntervals. See [#1783](https://github.com/VictoriaMetrics/operator/issues/1783).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

@@ -25,17 +25,17 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 	if err := yaml.Unmarshal(baseCfg, &globalConfigOpts); err != nil {
 		return nil, fmt.Errorf("cannot parse global config options: %w", err)
 	}
-	var baseYAMlCfg alertmanagerConfig
-	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
+	var baseYAMLCfg alertmanagerConfig
+	if err := yaml.Unmarshal(baseCfg, &baseYAMLCfg); err != nil {
 		return nil, fmt.Errorf("cannot parse base cfg: %w", err)
 	}
 
-	if baseYAMlCfg.Route == nil {
-		baseYAMlCfg.Route = &route{
+	if baseYAMLCfg.Route == nil {
+		baseYAMLCfg.Route = &route{
 			Receiver: "blackhole",
 		}
 		var isBlackholeDefined bool
-		for _, recv := range baseYAMlCfg.Receivers {
+		for _, recv := range baseYAMLCfg.Receivers {
 			var recvName string
 			for _, entry := range recv {
 				if entry.Key == "name" {
@@ -55,7 +55,7 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 		// conditionally add blackhole as default route path
 		// alertmanager config must have some default route
 		if !isBlackholeDefined {
-			baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, yaml.MapSlice{
+			baseYAMLCfg.Receivers = append(baseYAMLCfg.Receivers, yaml.MapSlice{
 				{
 					Key:   "name",
 					Value: "blackhole",
@@ -92,9 +92,9 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 		if err != nil {
 			return err
 		}
-		baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfgs...)
+		baseYAMLCfg.Receivers = append(baseYAMLCfg.Receivers, receiverCfgs...)
 		for _, rule := range cfg.Spec.InhibitRules {
-			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(cfg.Namespace, rule, !cr.Spec.DisableNamespaceMatcher))
+			baseYAMLCfg.InhibitRules = append(baseYAMLCfg.InhibitRules, buildInhibitRule(cfg.Namespace, rule, !cr.Spec.DisableNamespaceMatcher))
 		}
 		if len(mtis) > 0 {
 			timeIntervals = append(timeIntervals, mtis...)
@@ -103,13 +103,19 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 		return nil
 	})
 	if len(subRoutes) > 0 {
-		baseYAMlCfg.Route.Routes = append(baseYAMlCfg.Route.Routes, subRoutes...)
+		baseYAMLCfg.Route.Routes = append(baseYAMLCfg.Route.Routes, subRoutes...)
 	}
 	if len(timeIntervals) > 0 {
-		baseYAMlCfg.TimeIntervals = append(baseYAMlCfg.TimeIntervals, timeIntervals...)
+		baseYAMLCfg.TimeIntervals = append(baseYAMLCfg.TimeIntervals, timeIntervals...)
 	}
-
-	data, err := yaml.Marshal(baseYAMlCfg)
+	if cr.Spec.TracingConfig != nil {
+		tracingCfg, err := buildTracingConfig(cr, ac)
+		if err != nil {
+			return nil, err
+		}
+		baseYAMLCfg.TracingConfig = tracingCfg
+	}
+	data, err := yaml.Marshal(baseYAMLCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +127,12 @@ func addConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	if len(templates) == 0 {
 		return baseCfg, nil
 	}
-	var baseYAMlCfg alertmanagerConfig
-	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
+	var baseYAMLCfg alertmanagerConfig
+	if err := yaml.Unmarshal(baseCfg, &baseYAMLCfg); err != nil {
 		return nil, fmt.Errorf("cannot parse base cfg: %w", err)
 	}
 	templatesSetByIdx := make(map[string]int)
-	for idx, v := range baseYAMlCfg.Templates {
+	for idx, v := range baseYAMLCfg.Templates {
 		templatesSetByIdx[v] = idx
 	}
 	for _, v := range templates {
@@ -138,13 +144,13 @@ func addConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 		}
 		// override value with correct path
 		if idx, ok := templatesSetByIdx[path.Base(v)]; ok {
-			baseYAMlCfg.Templates[idx] = v
+			baseYAMLCfg.Templates[idx] = v
 			continue
 		}
-		baseYAMlCfg.Templates = append(baseYAMlCfg.Templates, v)
-		templatesSetByIdx[v] = len(baseYAMlCfg.Templates) - 1
+		baseYAMLCfg.Templates = append(baseYAMLCfg.Templates, v)
+		templatesSetByIdx[v] = len(baseYAMLCfg.Templates) - 1
 	}
-	return yaml.Marshal(baseYAMlCfg)
+	return yaml.Marshal(baseYAMLCfg)
 }
 
 func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSlice, error) {
@@ -320,6 +326,7 @@ type alertmanagerConfig struct {
 	Receivers     []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
 	TimeIntervals []yaml.MapSlice `yaml:"time_intervals,omitempty" json:"time_intervals"`
 	Templates     []string        `yaml:"templates" json:"templates"`
+	TracingConfig yaml.MapSlice   `yaml:"tracing,omitempty" json:"tracing,omitempty"`
 }
 
 type route struct {
@@ -1570,6 +1577,77 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
 	}
 	return r, nil
+}
+
+// builds configuration according to https://prometheus.io/docs/alerting/latest/configuration/#tracing-configuration
+func buildTracingConfig(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) (yaml.MapSlice, error) {
+	var cfg yaml.MapSlice
+	if cr == nil || cr.Spec.TracingConfig == nil {
+		return cfg, nil
+	}
+	tracingCfg := cr.Spec.TracingConfig
+	if tracingCfg.TLSConfig != nil {
+		var tlsCfg yaml.MapSlice
+		if tracingCfg.TLSConfig.CASecretRef != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tracingCfg.TLSConfig.CASecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			tracingCfg.TLSConfig.CAFile = file
+		}
+		if tracingCfg.TLSConfig.CertSecretRef != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tracingCfg.TLSConfig.CertSecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			tracingCfg.TLSConfig.CertFile = file
+		}
+
+		if tracingCfg.TLSConfig.KeySecretRef != nil {
+			file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tracingCfg.TLSConfig.KeySecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			tracingCfg.TLSConfig.KeyFile = file
+		}
+
+		if len(tracingCfg.TLSConfig.CAFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "ca_file", Value: tracingCfg.TLSConfig.CAFile})
+		}
+		if len(tracingCfg.TLSConfig.CertFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: tracingCfg.TLSConfig.CertFile})
+		}
+		if len(tracingCfg.TLSConfig.KeyFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: tracingCfg.TLSConfig.KeyFile})
+		}
+		if tracingCfg.TLSConfig.InsecureSkipVerify {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "insecure_skip_verify", Value: tracingCfg.TLSConfig.InsecureSkipVerify})
+		}
+		if len(tracingCfg.TLSConfig.ServerName) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "server_name", Value: tracingCfg.TLSConfig.ServerName})
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "tls_config", Value: tlsCfg})
+	}
+	if tracingCfg.Insecure {
+		cfg = append(cfg, yaml.MapItem{Key: "insecure", Value: true})
+	}
+	if len(tracingCfg.ClientType) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "client_type", Value: tracingCfg.ClientType})
+	}
+	if len(tracingCfg.SamplingFraction) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sampling_fraction", Value: tracingCfg.SamplingFraction})
+	}
+	if len(tracingCfg.Timeout) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "timeout", Value: tracingCfg.Timeout})
+	}
+	if len(tracingCfg.Compression) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "compression", Value: tracingCfg.Compression})
+	}
+	if len(tracingCfg.HTTPHeaders) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "http_headers", Value: tracingCfg.HTTPHeaders})
+	}
+	cfg = append(cfg, yaml.MapItem{Key: "endpoint", Value: tracingCfg.Endpoint})
+	return cfg, nil
 }
 
 func parseURL(s string) error {

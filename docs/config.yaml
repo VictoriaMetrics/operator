@@ -1,5 +1,5 @@
 render:
-  kubernetesVersion: '1.30'
+  kubernetesVersion: '1.35'
 
 processor:
   ignoreTypes:
@@ -7,7 +7,7 @@ processor:
   ignoreFields:
     - "status$"
     - "TypeMeta$"
-
-customMarkers:
-  - name: optional
-    target: field
+  customMarkers:
+    - name: deprecated
+      target: field
+      hasValue: true

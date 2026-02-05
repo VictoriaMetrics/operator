@@ -20,7 +20,7 @@ type VMServiceScrapeSpec struct {
 	// note, that with service setting, you have to use port: "name"
 	// and cannot use targetPort for endpoints.
 	// +optional
-	// +kubebuilder:validation:Enum=endpoints;service;endpointslices
+	// +kubebuilder:validation:Enum=endpoints;service;endpointslices;endpointslice
 	DiscoveryRole string `json:"discoveryRole,omitempty"`
 	// The label to use to retrieve the job name from.
 	// +optional

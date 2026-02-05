@@ -355,7 +355,7 @@ type BaseOperatorConf struct {
 
 	VMAlertManager struct {
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
-		AlertManagerVersion          string `default:"v0.29.0" env:"ALERTMANAGERVERSION"`
+		AlertManagerVersion          string `default:"v0.31.0" env:"ALERTMANAGERVERSION"`
 		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
 		Resource                     struct {
 			Limit struct {

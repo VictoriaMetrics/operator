@@ -185,6 +185,9 @@ const (
 	k8sSDRolePod           = "pod"
 	k8sSDRoleIngress       = "ingress"
 	k8sSDRoleNode          = "node"
+
+	// before 0.67.0 endpointslice was called endpointslices. keeping old name for backward compatibility. will be removed in 0.70.0
+	k8sSDRoleLegacyEndpointslices = "endpointslices"
 )
 
 var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
@@ -244,7 +247,7 @@ func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata, role str
 	var items yaml.MapSlice
 	if am.Node != nil && *am.Node {
 		switch role {
-		case k8sSDRolePod, k8sSDRoleEndpoints, k8sSDRoleEndpointslice:
+		case k8sSDRolePod, k8sSDRoleEndpoints, k8sSDRoleEndpointslice, k8sSDRoleLegacyEndpointslices:
 			items = append(items, yaml.MapItem{
 				Key:   "node",
 				Value: true,
@@ -253,7 +256,7 @@ func addAttachMetadata(dst yaml.MapSlice, am *vmv1beta1.AttachMetadata, role str
 	}
 	if am.Namespace != nil && *am.Namespace {
 		switch role {
-		case k8sSDRolePod, k8sSDRoleService, k8sSDRoleEndpoints, k8sSDRoleEndpointslice, k8sSDRoleIngress:
+		case k8sSDRolePod, k8sSDRoleService, k8sSDRoleEndpoints, k8sSDRoleEndpointslice, k8sSDRoleIngress, k8sSDRoleLegacyEndpointslices:
 			items = append(items, yaml.MapItem{
 				Key:   "namespace",
 				Value: true,
@@ -462,7 +465,7 @@ func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions)
 
 		// special case, given roles create additional watchers for
 		// pod and services roles
-		if opts.role == k8sSDRoleEndpoints || opts.role == k8sSDRoleEndpointslice {
+		if opts.role == k8sSDRoleEndpoints || opts.role == k8sSDRoleEndpointslice || opts.role == k8sSDRoleLegacyEndpointslices {
 			for _, role := range []string{k8sSDRolePod, k8sSDRoleService} {
 				selectors = append(selectors, yaml.MapSlice{
 					{

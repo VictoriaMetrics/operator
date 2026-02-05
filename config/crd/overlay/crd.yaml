@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vlagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -741,8 +741,6 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               storage:
                 properties:
-                  disableMountSubPath:
-                    type: boolean
                   emptyDir:
                     properties:
                       medium:
@@ -1143,7 +1141,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vlclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -2793,8 +2791,6 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   storage:
                     properties:
-                      disableMountSubPath:
-                        type: boolean
                       emptyDir:
                         properties:
                           medium:
@@ -2935,7 +2931,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vlogs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -3029,7 +3025,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vlsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -3686,7 +3682,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -5844,8 +5840,6 @@ spec:
                 type: string
               statefulStorage:
                 properties:
-                  disableMountSubPath:
-                    type: boolean
                   emptyDir:
                     properties:
                       medium:
@@ -6418,7 +6412,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -8852,7 +8846,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -9654,8 +9648,6 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               storage:
                 properties:
-                  disableMountSubPath:
-                    type: boolean
                   emptyDir:
                     properties:
                       medium:
@@ -9884,6 +9876,82 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              tracingConfig:
+                properties:
+                  client_type:
+                    enum:
+                    - http
+                    - grpc
+                    type: string
+                  compression:
+                    type: string
+                  endpoint:
+                    type: string
+                  http_headers:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  insecure:
+                    type: boolean
+                  sampling_fraction:
+                    type: string
+                  timeout:
+                    type: string
+                  tls_config:
+                    properties:
+                      ca_file:
+                        type: string
+                      ca_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      cert_file:
+                        type: string
+                      cert_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      insecure_skip_verify:
+                        type: boolean
+                      key_file:
+                        type: string
+                      key_secret_ref:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            default: ""
+                            type: string
+                          optional:
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      server_name:
+                        type: string
+                    type: object
+                required:
+                - endpoint
+                type: object
               useDefaultResources:
                 type: boolean
               useStrictSecurity:
@@ -10075,7 +10143,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmalerts.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -11139,7 +11207,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmanomalies.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -12018,8 +12086,6 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               storage:
                 properties:
-                  disableMountSubPath:
-                    type: boolean
                   emptyDir:
                     properties:
                       medium:
@@ -12499,7 +12565,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmauths.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -13955,7 +14021,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -14794,8 +14860,6 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   storage:
                     properties:
-                      disableMountSubPath:
-                        type: boolean
                       emptyDir:
                         properties:
                           medium:
@@ -15723,8 +15787,6 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   storage:
                     properties:
-                      disableMountSubPath:
-                        type: boolean
                       emptyDir:
                         properties:
                           medium:
@@ -16109,7 +16171,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmdistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -19009,8 +19071,6 @@ spec:
                         type: string
                       statefulStorage:
                         properties:
-                          disableMountSubPath:
-                            type: boolean
                           emptyDir:
                             properties:
                               medium:
@@ -23210,6 +23270,7 @@ spec:
                             - endpoints
                             - service
                             - endpointslices
+                            - endpointslice
                             type: string
                           endpoints:
                             items:
@@ -25235,7 +25296,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmnodescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -25758,7 +25819,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmpodscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -26327,7 +26388,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmprobes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -26928,7 +26989,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmrules.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -26972,10 +27033,6 @@ spec:
                       type: string
                     eval_offset:
                       type: string
-                    extra_filter_labels:
-                      additionalProperties:
-                        type: string
-                      type: object
                     headers:
                       items:
                         type: string
@@ -27101,7 +27158,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmscrapeconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -28956,7 +29013,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmservicescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -29001,6 +29058,7 @@ spec:
                 - endpoints
                 - service
                 - endpointslices
+                - endpointslice
                 type: string
               endpoints:
                 items:
@@ -29530,7 +29588,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -30503,7 +30561,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmstaticscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -31016,7 +31074,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vmusers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -31420,7 +31478,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vtclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -32968,8 +33026,6 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   storage:
                     properties:
-                      disableMountSubPath:
-                        type: boolean
                       emptyDir:
                         properties:
                           medium:
@@ -33112,7 +33168,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: vtsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com

@@ -53,7 +53,7 @@ var (
 		"http.listenAddr", ":8435", "http server listen addr")
 	useProxyProtocol = flag.Bool(
 		"reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
-	resyncInternal = flag.Duration(
+	resyncInterval = flag.Duration(
 		"resync-interval", 0, "interval for force resync of the last configuration")
 	webhookMethod = flag.String(
 		"webhook-method", "GET", "the HTTP method url to use to send the webhook")
@@ -92,15 +92,13 @@ func main() {
 	r := reloader{
 		c: buildHTTPClient(),
 	}
-	updatesChan := make(chan struct{}, 10)
 	configWatcher, err := newConfigWatcher(ctx)
 	if err != nil {
 		logger.Fatalf("cannot create configWatcher: %s", err)
 	}
 
-	err = configWatcher.startWatch(ctx, updatesChan)
 	if *onlyInitConfig {
-		if err != nil {
+		if err = configWatcher.load(ctx); err != nil {
 			logger.Fatalf("failed to init config: %v", err)
 		}
 		logger.Infof("config initiation succeed, exit now")
@@ -108,6 +106,8 @@ func main() {
 		configWatcher.close()
 		return
 	}
+	updatesChan := make(chan struct{}, 10)
+	configWatcher.start(ctx, updatesChan)
 	watcher := cfgWatcher{
 		updates:  updatesChan,
 		reloader: r.reload,
@@ -124,7 +124,7 @@ func main() {
 	if err != nil {
 		logger.Fatalf("cannot start dir watcher: %s", err)
 	}
-	dw.startWatch(ctx, updatesChan)
+	dw.start(ctx, updatesChan)
 	go httpserver.Serve([]string{*listenAddr}, requestHandler, httpserver.ServeOptions{})
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
@@ -279,16 +279,19 @@ func (c *cfgWatcher) close() {
 }
 
 type watcher interface {
-	startWatch(ctx context.Context, updates chan struct{}) error
+	load(ctx context.Context) error
+	start(ctx context.Context, updates chan struct{})
 	close()
 }
 
 // emptyWatcher - no-op watchers for case when direct watch not required
 type emptyWatcher struct{}
 
-func (ew *emptyWatcher) startWatch(_ context.Context, _ chan struct{}) error {
+func (ew *emptyWatcher) load(_ context.Context) error {
 	return nil
 }
+
+func (ew *emptyWatcher) start(_ context.Context, _ chan struct{}) {}
 
 func (ew *emptyWatcher) close() {}
 

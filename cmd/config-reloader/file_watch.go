@@ -34,8 +34,18 @@ func newFileWatcher(file string) (*fileWatcher, error) {
 	}, nil
 }
 
-func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
-	fw.wg.Add(1)
+func (fw *fileWatcher) load(_ context.Context) error {
+	newData, err := readFileContent(*configFileName)
+	if err != nil {
+		return fmt.Errorf("cannot read file: %s content, err: %w", *configFileName, err)
+	}
+	if err := writeNewContent(newData); err != nil {
+		return fmt.Errorf("cannot write content to file: %s, err: %w", *configFileDst, err)
+	}
+	return nil
+}
+
+func (fw *fileWatcher) start(ctx context.Context, updates chan struct{}) {
 	logger.Infof("starting file watcher")
 	var prevContent []byte
 	update := func(fileName string) error {
@@ -50,7 +60,6 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 		if err := writeNewContent(newData); err != nil {
 			return fmt.Errorf("cannot write content to file: %s, err: %w", *configFileDst, err)
 		}
-
 		prevContent = newData
 		select {
 		case updates <- struct{}{}:
@@ -60,16 +69,14 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 		return nil
 	}
 	if err := update(*configFileName); err != nil {
-		if *onlyInitConfig {
-			return err
-		}
 		logger.Errorf("cannot update file on init: %v", err)
 	}
+	fw.wg.Add(1)
 	go func() {
 		defer fw.wg.Done()
 		var t time.Ticker
-		if *resyncInternal > 0 {
-			t = *time.NewTicker(*resyncInternal)
+		if *resyncInterval > 0 {
+			t = *time.NewTicker(*resyncInterval)
 			defer t.Stop()
 		}
 		for {
@@ -96,7 +103,6 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 			}
 		}
 	}()
-	return nil
 }
 
 func (fw *fileWatcher) close() {
@@ -132,7 +138,7 @@ func newDirWatchers(dirs []string) (*dirWatcher, error) {
 	}, nil
 }
 
-func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
+func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 	dw.wg.Add(1)
 	filesContentHashPath := map[string][]byte{}
 	dirHash := sha256.New()

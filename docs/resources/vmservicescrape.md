@@ -23,7 +23,7 @@ need to reconfigure.
 It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc.).
 
 Monitoring configuration is based on `discoveryRole` setting. By default, `endpoints` is used to get objects from kubernetes api.
-It's also possible to use `discoveryRole: service` or `discoveryRole: endpointslices`.
+It's also possible to use `discoveryRole: service` or `discoveryRole: endpointslice`.
 
 `Endpoints` objects are essentially lists of IP addresses.
 Typically, `Endpoints` objects are populated by `Service` object. `Service` object discovers `Pod`s by a label

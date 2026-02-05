@@ -28,6 +28,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed conflicts for `VMAlert`, `VMAlertmanager` and `VMAuth` reconcilers, which are updating same objects concurrently with reconcilers for their child objects.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously PVC downscaling always emitted a warning, which is not expected, while using PVC autoresizer; now warning during attempt to downsize PVC is only emitted if `operator.victoriametrics.com/pvc-allow-volume-expansion: false` is not set. See [#1747](https://github.com/VictoriaMetrics/operator/issues/1747).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support both prometheus-compatible `endpointslice` and old `endpointslices` roles.
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026
@@ -39,6 +40,7 @@ aliases:
 **Update note 5**: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.
 **Update note 6**: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.
 **Update note 7**: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.
+**Update note 8**: VMServiceScrape's `endpointslices` role is deprecated and will be removed in 0.70.0. Use `endpointslice` instead.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1).

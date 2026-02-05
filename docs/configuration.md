@@ -32,7 +32,7 @@ kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1
 # ... 
 ```
 
-This is the latest operator environment variables:
+These are the latest operator environment variables:
 {{% content "env.md" %}}
 
 ## Modify environment variables
@@ -136,8 +136,13 @@ kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --help 2>&1;
 # ...
 ```
 
-This is the latest operator flags:
+These are the latest operator flags:
 {{% content "flags.md" %}}
+
+## Config reloader flags
+
+These are the latest config reloader flags:
+{{% content "config-reloader-flags.md" %}}
 
 ## Modify flags
 

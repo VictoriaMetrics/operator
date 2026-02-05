@@ -26,8 +26,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
-// there are three different cases:
+// isSTSRecreateRequired checks whether the StatefulSet requires recreation and whether pods must be recreated.
+// There are three different cases:
 // 1. sts's VolumeClaimTemplate's element changed[added or deleted];
 // 2. other VolumeClaimTemplate's attributes beside name changed, like size or storageClassName
 // since pod's volume only related to VCT's name, so when c2 happened, we don't need to recreate pods
@@ -38,19 +38,16 @@ import (
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldStatefulSet *appsv1.StatefulSet) (bool, bool, error) {
+func isSTSRecreateRequired(ctx context.Context, newSTS, oldStatefulSet *appsv1.StatefulSet) (bool, bool) {
 	l := logger.WithContext(ctx)
-	handleRemove := func() error {
-		return removeStatefulSetKeepPods(ctx, rclient, newSTS, oldStatefulSet)
-	}
 	if newSTS.Spec.ServiceName != oldStatefulSet.Spec.ServiceName {
-		return true, true, handleRemove()
+		return true, true
 	}
 
 	// if vct got added, removed or changed, recreate the sts
 	if len(newSTS.Spec.VolumeClaimTemplates) != len(oldStatefulSet.Spec.VolumeClaimTemplates) {
 		l.Info("VolumeClaimTemplates count changes, recreating statefulset")
-		return true, true, handleRemove()
+		return true, true
 	}
 
 	var vctChanged bool
@@ -58,7 +55,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldSt
 		actualPVC := getPVCFromSTS(newVCT.Name, oldStatefulSet)
 		if actualPVC == nil {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s was not found at VolumeClaimTemplates, recreating statefulset", newVCT.Name))
-			return true, true, handleRemove()
+			return true, true
 		}
 		if shouldRecreateSTSOnStorageChange(ctx, actualPVC, &newVCT) {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s have some changes, recreating StatefulSet", newVCT.Name))
@@ -67,13 +64,13 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, oldSt
 	}
 	// some VolumeClaimTemplate's attributes beside name changed, there is no need to recreate pods
 	if vctChanged {
-		return true, false, handleRemove()
+		return true, false
 	}
 	if shouldRecreateSTSOnImmutableFieldChange(ctx, newSTS, oldStatefulSet) {
-		return true, false, handleRemove()
+		return true, false
 	}
 
-	return false, false, nil
+	return false, false
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
@@ -304,9 +301,7 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 			}
 			return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
 		}
-		err = &errWaitReady{
-			origin: fmt.Errorf("sts wasn't yet removed"),
-		}
+		err = fmt.Errorf("sts wasn't yet removed")
 		return
 	}); err != nil {
 		return fmt.Errorf("cannot wait for sts to be deleted: %w", err)

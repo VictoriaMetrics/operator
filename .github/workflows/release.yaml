@@ -3,6 +3,7 @@ on:
   release:
     types:
       - created
+      - prereleased
 jobs:
   release:
     name: Release on GitHub

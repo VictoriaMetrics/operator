@@ -1,3 +1,31 @@
+{{- define "deprecated" -}}
+  {{- $member := .member }}
+  {{- $type := .type }}
+  {{- $deprecated := default dict }}
+  {{- range $member.Markers.deprecated }}
+    {{- $deprecated = mergeOverwrite $deprecated .Value }}
+  {{- end }}
+  {{- $parts := list }}
+  {{- with $deprecated.deprecated_in }}
+    {{- $id := . | replace "." "" }}
+    {{- $parts = append $parts (printf "since version <a href=\"https://docs.victoriametrics.com/operator/changelog/#%s\">%s</a>" $id .) }}
+  {{- end }}
+  {{- with $deprecated.removed_in }}
+    {{- $id := . | replace "." "" }}
+    {{- $parts = append $parts (printf "will be removed in <a href=\"https://docs.victoriametrics.com/operator/changelog/#%s\">%s</a>" $id .) }}
+  {{- end }}
+  {{- with $deprecated.replacements }}
+    {{- $links := list }}
+    {{- range . }}
+      {{- $id := lower (printf "%s-%s" $type .) -}}
+      {{- $links = append $links (printf "<a href=\"#%s\" id=%q>%s</a>" $id $id .) }}
+    {{- end }}
+    {{- $parts = append $parts (printf "use %s instead" (join ", " $links)) }}
+  {{- end }}
+  {{- with $parts }}<br/><b>Deprecated: </b>{{ join " " . }}<br/>{{ end }}
+{{- end -}}
+
+
 {{- define "type" -}}
 {{- $type := . -}}
 {{- if markdownShouldRenderType $type -}}
@@ -34,7 +62,7 @@ Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}
 {{ range $memberKeys -}}
 {{- $member := index $members . -}}
 {{- $id := lower (printf "%s-%s" $type.Name $member.Name) -}}
-| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }} |
+| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "deprecated" (dict "member" $member "type" $type.Name) }} |
 {{ end -}}
 
 {{- end -}}

@@ -3035,13 +3035,6 @@ func (in *RuleGroup) DeepCopyInto(out *RuleGroup) {
 			(*out)[key] = val
 		}
 	}
-	if in.ExtraFilterLabels != nil {
-		in, out := &in.ExtraFilterLabels, &out.ExtraFilterLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
 		*out = make(url.Values, len(*in))

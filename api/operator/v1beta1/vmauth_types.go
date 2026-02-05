@@ -73,19 +73,14 @@ type VMAuthSpec struct {
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
-	//
-	// Deprecated: use unauthorizedUserAccessSpec instead
-	// will be removed at v1.0 release
-	// +deprecated
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty" yaml:"unauthorizedAccessConfig,omitempty"`
 	// VMUserConfigOptions applies configurations to above UnauthorizedAccessConfig
-	// Deprecated: use unauthorizedUserAccessSpec instead
-	// will be removed at v1.0 release
-	// +deprecated
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	VMUserConfigOptions `json:",inline" yaml:",inline"`
 
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
@@ -108,7 +103,7 @@ type VMAuthSpec struct {
 	// configuration must be inside secret key: config.yaml.
 	// It must be created and managed manually.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-	// Deprecated: use externalConfig.secretRef instead
+	// +deprecated={deprecated_in: "v0.49.0", removed_in: "v0.69.0", replacements: {externalConfig.secretRef}}
 	ConfigSecret string `json:"configSecret,omitempty" yaml:"configSecret,omitempty"`
 	// ExternalConfig defines a source of external VMAuth configuration.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
@@ -150,14 +145,12 @@ type VMAuthSpec struct {
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
 type VMAuthUnauthorizedUserAccessSpec struct {
 	// URLPrefix defines url prefix for destination
-	// Deprecated since 0.67: use targetRefs instead
-	// +deprecated
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
 	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 	// URLMap defines url map for destination
-	// Deprecated since 0.67: use targetRefs instead
-	// +deprecated
+	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
 	URLMap []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
 
 	// TargetRefs - reference to endpoints, which user may access.
@@ -230,7 +223,7 @@ type UnauthorizedAccessConfigURLMap struct {
 
 // Validate performs syntax logic validation
 func (c *UnauthorizedAccessConfigURLMap) validate() error {
-	if len(c.SrcPaths) == 0 && len(c.SrcHosts) == 0 && len(c.SrcQueryArgs) == 0 && len(c.SrcQueryArgs) == 0 {
+	if len(c.SrcPaths) == 0 && len(c.SrcHosts) == 0 && len(c.SrcQueryArgs) == 0 && len(c.SrcHeaders) == 0 {
 		return fmt.Errorf("incorrect url_map config at least of one src_paths,src_hosts,src_query_args or src_headers must be defined")
 	}
 	if len(c.URLPrefix) == 0 {

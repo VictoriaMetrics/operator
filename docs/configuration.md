@@ -289,7 +289,7 @@ victoria-metrics-operator:
   env:
     # -- default version for vmsingle
     - name: VM_VMSINGLEDEFAULT_VERSION
-      value: v1.44.0
+      value: v1.45.0
     # -- container registry name prefix, e.g. docker.io
     - name: VM_CONTAINERREGISTRY
       value: ""
@@ -353,7 +353,7 @@ operator:
 env:
   # -- default version for vmsingle
   - name: VM_VMSINGLEDEFAULT_VERSION
-    value: v1.44.0
+    value: v1.45.0
   # -- container registry name prefix, e.g. docker.io
   - name: VM_CONTAINERREGISTRY
     value: ""

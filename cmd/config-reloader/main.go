@@ -53,7 +53,7 @@ var (
 		"http.listenAddr", ":8435", "http server listen addr")
 	useProxyProtocol = flag.Bool(
 		"reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
-	resyncInternal = flag.Duration(
+	resyncInterval = flag.Duration(
 		"resync-interval", 0, "interval for force resync of the last configuration")
 	webhookMethod = flag.String(
 		"webhook-method", "GET", "the HTTP method url to use to send the webhook")

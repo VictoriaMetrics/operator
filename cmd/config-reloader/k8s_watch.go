@@ -116,7 +116,6 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 		}
 		return nil
 	}
-	go k.inf.Run(ctx.Done())
 
 	var lastSecret corev1.Secret
 	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &lastSecret); err != nil {
@@ -127,14 +126,17 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 			return err
 		}
 		logger.Errorf("cannot update secret: %s", err)
+	} else if *onlyInitConfig {
+		return nil
 	}
-	k.wg.Add(1)
 
+	go k.inf.Run(ctx.Done())
+	k.wg.Add(1)
 	go func() {
 		defer k.wg.Done()
 		var t time.Ticker
-		if *resyncInternal > 0 {
-			t = *time.NewTicker(*resyncInternal)
+		if *resyncInterval > 0 {
+			t = *time.NewTicker(*resyncInterval)
 			defer t.Stop()
 		}
 		for {

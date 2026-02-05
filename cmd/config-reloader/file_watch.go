@@ -35,7 +35,6 @@ func newFileWatcher(file string) (*fileWatcher, error) {
 }
 
 func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
-	fw.wg.Add(1)
 	logger.Infof("starting file watcher")
 	var prevContent []byte
 	update := func(fileName string) error {
@@ -64,12 +63,15 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 			return err
 		}
 		logger.Errorf("cannot update file on init: %v", err)
+	} else if *onlyInitConfig {
+		return nil
 	}
+	fw.wg.Add(1)
 	go func() {
 		defer fw.wg.Done()
 		var t time.Ticker
-		if *resyncInternal > 0 {
-			t = *time.NewTicker(*resyncInternal)
+		if *resyncInterval > 0 {
+			t = *time.NewTicker(*resyncInterval)
 			defer t.Stop()
 		}
 		for {

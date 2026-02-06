@@ -33,7 +33,7 @@ aliases:
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026
 
-**Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.
+**Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader. Please verify `spec.configReloaderExtraArgs` in all instances of `VMAlert`, `VMAuth`, `VMAgent` and `VMAlertmanager` CRs are using [valid config-reloader arguments](https://docs.victoriametrics.com/operator/configuration/#config-reloader-flags) before upgrading.
 **Update note 2**: removed deprecated VMAgent `spec.aPIServerConfig` property
 **Update note 3**: removed deprecated VMCluster `spec.vmselect.persistentVolume` property
 **Update note 4**: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.

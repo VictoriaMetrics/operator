@@ -141,6 +141,10 @@ docs: build crd-ref-docs manifests
 	echo "$$FLAGS_HEADER" > docs/flags.md
 	bin/$(REPO) --help >> docs/flags.md 2>&1
 	echo '```' >> docs/flags.md
+	$(MAKE) build-config-reloader
+	echo "$$FLAGS_HEADER" > docs/config-reloader-flags.md
+	bin/config-reloader --help 2>&1 | sed '1d' >> docs/config-reloader-flags.md
+	echo '```' >> docs/config-reloader-flags.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -204,6 +208,7 @@ build-operator: build
 
 build-config-reloader: ROOT=./cmd/config-reloader
 build-config-reloader: COMPONENT=config-reloader
+build-config-reloader: REPO=config-reloader
 build-config-reloader: build
 
 .PHONY: docker-push

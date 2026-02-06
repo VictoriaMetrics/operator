@@ -494,7 +494,7 @@ type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
 	// https://victoriametrics.com/legal/esa/
-	// +deprecated={deprecated_in: "v0.61.0", removed_in: "v0.69.0", replacements: {license.key,license.keyRef}}
+	// +deprecated={deprecated_in: "v0.61.0", removed_in: "v0.69.0", replacements: {VMClusterSpec.license}}
 	// +optional
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create

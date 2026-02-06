@@ -17,8 +17,8 @@
   {{- with $deprecated.replacements }}
     {{- $links := list }}
     {{- range . }}
-      {{- $id := lower (printf "%s-%s" $type .) -}}
-      {{- $links = append $links (printf "<a href=\"#%s\" id=%q>%s</a>" $id $id .) }}
+      {{- $id := lower (ternary (replace "." "-" .) (printf "%s-%s" $type .) (contains "." .)) }}
+      {{- $links = append $links (printf "<a href=\"#%s\">%s</a>" $id (. | splitList "." | last)) }}
     {{- end }}
     {{- $parts = append $parts (printf "use %s instead" (join ", " $links)) }}
   {{- end }}

@@ -20,8 +20,10 @@ import (
 // DaemonSet performs an update or create operator for daemonset and waits until it finishes update rollout
 func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.DaemonSet, owner *metav1.OwnerReference) error {
 	var prevMeta *metav1.ObjectMeta
+	var prevTemplateAnnotations map[string]string
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
+		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
@@ -47,6 +49,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
@@ -54,12 +57,6 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 		if !needsUpdate {
 			return nil
 		}
-
-		var prevTemplateAnnotations map[string]string
-		if prevObj != nil {
-			prevTemplateAnnotations = prevObj.Spec.Template.Annotations
-		}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating DaemonSet %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {

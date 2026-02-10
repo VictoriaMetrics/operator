@@ -19,7 +19,6 @@ package operator
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,10 +30,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
-)
-
-const (
-	httpTimeout = 10 * time.Second
 )
 
 // VMDistributedReconciler reconciles a VMDistributed object
@@ -92,7 +87,7 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	r.Client.Scheme().Default(instance)
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmdistributed.CreateOrUpdate(ctx, instance, r, httpTimeout); err != nil {
+		if err := vmdistributed.CreateOrUpdate(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("VMDistributed %s update failed: %w", instance.Name, err)
 		}
 

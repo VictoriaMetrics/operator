@@ -85,13 +85,13 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					"key": licenseKey,
 				},
 			},
-		)).To(Succeed())
+		)).ToNot(HaveOccurred())
 
-		Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).To(Succeed())
+		Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).ToNot(HaveOccurred())
 		Eventually(func() error {
 			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
 		}, eventualDeploymentAppReadyTimeout,
-		).Should(Succeed())
+		).ShouldNot(HaveOccurred())
 
 	})
 	AfterEach(func() {
@@ -102,8 +102,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					Namespace: namespace,
 				},
 			},
-		)).To(Succeed())
-		Expect(k8sClient.Delete(ctx, &anomalySingle)).To(Succeed())
+		)).ToNot(HaveOccurred())
+		Expect(k8sClient.Delete(ctx, &anomalySingle)).ToNot(HaveOccurred())
 		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
 	})
 	Context("e2e vmanomaly", func() {
@@ -120,7 +120,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						Namespace: nsn.Namespace,
 					},
 				},
-			)).To(Succeed())
+			)).ToNot(HaveOccurred())
 			Eventually(func() error {
 				return k8sClient.Get(context.Background(), types.NamespacedName{
 					Name:      nsn.Name,
@@ -135,14 +135,14 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				if setup != nil {
 					setup()
 				}
-				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
 				}, anomalyReadyTimeout,
-				).Should(Succeed())
+				).ShouldNot(HaveOccurred())
 
 				var created vmv1.VMAnomaly
-				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 				verify(&created)
 			},
 			Entry("with reader", "custom-reader",
@@ -217,12 +217,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							return err
 						}
 						return nil
-					}()).To(Succeed())
+					}()).ToNot(HaveOccurred())
 				},
 				func(cr *vmv1.VMAnomaly) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, anomalyReadyTimeout, 1).Should(Succeed())
+					}, anomalyReadyTimeout, 1).ShouldNot(HaveOccurred())
 					Expect(finalize.SafeDelete(
 						ctx,
 						k8sClient,
@@ -230,7 +230,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 							Name:      tlsSecretName,
 							Namespace: nsn.Namespace,
 						}},
-					)).To(Succeed())
+					)).ToNot(HaveOccurred())
 
 				},
 			),
@@ -269,11 +269,11 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				}, nil, func(cr *vmv1.VMAnomaly) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, anomalyReadyTimeout, 1).Should(Succeed())
+					}, anomalyReadyTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Name: cr.PrefixedName(), Namespace: namespace,
-					}, &dep)).To(Succeed())
+					}, &dep)).ToNot(HaveOccurred())
 					// assert security
 					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
@@ -287,7 +287,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					vmc := pc[0]
 					Expect(vmc.Name).To(Equal("vmanomaly"))
 					Expect(vmc.VolumeMounts).To(HaveLen(4))
-					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).NotTo(Succeed())
+					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(HaveOccurred())
 				},
 			),
 		)
@@ -302,25 +302,25 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				initCR.Name = name
 				initCR.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-				}, anomalyReadyTimeout).Should(Succeed())
+				}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
 					}
 					// update and wait ready
 					var toUpdate vmv1.VMAnomaly
-					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-					}, anomalyExpandTimeout).Should(Succeed())
+					}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
 					// verify
 					var updated vmv1.VMAnomaly
-					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 					step.verify(&updated)
 				}
 			},
@@ -359,11 +359,11 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						Expect(k8sClient.Get(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 0),
-						}, &createdSts)).To(Succeed())
+						}, &createdSts)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      fmt.Sprintf("%s-%d", cr.PrefixedName(), 1),
-						}, &createdSts)).To(Succeed())
+						}, &createdSts)).ToNot(HaveOccurred())
 
 					},
 				},
@@ -399,8 +399,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				testStep{
 					setup: func(cr *vmv1.VMAnomaly) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
+						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).ToNot(HaveOccurred())
 					},
 					modify: func(cr *vmv1.VMAnomaly) {
 						cr.Spec.PodDisruptionBudget = nil
@@ -422,8 +422,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 					verify: func(cr *vmv1.VMAnomaly) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
-						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
+						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).ToNot(HaveOccurred())
 
 					},
 				},

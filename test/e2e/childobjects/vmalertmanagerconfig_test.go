@@ -33,10 +33,10 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 			DeferCleanup(func() {
 				for _, am := range args.ams {
 					am.Namespace = namespace
-					Expect(k8sClient.Delete(ctx, am)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, am)).ToNot(HaveOccurred())
 				}
 				for _, amcfg := range args.amCfgs {
-					Expect(k8sClient.Delete(ctx, amcfg)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, amcfg)).ToNot(HaveOccurred())
 				}
 				for _, alert := range args.ams {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
@@ -50,10 +50,10 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 				step.setup()
 			}
 			for _, am := range args.ams {
-				Expect(k8sClient.Create(ctx, am)).To(Succeed())
+				Expect(k8sClient.Create(ctx, am)).ToNot(HaveOccurred())
 			}
 			for _, amcfg := range args.amCfgs {
-				Expect(k8sClient.Create(ctx, amcfg)).To(Succeed())
+				Expect(k8sClient.Create(ctx, amcfg)).ToNot(HaveOccurred())
 			}
 
 			for _, am := range args.ams {
@@ -63,7 +63,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 						&vmv1beta1.VMAlertmanager{},
 						types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
 						vmv1beta1.UpdateStatusOperational)
-				}, eventualReadyTimeout).Should(Succeed())
+				}, eventualReadyTimeout).ShouldNot(HaveOccurred())
 			}
 			if step.modify != nil {
 				step.modify()
@@ -110,7 +110,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 							{Name: "blackhole-1", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
@@ -167,7 +167,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 							{Name: "selector-1", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 							var matched bool
 							for _, stCond := range amcfg.Status.Conditions {
@@ -184,7 +184,7 @@ var _ = Describe("test vmalertmanagerconfig Controller", Label("vm", "child", "a
 							{Name: "selector-miss-1", Namespace: namespace},
 						} {
 							var vmrule vmv1beta1.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
 								Expect(stCond.Type).NotTo(ContainSubstring("selector-1"), "should not match VMAlertmanager with specific selector,got=%q", stCond.Type)
@@ -270,7 +270,7 @@ route:
 							{Name: "bad-route", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range amcfg.Status.Conditions {
 								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
@@ -282,7 +282,7 @@ route:
 							{Name: "partially-ok", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
-							Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range amcfg.Status.Conditions {
 								if strings.HasPrefix(cond.Type, "parsing-test-with-global-option") {
@@ -305,7 +305,7 @@ route:
 							Namespace: namespace,
 							Name:      "parsing-test",
 						}
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						toUpdate.Spec.ConfigRawYaml = `
 global:
  slack_api_url: https://example.com
@@ -314,7 +314,7 @@ receivers:
 route:
  receiver: blackhole
 `
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 
 					},
 					verify: func() {
@@ -323,14 +323,14 @@ route:
 						} {
 							Eventually(func() error {
 								var amcfg vmv1beta1.VMAlertmanagerConfig
-								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+								Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test.")
-							}, eventualReadyTimeout).Should(Succeed())
+							}, eventualReadyTimeout).ShouldNot(HaveOccurred())
 							Eventually(func() error {
 								var amcfg vmv1beta1.VMAlertmanagerConfig
-								Expect(k8sClient.Get(ctx, nsn, &amcfg)).To(Succeed())
+								Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
 								return expectConditionOkFor(amcfg.Status.Conditions, "parsing-test-with-global-option.")
-							}, eventualReadyTimeout).Should(Succeed())
+							}, eventualReadyTimeout).ShouldNot(HaveOccurred())
 						}
 
 					},

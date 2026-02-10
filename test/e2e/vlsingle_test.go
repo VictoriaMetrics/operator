@@ -37,7 +37,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					Name:      nsn.Name,
 					Namespace: nsn.Namespace,
 				},
-			})).To(Succeed())
+			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLSingle{})
 		})
 		Context("crud", func() {
@@ -45,14 +45,14 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 				func(name string, cr *vmv1.VLSingle, verify func(*vmv1.VLSingle)) {
 					cr.Name = name
 					nsn.Name = name
-					Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, nsn)
 					}, eventualDeploymentAppReadyTimeout,
-					).Should(Succeed())
+					).ShouldNot(HaveOccurred())
 
 					var created vmv1.VLSingle
-					Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 					verify(&created)
 				},
 				Entry("with strict security", "strict-security",
@@ -80,7 +80,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext).NotTo(BeNil())
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot).NotTo(BeNil())
@@ -105,7 +105,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(1))
@@ -150,7 +150,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					func(cr *vmv1.VLSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(2))
@@ -184,10 +184,10 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 					initCR.Namespace = namespace
 					nsn.Name = name
 					// setup test
-					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 					for _, step := range steps {
 						if step.setup != nil {
@@ -195,15 +195,15 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 						}
 						// perform update
 						var toUpdate vmv1.VLSingle
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						step.modify(&toUpdate)
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLSingle{}, nsn)
-						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+						}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 						var updated vmv1.VLSingle
-						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 
 						// verify results
 						step.verify(&updated)
@@ -226,7 +226,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 							var createdDeploy appsv1.Deployment
 							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 						},
 					},
 					testStep{
@@ -256,9 +256,9 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 									"TLS_KEY":  tlsKey,
 								},
 							}
-							Expect(k8sClient.Create(ctx, &tlsSecret)).To(Succeed())
+							Expect(k8sClient.Create(ctx, &tlsSecret)).ToNot(HaveOccurred())
 							DeferCleanup(func(ctx SpecContext) {
-								Expect(k8sClient.Delete(ctx, &tlsSecret)).To(Succeed())
+								Expect(k8sClient.Delete(ctx, &tlsSecret)).ToNot(HaveOccurred())
 							})
 							cr.Spec.SyslogSpec = &vmv1.SyslogServerSpec{
 								TCPListeners: []*vmv1.SyslogTCPListener{
@@ -298,11 +298,11 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 						},
 						verify: func(cr *vmv1.VLSingle) {
 							var svc corev1.Service
-							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &svc)).To(Succeed())
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &svc)).ToNot(HaveOccurred())
 							Expect(svc.Spec.Ports).To(HaveLen(4))
 
 							var dep appsv1.Deployment
-							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &dep)).To(Succeed())
+							Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &dep)).ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(2))
 							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(2))
 						},

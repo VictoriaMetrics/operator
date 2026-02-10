@@ -4,31 +4,129 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-func TestValidateVMClusterObjOrRef_Matrix(t *testing.T) {
-	s := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{Name: "a"}}
-	assert.NoError(t, s.validate(nil))
-
-	s2 := VMClusterObjOrRef{Name: "b", Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.NoError(t, s2.validate(nil))
-
-	both := VMClusterObjOrRef{
-		Name: "c",
-		Ref:  &corev1.LocalObjectReference{Name: "c"},
-		Spec: &vmv1beta1.VMClusterSpec{},
+func TestValidateVMDistributed(t *testing.T) {
+	type opts struct {
+		cr    VMDistributed
+		isErr bool
 	}
-	assert.Error(t, both.validate(nil))
+	f := func(o opts) {
+		t.Helper()
+		err := o.cr.Validate()
+		if o.isErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
 
-	none := VMClusterObjOrRef{}
-	assert.Error(t, none.validate(nil))
+	// no zone name defined error
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				Zones: []VMDistributedZone{
+					{
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
 
-	missingRefName := VMClusterObjOrRef{Ref: &corev1.LocalObjectReference{}}
-	assert.Error(t, missingRefName.validate(nil))
+	// duplicated zone names
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				Zones: []VMDistributedZone{
+					{
+						Name:      "zone-1",
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+					{
+						Name:      "zone-1",
+						VMCluster: VMDistributedZoneCluster{Name: "b"},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
 
-	missingSpecName := VMClusterObjOrRef{Spec: &vmv1beta1.VMClusterSpec{}}
-	assert.Error(t, missingSpecName.validate(nil))
+	// same vmcluster in two zones
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				Zones: []VMDistributedZone{
+					{
+						Name:      "zone-1",
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+					{
+						Name:      "zone-2",
+						VMCluster: VMDistributedZoneCluster{Name: "a"},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
+}
+
+func TestEnsureNoVMOwners(t *testing.T) {
+	cr := &VMDistributed{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: GroupVersion.String(),
+			Kind:       "VMDistributed",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vdc",
+			Namespace: "default",
+			UID:       k8stypes.UID("owner-uid"),
+		},
+	}
+	otherCR := &VMDistributed{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: GroupVersion.String(),
+			Kind:       "VMDistributed",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other",
+			Namespace: "default",
+			UID:       k8stypes.UID("other-uid"),
+		},
+	}
+
+	vmc := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vmc",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: otherCR.APIVersion,
+					Kind:       otherCR.Kind,
+					Name:       otherCR.Name,
+					UID:        otherCR.UID,
+				},
+			},
+		},
+	}
+
+	err := cr.Owns(vmc)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "is owned by other distributed resource")
 }

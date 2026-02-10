@@ -16,7 +16,7 @@ var (
 		ns := "vm"
 		BeforeAll(func() {
 			By("installing the cert-manager")
-			Expect(utils.InstallCertManager()).To(Succeed())
+			Expect(utils.InstallCertManager()).ToNot(HaveOccurred())
 
 			By("creating manager namespace")
 			cmd := exec.Command("kubectl", "create", "ns", ns)
@@ -111,7 +111,7 @@ var (
 					ExpectWithOffset(2, err).NotTo(HaveOccurred())
 					return nil
 				}
-				EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
+				EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).ShouldNot(HaveOccurred())
 
 			})
 		})

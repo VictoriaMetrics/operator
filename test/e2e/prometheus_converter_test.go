@@ -322,30 +322,30 @@ var _ = Describe("test prometheusConverter Controller", Label("converter"), func
 							return fmt.Errorf("Should be deleted")
 						}
 						return nil
-					}, 60, 1).Should(Succeed())
+					}, 60, 1).ShouldNot(HaveOccurred())
 				})
 
 				It("Should convert the object", func() {
 					source := testCase.source.DeepCopyObject().(client.Object)
 
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
+					Expect(k8sClient.Create(ctx, source)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						target, err := getObject(ctx, testCase.targetTpl)
 						if err != nil {
 							return err
 						}
 						return testCase.targetValidator(target)
-					}, 60, 1).Should(Succeed())
+					}, 60, 1).ShouldNot(HaveOccurred())
 				})
 
 				It("Should update the converted object", func() {
 					source := testCase.source.DeepCopyObject().(client.Object)
 
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
+					Expect(k8sClient.Create(ctx, source)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.targetTpl)
 						return err
-					}, 60, 1).Should(Succeed())
+					}, 60, 1).ShouldNot(HaveOccurred())
 
 					labels := source.GetLabels()
 					if labels == nil {
@@ -358,7 +358,7 @@ var _ = Describe("test prometheusConverter Controller", Label("converter"), func
 					labels["testKey"] = "testValue"
 					source.SetLabels(labels)
 
-					Expect(k8sClient.Update(ctx, source)).To(Succeed())
+					Expect(k8sClient.Update(ctx, source)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						target, err := getObject(ctx, testCase.targetTpl)
 						if err != nil {
@@ -368,17 +368,17 @@ var _ = Describe("test prometheusConverter Controller", Label("converter"), func
 							return fmt.Errorf("unexpected labels, want testKey=testValue, got: %v", target.GetLabels())
 						}
 						return nil
-					}, 60, 1).Should(Succeed())
+					}, 60, 1).ShouldNot(HaveOccurred())
 				})
 
 				It("Should delete the converted object", func() {
 					source := testCase.source.DeepCopyObject().(client.Object)
 
-					Expect(k8sClient.Create(ctx, source)).To(Succeed())
+					Expect(k8sClient.Create(ctx, source)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.targetTpl)
 						return err
-					}, 60, 1).Should(Succeed())
+					}, 60, 1).ShouldNot(HaveOccurred())
 
 					Expect(func() error {
 						target, err := getObject(ctx, testCase.targetTpl)
@@ -389,8 +389,8 @@ var _ = Describe("test prometheusConverter Controller", Label("converter"), func
 							return fmt.Errorf("expected owner reference to be non nil, object :%s", target.GetName())
 						}
 						return nil
-					}()).To(Succeed())
-					Expect(k8sClient.Delete(ctx, source)).To(Succeed())
+					}()).ToNot(HaveOccurred())
+					Expect(k8sClient.Delete(ctx, source)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.targetTpl)
 						return err

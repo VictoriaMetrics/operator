@@ -1,7 +1,9 @@
 package suite
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
 	"net"
 	"os"
@@ -19,6 +21,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -33,57 +36,77 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
-// var cfg *rest.Config
-var testEnv *envtest.Environment
-var cancelManager context.CancelFunc
-var stopped = make(chan struct{})
+var (
+	testEnv       *envtest.Environment
+	cancelManager context.CancelFunc
+	stopped       = make(chan struct{})
+)
 
-// GetClient returns kubernetes client for cluster connection
-func GetClient() client.Client {
-	err := vmv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = vmv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = vmv1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	// prometheus operator scheme for client
-	err = monitoringv1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = promv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	build.AddDefaults(scheme.Scheme)
-	err = gwapiv1.Install(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = apiextensionsv1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	//+kubebuilder:scaffold:scheme
-
-	testEnv = &envtest.Environment{
-		UseExistingCluster:       ptr.To(true),
-		AttachControlPlaneOutput: true,
-		ErrorIfCRDPathMissing:    false,
+func GetClient(data []byte) client.Client {
+	var cfg rest.Config
+	dec := gob.NewDecoder(bytes.NewReader(data))
+	Expect(dec.Decode(&cfg)).To(Succeed())
+	// operator settings
+	envs := map[string]string{
+		"VM_CONTAINERREGISTRY":                           "quay.io",
+		"VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE": "prometheus/alertmanager",
+		"VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES":   "true",
+		"VM_GATEWAY_API_ENABLED":                         "true",
+		"VM_PODWAITREADYTIMEOUT":                         "20s",
+		"VM_PODWAITREADYINTERVALCHECK":                   "1s",
+		"VM_APPREADYTIMEOUT":                             "50s",
 	}
-	cfg, err := testEnv.Start()
+	resourceEnvsPrefixes := []string{
+		"VMBACKUP",
+		"VMCLUSTERDEFAULT_VMSTORAGEDEFAULT",
+		"VMCLUSTERDEFAULT_VMSELECTDEFAULT",
+		"VMCLUSTERDEFAULT_VMINSERTDEFAULT",
+		"VLCLUSTERDEFAULT_VLSTORAGEDEFAULT",
+		"VLCLUSTERDEFAULT_VLSELECTDEFAULT",
+		"VLCLUSTERDEFAULT_VLINSERTDEFAULT",
+		"VTCLUSTERDEFAULT_STORAGE",
+		"VTCLUSTERDEFAULT_SELECT",
+		"VTCLUSTERDEFAULT_INSERT",
+		"VMAGENTDEFAULT",
+		"VMAUTHDEFAULT",
+		"VMALERTDEFAULT",
+		"VMSINGLEDEFAULT",
+		"VLAGENTDEFAULT",
+		"VLSINGLEDEFAULT",
+		"VTSINGLEDEFAULT",
+	}
+	resources := map[string]string{
+		"CPU": "10m",
+		"MEM": "10Mi",
+	}
+	for _, prefix := range resourceEnvsPrefixes {
+		for _, t := range []string{"LIMIT", "REQUEST"} {
+			for rn, rv := range resources {
+				envName := fmt.Sprintf("VM_%s_RESOURCE_%s_%s", prefix, t, rn)
+				envs[envName] = rv
+			}
+		}
+	}
 
-	Expect(err).NotTo(HaveOccurred())
-	Expect(isLocalHost(cfg.Host)).To(BeTrue())
-
-	K8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	for en, ev := range envs {
+		Expect(os.Setenv(en, ev)).ToNot(HaveOccurred())
+	}
+	Expect(vmv1alpha1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(vmv1beta1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(vmv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(monitoringv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(promv1alpha1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(gwapiv1.Install(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(apiextensionsv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	build.AddDefaults(scheme.Scheme)
+	k8sClient, err := client.New(&cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
-	Expect(K8sClient).ToNot(BeNil())
-	return K8sClient
+	Expect(k8sClient).ToNot(BeNil())
+	return k8sClient
 }
 
-// StopClient stop test env
-func StopClient() {
-	Expect(testEnv.Stop()).To(Succeed())
-}
-
-// InitOperatorProcess prepares operator process for usage
-//
-// Must be called once
-func InitOperatorProcess() {
+// InitOperatorProcess prepares operator process for usage, must be called once
+func InitOperatorProcess(extraNamespaces ...string) []byte {
 	format.MaxLength = 50000
 	l := zap.New(zap.WriteTo(GinkgoWriter), zap.Level(zapcore.DebugLevel))
 	logf.SetLogger(l)
@@ -104,7 +127,7 @@ func InitOperatorProcess() {
 		root = filepath.Dir(root)
 	}
 
-	testEnv := &envtest.Environment{
+	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join(root, "config", "crd", "overlay"),
 			filepath.Join(root, "hack", "crd", "prometheus"),
@@ -115,89 +138,47 @@ func InitOperatorProcess() {
 		ErrorIfCRDPathMissing:    true,
 	}
 
-	done := make(chan struct{})
-	go func() {
+	suiteConfig, _ := GinkgoConfiguration()
+	cfg, err := testEnv.Start()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(cfg).ToNot(BeNil())
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	Expect(enc.Encode(cfg)).To(Succeed())
+	k8sClient := GetClient(buf.Bytes())
+	Expect(isLocalHost(cfg.Host)).To(BeTrue())
+	namespaces := extraNamespaces
+	for i := range suiteConfig.ParallelTotal {
+		namespaces = append(namespaces, fmt.Sprintf("default-%d", i+1))
+	}
+	for _, ns := range namespaces {
+		testNamespace := corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		}
+		err := k8sClient.Create(context.Background(), &testNamespace)
+		Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
+	}
+
+	// disable web servers because it fails to listen when running several test packages one after another
+	// also web servers aren't very useful in tests
+	os.Args = append(os.Args[:1],
+		"--metrics-bind-address", "0",
+		"--pprof-addr", "0",
+		"--health-probe-bind-address", "0",
+		"--controller.maxConcurrentReconciles", "30",
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func(ctx context.Context) {
 		defer GinkgoRecover()
-		defer close(done)
-
-		suiteConfig, _ := GinkgoConfiguration()
-		k8sClient := GetClient()
-		for i := range suiteConfig.ParallelTotal {
-			testNamespace := corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("default-%d", i+1),
-				},
-			}
-			err := k8sClient.Create(context.Background(), &testNamespace)
-			Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
-		}
-
-		var err error
-		cfg, err := testEnv.Start()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(cfg).ToNot(BeNil())
-
-		// operator settings
-		Expect(os.Setenv("VM_CONTAINERREGISTRY", "quay.io")).To(Succeed())
-		Expect(os.Setenv("VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE", "prometheus/alertmanager")).To(Succeed())
-		Expect(os.Setenv("VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES", "true")).To(Succeed())
-		Expect(os.Setenv("VM_GATEWAY_API_ENABLED", "true")).To(Succeed())
-		Expect(os.Setenv("VM_PODWAITREADYTIMEOUT", "20s")).To(Succeed())
-		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
-		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())
-		resourceEnvsPrefixes := []string{
-			"VMBACKUP",
-			"VMCLUSTERDEFAULT_VMSTORAGEDEFAULT",
-			"VMCLUSTERDEFAULT_VMSELECTDEFAULT",
-			"VMCLUSTERDEFAULT_VMINSERTDEFAULT",
-			"VLCLUSTERDEFAULT_VLSTORAGEDEFAULT",
-			"VLCLUSTERDEFAULT_VLSELECTDEFAULT",
-			"VLCLUSTERDEFAULT_VLINSERTDEFAULT",
-			"VTCLUSTERDEFAULT_STORAGE",
-			"VTCLUSTERDEFAULT_SELECT",
-			"VTCLUSTERDEFAULT_INSERT",
-			"VMAGENTDEFAULT",
-			"VMAUTHDEFAULT",
-			"VMALERTDEFAULT",
-			"VMSINGLEDEFAULT",
-			"VMAUTHDEFAULT",
-			"VLAGENTDEFAULT",
-			"VLSINGLEDEFAULT",
-			"VTSINGLEDEFAULT",
-		}
-		resources := map[string]string{
-			"CPU": "10m",
-			"MEM": "10Mi",
-		}
-		for _, prefix := range resourceEnvsPrefixes {
-			for _, t := range []string{"LIMIT", "REQUEST"} {
-				for rn, rv := range resources {
-					envName := fmt.Sprintf("VM_%s_RESOURCE_%s_%s", prefix, t, rn)
-					Expect(os.Setenv(envName, rv)).To(Succeed())
-				}
-			}
-		}
-
-		// disable web servers because it fails to listen when running several test packages one after another
-		// also web servers aren't very useful in tests
-		os.Args = append(os.Args[:1],
-			"--metrics-bind-address", "0",
-			"--pprof-addr", "0",
-			"--health-probe-bind-address", "0",
-			"--controller.maxConcurrentReconciles", "30",
-		)
-		ctx, cancel := context.WithCancel(context.Background())
-		go func(ctx context.Context) {
-			defer GinkgoRecover()
-			err := manager.RunManager(ctx)
-			close(stopped)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(testEnv.Stop()).ToNot(HaveOccurred())
-		}(ctx)
-		cancelManager = cancel
-	}()
-
-	Eventually(done, 60, 1).Should(BeClosed())
+		err := manager.RunManager(ctx)
+		close(stopped)
+		Expect(err).NotTo(HaveOccurred())
+	}(ctx)
+	cancelManager = cancel
+	return buf.Bytes()
 }
 
 // ShutdownOperatorProcess stops operator process
@@ -206,6 +187,7 @@ func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
 	cancelManager()
 	Eventually(stopped, 60, 2).Should(BeClosed())
+	Expect(testEnv.Stop()).ToNot(HaveOccurred())
 
 }
 

@@ -75,8 +75,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
 	if prevObj != nil {
-		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 		prevMeta = &prevObj.ObjectMeta
+		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 	}
 
 	rclient.Scheme().Default(newObj)
@@ -125,13 +125,13 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
-		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {

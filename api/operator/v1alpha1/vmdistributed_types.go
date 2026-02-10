@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,30 +30,23 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+const (
+	ZonePlaceholder = "%ZONE%"
+)
+
 // VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
-	// ReadyDeadline is the deadline for the VMCluster to be ready.
-	// +optional
-	ReadyDeadline *metav1.Duration `json:"readyDeadline,omitempty"`
-	// VMAgentFlushDeadline is the deadline for VMAgent to flush accumulated queue.
-	// +optional
-	VMAgentFlushDeadline *metav1.Duration `json:"vmagentFlushDeadline,omitempty"`
-	// ZoneUpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
-	// +optional
-	ZoneUpdatePause *metav1.Duration `json:"zoneUpdatePause,omitempty"`
-	// VMAgent is the name and spec of the VM agent to balance traffic between VMClusters.
-	VMAgent VMAgentNameAndSpec `json:"vmagent,omitempty"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
-	VMAuth VMAuthNameAndSpec `json:"vmauth,omitempty"`
+	VMAuth VMDistributedAuth `json:"vmauth,omitempty"`
 	// Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup.
 	Zones []VMDistributedZone `json:"zones,omitempty"`
-	// CommonZone defines common properties for all zones
+	// ZoneCommon defines common properties for all zones
 	// +optional
-	CommonZone VMDistributedZone `json:"commonZone,omitempty"`
+	ZoneCommon VMDistributedZoneCommon `json:"zoneCommon,omitempty"`
 	// License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
 	// +optional
 	License *vmv1beta1.License `json:"license,omitempty"`
@@ -60,46 +54,79 @@ type VMDistributedSpec struct {
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+	// Retain keeps resources in case of VMDistributed removal
+	// +optional
+	Retain bool `json:"retain,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// VMDistributedZoneCommon defines items, that are common for all zones
+type VMDistributedZoneCommon struct {
+	// VMCluster defines VictoriaMetrics cluster database
+	// +optional
+	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
+	// VMAgent defines VMAgent to balance incoming traffic between VMClusters.
+	// +optional
+	VMAgent VMDistributedZoneAgent `json:"vmagent,omitempty"`
+	// RemoteWrite defines VMAgent remote write settings for given zone
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	RemoteWrite VMDistributedZoneRemoteWriteSpec `json:"remoteWrite,omitempty"`
+	// ReadyTimeout is the readiness timeout for each zone update.
+	// +optional
+	ReadyTimeout *metav1.Duration `json:"readyTimeout,omitempty"`
+	// UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
+	// +optional
+	UpdatePause *metav1.Duration `json:"updatePause,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // VMDistributedZone defines items within a single zone to update.
 type VMDistributedZone struct {
-	// Name defines a name of zone, which can be used in commonZone spec as %ZONE%
-	Name string `json:"name,omitempty"`
+	// Name defines a name of zone, which can be used in zoneCommon spec as %ZONE%
+	Name string `json:"name"`
 	// VMCluster defines a new inline or referencing existing one VMCluster
-	VMCluster *VMClusterObjOrRef `json:"vmcluster,omitempty"`
+	// +optional
+	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
+	// VMAgent defines VMAgent to balance incoming traffic between VMClusters.
+	// +optional
+	VMAgent VMDistributedZoneAgent `json:"vmagent,omitempty"`
 	// RemoteWrite defines VMAgent remote write settings for given zone
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	RemoteWrite *VMDistributedAgentRemoteWriteSpec `json:"remoteWrite,omitempty"`
+	RemoteWrite VMDistributedZoneRemoteWriteSpec `json:"remoteWrite,omitempty"`
 }
 
-func (z *VMDistributedZone) validate(cz *VMDistributedZone) error {
-	var cc *VMClusterObjOrRef
-	if cz != nil {
-		cc = cz.VMCluster
+// VMAgentName returns the name of the VMAgent for zone.
+func (z *VMDistributedZone) VMAgentName(cr *VMDistributed) string {
+	switch {
+	case len(z.VMAgent.Name) > 0:
+		return z.VMAgent.Name
+	case len(cr.Spec.ZoneCommon.VMAgent.Name) > 0:
+		return strings.ReplaceAll(cr.Spec.ZoneCommon.VMAgent.Name, ZonePlaceholder, z.Name)
+	default:
+		return fmt.Sprintf("%s-%s", cr.Name, z.Name)
 	}
-	if z.VMCluster != nil {
-		if err := z.VMCluster.validate(cc); err != nil {
-			return err
-		}
+}
+
+// VMClusterName return cluster name for zone
+func (z *VMDistributedZone) VMClusterName(cr *VMDistributed) string {
+	switch {
+	case len(z.VMCluster.Name) > 0:
+		return z.VMCluster.Name
+	case len(cr.Spec.ZoneCommon.VMCluster.Name) > 0:
+		return strings.ReplaceAll(cr.Spec.ZoneCommon.VMCluster.Name, ZonePlaceholder, z.Name)
+	default:
+		return fmt.Sprintf("%s-%s", cr.Name, z.Name)
 	}
-	return nil
 }
 
 // +k8s:openapi-gen=true
-// VMClusterObjOrRef is either a reference to existing VMCluster or a specification of a new VMCluster.
-// +kubebuilder:validation:XValidation:rule="!(has(self.ref) && has(self.name))",message="must specify either ref or name, not both"
-type VMClusterObjOrRef struct {
-	// Ref points to the VMCluster object.
-	// If Ref is specified, Name is ignored.
-	// +optional
-	Ref *corev1.LocalObjectReference `json:"ref,omitempty"`
-
+// VMDistributedZoneCluster defines the name and specification of a VMCluster to be created or updated.
+type VMDistributedZoneCluster struct {
 	// Name specifies the static name to be used for the new VMCluster.
-	// This field is ignored if `ref` is specified.
 	// +optional
 	Name string `json:"name,omitempty"`
 
@@ -107,65 +134,25 @@ type VMClusterObjOrRef struct {
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Spec *vmv1beta1.VMClusterSpec `json:"spec,omitempty"`
-}
-
-func (s *VMClusterObjOrRef) IsRefSet() bool {
-	return s != nil && s.Ref != nil && len(s.Ref.Name) > 0
-}
-
-func (s *VMClusterObjOrRef) IsNameSet() bool {
-	return s != nil && len(s.Name) > 0
-}
-
-func (s *VMClusterObjOrRef) isSpecSet() bool {
-	return s != nil && s.Spec != nil
-}
-
-func (s *VMClusterObjOrRef) validate(cs *VMClusterObjOrRef) error {
-	// Check mutual exclusivity: either ref or name must be set, but not both
-
-	refSet := s.IsRefSet() || cs.IsRefSet()
-	nameSet := s.IsNameSet() || cs.IsNameSet()
-	specSet := s.isSpecSet() || cs.isSpecSet()
-
-	if refSet && nameSet {
-		return fmt.Errorf("must specify either ref or name, not both")
-	}
-
-	// Check that at least one of ref or name is set
-	if !refSet {
-		if !nameSet {
-			return fmt.Errorf("must have either ref or name set")
-		} else if !specSet {
-			return fmt.Errorf("must have spec if name is set")
-		}
-	}
-
-	return nil
+	Spec vmv1beta1.VMClusterSpec `json:"spec"`
 }
 
 // +k8s:openapi-gen=true
-// VMAgentNameAndSpec is a name and a specification of a new VMAgent.
-type VMAgentNameAndSpec struct {
+// VMDistributedZoneAgent is a name and a specification of a new VMAgent.
+type VMDistributedZoneAgent struct {
 	// Name specifies the static name to be used for the VMAgent when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
 
-	// LabelSelector specifies VMAgents to be selected for metrics check.
-	// +optional
-	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
-
 	// Spec defines the desired state of a new VMAgent.
-	// Note that RemoteWrite and RemoteWriteSettings are ignored as its managed by the operator.
 	// +optional
-	Spec *VMDistributedAgentSpec `json:"spec,omitempty"`
+	Spec VMDistributedZoneAgentSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true
-// VMDistributedAgentSpec is a customized specification of a new VMAgent.
+// VMDistributedZoneAgentSpec is a customized specification of a new VMAgent.
 // It includes selected options from the original VMAgentSpec.
-type VMDistributedAgentSpec struct {
+type VMDistributedZoneAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
@@ -230,10 +217,22 @@ type VMDistributedAgentSpec struct {
 	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-// VMDistributedAgentRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, but allows empty URLs
+func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {
+	vmAgentSpecData, err := json.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal: %w", err)
+	}
+	var vmAgentSpec vmv1beta1.VMAgentSpec
+	if err := json.Unmarshal(vmAgentSpecData, &vmAgentSpec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
+	}
+	return &vmAgentSpec, nil
+}
+
+// VMDistributedZoneRemoteWriteSpec is a copy of VMAgentRemoteWriteSpec, which allows empty URLs and has no relabeling or stream aggregation
 // These urls will be overwritten by the controller
 // +k8s:openapi-gen=true
-type VMDistributedAgentRemoteWriteSpec struct {
+type VMDistributedZoneRemoteWriteSpec struct {
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
 	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty"`
@@ -275,15 +274,27 @@ type VMDistributedAgentRemoteWriteSpec struct {
 	AWS *vmv1beta1.AWS `json:"aws,omitempty"`
 }
 
+func (s *VMDistributedZoneRemoteWriteSpec) ToVMAgentRemoteWriteSpec() (*vmv1beta1.VMAgentRemoteWriteSpec, error) {
+	remoteWriteData, err := json.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal remote write: %w", err)
+	}
+	var remoteWrite vmv1beta1.VMAgentRemoteWriteSpec
+	if err := json.Unmarshal(remoteWriteData, &remoteWrite); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal remote write: %w", err)
+	}
+	return &remoteWrite, nil
+}
+
 // +k8s:openapi-gen=true
-// VMAuthNameAndSpec defines a VMAuth by name or inline spec
-type VMAuthNameAndSpec struct {
-	// Name specifies the static name to be used for the VMAuthNameAndSpec when Spec is provided.
+// VMDistributedAuth defines a VMAuth by name or inline spec
+type VMDistributedAuth struct {
+	// Name specifies the static name to be used for the VMDistributedAuth when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
 	// Spec defines the desired state of a new VMAuth.
 	// +optional
-	Spec *vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
+	Spec vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -335,6 +346,16 @@ func (cr *VMDistributed) Owns(r client.Object) error {
 	return nil
 }
 
+// VMAuthName returns the name of the VMAuth resource to be created/managed.
+func (cr *VMDistributed) VMAuthName() string {
+	switch {
+	case len(cr.Spec.VMAuth.Name) > 0:
+		return cr.Spec.VMAuth.Name
+	default:
+		return cr.Name
+	}
+}
+
 // AsOwner returns owner references with current object as owner
 func (cr *VMDistributed) AsOwner() metav1.OwnerReference {
 	return metav1.OwnerReference{
@@ -345,25 +366,6 @@ func (cr *VMDistributed) AsOwner() metav1.OwnerReference {
 		Controller:         ptr.To(true),
 		BlockOwnerDeletion: ptr.To(true),
 	}
-}
-
-func (cr *VMDistributed) GetVMAuthSpec() *vmv1beta1.VMAuthSpec {
-	if cr == nil {
-		return nil
-	}
-	spec := cr.Spec.VMAuth.Spec
-	if spec == nil {
-		spec = &vmv1beta1.VMAuthSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-		}
-	}
-	// Make a copy to avoid modifying the original spec
-	specCopy := spec.DeepCopy()
-	// If License is not set in VMAuth spec but is set in VMDistributed, use the VMDistributed License
-	if specCopy.License == nil && cr.Spec.License != nil {
-		specCopy.License = cr.Spec.License.DeepCopy()
-	}
-	return specCopy
 }
 
 // +kubebuilder:object:root=true
@@ -407,10 +409,6 @@ func (cr *VMDistributed) Paused() bool {
 	return cr.Spec.Paused
 }
 
-func (cr *VMDistributed) GetVMUserName() string {
-	return fmt.Sprintf("%s-user", cr.Name)
-}
-
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributedSpec
@@ -423,30 +421,40 @@ func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
 
 // Validate validates the VMDistributed resource
 func (cr *VMDistributed) Validate() error {
-	spec := cr.Spec
-	// Validate VMAuth
-	if spec.VMAuth.Name == "" {
-		return fmt.Errorf("vmauth.name must be set")
-	}
-
-	// VMAgent's Name and LabelSelector are mutually exclusive
-	if spec.VMAgent.Name != "" && spec.VMAgent.LabelSelector != nil {
-		return fmt.Errorf("vmagent.name and labelSelector cannot be set at the same time")
-	}
-	if spec.VMAgent.Spec != nil && spec.VMAgent.LabelSelector != nil {
-		return fmt.Errorf("vmagent.spec and labelSelector cannot be set at the same time")
-	}
 	zones := make(map[string]struct{})
+	clusters := make(map[string]struct{})
+	agents := make(map[string]struct{})
+	spec := cr.Spec
+	hasCommonVMInsert := cr.Spec.ZoneCommon.VMCluster.Spec.VMInsert != nil
+	hasCommonVMSelect := cr.Spec.ZoneCommon.VMCluster.Spec.VMSelect != nil
 	for i := range spec.Zones {
 		zone := &spec.Zones[i]
-		if len(zone.Name) > 0 {
-			if _, ok := zones[zone.Name]; ok {
-				return fmt.Errorf("spec.zones[*].name=%s is duplicated, zone names should be unique or unset", zone.Name)
-			}
-			zones[zone.Name] = struct{}{}
+		if len(zone.Name) == 0 {
+			return fmt.Errorf("spec.zones[%d].name is required", i)
 		}
-		if err := zone.validate(&spec.CommonZone); err != nil {
-			return fmt.Errorf("zones[%d]: %w", i, err)
+		if _, ok := zones[zone.Name]; ok {
+			return fmt.Errorf("spec.zones[%d].name=%s is duplicated, zone names must be unique", i, zone.Name)
+		}
+		zones[zone.Name] = struct{}{}
+		clusterName := zone.VMClusterName(cr)
+		agentName := zone.VMAgentName(cr)
+		if len(clusterName) > 0 {
+			if _, ok := clusters[clusterName]; ok {
+				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
+			}
+			clusters[clusterName] = struct{}{}
+		}
+		if len(agentName) > 0 {
+			if _, ok := agents[agentName]; ok {
+				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
+			}
+			agents[agentName] = struct{}{}
+		}
+		if zone.VMCluster.Spec.VMInsert == nil && !hasCommonVMInsert {
+			return fmt.Errorf("either zoneCommon.vmcluster.spec.vminsert or spec.zones[%d].vmcluster.spec.vminsert is required", i)
+		}
+		if zone.VMCluster.Spec.VMSelect == nil && !hasCommonVMSelect {
+			return fmt.Errorf("either zoneCommon.vmcluster.spec.vmselect or spec.zones[%d].vmcluster.spec.vmselect is required", i)
 		}
 	}
 	return nil

@@ -218,6 +218,38 @@ func (c *calls) First(obj client.Object) client.Object {
 	return nil
 }
 
+type callType int
+
+const (
+	GetCallType callType = iota
+	DeleteCallType
+	CreateCallType
+	UpdateCallType
+	PatchCallType
+)
+
+func (d callType) String() string {
+	return [...]string{"Get", "Delete", "Create", "Update", "Patch"}[d]
+}
+
+type action struct {
+	obj  client.Object
+	call callType
+	opts interface{}
+}
+
+func (a action) GetVerb() string {
+	return a.call.String()
+}
+
+func (a action) GetObject() client.Object {
+	return a.obj
+}
+
+func (a action) GetOpts() interface{} {
+	return a.opts
+}
+
 // TestClientWithStatsTrack helps to track actual requests to the api server
 type TestClientWithStatsTrack struct {
 	origin      client.Client
@@ -226,6 +258,7 @@ type TestClientWithStatsTrack struct {
 	CreateCalls calls
 	UpdateCalls calls
 	PatchCalls  calls
+	Actions     []action
 }
 
 func (tcs *TestClientWithStatsTrack) TotalCallsCount(obj client.Object) int {
@@ -240,26 +273,31 @@ func (tcs *TestClientWithStatsTrack) TotalCallsCount(obj client.Object) int {
 
 func (tcs *TestClientWithStatsTrack) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	tcs.GetCalls.add(obj)
+	tcs.Actions = append(tcs.Actions, action{obj: obj, call: GetCallType, opts: opts})
 	return tcs.origin.Get(ctx, key, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	tcs.CreateCalls.add(obj)
+	tcs.Actions = append(tcs.Actions, action{obj: obj, call: CreateCallType, opts: opts})
 	return tcs.origin.Create(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	tcs.DeleteCalls.add(obj)
+	tcs.Actions = append(tcs.Actions, action{obj: obj, call: DeleteCallType, opts: opts})
 	return tcs.origin.Delete(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	tcs.UpdateCalls.add(obj)
+	tcs.Actions = append(tcs.Actions, action{obj: obj, call: UpdateCallType, opts: opts})
 	return tcs.origin.Update(ctx, obj, opts...)
 }
 
 func (tcs *TestClientWithStatsTrack) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	tcs.PatchCalls.add(obj)
+	tcs.Actions = append(tcs.Actions, action{obj: obj, call: PatchCallType, opts: opts})
 	return tcs.origin.Patch(ctx, obj, patch, opts...)
 }
 

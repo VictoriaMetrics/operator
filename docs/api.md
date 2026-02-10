@@ -2571,7 +2571,7 @@ Appears in: [KubernetesSDConfig](#kubernetessdconfig)
 NamespaceSelector is a selector for selecting either all namespaces or a
 list of namespaces.
 
-Appears in: [DiscoverySelector](#discoveryselector), [ProbeTargetIngress](#probetargetingress), [VMPodScrapeSpec](#vmpodscrapespec), [VMServiceScrapeSpec](#vmservicescrapespec)
+Appears in: [DiscoverySelector](#discoveryselector), [VMPodScrapeSpec](#vmpodscrapespec), [VMProbeTargetKubernetes](#vmprobetargetkubernetes), [VMServiceScrapeSpec](#vmservicescrapespec)
 
 | Field | Description |
 | --- | --- |
@@ -2741,21 +2741,6 @@ Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 | vm_scrape_params<a href="#podmetricsendpoint-vm_scrape_params" id="podmetricsendpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
 
-#### ProbeTargetIngress
-
-
-
-ProbeTargetIngress defines the set of Ingress objects considered for probing.
-
-Appears in: [VMProbeTargets](#vmprobetargets)
-
-| Field | Description |
-| --- | --- |
-| namespaceSelector<a href="#probetargetingress-namespaceselector" id="probetargetingress-namespaceselector">#</a><br/>_[NamespaceSelector](#namespaceselector)_ | _(Required)_<br/>Select Ingress objects by namespace. |
-| relabelingConfigs<a href="#probetargetingress-relabelingconfigs" id="probetargetingress-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
-| selector<a href="#probetargetingress-selector" id="probetargetingress-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Required)_<br/>Select Ingress objects by labels. |
-
-
 #### ProxyAuth
 
 
@@ -2851,7 +2836,7 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 RelabelConfig allows dynamic rewriting of the label set
 More info: https://docs.victoriametrics.com/victoriametrics/#relabeling
 
-Appears in: [CommonRelabelParams](#commonrelabelparams), [CommonScrapeParams](#commonscrapeparams), [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), [PodMetricsEndpoint](#podmetricsendpoint), [ProbeTargetIngress](#probetargetingress), [ScrapeClass](#scrapeclass), [StreamAggrRule](#streamaggrrule), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [CommonRelabelParams](#commonrelabelparams), [CommonScrapeParams](#commonscrapeparams), [Endpoint](#endpoint), [EndpointRelabelings](#endpointrelabelings), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [StreamAggrRule](#streamaggrrule), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAgentSpec](#vmagentspec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMProbeTargetKubernetes](#vmprobetargetkubernetes), [VMProbeTargetStatic](#vmprobetargetstatic), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -4723,19 +4708,35 @@ Appears in: [VMProbe](#vmprobe)
 | vm_scrape_params<a href="#vmprobespec-vm_scrape_params" id="vmprobespec-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
 
-#### VMProbeTargetStaticConfig
+#### VMProbeTargetKubernetes
 
 
 
-VMProbeTargetStaticConfig defines the set of static targets considered for probing.
+VMProbeTargetKubernetes defines the set of k8s objects considered for probing.
 
 Appears in: [VMProbeTargets](#vmprobetargets)
 
 | Field | Description |
 | --- | --- |
-| labels<a href="#vmprobetargetstaticconfig-labels" id="vmprobetargetstaticconfig-labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Labels assigned to all metrics scraped from the targets. |
-| relabelingConfigs<a href="#vmprobetargetstaticconfig-relabelingconfigs" id="vmprobetargetstaticconfig-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
-| targets<a href="#vmprobetargetstaticconfig-targets" id="vmprobetargetstaticconfig-targets">#</a><br/>_string array_ | _(Required)_<br/>Targets is a list of URLs to probe using the configured prober. |
+| namespaceSelector<a href="#vmprobetargetkubernetes-namespaceselector" id="vmprobetargetkubernetes-namespaceselector">#</a><br/>_[NamespaceSelector](#namespaceselector)_ | _(Required)_<br/>Select k8s objects by namespace. |
+| relabelingConfigs<a href="#vmprobetargetkubernetes-relabelingconfigs" id="vmprobetargetkubernetes-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
+| role<a href="#vmprobetargetkubernetes-role" id="vmprobetargetkubernetes-role">#</a><br/>_string_ | _(Required)_<br/>Role defines k8s role name |
+| selector<a href="#vmprobetargetkubernetes-selector" id="vmprobetargetkubernetes-selector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Required)_<br/>Select k8s objects by labels. |
+
+
+#### VMProbeTargetStatic
+
+
+
+VMProbeTargetStatic defines the set of static targets considered for probing.
+
+Appears in: [VMProbeTargets](#vmprobetargets)
+
+| Field | Description |
+| --- | --- |
+| labels<a href="#vmprobetargetstatic-labels" id="vmprobetargetstatic-labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Labels assigned to all metrics scraped from the targets. |
+| relabelingConfigs<a href="#vmprobetargetstatic-relabelingconfigs" id="vmprobetargetstatic-relabelingconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Required)_<br/>RelabelConfigs to apply to samples during service discovery. |
+| targets<a href="#vmprobetargetstatic-targets" id="vmprobetargetstatic-targets">#</a><br/>_string array_ | _(Required)_<br/>Targets is a list of URLs to probe using the configured prober. |
 
 
 #### VMProbeTargets
@@ -4748,8 +4749,10 @@ Appears in: [VMProbeSpec](#vmprobespec)
 
 | Field | Description |
 | --- | --- |
-| ingress<a href="#vmprobetargets-ingress" id="vmprobetargets-ingress">#</a><br/>_[ProbeTargetIngress](#probetargetingress)_ | _(Required)_<br/>Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing. |
-| staticConfig<a href="#vmprobetargets-staticconfig" id="vmprobetargets-staticconfig">#</a><br/>_[VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)_ | _(Required)_<br/>StaticConfig defines static targets which are considers for probing. |
+| ingress<a href="#vmprobetargets-ingress" id="vmprobetargets-ingress">#</a><br/>_[VMProbeTargetKubernetes](#vmprobetargetkubernetes)_ | _(Optional)_<br/>Ingress defines the set of dynamically discovered Ingress objects which hosts are considered for probing.<br/><b>Deprecated: </b>since version <a href="https://docs.victoriametrics.com/operator/changelog/#v0680">v0.68.0</a> will be removed in <a href="https://docs.victoriametrics.com/operator/changelog/#v0710">v0.71.0</a> use <a href="#vmprobetargets-kubernetes">kubernetes</a> instead<br/> |
+| kubernetes<a href="#vmprobetargets-kubernetes" id="vmprobetargets-kubernetes">#</a><br/>_[VMProbeTargetKubernetes](#vmprobetargetkubernetes) array_ | _(Optional)_<br/>Kubernetes defines kubernetes targets, which are considered for probing. |
+| static<a href="#vmprobetargets-static" id="vmprobetargets-static">#</a><br/>_[VMProbeTargetStatic](#vmprobetargetstatic)_ | _(Optional)_<br/>Static defines static targets which are considers for probing. |
+| staticConfig<a href="#vmprobetargets-staticconfig" id="vmprobetargets-staticconfig">#</a><br/>_[VMProbeTargetStatic](#vmprobetargetstatic)_ | _(Optional)_<br/>StaticConfig defines static targets which are considers for probing.<br/><b>Deprecated: </b>since version <a href="https://docs.victoriametrics.com/operator/changelog/#v0680">v0.68.0</a> will be removed in <a href="https://docs.victoriametrics.com/operator/changelog/#v0710">v0.71.0</a> use <a href="#vmprobetargets-static">static</a> instead<br/> |
 
 
 #### VMProberSpec

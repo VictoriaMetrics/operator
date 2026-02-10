@@ -143,7 +143,7 @@ With this setting operator:
  - switches VLAgent to DaemonSet mode
  - mounts host paths, where k8s logs are stored
 
-This setting will also adds RBAC to be able to get pods, namespaces and nodes information using K8s API on a cluster level by default. In order to limit it to a particular namespace see [this example](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vlagent-k8s-namespaced-collector.yaml).
+This setting also adds cluster-wide RBAC to allow accessing pods, namespaces, and nodes via the K8s API when the operator is not running in [namespaced mode](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode). If the operator runs in namespaced mode, configure RBAC manually as shown in [this example](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vlagent-k8s-namespaced-collector.yaml).
 
 ## Storage management
 

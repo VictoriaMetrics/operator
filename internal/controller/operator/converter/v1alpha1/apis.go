@@ -20,10 +20,9 @@ var log = logf.Log.WithName("controller.PrometheusConverter")
 
 func convertPromMatcher(promMatcher promv1alpha1.Matcher) string {
 	if promMatcher.MatchType == "" {
+		promMatcher.MatchType = "="
 		if len(promMatcher.Value) > 0 {
 			promMatcher.MatchType = "=~"
-		} else {
-			promMatcher.MatchType = "="
 		}
 	}
 	return promMatcher.String()

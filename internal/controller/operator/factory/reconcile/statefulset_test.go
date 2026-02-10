@@ -8,11 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -385,114 +383,154 @@ func TestSortPodsByID(t *testing.T) {
 }
 
 func TestStatefulsetReconcileOk(t *testing.T) {
-	f := func(sts *appsv1.StatefulSet) {
-		//	t.Helper()
-		ctx := context.Background()
-		rclient := k8stools.GetTestClientWithObjects(nil)
-
-		waitTimeout := 5 * time.Second
-		prevSts := sts.DeepCopy()
-		createErr := make(chan error)
-		var emptyOpts STSOptions
-		go func() {
-			err := HandleSTSUpdate(ctx, rclient, emptyOpts, sts, nil)
-			select {
-			case createErr <- err:
-			default:
-			}
-		}()
-		reloadSts := func() {
-			t.Helper()
-			if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, sts); err != nil {
-				t.Fatalf("cannot reload created statefulset: %s", err)
-			}
-		}
-
-		err := wait.PollUntilContextTimeout(ctx, time.Millisecond*50,
-			waitTimeout, true, func(ctx context.Context) (done bool, err error) {
-				var createdSts appsv1.StatefulSet
-				if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, &createdSts); err != nil {
-					if k8serrors.IsNotFound(err) {
-						return false, nil
-					}
-					return false, err
-				}
-				createdSts.Status.ReadyReplicas = *sts.Spec.Replicas
-				createdSts.Status.UpdatedReplicas = *sts.Spec.Replicas
-				if err := rclient.Status().Update(ctx, &createdSts); err != nil {
-					return false, err
-				}
-				return true, nil
-			})
-		assert.NoErrorf(t, err, "failed to wait sts to be created")
-
-		err = <-createErr
-		assert.NoErrorf(t, err, "failed to create sts")
-
-		// expect 1 create
-		assert.Equal(t, 1, rclient.CreateCalls.Count(sts))
-		// expect 0 update
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 0 update")
-
-		assert.Equal(t, 1, rclient.CreateCalls.Count(sts))
-		assert.Equal(t, 0, rclient.UpdateCalls.Count(sts))
-
-		// expect 1 UpdateCalls
-		reloadSts()
-		sts.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
-
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 1 update")
-
-		assert.Equal(t, 1, rclient.CreateCalls.Count(sts))
-		assert.Equal(t, 1, rclient.UpdateCalls.Count(sts))
-
-		// expected still same 1 update
-		reloadSts()
-
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect still 1 update")
-		assert.Equal(t, 1, rclient.CreateCalls.Count(sts))
-		assert.Equal(t, 1, rclient.UpdateCalls.Count(sts))
-
-		// expected 2 updates
-		prevSts.Spec.Template.Annotations = sts.Spec.Template.Annotations
-		sts.Spec.Template.Annotations = nil
-
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 2 updates")
-		assert.Equal(t, 1, rclient.CreateCalls.Count(sts))
-		assert.Equal(t, 2, rclient.UpdateCalls.Count(sts))
+	type opts struct {
+		new, prev         *appsv1.StatefulSet
+		predefinedObjects []runtime.Object
+		validate          func(*k8stools.TestClientWithStatsTrack, *appsv1.StatefulSet)
+		wantErr           bool
 	}
-
-	f(&appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-1",
-			Namespace: "default",
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](4),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"label": "value",
-				},
+	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
+		s := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-1",
+				Namespace: "default",
 			},
-			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
-			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.RollingUpdateStatefulSetStrategyType,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"label": "value"},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: ptr.To[int32](4),
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"label": "value",
+					},
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            "vmalertmanager",
-							ImagePullPolicy: "IfNowPresent",
-							Image:           "some-image:tag",
+				PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.RollingUpdateStatefulSetStrategyType,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{"label": "value"},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:            "vmalertmanager",
+								ImagePullPolicy: "IfNowPresent",
+								Image:           "some-image:tag",
+							},
 						},
 					},
 				},
 			},
+			Status: appsv1.StatefulSetStatus{
+				ReadyReplicas:   4,
+				UpdatedReplicas: 4,
+			},
+		}
+		for _, fn := range fns {
+			fn(s)
+		}
+		return s
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		var emptyOpts STSOptions
+		err := StatefulSet(ctx, rclient, emptyOpts, o.new, o.prev)
+		if o.wantErr {
+			assert.Error(t, err)
+			return
+		} else {
+			assert.NoError(t, err)
+		}
+		nsn := types.NamespacedName{
+			Name:      o.new.Name,
+			Namespace: o.new.Namespace,
+		}
+		var got appsv1.StatefulSet
+		assert.NoError(t, rclient.Get(ctx, nsn, &got))
+		if o.validate != nil {
+			o.validate(rclient, &got)
+		}
+	}
+
+	// create statefulset
+	f(opts{
+		new: getSts(),
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 2, rclient.GetCalls.Count(s))
+			assert.Equal(t, 1, rclient.CreateCalls.Count(s))
+			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
+
+			assert.Len(t, rclient.Actions, 4)
+			action := rclient.Actions[0]
+			assert.Equal(t, action.GetVerb(), "Get")
+			action = rclient.Actions[1]
+			assert.Equal(t, action.GetVerb(), "Create")
+			action = rclient.Actions[2]
+			assert.Equal(t, action.GetVerb(), "Get")
 		},
+	})
+
+	// no updates
+	f(opts{
+		new:  getSts(),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 3, rclient.GetCalls.Count(s))
+			assert.Equal(t, 0, rclient.CreateCalls.Count(s))
+			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
+		},
+	})
+
+	// add annotations
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+		}),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 0, rclient.CreateCalls.Count(s))
+			assert.Equal(t, 1, rclient.UpdateCalls.Count(s))
+			assert.Equal(t, "value", s.Spec.Template.Annotations["new-annotation"])
+		},
+	})
+
+	// delete annotations
+	f(opts{
+		new: getSts(),
+		prev: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+			}),
+		},
+		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 1, rclient.UpdateCalls.Count(s))
+			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
+		},
+	})
+
+	// context deadline error
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Status.ReadyReplicas = 3
+		}),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Status.ReadyReplicas = 3
+			}),
+		},
+		wantErr: true,
 	})
 }
 

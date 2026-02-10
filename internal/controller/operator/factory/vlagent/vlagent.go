@@ -152,7 +152,7 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 			HasClaim:       len(newApp.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: cr.SelectorLabels,
 		}
-		if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newApp, prevApp); err != nil {
+		if err := reconcile.StatefulSet(ctx, rclient, stsOpts, newApp, prevApp); err != nil {
 			return fmt.Errorf("cannot reconcile statefulset for vlagent: %w", err)
 		}
 		return nil

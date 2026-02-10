@@ -139,7 +139,7 @@ func createOrUpdateVTStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		},
 		UpdateBehavior: cr.Spec.Storage.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {

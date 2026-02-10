@@ -67,8 +67,8 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 	return nil
 }
 
-// HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
-func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
+// StatefulSet performs create and update operations for given statefulSet with STSOptions
+func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
 	if err := validateStatefulSet(newSts); err != nil {
 		return err
 	}

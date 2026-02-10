@@ -436,7 +436,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		ctx := context.Background()
 		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		var emptyOpts STSOptions
-		err := HandleSTSUpdate(ctx, rclient, emptyOpts, o.new, o.prev)
+		err := StatefulSet(ctx, rclient, emptyOpts, o.new, o.prev)
 		if o.wantErr {
 			assert.Error(t, err)
 			return
@@ -458,7 +458,17 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 	f(opts{
 		new: getSts(),
 		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 2, rclient.GetCalls.Count(s))
 			assert.Equal(t, 1, rclient.CreateCalls.Count(s))
+			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
+
+			assert.Len(t, rclient.Actions, 4)
+			action := rclient.Actions[0]
+			assert.Equal(t, action.GetVerb(), "Get")
+			action = rclient.Actions[1]
+			assert.Equal(t, action.GetVerb(), "Create")
+			action = rclient.Actions[2]
+			assert.Equal(t, action.GetVerb(), "Get")
 		},
 	})
 
@@ -470,6 +480,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 			getSts(),
 		},
 		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
+			assert.Equal(t, 3, rclient.GetCalls.Count(s))
 			assert.Equal(t, 0, rclient.CreateCalls.Count(s))
 			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
 		},

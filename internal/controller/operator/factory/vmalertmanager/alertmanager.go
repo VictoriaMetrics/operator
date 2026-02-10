@@ -78,7 +78,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {

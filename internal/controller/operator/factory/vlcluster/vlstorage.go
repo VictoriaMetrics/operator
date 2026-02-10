@@ -138,7 +138,7 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		},
 		UpdateBehavior: cr.Spec.VLStorage.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {

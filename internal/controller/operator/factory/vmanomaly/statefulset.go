@@ -230,7 +230,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				return selectorLabels
 			},
 		}
-		if err := reconcile.HandleSTSUpdate(shardCtx, rclient, opts, newApp, prevApp); err != nil {
+		if err := reconcile.StatefulSet(shardCtx, rclient, opts, newApp, prevApp); err != nil {
 			rv.err = err
 			return
 		}

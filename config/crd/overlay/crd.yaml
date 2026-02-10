@@ -26679,6 +26679,13 @@ spec:
                               type: string
                           type: object
                         type: array
+                      role:
+                        enum:
+                        - service
+                        - ingress
+                        - pod
+                        - node
+                        type: string
                       selector:
                         properties:
                           matchExpressions:
@@ -26705,6 +26712,138 @@ spec:
                             type: object
                         type: object
                         x-kubernetes-map-type: atomic
+                    type: object
+                  kubernetes:
+                    items:
+                      properties:
+                        namespaceSelector:
+                          properties:
+                            any:
+                              type: boolean
+                            matchNames:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        relabelingConfigs:
+                          items:
+                            properties:
+                              action:
+                                type: string
+                              if:
+                                x-kubernetes-preserve-unknown-fields: true
+                              labels:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              match:
+                                type: string
+                              modulus:
+                                format: int64
+                                type: integer
+                              regex:
+                                x-kubernetes-preserve-unknown-fields: true
+                              replacement:
+                                type: string
+                              separator:
+                                type: string
+                              source_labels:
+                                items:
+                                  type: string
+                                type: array
+                              sourceLabels:
+                                items:
+                                  type: string
+                                type: array
+                              target_label:
+                                type: string
+                              targetLabel:
+                                type: string
+                            type: object
+                          type: array
+                        role:
+                          enum:
+                          - service
+                          - ingress
+                          - pod
+                          - node
+                          type: string
+                        selector:
+                          properties:
+                            matchExpressions:
+                              items:
+                                properties:
+                                  key:
+                                    type: string
+                                  operator:
+                                    type: string
+                                  values:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
+                    type: array
+                  static:
+                    properties:
+                      labels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      relabelingConfigs:
+                        items:
+                          properties:
+                            action:
+                              type: string
+                            if:
+                              x-kubernetes-preserve-unknown-fields: true
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            match:
+                              type: string
+                            modulus:
+                              format: int64
+                              type: integer
+                            regex:
+                              x-kubernetes-preserve-unknown-fields: true
+                            replacement:
+                              type: string
+                            separator:
+                              type: string
+                            source_labels:
+                              items:
+                                type: string
+                              type: array
+                            sourceLabels:
+                              items:
+                                type: string
+                              type: array
+                            target_label:
+                              type: string
+                            targetLabel:
+                              type: string
+                          type: object
+                        type: array
+                      targets:
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - targets
                     type: object
                   staticConfig:
                     properties:

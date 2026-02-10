@@ -404,7 +404,7 @@ func TestSelectProbes(t *testing.T) {
 					Namespace: "default",
 					Name:      "static-probe",
 				},
-				Spec: vmv1beta1.VMProbeSpec{Targets: vmv1beta1.VMProbeTargets{StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{Targets: []string{"host-1"}}}},
+				Spec: vmv1beta1.VMProbeSpec{Targets: vmv1beta1.VMProbeTargets{Static: &vmv1beta1.VMProbeTargetStatic{Targets: []string{"host-1"}}}},
 			},
 		},
 		want: []string{"default/static-probe"},

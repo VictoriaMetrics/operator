@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): support ability to override default stream fields for vlagent in logs collection mode.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_*_EPHEMERAL_STORAGE_REQUEST` and `VM_*_EPHEMERAL_STORAGE_LIMIT` global variables that allow to configure ephemeralStorage requests and limits. See [#1711](https://github.com/VictoriaMetrics/operator/issues/1711).
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added tracing support. See [#1770](https://github.com/VictoriaMetrics/operator/issues/1770).
+* FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.kubernetes` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
@@ -30,6 +31,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support both prometheus-compatible `endpointslice` and old `endpointslices` roles.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix pod metrics port in the default VMPodScrape.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): support Prometheus operator AlertmanagerConfig spec.muteTimeIntervals conversion to VMAlertmanagerConfig spec.timeIntervals. See [#1783](https://github.com/VictoriaMetrics/operator/issues/1783).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously StatefulSet/Deployment/DaemonSet rollouts could proceed in parallel, now pods are rolled out sequentially. See [#1693](https://github.com/VictoriaMetrics/operator/issues/1693).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)

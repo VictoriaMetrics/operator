@@ -17,18 +17,31 @@ import (
 
 // OnVMDistributedDelete disowns referenced and removes created by VMDistributed components
 func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) error {
-	objsToDisown := []client.Object{}
-	for i := range cr.Spec.Zones {
-		zone := &cr.Spec.Zones[i]
-		if zone.VMCluster.IsRefSet() {
+	var objsToDisown []client.Object
+
+	if cr.Spec.Retain {
+		for i := range cr.Spec.Zones {
+			zone := &cr.Spec.Zones[i]
 			objsToDisown = append(objsToDisown, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      zone.VMCluster.Ref.Name,
+					Name:      zone.VMClusterName(cr),
+					Namespace: cr.Namespace,
+				},
+			}, &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      zone.VMAgentName(cr),
 					Namespace: cr.Namespace,
 				},
 			})
 		}
+		objsToDisown = append(objsToDisown, &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cr.VMAuthName(),
+				Namespace: cr.Namespace,
+			},
+		})
 	}
+
 	owner := cr.AsOwner()
 	for _, objToDisown := range objsToDisown {
 		nsn := types.NamespacedName{
@@ -63,6 +76,7 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 			return fmt.Errorf("failed to disown object %T=%s: %w", objToDisown, nsn.String(), err)
 		}
 	}
+
 	// Remove the CR
 	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
 }

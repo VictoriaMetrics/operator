@@ -3,12 +3,8 @@ kind: VMDistributed
 metadata:
   name: sample-vmauth
 spec:
-  vmagent:
-    name: global-write-vmagent
-    spec:
-      replicaCount: 1
   vmauth:
-    name: global-read-vmauth
+    name: global-vmauth
     spec:
       image:
         repository: victoriametrics/vmauth
@@ -21,7 +17,10 @@ spec:
         limits:
           cpu: "500m"
           memory: "850Mi"
-  commonZone:
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
     vmcluster:
       spec:
         vmstorage:
@@ -31,9 +30,6 @@ spec:
         vminsert:
           replicaCount: 1
   zones:
-    - vmcluster:
-        name: vmcluster-us-east-1
-    - vmcluster:
-        name: vmcluster-us-west-2
-    - vmcluster:
-        name: vmcluster-eu-west-1
+    - name: us-east-1
+    - name: us-west-2
+    - name: eu-west-1

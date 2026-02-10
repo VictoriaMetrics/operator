@@ -3,6 +3,7 @@ package build
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -299,4 +300,66 @@ func GunzipConfig(data []byte) ([]byte, error) {
 	}
 	defer gr.Close()
 	return io.ReadAll(gr)
+}
+
+// mergeMapsRecursive deeply merges overrideMap into baseMap.
+// It handles nested maps (which correspond to nested structs after JSON unmarshal).
+// Values from overrideMap overwrite values in baseMap.
+func mergeMapsRecursive(baseMap, overrideMap map[string]any) {
+	if len(overrideMap) == 0 {
+		return
+	}
+	for key, overrideValue := range overrideMap {
+		if baseVal, ok := baseMap[key]; ok {
+			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
+				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
+					// Both are nested maps, recurse
+					mergeMapsRecursive(baseMapNested, overrideMapNested)
+					continue
+				}
+			}
+		}
+		baseMap[key] = overrideValue
+	}
+}
+
+// MergeDeep merges an override object into a base one.
+// Fields present in the override will overwrite corresponding fields in the base.
+func MergeDeep[T comparable](base, override T) error {
+	var zero T
+	if override == zero {
+		return nil
+	}
+
+	baseJSON, err := json.Marshal(base)
+	if err != nil {
+		return fmt.Errorf("failed to marshal base spec: %w", err)
+	}
+	overrideJSON, err := json.Marshal(override)
+	if err != nil {
+		return fmt.Errorf("failed to marshal override spec: %w", err)
+	}
+
+	var baseMap map[string]any
+	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
+		return fmt.Errorf("failed to unmarshal base spec to map: %w", err)
+	}
+	var overrideMap map[string]any
+	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
+		return fmt.Errorf("failed to unmarshal override spec to map: %w", err)
+	}
+
+	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
+	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
+	mergeMapsRecursive(baseMap, overrideMap)
+	mergedSpecJSON, err := json.Marshal(baseMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal merged spec map: %w", err)
+	}
+
+	if err := json.Unmarshal(mergedSpecJSON, base); err != nil {
+		return fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
+	}
+
+	return nil
 }

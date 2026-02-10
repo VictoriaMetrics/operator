@@ -33,7 +33,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Namespace: nsn.Namespace,
 				},
 			},
-			)).To(Succeed())
+			)).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlert{})
 		})
 		tlsSecretName := "vmalert-remote-tls"
@@ -45,14 +45,14 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				if setup != nil {
 					setup()
 				}
-				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
 				}, eventualDeploymentAppReadyTimeout,
-				).Should(Succeed())
+				).ShouldNot(HaveOccurred())
 
 				var created vmv1beta1.VMAlert
-				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 				verify(&created)
 
 			},
@@ -82,7 +82,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
+					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 				},
 			),
@@ -205,18 +205,18 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 							return err
 						}
 						return nil
-					}()).To(Succeed())
+					}()).ToNot(HaveOccurred())
 				},
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
+					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
 							Namespace: nsn.Namespace,
 						},
-					})).To(Succeed())
+					})).ToNot(HaveOccurred())
 
 				},
 			),
@@ -245,9 +245,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
+					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.Deployment
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 					// assert security
 					Expect(dep.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 					Expect(dep.Spec.Template.Spec.SecurityContext.RunAsUser).NotTo(BeNil())
@@ -263,9 +263,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					// operator changes pod annotation and triggers config reload
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
 					vmalertPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
-					Expect(hasVolumeMount(vmalertPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
-					Expect(hasVolumeMount(vmalertPod.Spec.Containers[1].VolumeMounts, saTokenMount)).NotTo(Succeed())
-					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).NotTo(Succeed())
+					Expect(hasVolumeMount(vmalertPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
+					Expect(hasVolumeMount(vmalertPod.Spec.Containers[1].VolumeMounts, saTokenMount)).To(HaveOccurred())
+					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(HaveOccurred())
 				},
 			),
 		)
@@ -291,21 +291,21 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				existObject := existObject.DeepCopy()
 				existObject.Name = name
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, existObject)).To(Succeed())
+				Expect(k8sClient.Create(ctx, existObject)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				// update and wait ready
 				var toUpdate vmv1beta1.VMAlert
-				Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 				modify(&toUpdate)
-				Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+				Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				// verify
 				var updated vmv1beta1.VMAlert
-				Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 				verify(&updated)
 			},
 			Entry("by expand up to 3 replicas with custom prefix", "replica-3-prefix",
@@ -317,7 +317,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout).Should(Succeed())
+					}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 				}),
 			Entry("by updating revisionHistoryLimit to 3", "historylimit-3",
 				func(cr *vmv1beta1.VMAlert) {
@@ -326,7 +326,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout).Should(Succeed())
+					}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 					Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
 						Name:      cr.PrefixedName(),
 						Namespace: nsn.Namespace,

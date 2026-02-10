@@ -43,7 +43,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							"key": licenseKey,
 						},
 					},
-				)).To(Succeed())
+				)).ToNot(HaveOccurred())
 			}
 		})
 		AfterEach(func() {
@@ -52,7 +52,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					Name:      nsn.Name,
 					Namespace: nsn.Namespace,
 				},
-			})).To(Succeed())
+			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMSingle{})
 			if licenseKey != "" {
 				Expect(k8sClient.Delete(ctx,
@@ -62,7 +62,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 					},
-				)).To(Succeed())
+				)).ToNot(HaveOccurred())
 			}
 		})
 		Context("crud", func() {
@@ -85,14 +85,14 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					}
 					cr.Name = name
 					nsn.Name = name
-					Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
 					}, eventualDeploymentAppReadyTimeout,
-					).Should(Succeed())
+					).ShouldNot(HaveOccurred())
 
 					var created vmv1beta1.VMSingle
-					Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 					verify(&created)
 				},
 				Entry("with built-in pvc and insert ports", "create-with-pvc-ports", false,
@@ -126,10 +126,10 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(
 							k8sClient.Get(ctx, createdChildObjects, &createdSvc)).
-							To(Succeed())
+							ToNot(HaveOccurred())
 						Expect(createdSvc.Spec.Ports).To(HaveLen(9))
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].Ports).To(HaveLen(8))
 					}),
@@ -170,16 +170,16 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(
 							k8sClient.Get(ctx, createdChildObjects, &createdSvc)).
-							To(Succeed())
+							ToNot(HaveOccurred())
 						Expect(createdSvc.Spec.Ports).To(HaveLen(3))
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(2))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[1].VolumeMounts).To(HaveLen(3))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{}))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[1].Resources).To(Equal(corev1.ResourceRequirements{}))
 						var vss vmv1beta1.VMServiceScrape
-						Expect(k8sClient.Get(ctx, createdChildObjects, &vss)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &vss)).ToNot(HaveOccurred())
 						Expect(vss.Spec.Endpoints).To(HaveLen(2))
 					}),
 				Entry("with strict security", "strict-security", false,
@@ -208,7 +208,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					func(cr *vmv1beta1.VMSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext).NotTo(BeNil())
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot).NotTo(BeNil())
@@ -242,7 +242,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					func(cr *vmv1beta1.VMSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(1))
@@ -268,7 +268,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					func(cr *vmv1beta1.VMSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(1))
@@ -324,7 +324,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					func(cr *vmv1beta1.VMSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(2))
 						Expect(ts.Volumes).To(HaveLen(4))
@@ -379,10 +379,10 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					initCR.Namespace = namespace
 					nsn.Name = name
 					// setup test
-					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 					for _, step := range steps {
 						if step.setup != nil {
@@ -390,18 +390,18 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						}
 						// perform update
 						var toUpdate vmv1beta1.VMSingle
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						step.modify(&toUpdate)
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 						Eventually(func() error {
 							return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-						}, eventualExpandingTimeout).Should(Succeed())
+						}, eventualExpandingTimeout).ShouldNot(HaveOccurred())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+						}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 						var updated vmv1beta1.VMSingle
-						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 
 						// verify results
 						step.verify(&updated)
@@ -423,7 +423,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							var createdDeploy appsv1.Deployment
 							Expect(k8sClient.Get(ctx,
 								types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &createdDeploy)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 							Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(2))
 							Expect(createdDeploy.Spec.Template.Spec.Containers[1].VolumeMounts).To(HaveLen(3))
 
@@ -446,7 +446,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 							var createdDeploy appsv1.Deployment
 							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 						},
 					},
 					testStep{

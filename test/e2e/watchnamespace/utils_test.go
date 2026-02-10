@@ -12,7 +12,7 @@ import (
 
 func CreateObjects(objects ...client.Object) {
 	for _, obj := range objects {
-		ExpectWithOffset(1, k8sClient.Create(context.Background(), obj)).To(Succeed())
+		ExpectWithOffset(1, k8sClient.Create(context.Background(), obj)).ToNot(HaveOccurred())
 	}
 }
 
@@ -21,7 +21,7 @@ func DeleteAllObjectsOf(namespace string, listProtos ...client.ObjectList) {
 	for _, listProto := range listProtos {
 		objType := GetListObjectType(listProto)
 		proto := reflect.New(objType).Interface()
-		ExpectWithOffset(1, k8sClient.DeleteAllOf(context.Background(), proto.(client.Object), nsOption)).To(Succeed())
+		ExpectWithOffset(1, k8sClient.DeleteAllOf(context.Background(), proto.(client.Object), nsOption)).ToNot(HaveOccurred())
 	}
 
 	EventuallyWithOffset(1, func() bool {
@@ -100,7 +100,7 @@ func listObjectsByListProto(namespace string, listProto client.ObjectList) []cli
 	var objects []client.Object
 
 	list := listProto.DeepCopyObject().(client.ObjectList)
-	Expect(k8sClient.List(context.Background(), list, client.InNamespace(namespace))).To(Succeed())
+	Expect(k8sClient.List(context.Background(), list, client.InNamespace(namespace))).ToNot(HaveOccurred())
 	itemsValue := reflect.ValueOf(list).Elem().FieldByName("Items")
 	for i := 0; i < itemsValue.Len(); i++ {
 		itemValue := itemsValue.Index(i)

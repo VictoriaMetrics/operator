@@ -43,17 +43,17 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						Name:      nsn.Name,
 						Namespace: nsn.Namespace,
 					},
-				})).To(Succeed())
+				})).ToNot(HaveOccurred())
 				waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAuth{})
 			})
 			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
 				cr.Name = name
 				cr.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+				}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 				verify(cr)
 			},
 				Entry("with 1 replica", "replica-1", &vmv1beta1.VMAuth{
@@ -73,9 +73,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var dep appsv1.Deployment
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 					ps := dep.Spec.Template.Spec
 					reloaderContainer := ps.Containers[1]
 					Expect(reloaderContainer.Name).To(Equal("config-reloader"))
@@ -101,12 +101,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
 						Name:      cr.PrefixedName(),
-					}, &httproute)).To(Succeed())
+					}, &httproute)).ToNot(HaveOccurred())
 					spec := httproute.Spec
 					Expect(spec.Rules).To(HaveLen(1))
 					Expect(spec.Rules[0].Matches).To(HaveLen(1))
@@ -164,12 +164,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
 						Name:      cr.PrefixedName(),
-					}, &httproute)).To(Succeed())
+					}, &httproute)).ToNot(HaveOccurred())
 					spec := httproute.Spec
 					Expect(spec.Rules).To(HaveLen(1))
 					Expect(spec.Rules[0].Matches).To(HaveLen(1))
@@ -204,9 +204,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var dep appsv1.Deployment
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 					ps := dep.Spec.Template.Spec
 					Expect(ps.SecurityContext).NotTo(BeNil())
 					Expect(ps.SecurityContext.RunAsNonRoot).NotTo(BeNil())
@@ -222,10 +222,10 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					// assert k8s api access
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
 					vmauthPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
-					Expect(hasVolumeMount(vmauthPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
-					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
-					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).To(Succeed())
-					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).To(Succeed())
+					Expect(hasVolumeMount(vmauthPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
+					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).ToNot(HaveOccurred())
+					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())
+					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())
 				}),
 			)
 
@@ -241,24 +241,24 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 					initCR.Namespace = namespace
 					nsn.Name = name
 					// setup test
-					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 					for _, step := range steps {
 						if step.setup != nil {
 							step.setup(initCR)
 						}
 						// perform update
 						var toUpdate vmv1beta1.VMAuth
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						step.modify(&toUpdate)
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAuth{}, nsn)
-						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+						}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 						var updated vmv1beta1.VMAuth
-						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 						// verify results
 						step.verify(&updated)
 					}
@@ -289,7 +289,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
 				),
@@ -319,7 +319,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
 					testStep{
@@ -333,9 +333,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 									"SECRET_VALUE": "some-auth-value",
 								},
 							}
-							Expect(k8sClient.Create(ctx, &authSecret)).To(Succeed())
+							Expect(k8sClient.Create(ctx, &authSecret)).ToNot(HaveOccurred())
 							DeferCleanup(func(ctx SpecContext) {
-								Expect(k8sClient.Delete(ctx, &authSecret)).To(Succeed())
+								Expect(k8sClient.Delete(ctx, &authSecret)).ToNot(HaveOccurred())
 							})
 							cr.Spec.ConfigReloadAuthKeySecret = &corev1.SecretKeySelector{
 								Key: "SECRET_VALUE",
@@ -347,7 +347,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
 				),
@@ -380,7 +380,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 							pod := mustGetFirstPod(k8sClient, cr.Namespace, cr.SelectorLabels())
 							Expect(pod.Spec.Containers).To(HaveLen(2))
 							ac := pod.Spec.Containers[0]
@@ -391,10 +391,10 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 								Name:      cr.PrefixedName(),
 							}
 							var svc corev1.Service
-							Expect(k8sClient.Get(ctx, nsn, &svc)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &svc)).ToNot(HaveOccurred())
 							Expect(svc.Spec.Ports).To(HaveLen(2))
 							var vmss vmv1beta1.VMServiceScrape
-							Expect(k8sClient.Get(ctx, nsn, &vmss)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmss)).ToNot(HaveOccurred())
 							Expect(vmss.Spec.Endpoints).To(HaveLen(1))
 							ep := vmss.Spec.Endpoints[0]
 							Expect(ep.Port).To(Equal("internal"))
@@ -454,10 +454,10 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 									},
 								},
 							}
-							Expect(k8sClient.Create(ctx, ing)).To(Succeed())
+							Expect(k8sClient.Create(ctx, ing)).ToNot(HaveOccurred())
 							Expect(k8sClient.Get(ctx,
 								types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace},
-								&policyv1.PodDisruptionBudget{})).To(Succeed())
+								&policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
 						},
 						modify: func(cr *vmv1beta1.VMAuth) {
 							cr.Spec.PodDisruptionBudget = nil
@@ -465,9 +465,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
-							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).ToNot(HaveOccurred())
 							waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
 						},
 					},
@@ -479,12 +479,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
-							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
-							Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).ToNot(HaveOccurred())
+							Expect(k8sClient.Get(ctx, nsn, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
 							Expect(k8sClient.Delete(ctx, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{
 								Name:      nsn.Name,
 								Namespace: nsn.Namespace,
-							}})).To(Succeed())
+							}})).ToNot(HaveOccurred())
 						},
 					},
 				),
@@ -523,9 +523,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
     url_prefix: "http://vmsingle-some-url:8428"`,
 								},
 							}
-							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())
+							Expect(k8sClient.Create(ctx, extSecret)).ToNot(HaveOccurred())
 							DeferCleanup(func(specCtx SpecContext) {
-								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
+								Expect(k8sClient.Delete(ctx, extSecret)).ToNot(HaveOccurred())
 							})
 						},
 						modify: func(cr *vmv1beta1.VMAuth) {
@@ -534,11 +534,11 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},
 					},
@@ -555,12 +555,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},
 					},
@@ -600,9 +600,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
     url_prefix: "http://vmsingle-some-url:8428"`,
 								},
 							}
-							Expect(k8sClient.Create(ctx, extSecret)).To(Succeed())
+							Expect(k8sClient.Create(ctx, extSecret)).ToNot(HaveOccurred())
 							DeferCleanup(func(specCtx SpecContext) {
-								Expect(k8sClient.Delete(ctx, extSecret)).To(Succeed())
+								Expect(k8sClient.Delete(ctx, extSecret)).ToNot(HaveOccurred())
 							})
 						},
 						modify: func(cr *vmv1beta1.VMAuth) {
@@ -623,11 +623,11 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						verify: func(cr *vmv1beta1.VMAuth) {
 							var dep appsv1.Deployment
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(Succeed())
+							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},
 					},

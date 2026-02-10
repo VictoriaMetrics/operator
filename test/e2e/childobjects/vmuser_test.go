@@ -34,10 +34,10 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 			DeferCleanup(func() {
 				for _, vmauth := range args.vmauths {
 					vmauth.Namespace = namespace
-					Expect(k8sClient.Delete(ctx, vmauth)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, vmauth)).ToNot(HaveOccurred())
 				}
 				for _, vmuser := range args.vmusers {
-					Expect(k8sClient.Delete(ctx, vmuser)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, vmuser)).ToNot(HaveOccurred())
 				}
 				for _, alert := range args.vmauths {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
@@ -51,10 +51,10 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 				step.setup()
 			}
 			for _, vmauth := range args.vmauths {
-				Expect(k8sClient.Create(ctx, vmauth)).To(Succeed())
+				Expect(k8sClient.Create(ctx, vmauth)).ToNot(HaveOccurred())
 			}
 			for _, vmuser := range args.vmusers {
-				Expect(k8sClient.Create(ctx, vmuser)).To(Succeed())
+				Expect(k8sClient.Create(ctx, vmuser)).ToNot(HaveOccurred())
 			}
 
 			for _, am := range args.vmauths {
@@ -64,7 +64,7 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 						&vmv1beta1.VMAuth{},
 						types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
 						vmv1beta1.UpdateStatusOperational)
-				}, eventualReadyTimeout).Should(Succeed())
+				}, eventualReadyTimeout).ShouldNot(HaveOccurred())
 			}
 			if step.modify != nil {
 				step.modify()
@@ -123,7 +123,7 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 							{Name: "inline-1", Namespace: namespace},
 						} {
 							var vmuser vmv1beta1.VMUser
-							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmuser)).ToNot(HaveOccurred())
 							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
@@ -178,7 +178,7 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 							{Name: "missing-ref-1", Namespace: namespace},
 						} {
 							var vmuser vmv1beta1.VMUser
-							Expect(k8sClient.Get(ctx, nsn, &vmuser)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmuser)).ToNot(HaveOccurred())
 							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							Expect(vmuser.Status.Conditions).NotTo(BeEmpty())
 						}
@@ -193,17 +193,17 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 							},
 							StringData: map[string]string{"password": "password-2"},
 						}
-						Expect(k8sClient.Create(ctx, &passwordSecret)).To(Succeed())
+						Expect(k8sClient.Create(ctx, &passwordSecret)).ToNot(HaveOccurred())
 						DeferCleanup(func() {
-							Expect(k8sClient.Delete(ctx, &passwordSecret)).To(Succeed())
+							Expect(k8sClient.Delete(ctx, &passwordSecret)).ToNot(HaveOccurred())
 						})
 					},
 					modify: func() {
 						nsn := types.NamespacedName{Name: "missing-ref-1", Namespace: namespace}
 						var toUpdate vmv1beta1.VMUser
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						toUpdate.Spec.PasswordRef.Name = "backend-e2e-access-1"
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 					},
 					verify: func() {
 						for _, nsn := range []types.NamespacedName{
@@ -211,9 +211,9 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 						} {
 							Eventually(func() error {
 								var toUpdate vmv1beta1.VMUser
-								Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+								Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 								return expectConditionOkFor(toUpdate.Status.Conditions, "multiple-1.")
-							}, eventualReadyTimeout, 2).Should(Succeed())
+							}, eventualReadyTimeout, 2).ShouldNot(HaveOccurred())
 						}
 					},
 				},

@@ -1,0 +1,19 @@
+{
+  "agent": {
+    "log_level": "trace",
+    "ttl": 1800,
+    "communication_timeout": 1800
+  },
+  "feature": {
+    "fs": {
+      "mode": "local"
+    },
+    "network": {
+      "outgoing": {
+        "filter": {
+          "remote": ["10.244.0.0/16"]
+        }
+      }
+    }
+  }
+}

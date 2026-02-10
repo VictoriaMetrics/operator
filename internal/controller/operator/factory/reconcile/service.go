@@ -11,7 +11,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
@@ -56,10 +55,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		}
 		return fmt.Errorf("cannot get service for existing service: %w", err)
 	}
-	if !currentService.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, currentService)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, currentService); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, currentService); err != nil {
 		return err
 	}
 	var isPrevServiceEqual bool
@@ -124,7 +120,8 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return nil
 	}
 
-	vmv1beta1.AddFinalizer(newService, currentService)
+	newService.Finalizers = currentService.Finalizers
+	addFinalizerIfAbsent(newService)
 	mergeObjectMetadataIntoNew(currentService, newService, prevService)
 
 	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",

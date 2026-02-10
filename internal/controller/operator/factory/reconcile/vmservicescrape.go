@@ -11,7 +11,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -30,10 +29,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vmv1
 			}
 			return err
 		}
-		if !existVSS.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &existVSS)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &existVSS); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &existVSS); err != nil {
 			return err
 		}
 
@@ -69,10 +65,7 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, vps *vmv1beta
 			}
 			return err
 		}
-		if !existVPS.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &existVPS)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &existVPS); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &existVPS); err != nil {
 			return err
 		}
 

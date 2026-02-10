@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -26,10 +25,7 @@ func Secret(ctx context.Context, rclient client.Client, newS *corev1.Secret, pre
 		}
 		return err
 	}
-	if !currentS.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentS)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &currentS); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, &currentS); err != nil {
 		return err
 	}
 

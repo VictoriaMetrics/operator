@@ -9,8 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -25,17 +23,15 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *c
 			}
 			return fmt.Errorf("cannot get ServiceAccount: %w", err)
 		}
-		if !currentSA.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentSA)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &currentSA); err != nil {
 			return err
 		}
 		if isObjectMetaEqual(&currentSA, newSA, prevSA) {
 			return nil
 		}
 		mergeObjectMetadataIntoNew(&currentSA, newSA, prevSA)
-		vmv1beta1.AddFinalizer(newSA, &currentSA)
+		newSA.Finalizers = currentSA.Finalizers
+		addFinalizerIfAbsent(newSA)
 		// keep significant fields
 		newSA.Secrets = currentSA.Secrets
 		newSA.AutomountServiceAccountToken = currentSA.AutomountServiceAccountToken

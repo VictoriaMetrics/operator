@@ -12,7 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -29,10 +32,10 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duratio
 	podWaitReadyTimeout = podReadyDeadline
 }
 
-// mergeAnnotations performs 3-way merge for annotations
-// it deletes only annotations managed by operator CRDs
-// 3-rd party kubernetes annotations must be preserved
-func mergeAnnotations(currentA, newA, prevA map[string]string) map[string]string {
+// mergeMaps performs 3-way merge for labels and annotations
+// it deletes only labels and annotations managed by operator CRDs
+// 3-rd party kubernetes annotations and labels must be preserved
+func mergeMaps(currentA, newA, prevA map[string]string) map[string]string {
 	dst := make(map[string]string)
 	var deleted map[string]struct{}
 
@@ -57,36 +60,39 @@ func mergeAnnotations(currentA, newA, prevA map[string]string) map[string]string
 	return dst
 }
 
+// areMapsEqual properly track changes in maps
+// it doesn't take into account 3rd party values
+func areMapsEqual(existingMap, newMap, prevMap map[string]string) bool {
+	for k, v := range newMap {
+		cv, ok := existingMap[k]
+		if !ok {
+			return false
+		}
+		if v != cv {
+			return false
+		}
+	}
+	for k := range prevMap {
+		_, nok := newMap[k]
+		_, cok := existingMap[k]
+		// case for annotations delete
+		if nok != cok {
+			return false
+		}
+	}
+	return true
+}
+
 // isObjectMetaEqual properly track changes at object annotations
 // it preserves 3rd party annotations
 func isObjectMetaEqual(currObj, newObj, prevObj client.Object) bool {
-	isMapsEqual := func(currentA, newA, prevA map[string]string) bool {
-		for k, v := range newA {
-			cv, ok := currentA[k]
-			if !ok {
-				return false
-			}
-			if v != cv {
-				return false
-			}
-		}
-		for k := range prevA {
-			_, nok := newA[k]
-			_, cok := currentA[k]
-			// case for annotations delete
-			if nok != cok {
-				return false
-			}
-		}
-		return true
-	}
 	var prevLabels, prevAnnotations map[string]string
 	if prevObj != nil && !reflect.ValueOf(prevObj).IsNil() {
 		prevLabels = prevObj.GetLabels()
 		prevAnnotations = prevObj.GetAnnotations()
 	}
-	annotationsEqual := isMapsEqual(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
-	labelsEqual := isMapsEqual(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
+	annotationsEqual := areMapsEqual(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
+	labelsEqual := areMapsEqual(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
 
 	return annotationsEqual && labelsEqual
 }
@@ -108,8 +114,8 @@ func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 		prevLabels = prevObj.GetLabels()
 		prevAnnotations = prevObj.GetAnnotations()
 	}
-	annotations := mergeAnnotations(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
-	labels := mergeAnnotations(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
+	annotations := mergeMaps(currObj.GetAnnotations(), newObj.GetAnnotations(), prevAnnotations)
+	labels := mergeMaps(currObj.GetLabels(), newObj.GetLabels(), prevLabels)
 
 	newObj.SetAnnotations(annotations)
 	newObj.SetLabels(labels)
@@ -152,4 +158,20 @@ func isConflict(err error) bool {
 
 func retryOnConflict(fn func() error) error {
 	return retry.OnError(retry.DefaultRetry, isConflict, fn)
+}
+
+func addFinalizerIfAbsent(obj client.Object) {
+	_ = controllerutil.AddFinalizer(obj, vmv1beta1.FinalizerName)
+}
+
+// needsGarbageCollection checks if resource must be freed from finalizer and garbage collected by kubernetes
+func needsGarbageCollection(ctx context.Context, rclient client.Client, obj client.Object) error {
+	if obj.GetDeletionTimestamp().IsZero() {
+		// fast path
+		return nil
+	}
+	if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
+		return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+	}
+	return newErrRecreate(ctx, obj)
 }

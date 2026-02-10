@@ -178,7 +178,8 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		}
 		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
 	}
-	vmv1beta1.AddFinalizer(pvc, src)
+	pvc.Finalizers = src.Finalizers
+	addFinalizerIfAbsent(pvc)
 	mergeObjectMetadataIntoNew(dst, pvc, prev)
 	if err := rclient.Update(ctx, pvc); err != nil {
 		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)

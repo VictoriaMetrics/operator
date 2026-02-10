@@ -11,10 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,7 +61,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err != nil {
 		return fmt.Errorf("cannot create or update vmauth service: %w", err)
 	}
-	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateIngress(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 
@@ -456,25 +454,16 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 }
 
 // createOrUpdateIngress handles ingress for vmauth.
-func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		return nil
 	}
 	newIngress := buildIngressConfig(cr)
-	var existIngress networkingv1.Ingress
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newIngress.Namespace, Name: newIngress.Name}, &existIngress); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return rclient.Create(ctx, newIngress)
-		}
-		return err
+	var prevIngress *networkingv1.Ingress
+	if prevCR != nil && prevCR.Spec.Ingress != nil {
+		prevIngress = buildIngressConfig(prevCR)
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existIngress); err != nil {
-		return err
-	}
-	// TODO compare
-	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
-	vmv1beta1.AddFinalizer(newIngress, &existIngress)
-	return rclient.Update(ctx, newIngress)
+	return reconcile.Ingress(ctx, rclient, newIngress, prevIngress)
 }
 
 func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {

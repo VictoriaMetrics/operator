@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -25,10 +24,7 @@ func HPA(ctx context.Context, rclient client.Client, newHPA, prevHPA *v2.Horizon
 			}
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
 		}
-		if !currentHPA.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentHPA)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentHPA); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &currentHPA); err != nil {
 			return err
 		}
 

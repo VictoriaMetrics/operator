@@ -14,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -43,10 +41,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			}
 			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
 		}
-		if !currentDeploy.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentDeploy)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDeploy); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &currentDeploy); err != nil {
 			return err
 		}
 		if hasHPA {
@@ -65,8 +60,9 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			return nil
 		}
 
-		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
-		newDeploy.Spec.Template.Annotations = mergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations, prevTemplateAnnotations)
+		newDeploy.Finalizers = currentDeploy.Finalizers
+		addFinalizerIfAbsent(newDeploy)
+		newDeploy.Spec.Template.Annotations = mergeMaps(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations, prevTemplateAnnotations)
 		mergeObjectMetadataIntoNew(&currentDeploy, newDeploy, prevDeploy)
 
 		logMsg := fmt.Sprintf("updating Deployment %s configuration"+

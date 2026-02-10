@@ -10,7 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -27,10 +26,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newHTTPRoute, prevHTT
 			}
 			return fmt.Errorf("cannot get existing HTTPRoute object: %w", err)
 		}
-		if !curHTTPRoute.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &curHTTPRoute)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &curHTTPRoute); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &curHTTPRoute); err != nil {
 			return err
 		}
 

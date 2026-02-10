@@ -13,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -42,10 +40,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 			}
 			return fmt.Errorf("cannot get DaemonSet for app: %s err: %w", newDs.Name, err)
 		}
-		if !currentDs.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentDs)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentDs); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &currentDs); err != nil {
 			return err
 		}
 		newDs.Status = currentDs.Status
@@ -62,8 +57,9 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 			prevTemplateAnnotations = prevDs.Annotations
 		}
 
-		vmv1beta1.AddFinalizer(newDs, &currentDs)
-		newDs.Spec.Template.Annotations = mergeAnnotations(currentDs.Spec.Template.Annotations, newDs.Spec.Template.Annotations, prevTemplateAnnotations)
+		newDs.Finalizers = currentDs.Finalizers
+		addFinalizerIfAbsent(newDs)
+		newDs.Spec.Template.Annotations = mergeMaps(currentDs.Spec.Template.Annotations, newDs.Spec.Template.Annotations, prevTemplateAnnotations)
 		mergeObjectMetadataIntoNew(&currentDs, newDs, prevDs)
 
 		logMsg := fmt.Sprintf("updating DaemonSet %s configuration"+

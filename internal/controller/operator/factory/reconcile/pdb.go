@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -26,10 +25,7 @@ func PDB(ctx context.Context, rclient client.Client, newPDB, prevPDB *policyv1.P
 			}
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", newPDB.Name, err)
 		}
-		if !currentPDB.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, currentPDB)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, currentPDB); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, currentPDB); err != nil {
 			return err
 		}
 

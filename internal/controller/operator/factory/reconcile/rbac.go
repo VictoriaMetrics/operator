@@ -10,8 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -25,10 +23,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 		}
 		return fmt.Errorf("cannot get exist rolebinding: %w", err)
 	}
-	if !currentRB.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentRB)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &currentRB); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, &currentRB); err != nil {
 		return err
 	}
 
@@ -39,8 +34,8 @@ func RoleBinding(ctx context.Context, rclient client.Client, newRB, prevRB *rbac
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding %s configuration", newRB.Name))
 	mergeObjectMetadataIntoNew(&currentRB, newRB, prevRB)
-	vmv1beta1.AddFinalizer(newRB, &currentRB)
-
+	newRB.Finalizers = currentRB.Finalizers
+	addFinalizerIfAbsent(newRB)
 	return rclient.Update(ctx, newRB)
 }
 
@@ -54,10 +49,7 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 		}
 		return fmt.Errorf("cannot get exist role: %w", err)
 	}
-	if !currentRL.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentRL)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &currentRL); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, &currentRL); err != nil {
 		return err
 	}
 
@@ -67,8 +59,8 @@ func Role(ctx context.Context, rclient client.Client, newRL, prevRL *rbacv1.Role
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating Role %s configuration", newRL.Name))
 	mergeObjectMetadataIntoNew(&currentRL, newRL, prevRL)
-	vmv1beta1.AddFinalizer(newRL, &currentRL)
-
+	newRL.Finalizers = currentRL.Finalizers
+	addFinalizerIfAbsent(newRL)
 	return rclient.Update(ctx, newRL)
 }
 
@@ -83,10 +75,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 		}
 		return fmt.Errorf("cannot get crb: %w", err)
 	}
-	if !currentCRB.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentCRB)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &currentCRB); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, &currentCRB); err != nil {
 		return err
 	}
 
@@ -98,8 +87,8 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newCRB, prev
 	}
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding %s", newCRB.Name))
 	mergeObjectMetadataIntoNew(&currentCRB, newCRB, prevCRB)
-	vmv1beta1.AddFinalizer(newCRB, &currentCRB)
-
+	newCRB.Finalizers = currentCRB.Finalizers
+	addFinalizerIfAbsent(newCRB)
 	return rclient.Update(ctx, newCRB)
 
 }
@@ -115,10 +104,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 		}
 		return fmt.Errorf("cannot get exist cluster role: %w", err)
 	}
-	if !currentClusterRole.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentClusterRole)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &currentClusterRole); err != nil {
+	if err := needsGarbageCollection(ctx, rclient, &currentClusterRole); err != nil {
 		return err
 	}
 	// fast path
@@ -129,6 +115,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newClusterRole, pre
 	logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole %s", newClusterRole.Name))
 
 	mergeObjectMetadataIntoNew(&currentClusterRole, newClusterRole, prevClusterRole)
-	vmv1beta1.AddFinalizer(newClusterRole, &currentClusterRole)
+	newClusterRole.Finalizers = currentClusterRole.Finalizers
+	addFinalizerIfAbsent(newClusterRole)
 	return rclient.Update(ctx, newClusterRole)
 }

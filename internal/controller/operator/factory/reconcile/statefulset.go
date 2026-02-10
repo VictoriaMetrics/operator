@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -97,10 +96,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newS
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 		}
-		if !currentSts.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentSts)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSts); err != nil {
+		if err := needsGarbageCollection(ctx, rclient, &currentSts); err != nil {
 			return err
 		}
 
@@ -140,8 +136,9 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newS
 		if shouldSkipUpdate {
 			return nil
 		}
-		vmv1beta1.AddFinalizer(newSts, &currentSts)
-		newSts.Spec.Template.Annotations = mergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations, prevTemplateAnnotations)
+		newSts.Finalizers = currentSts.Finalizers
+		addFinalizerIfAbsent(newSts)
+		newSts.Spec.Template.Annotations = mergeMaps(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations, prevTemplateAnnotations)
 		mergeObjectMetadataIntoNew(&currentSts, newSts, prevSts)
 		logMsg := fmt.Sprintf("updating statefulset %s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
 			newSts.Name, isEqual, isPrevEqual, prevSts == nil)

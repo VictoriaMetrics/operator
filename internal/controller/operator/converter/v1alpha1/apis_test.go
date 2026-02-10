@@ -1,12 +1,12 @@
 package v1alpha1
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -18,17 +18,15 @@ import (
 func TestConvertAlertmanagerConfig(t *testing.T) {
 	type opts struct {
 		promCfg  *promv1alpha1.AlertmanagerConfig
-		validate func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) error
+		validate func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig)
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		converted, err := ConvertAlertmanagerConfig(opts.promCfg, &config.BaseOperatorConf{})
+		converted, err := ConvertAlertmanagerConfig(o.promCfg, &config.BaseOperatorConf{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		if err := opts.validate(converted); err != nil {
-			t.Fatalf("not valid converted alertmanager config: %s", err)
-		}
+		o.validate(converted)
 	}
 
 	// simple convert
@@ -36,6 +34,12 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 		promCfg: &promv1alpha1.AlertmanagerConfig{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-1"},
 			Spec: promv1alpha1.AlertmanagerConfigSpec{
+				MuteTimeIntervals: []promv1alpha1.MuteTimeInterval{{
+					Name: "test",
+					TimeIntervals: []promv1alpha1.TimeInterval{{
+						Months: []promv1alpha1.MonthRange{"1:4"},
+					}},
+				}},
 				Route: &promv1alpha1.Route{Receiver: "webhook", GroupInterval: "1min"},
 				Receivers: []promv1alpha1.Receiver{
 					{
@@ -45,20 +49,13 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 				},
 			},
 		},
-		validate: func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) error {
-			if convertedAMCfg.Name != "test-1" {
-				return fmt.Errorf("name not match, want: %s got: %s", "test-1", convertedAMCfg.Name)
-			}
-			if convertedAMCfg.Spec.Route.Receiver != "webhook" {
-				return fmt.Errorf("unexpected receiver at route name: %s", convertedAMCfg.Spec.Route.Receiver)
-			}
-			if convertedAMCfg.Spec.Receivers[0].Name != "webhook" {
-				return fmt.Errorf("unexpected receiver name: %s", convertedAMCfg.Spec.Receivers[0].Name)
-			}
-			if convertedAMCfg.Spec.Receivers[0].WebhookConfigs[0].URLSecret.Key != "secret" {
-				return fmt.Errorf("expected url with secret key")
-			}
-			return nil
+		validate: func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) {
+			assert.Equal(t, convertedAMCfg.Name, "test-1")
+			assert.Equal(t, convertedAMCfg.Spec.Route.Receiver, "webhook")
+			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].Name, "webhook")
+			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].WebhookConfigs[0].URLSecret.Key, "secret")
+			assert.Equal(t, convertedAMCfg.Spec.TimeIntervals[0].Name, "test")
+			assert.Equal(t, convertedAMCfg.Spec.TimeIntervals[0].TimeIntervals[0].Months, []string{"1:4"})
 		},
 	}
 	f(o)
@@ -83,21 +80,11 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 				},
 			},
 		},
-		validate: func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) error {
-			if len(convertedAMCfg.Spec.Receivers) != 1 {
-				return fmt.Errorf("expected single receiver, got: %d", len(convertedAMCfg.Spec.Receivers))
-			}
-			if len(convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs) != 1 {
-				return fmt.Errorf("expected single msteamsv2 receiver, got: %d", len(convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs))
-			}
-			msv2 := convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0]
-			if msv2.Title != "some title" {
-				return fmt.Errorf("unexpected title: %q", msv2.Title)
-			}
-			if msv2.URLSecret.Key != "some-key" {
-				return fmt.Errorf("unexpected key=%q", msv2.URLSecret.Key)
-			}
-			return nil
+		validate: func(convertedAMCfg *vmv1beta1.VMAlertmanagerConfig) {
+			assert.Len(t, convertedAMCfg.Spec.Receivers, 1)
+			assert.Len(t, convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs, 1)
+			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0].Title, "some title")
+			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0].URLSecret.Key, "some-key")
 		},
 	}
 	f(o)

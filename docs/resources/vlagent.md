@@ -142,7 +142,8 @@ VLAgent supports collecting logs from K8s pods. To enable it it's required to se
 With this setting operator:
  - switches VLAgent to DaemonSet mode
  - mounts host paths, where k8s logs are stored
- - adds RBAC to be able to get pods, namespaces and nodes information using K8s API if operator is NOT running in [namespaced mode](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode). In this case RBAC should be [managed manually](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vlagent-k8s-namespaced-collector.yaml).
+
+This setting will also adds RBAC to be able to get pods, namespaces and nodes information using K8s API on a cluster level by default. In order to limit it to a particular namespace see [this example](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vlagent-k8s-namespaced-collector.yaml).
 
 ## Storage management
 

@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+**Update note 1**: deprecated VMProbe's `spec.targets.ingress`. Use `spec.targets.kubernetes` slice instead. Please check [example of VMProbe with Ingress discovery](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe-k8s.yaml). This field will be removed in v0.71.0.
+
+**Update note 2**: deprecated VMProbe's `spec.targets.staticConfig`. Use `spec.targets.static` instead. Please check [example of VMProbe with static targets](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe.yaml). This field will be removed in v0.71.0.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.135.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.135.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.45.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.45.0).
 
@@ -38,12 +42,19 @@ aliases:
 **Release date:** 23 January 2026
 
 **Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader. Please verify `spec.configReloaderExtraArgs` in all instances of `VMAlert`, `VMAuth`, `VMAgent` and `VMAlertmanager` CRs are using [valid config-reloader arguments](https://docs.victoriametrics.com/operator/configuration/#config-reloader-flags) before upgrading.
+
 **Update note 2**: removed deprecated VMAgent `spec.aPIServerConfig` property
+
 **Update note 3**: removed deprecated VMCluster `spec.vmselect.persistentVolume` property
+
 **Update note 4**: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.
+
 **Update note 5**: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.
+
 **Update note 6**: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.
+
 **Update note 7**: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.
+
 **Update note 8**: VMServiceScrape's `endpointslices` role is deprecated and will be removed in 0.70.0. Use `endpointslice` instead.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version

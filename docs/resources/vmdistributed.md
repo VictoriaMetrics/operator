@@ -15,6 +15,8 @@ tags:
 
 `VMDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters. It allows you to define and manage cluster components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
 
+**Note:** `VMDistributed` is an experimental feature and may not be suitable for production environments. API is not yet stabilized and may change in future releases.
+
 For a high-level overview of VictoriaMetrics distributed cluster architecture, refer to the official [VictoriaMetrics documentation](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/).
 
 ## Specification

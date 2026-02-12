@@ -11,6 +11,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
 const eventualDeletionTimeout = 20
@@ -42,7 +43,9 @@ var (
 		})
 
 	_ = AfterEach(suite.CollectK8SResources)
-	_ = ReportAfterSuite("allure report", suite.AllureReport)
+	_ = ReportAfterSuite("allure report", func(report Report) {
+		_ = allure.FromGinkgoReport(report)
+	})
 )
 
 func expectConditionOkFor(conds []vmv1beta1.Condition, typeCondtains string) error {

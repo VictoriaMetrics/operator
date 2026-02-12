@@ -162,7 +162,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e: load-kind ginkgo crust-gather
-	env CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(GINKGO_BIN) \
+	env REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(GINKGO_BIN) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-timeout=30m \
 		-junit-report=report.xml ./test/e2e/...
@@ -483,7 +483,7 @@ $(CRUST_GATHER_BIN): $(LOCALBIN)
 
 .PHONY: allure-report
 allure-report:
-	npx allure awesome --single-file /tmp/allure-results -o /tmp/allure-report.html
+	npx allure awesome --single-file ./allure-results -o ./allure-report
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

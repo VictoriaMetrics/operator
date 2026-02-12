@@ -9,12 +9,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/onsi/ginkgo/v2"
+
+	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
 const (
-	reportLocation = "/tmp/crust-gather"
-	tarGzFileName  = reportLocation + ".tar.gz"
+	reportsDir      = "crust-gather"
+	reportsLocation = "/tmp/" + reportsDir
 )
 
 // RunCrustGather starts the crust-gather process, which collects Kubernetes resources and pod logs.
@@ -24,7 +27,10 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 
 	// Collect crust-gather folder
 	crustGatherBin := os.Getenv("CRUST_GATHER_BIN")
-	cmd := exec.CommandContext(timeBoundContext, crustGatherBin, "collect", "-f", reportLocation)
+	report := ginkgo.CurrentSpecReport()
+	reportHash := fmt.Sprintf("%016x", xxhash.Sum64([]byte(report.FullText())))
+	reportDir := filepath.Join(reportsLocation, reportHash)
+	cmd := exec.CommandContext(timeBoundContext, crustGatherBin, "collect", "-f", reportDir)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
@@ -34,7 +40,10 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 	}
 
 	// Archive crust-gather folder
-	cmd = exec.CommandContext(timeBoundContext, "tar", "-czvf", tarGzFileName, reportLocation)
+	archiveName := reportHash + ".tar.gz"
+	archivePath := filepath.Join(reportsLocation, archiveName)
+	cmd = exec.CommandContext(timeBoundContext, "tar", "-czvf", archiveName, reportHash)
+	cmd.Dir = reportsLocation
 	outb.Reset()
 	errb.Reset()
 	cmd.Stdout = &outb
@@ -43,15 +52,10 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 	if err != nil {
 		return fmt.Errorf("tar command failed: %v, stdout: %s, stderr: %s", err, outb.String(), errb.String())
 	}
-
-	// Add crust-gather.tar.gz to report
-	tarGzFileContent, err := os.ReadFile(tarGzFileName)
+	content, err := os.ReadFile(archivePath)
 	if err != nil {
-		return fmt.Errorf("failed to read %s: %v", tarGzFileName, err)
-	} else {
-		baseName := filepath.Base(tarGzFileName)
-		ginkgo.AddReportEntry(baseName, string(tarGzFileContent), ginkgo.ReportEntryVisibilityNever)
+		return fmt.Errorf("failed to read %s: %w", archivePath, err)
 	}
-
+	allure.AddAttachment("crust-gather.tar.gz", allure.MimeTypeGZIP, content)
 	return nil
 }

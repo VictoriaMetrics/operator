@@ -92,7 +92,23 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 
 var errNotModified = fmt.Errorf("file content not modified")
 
-func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
+func (k *k8sWatcher) load(ctx context.Context) error {
+	var lastSecret corev1.Secret
+	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &lastSecret); err != nil {
+		return fmt.Errorf("cannot get secret during init secretName: %s, namespace: %s, err: %s", k.secretName, k.namespace, err)
+	}
+	newData, ok := lastSecret.Data[*configSecretKey]
+	if !ok {
+		return fmt.Errorf("key=%q with content not found at secret=%q", *configSecretKey, lastSecret.Name)
+	}
+	logger.Infof("updating local file content for secret: %s", lastSecret.Name)
+	if err := writeNewContent(newData); err != nil {
+		return fmt.Errorf("cannot write file content to disk: %w", err)
+	}
+	return nil
+}
+
+func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 	var prevContent []byte
 	updateSecret := func(secret *corev1.Secret) error {
 		newData, ok := secret.Data[*configSecretKey]
@@ -116,25 +132,22 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 		}
 		return nil
 	}
-	go k.inf.Run(ctx.Done())
 
 	var lastSecret corev1.Secret
 	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &lastSecret); err != nil {
 		logger.Fatalf("cannot get secret during init secretName: %s, namespace: %s, err: %s", k.secretName, k.namespace, err)
 	}
 	if err := updateSecret(&lastSecret); err != nil {
-		if *onlyInitConfig {
-			return err
-		}
 		logger.Errorf("cannot update secret: %s", err)
 	}
-	k.wg.Add(1)
 
+	go k.inf.Run(ctx.Done())
+	k.wg.Add(1)
 	go func() {
 		defer k.wg.Done()
 		var t time.Ticker
-		if *resyncInternal > 0 {
-			t = *time.NewTicker(*resyncInternal)
+		if *resyncInterval > 0 {
+			t = *time.NewTicker(*resyncInterval)
 			defer t.Stop()
 		}
 		for {
@@ -164,7 +177,6 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 			}
 		}
 	}()
-	return nil
 }
 
 func (k *k8sWatcher) close() {

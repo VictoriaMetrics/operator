@@ -4,26 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/Moon1706/ginkgo2allure/pkg/convert"
-	fmngr "github.com/Moon1706/ginkgo2allure/pkg/convert/file_manager"
-	"github.com/Moon1706/ginkgo2allure/pkg/convert/parser"
-	allureReport "github.com/Moon1706/ginkgo2allure/pkg/convert/report"
 	. "github.com/onsi/ginkgo/v2" //nolint
-	ginkgoTypes "github.com/onsi/ginkgo/v2/types"
-	"k8s.io/apimachinery/pkg/types"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/utils"
-)
-
-const (
-	allureReportPath = "/tmp/allure-results"
 )
 
 // ExpectObjectStatus perform assert on given object status
@@ -32,7 +21,7 @@ const (
 func ExpectObjectStatus(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
-	name types.NamespacedName,
+	name k8stypes.NamespacedName,
 	status vmv1beta1.UpdateStatus) error {
 	if err := rclient.Get(ctx, name, object); err != nil {
 		return err
@@ -64,36 +53,11 @@ func ExpectObjectStatus(ctx context.Context,
 	return nil
 }
 
-func AllureReport(report ginkgoTypes.Report) {
-	parserConfig := parser.Config{}
-	parserConfig.LabelsScraperOpts = append(parserConfig.LabelsScraperOpts, allureReport.WillAutoGenerateID(true))
-	allureReports, err := convert.GinkgoToAllureReport([]ginkgoTypes.Report{report}, parser.NewDefaultParser, parserConfig)
-	if err != nil {
-		panic(fmt.Sprintf("allure report: %v", err))
-	}
-
-	reportPath, err := filepath.Abs(allureReportPath)
-	if err != nil {
-		panic(fmt.Sprintf("allure report: %v", err))
-	}
-
-	if err := os.MkdirAll(reportPath, 0755); err != nil {
-		panic(fmt.Sprintf("failed to create report dir: %v", err))
-	}
-
-	fileManager := fmngr.NewFileManager(reportPath)
-
-	errs := convert.PrintAllureReports(allureReports, fileManager)
-	if len(errs) > 0 {
-		panic(fmt.Sprintf("allure report: %v", errs))
-	}
-}
-
 func CollectK8SResources() {
-	if CurrentSpecReport().Failed() {
-		err := utils.RunCrustGather(context.Background(), 10*time.Minute)
-		if err != nil {
-			panic(fmt.Sprintf("crust-gather: %v", err))
-		}
+	if !CurrentSpecReport().Failed() {
+		return
+	}
+	if err := utils.RunCrustGather(context.Background(), 10*time.Minute); err != nil {
+		panic(fmt.Sprintf("crust-gather: %v", err))
 	}
 }

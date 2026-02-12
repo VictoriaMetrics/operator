@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
 var (
@@ -65,7 +66,9 @@ var (
 	)
 
 	_ = AfterEach(suite.CollectK8SResources)
-	_ = ReportAfterSuite("allure report", suite.AllureReport)
+	_ = ReportAfterSuite("allure report", func(report Report) {
+		_ = allure.FromGinkgoReport(report)
+	})
 
 	// _ = AfterSuite()
 

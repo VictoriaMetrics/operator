@@ -113,4 +113,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: /tmp/allure-report.html
+          path: ./allure-report

@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -55,5 +56,7 @@ var (
 		})
 
 	_ = AfterEach(suite.CollectK8SResources)
-	_ = ReportAfterSuite("allure report", suite.AllureReport)
+	_ = ReportAfterSuite("allure report", func(report Report) {
+		_ = allure.FromGinkgoReport(report)
+	})
 )

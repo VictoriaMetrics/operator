@@ -32,7 +32,7 @@ kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1
 # ... 
 ```
 
-This is the latest operator environment variables:
+These are the latest operator environment variables:
 {{% content "env.md" %}}
 
 ## Modify environment variables
@@ -136,8 +136,13 @@ kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --help 2>&1;
 # ...
 ```
 
-This is the latest operator flags:
+These are the latest operator flags:
 {{% content "flags.md" %}}
+
+## Config reloader flags
+
+These are the latest config reloader flags:
+{{% content "config-reloader-flags.md" %}}
 
 ## Modify flags
 
@@ -289,7 +294,7 @@ victoria-metrics-operator:
   env:
     # -- default version for vmsingle
     - name: VM_VMSINGLEDEFAULT_VERSION
-      value: v1.44.0
+      value: v1.45.0
     # -- container registry name prefix, e.g. docker.io
     - name: VM_CONTAINERREGISTRY
       value: ""
@@ -353,7 +358,7 @@ operator:
 env:
   # -- default version for vmsingle
   - name: VM_VMSINGLEDEFAULT_VERSION
-    value: v1.44.0
+    value: v1.45.0
   # -- container registry name prefix, e.g. docker.io
   - name: VM_CONTAINERREGISTRY
     value: ""
@@ -397,7 +402,7 @@ The operator supports comma separated namespace names for this setting.
 
 If namespaced mode is enabled, operator uses a limited set of features:
 - it cannot make any cluster wide API calls.
-- it cannot assign rbac permissions for `vmagent`. It must be done manually via serviceAccount for vmagent.
+- it cannot assign rbac permissions for managed resource. It must be done manually via serviceAccount.
 - it ignores namespaceSelector fields at CRD objects and uses `WATCH_NAMESPACE` value for object matching.
 
 At each namespace operator must have a set of required permissions, an example can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).

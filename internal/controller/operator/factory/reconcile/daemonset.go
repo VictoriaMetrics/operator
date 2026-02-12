@@ -29,8 +29,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 		}
 	}
 	rclient.Scheme().Default(newDs)
-
-	return retryOnConflict(func() error {
+	err := retryOnConflict(func() error {
 		var currentDs appsv1.DaemonSet
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDs.Name, Namespace: newDs.Namespace}, &currentDs)
 		if err != nil {
@@ -39,7 +38,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 				if err := rclient.Create(ctx, newDs); err != nil {
 					return fmt.Errorf("cannot create new DaemonSet for app: %s, err: %w", newDs.Name, err)
 				}
-				return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+				return nil
 			}
 			return fmt.Errorf("cannot get DaemonSet for app: %s err: %w", newDs.Name, err)
 		}
@@ -56,7 +55,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDs.Labels, currentDs.Labels) &&
 			isObjectMetaEqual(&currentDs, newDs, prevDs) {
-			return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+			return nil
 		}
 		var prevTemplateAnnotations map[string]string
 		if prevDs != nil {
@@ -83,9 +82,12 @@ func DaemonSet(ctx context.Context, rclient client.Client, newDs, prevDs *appsv1
 		if err := rclient.Update(ctx, newDs); err != nil {
 			return fmt.Errorf("cannot update DaemonSet for app: %s, err: %w", newDs.Name, err)
 		}
-
-		return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return waitDaemonSetReady(ctx, rclient, newDs, appWaitReadyDeadline)
 }
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
@@ -94,6 +96,9 @@ func waitDaemonSetReady(ctx context.Context, rclient client.Client, ds *appsv1.D
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		var daemon appsv1.DaemonSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ds.Namespace, Name: ds.Name}, &daemon); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, fmt.Errorf("cannot fetch actual daemonset state: %w", err)
 		}
 

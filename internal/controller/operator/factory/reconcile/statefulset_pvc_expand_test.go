@@ -23,27 +23,26 @@ import (
 
 func Test_reCreateSTS(t *testing.T) {
 	type opts struct {
-		newSTS                        *appsv1.StatefulSet
-		oldSTS                        *appsv1.StatefulSet
-		validate                      func(sts *appsv1.StatefulSet) error
-		stsRecreated, mustRecreatePod bool
-		wantErr                       bool
+		newSTS          *appsv1.StatefulSet
+		oldSTS          *appsv1.StatefulSet
+		validate        func(sts *appsv1.StatefulSet) error
+		mustRecreateSTS bool
+		mustRecreatePod bool
 	}
 	f := func(o opts) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects([]runtime.Object{o.oldSTS})
 		t.Helper()
 		ctx := context.TODO()
-		stsRecreated, mustRecreatePod, err := recreateSTSIfNeed(ctx, cl, o.newSTS, o.oldSTS)
-		if (err != nil) != o.wantErr {
-			t.Errorf("recreateSTSIfNeed() error = %v, wantErr %v", err, o.wantErr)
-			return
+		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, o.newSTS, o.oldSTS)
+		if mustRecreateSTS {
+			assert.NoError(t, removeStatefulSetKeepPods(ctx, cl, o.newSTS, o.oldSTS))
 		}
 		var updatedSTS appsv1.StatefulSet
 		nsn := types.NamespacedName{Namespace: o.newSTS.Namespace, Name: o.newSTS.Name}
 		assert.NoError(t, cl.Get(ctx, nsn, &updatedSTS))
 		assert.NoError(t, o.validate(&updatedSTS))
-		assert.Equal(t, stsRecreated, o.stsRecreated)
+		assert.Equal(t, mustRecreateSTS, o.mustRecreateSTS)
 		assert.Equal(t, mustRecreatePod, o.mustRecreatePod)
 	}
 
@@ -75,7 +74,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}
 			return nil
 		},
-		stsRecreated:    true,
+		mustRecreateSTS: true,
 		mustRecreatePod: true,
 	})
 
@@ -127,7 +126,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}
 			return nil
 		},
-		stsRecreated:    true,
+		mustRecreateSTS: true,
 		mustRecreatePod: false,
 	})
 
@@ -181,7 +180,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}
 			return nil
 		},
-		stsRecreated:    true,
+		mustRecreateSTS: true,
 		mustRecreatePod: false,
 	})
 
@@ -211,7 +210,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}
 			return nil
 		},
-		stsRecreated:    true,
+		mustRecreateSTS: true,
 		mustRecreatePod: true,
 	})
 }

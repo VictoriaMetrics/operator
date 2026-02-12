@@ -141,6 +141,10 @@ docs: build crd-ref-docs manifests
 	echo "$$FLAGS_HEADER" > docs/flags.md
 	bin/$(REPO) --help >> docs/flags.md 2>&1
 	echo '```' >> docs/flags.md
+	$(MAKE) build-config-reloader
+	echo "$$FLAGS_HEADER" > docs/config-reloader-flags.md
+	bin/config-reloader --help 2>&1 | sed '1d' >> docs/config-reloader-flags.md
+	echo '```' >> docs/config-reloader-flags.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -204,6 +208,7 @@ build-operator: build
 
 build-config-reloader: ROOT=./cmd/config-reloader
 build-config-reloader: COMPONENT=config-reloader
+build-config-reloader: REPO=config-reloader
 build-config-reloader: build
 
 .PHONY: docker-push
@@ -277,7 +282,7 @@ olm: operator-sdk opm yq docs
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.spec.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}, {"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.20"' \
+	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.21"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
 	$(if $(findstring localhost,$(REGISTRY)), \
 		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \

@@ -21,7 +21,6 @@ import (
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
 func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, hasHPA bool) error {
-
 	var isPrevEqual bool
 	var prevSpecDiff string
 	if prevDeploy != nil {
@@ -31,8 +30,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		}
 	}
 	rclient.Scheme().Default(newDeploy)
-
-	return retryOnConflict(func() error {
+	err := retryOnConflict(func() error {
 		var currentDeploy appsv1.Deployment
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
 		if err != nil {
@@ -41,7 +39,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 				if err := rclient.Create(ctx, newDeploy); err != nil {
 					return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)
 				}
-				return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+				return nil
 			}
 			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
 		}
@@ -64,7 +62,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
 			isObjectMetaEqual(&currentDeploy, newDeploy, prevDeploy) {
-			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+			return nil
 		}
 
 		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
@@ -87,9 +85,12 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 		}
-
-		return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 }
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
@@ -98,6 +99,9 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
 		var actualDeploy appsv1.Deployment
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, fmt.Errorf("cannot fetch actual deployment state: %w", err)
 		}
 		// Based on recommendations from the kubernetes documentation
@@ -165,7 +169,5 @@ func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, o
 		}
 		return podStatusesToError(origin, &dp)
 	}
-	return &errWaitReady{
-		origin: fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events, origin err: %w", selector.String(), origin),
-	}
+	return fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events: %w", selector.String(), origin)
 }

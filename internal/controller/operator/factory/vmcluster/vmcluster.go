@@ -184,7 +184,7 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 		},
 		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -379,7 +379,7 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 		},
 		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
 }
 
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {

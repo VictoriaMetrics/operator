@@ -18,24 +18,17 @@ import (
 
 var log = logf.Log.WithName("controller.PrometheusConverter")
 
-func convertMatchers(promMatchers []promv1alpha1.Matcher) []string {
-	if promMatchers == nil {
-		return nil
-	}
-	r := make([]string, 0, len(promMatchers))
-	for _, pm := range promMatchers {
-		if len(pm.Value) > 0 && pm.MatchType == "" {
-			pm.MatchType = "=~"
+func convertPromMatcher(promMatcher promv1alpha1.Matcher) string {
+	if promMatcher.MatchType == "" {
+		promMatcher.MatchType = "="
+		if len(promMatcher.Value) > 0 {
+			promMatcher.MatchType = "=~"
 		}
-		if pm.MatchType == "" {
-			pm.MatchType = "="
-		}
-		r = append(r, pm.String())
 	}
-	return r
+	return promMatcher.String()
 }
 
-func convertRoute(promRoute *promv1alpha1.Route) (*vmv1beta1.Route, error) {
+func convertPromRoute(promRoute *promv1alpha1.Route) (*vmv1beta1.Route, error) {
 	if promRoute == nil {
 		return nil, nil
 	}
@@ -46,7 +39,7 @@ func convertRoute(promRoute *promv1alpha1.Route) (*vmv1beta1.Route, error) {
 		GroupWait:           promRoute.GroupWait,
 		GroupInterval:       promRoute.GroupInterval,
 		RepeatInterval:      promRoute.RepeatInterval,
-		Matchers:            convertMatchers(promRoute.Matchers),
+		Matchers:            convertSliceStruct(promRoute.Matchers, convertPromMatcher),
 		ActiveTimeIntervals: promRoute.ActiveTimeIntervals,
 		MuteTimeIntervals:   promRoute.MuteTimeIntervals,
 	}
@@ -55,7 +48,7 @@ func convertRoute(promRoute *promv1alpha1.Route) (*vmv1beta1.Route, error) {
 		if err := json.Unmarshal(route.Raw, &promRoute); err != nil {
 			return nil, fmt.Errorf("cannot parse raw prom route: %s, err: %w", string(route.Raw), err)
 		}
-		vmRoute, err := convertRoute(&promRoute)
+		vmRoute, err := convertPromRoute(&promRoute)
 		if err != nil {
 			return nil, err
 		}
@@ -68,20 +61,44 @@ func convertRoute(promRoute *promv1alpha1.Route) (*vmv1beta1.Route, error) {
 	return &r, nil
 }
 
-func convertInhibitRules(promIRs []promv1alpha1.InhibitRule) []vmv1beta1.InhibitRule {
-	if promIRs == nil {
-		return nil
+func convertPromTimeRange(promTR promv1alpha1.TimeRange) vmv1beta1.TimeRange {
+	return vmv1beta1.TimeRange{
+		StartTime: string(promTR.StartTime),
+		EndTime:   string(promTR.EndTime),
 	}
-	vmIRs := make([]vmv1beta1.InhibitRule, 0, len(promIRs))
-	for _, promIR := range promIRs {
-		ir := vmv1beta1.InhibitRule{
-			TargetMatchers: convertMatchers(promIR.TargetMatch),
-			SourceMatchers: convertMatchers(promIR.SourceMatch),
-			Equal:          promIR.Equal,
-		}
-		vmIRs = append(vmIRs, ir)
+}
+
+func convertPromRangeToString[T ~string](s T) string {
+	return string(s)
+}
+
+func convertPromDayOfMonth(promDoM promv1alpha1.DayOfMonthRange) string {
+	return fmt.Sprintf("%d:%d", promDoM.Start, promDoM.End)
+}
+
+func convertPromTimeInterval(promTI promv1alpha1.TimeInterval) vmv1beta1.TimeInterval {
+	return vmv1beta1.TimeInterval{
+		Times:       convertSliceStruct(promTI.Times, convertPromTimeRange),
+		Weekdays:    convertSliceStruct(promTI.Weekdays, convertPromRangeToString),
+		DaysOfMonth: convertSliceStruct(promTI.DaysOfMonth, convertPromDayOfMonth),
+		Months:      convertSliceStruct(promTI.Months, convertPromRangeToString),
+		Years:       convertSliceStruct(promTI.Years, convertPromRangeToString),
 	}
-	return vmIRs
+}
+
+func convertPromMuteTimeInterval(promTI promv1alpha1.MuteTimeInterval) vmv1beta1.TimeIntervals {
+	return vmv1beta1.TimeIntervals{
+		Name:          promTI.Name,
+		TimeIntervals: convertSliceStruct(promTI.TimeIntervals, convertPromTimeInterval),
+	}
+}
+
+func convertPromInhibitRule(promIR promv1alpha1.InhibitRule) vmv1beta1.InhibitRule {
+	return vmv1beta1.InhibitRule{
+		TargetMatchers: convertSliceStruct(promIR.TargetMatch, convertPromMatcher),
+		SourceMatchers: convertSliceStruct(promIR.SourceMatch, convertPromMatcher),
+		Equal:          promIR.Equal,
+	}
 }
 
 // ConvertAlertmanagerConfig creates VMAlertmanagerConfig from prometheus alertmanagerConfig
@@ -94,10 +111,11 @@ func ConvertAlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf 
 			Labels:      converter.FilterPrefixes(promAMCfg.Labels, conf.FilterPrometheusConverterLabelPrefixes),
 		},
 		Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-			InhibitRules: convertInhibitRules(promAMCfg.Spec.InhibitRules),
+			InhibitRules:  convertSliceStruct(promAMCfg.Spec.InhibitRules, convertPromInhibitRule),
+			TimeIntervals: convertSliceStruct(promAMCfg.Spec.MuteTimeIntervals, convertPromMuteTimeInterval),
 		},
 	}
-	convertedRoute, err := convertRoute(promAMCfg.Spec.Route)
+	convertedRoute, err := convertPromRoute(promAMCfg.Spec.Route)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
 	}

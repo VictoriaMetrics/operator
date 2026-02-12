@@ -3,6 +3,7 @@ on:
   release:
     types:
       - created
+      - prereleased
 jobs:
   release:
     name: Release on GitHub
@@ -31,6 +32,8 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          sudo apt update
+          sudo apt install -y libgpgme-dev
           make lint test build build-installer
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           echo ${{secrets.QUAY_ACCESSKEY}} | docker login quay.io --username '${{secrets.QUAY_USER}}' --password-stdin

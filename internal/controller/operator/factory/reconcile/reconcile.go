@@ -9,6 +9,7 @@ import (
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -114,25 +115,6 @@ func mergeObjectMetadataIntoNew(currObj, newObj, prevObj client.Object) {
 	newObj.SetLabels(labels)
 }
 
-func isErrorWaitTimeout(err error) bool {
-	var e *errWaitReady
-	return errors.As(err, &e)
-}
-
-type errWaitReady struct {
-	origin error
-}
-
-// Error implements errors.Error interface
-func (e *errWaitReady) Error() string {
-	return e.origin.Error()
-}
-
-// Unwrap implements error.Unwrap interface
-func (e *errWaitReady) Unwrap() error {
-	return e.origin
-}
-
 func isRecreate(err error) bool {
 	var e *errRecreate
 	return errors.As(err, &e)
@@ -161,7 +143,7 @@ func (e *errRecreate) Error() string {
 // * k8s conflict error
 // * reconciled resource is being deleted
 func IsRetryable(err error) bool {
-	return isConflict(err) || isErrorWaitTimeout(err)
+	return isConflict(err) || wait.Interrupted(err)
 }
 
 func isConflict(err error) bool {

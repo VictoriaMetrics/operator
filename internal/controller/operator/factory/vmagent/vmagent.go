@@ -282,7 +282,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					return selectorLabels
 				},
 			}
-			if err := reconcile.HandleSTSUpdate(ctx, rclient, opts, newApp, prevApp); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}

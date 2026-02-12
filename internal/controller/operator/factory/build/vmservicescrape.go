@@ -137,7 +137,7 @@ func VMPodScrape(b podScrapeBuilder) *vmv1beta1.VMPodScrape {
 	authKey := extraArgs["metricsAuthKey"]
 
 	endpoint := vmv1beta1.PodMetricsEndpoint{
-		Port: ptr.To("http"),
+		Port: ptr.To("monitoring-http"),
 		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 			Path: b.GetMetricsPath(),
 		},

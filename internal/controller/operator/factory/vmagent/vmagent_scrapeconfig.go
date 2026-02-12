@@ -367,134 +367,134 @@ type generateK8SSDConfigOptions struct {
 	namespace           string
 }
 
-func generateK8SSDConfig(ac *build.AssetsCache, opts generateK8SSDConfigOptions) (yaml.MapSlice, error) {
-	k8sSDConfig := yaml.MapSlice{
-		{
-			Key:   "role",
-			Value: opts.role,
-		},
-	}
-	k8sSDConfig = addAttachMetadata(k8sSDConfig, opts.attachMetadata, opts.role)
-	if len(opts.namespaces) != 0 {
-		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
-			Key: "namespaces",
-			Value: yaml.MapSlice{
-				{
-					Key:   "names",
-					Value: opts.namespaces,
+func generateK8SSDConfig(ac *build.AssetsCache, opts ...generateK8SSDConfigOptions) (yaml.MapSlice, error) {
+	var k8sSDConfigs []yaml.MapSlice
+	for _, o := range opts {
+		k8sSDConfig := yaml.MapSlice{
+			{
+				Key:   "role",
+				Value: o.role,
+			},
+		}
+		k8sSDConfig = addAttachMetadata(k8sSDConfig, o.attachMetadata, o.role)
+		if len(o.namespaces) != 0 {
+			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
+				Key: "namespaces",
+				Value: yaml.MapSlice{
+					{
+						Key:   "names",
+						Value: o.namespaces,
+					},
 				},
+			})
+		}
+		if o.apiServerConfig != nil {
+			apiserverConfig := o.apiServerConfig
+			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
+				Key: "api_server", Value: apiserverConfig.Host,
+			})
+			if apiserverConfig.BasicAuth != nil {
+				cfg, err := ac.BasicAuthToYAML(o.namespace, apiserverConfig.BasicAuth)
+				if err != nil {
+					return nil, fmt.Errorf("could not generate basicAuth for apiserver config: %w", err)
+				}
+				if len(cfg) > 0 {
+					k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "basic_auth", Value: cfg})
+				}
+			}
+
+			if apiserverConfig.BearerTokenFile != "" {
+				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token_file", Value: apiserverConfig.BearerTokenFile})
+			} else if apiserverConfig.BearerToken != "" {
+				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token", Value: apiserverConfig.BearerToken})
+			}
+
+			if apiserverConfig.Authorization != nil {
+				cfg, err := ac.AuthorizationToYAML(o.namespace, apiserverConfig.Authorization)
+				if err != nil {
+					return nil, fmt.Errorf("cannot fetch authorization secret for apiserver config: %w", err)
+				}
+				if len(cfg) > 0 {
+					k8sSDConfig = append(k8sSDConfig, cfg...)
+				}
+			}
+
+			// config as well, make sure to path the right namespace here.
+			if apiserverConfig.TLSConfig != nil {
+				cfg, err := ac.TLSToYAML(o.namespace, "", apiserverConfig.TLSConfig)
+				if err != nil {
+					return nil, fmt.Errorf("cannot add tls asset for apiServerConfig: %w", err)
+				}
+				if len(cfg) > 0 {
+					k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "tls_config", Value: cfg})
+				}
+			}
+		}
+
+		var selectors []yaml.MapSlice
+		isEmptySelectors := len(o.selectors.MatchLabels)+len(o.selectors.MatchExpressions) == 0
+		switch {
+		case o.mustUseNodeSelector:
+			var selector yaml.MapSlice
+			selector = append(selector, yaml.MapItem{
+				Key:   "role",
+				Value: k8sSDRolePod,
+			})
+			selector = append(selector, yaml.MapItem{
+				Key:   "field",
+				Value: "spec.nodeName=" + kubeNodeEnvTemplate,
+			})
+			selectors = append(selectors, selector)
+		case o.shouldAddSelectors && !isEmptySelectors:
+			var selector yaml.MapSlice
+			selector = append(selector, yaml.MapItem{
+				Key:   "role",
+				Value: o.role,
+			})
+			labelSelector, err := metav1.LabelSelectorAsSelector(&o.selectors)
+			if err != nil {
+				panic(fmt.Sprintf("BUG: unexpected error, selectors must be already validated: %q: %s", o.selectors.String(), err))
+			}
+			selector = append(selector, yaml.MapItem{
+				Key:   "label",
+				Value: labelSelector.String(),
+			})
+			selectors = append(selectors, selector)
+
+			// special case, given roles create additional watchers for
+			// pod and services roles
+			if o.role == k8sSDRoleEndpoints || o.role == k8sSDRoleEndpointslice || o.role == k8sSDRoleLegacyEndpointslices {
+				for _, role := range []string{k8sSDRolePod, k8sSDRoleService} {
+					selectors = append(selectors, yaml.MapSlice{
+						{
+							Key:   "role",
+							Value: role,
+						},
+						{
+							Key:   "label",
+							Value: labelSelector.String(),
+						},
+					})
+				}
+			}
+		}
+		if len(selectors) > 0 {
+			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
+				Key:   "selectors",
+				Value: selectors,
+			})
+		}
+		k8sSDConfigs = append(k8sSDConfigs, k8sSDConfig)
+	}
+	if len(k8sSDConfigs) > 0 {
+		return yaml.MapSlice{
+			{
+				Key:   "kubernetes_sd_configs",
+				Value: k8sSDConfigs,
 			},
-		})
+		}, nil
 	}
-
-	if opts.apiServerConfig != nil {
-		apiserverConfig := opts.apiServerConfig
-		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
-			Key: "api_server", Value: apiserverConfig.Host,
-		})
-
-		if apiserverConfig.BasicAuth != nil {
-			cfg, err := ac.BasicAuthToYAML(opts.namespace, apiserverConfig.BasicAuth)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for apiserver config: %w", err)
-			}
-			if len(cfg) > 0 {
-				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "basic_auth", Value: cfg})
-			}
-		}
-
-		if apiserverConfig.BearerTokenFile != "" {
-			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token_file", Value: apiserverConfig.BearerTokenFile})
-		} else if apiserverConfig.BearerToken != "" {
-			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token", Value: apiserverConfig.BearerToken})
-		}
-
-		if apiserverConfig.Authorization != nil {
-			cfg, err := ac.AuthorizationToYAML(opts.namespace, apiserverConfig.Authorization)
-			if err != nil {
-				return nil, fmt.Errorf("cannot fetch authorization secret for apiserver config: %w", err)
-			}
-			if len(cfg) > 0 {
-				k8sSDConfig = append(k8sSDConfig, cfg...)
-			}
-		}
-
-		// config as well, make sure to path the right namespace here.
-		if apiserverConfig.TLSConfig != nil {
-			cfg, err := ac.TLSToYAML(opts.namespace, "", apiserverConfig.TLSConfig)
-			if err != nil {
-				return nil, fmt.Errorf("cannot add tls asset for apiServerConfig: %w", err)
-			}
-			if len(cfg) > 0 {
-				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "tls_config", Value: cfg})
-			}
-		}
-	}
-
-	var selectors []yaml.MapSlice
-
-	isEmptySelectors := len(opts.selectors.MatchLabels)+len(opts.selectors.MatchExpressions) == 0
-	switch {
-	case opts.mustUseNodeSelector:
-		var selector yaml.MapSlice
-		selector = append(selector, yaml.MapItem{
-			Key:   "role",
-			Value: k8sSDRolePod,
-		})
-		selector = append(selector, yaml.MapItem{
-			Key:   "field",
-			Value: "spec.nodeName=" + kubeNodeEnvTemplate,
-		})
-		selectors = append(selectors, selector)
-
-	case opts.shouldAddSelectors && !isEmptySelectors:
-		var selector yaml.MapSlice
-		selector = append(selector, yaml.MapItem{
-			Key:   "role",
-			Value: opts.role,
-		})
-		labelSelector, err := metav1.LabelSelectorAsSelector(&opts.selectors)
-		if err != nil {
-			panic(fmt.Sprintf("BUG: unexpected error, selectors must be already validated: %q: %s", opts.selectors.String(), err))
-		}
-		selector = append(selector, yaml.MapItem{
-			Key:   "label",
-			Value: labelSelector.String(),
-		})
-		selectors = append(selectors, selector)
-
-		// special case, given roles create additional watchers for
-		// pod and services roles
-		if opts.role == k8sSDRoleEndpoints || opts.role == k8sSDRoleEndpointslice || opts.role == k8sSDRoleLegacyEndpointslices {
-			for _, role := range []string{k8sSDRolePod, k8sSDRoleService} {
-				selectors = append(selectors, yaml.MapSlice{
-					{
-						Key:   "role",
-						Value: role,
-					},
-					{
-						Key:   "label",
-						Value: labelSelector.String(),
-					},
-				})
-			}
-		}
-	}
-	if len(selectors) > 0 {
-		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
-			Key:   "selectors",
-			Value: selectors,
-		})
-	}
-
-	return yaml.MapSlice{
-		{
-			Key: "kubernetes_sd_configs",
-			Value: []yaml.MapSlice{
-				k8sSDConfig,
-			},
-		},
-	}, nil
+	return nil, nil
 }
 
 func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNamespaceLabel string) []yaml.MapSlice {

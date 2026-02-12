@@ -13,14 +13,19 @@ aliases:
 
 ## tip
 
+**Update note 1**: deprecated VMProbe's `spec.targets.ingress`. Use `spec.targets.kubernetes` slice instead. Please check [example of VMProbe with Ingress discovery](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe-k8s.yaml). This field will be removed in v0.71.0.
+
+**Update note 2**: deprecated VMProbe's `spec.targets.staticConfig`. Use `spec.targets.static` instead. Please check [example of VMProbe with static targets](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe.yaml). This field will be removed in v0.71.0.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.135.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.135.0) version
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.45.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.45.0).
 
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added namespace to `--cluster.peer` arguments explicitly when `spec.clusterDomainName` is omitted and added unit tests to test this.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VMDistributed` CR, which helps to propagate changes to each zone without affecting global availability. Before distributed setup deployment was multistep manual action. See [#1515](https://github.com/VictoriaMetrics/operator/issues/1515).
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): support ability to override default stream fields for vlagent in logs collection mode.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_*_EPHEMERAL_STORAGE_REQUEST` and `VM_*_EPHEMERAL_STORAGE_LIMIT` global variables that allow to configure ephemeralStorage requests and limits. See [#1711](https://github.com/VictoriaMetrics/operator/issues/1711).
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added tracing support. See [#1770](https://github.com/VictoriaMetrics/operator/issues/1770).
+* FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.kubernetes` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
@@ -29,18 +34,28 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously PVC downscaling always emitted a warning, which is not expected, while using PVC autoresizer; now warning during attempt to downsize PVC is only emitted if `operator.victoriametrics.com/pvc-allow-volume-expansion: false` is not set. See [#1747](https://github.com/VictoriaMetrics/operator/issues/1747).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip self scrape objects management if respective controller is disabled. See [#1718](https://github.com/VictoriaMetrics/operator/issues/1718).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support both prometheus-compatible `endpointslice` and old `endpointslices` roles.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix pod metrics port in the default VMPodScrape.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): support Prometheus operator AlertmanagerConfig spec.muteTimeIntervals conversion to VMAlertmanagerConfig spec.timeIntervals. See [#1783](https://github.com/VictoriaMetrics/operator/issues/1783).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously StatefulSet/Deployment/DaemonSet rollouts could proceed in parallel, now pods are rolled out sequentially. See [#1693](https://github.com/VictoriaMetrics/operator/issues/1693).
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): previously `--only-init-config` still kept the reloader running background watchers; now it exits after the initial config update so the pod terminates as expected. See [#1785](https://github.com/VictoriaMetrics/operator/issues/1785).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026
 
-**Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader.
+**Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader. Please verify `spec.configReloaderExtraArgs` in all instances of `VMAlert`, `VMAuth`, `VMAgent` and `VMAlertmanager` CRs are using [valid config-reloader arguments](https://docs.victoriametrics.com/operator/configuration/#config-reloader-flags) before upgrading.
+
 **Update note 2**: removed deprecated VMAgent `spec.aPIServerConfig` property
+
 **Update note 3**: removed deprecated VMCluster `spec.vmselect.persistentVolume` property
+
 **Update note 4**: VM_CUSTOMCONFIGRELOADERIMAGE is deprecated and will be removed in next releases. Use VM_CONFIG_RELOADER_IMAGE instead.
+
 **Update note 5**: VMAgent's, VMAuth's, VMAlert's and VMAlertmanager's spec.configReloaderImageTag is deprecated and will be removed in next releases. Use spec.configReloaderImage instead.
+
 **Update note 6**: VMAgent's spec.vmAgentExternalLabelName is deprecated and will be removed in next releases. Use spec.externalLabelName instead.
+
 **Update note 7**: VMAuth's spec.unauthorizedUserAccessSpec.url_prefix and spec.unauthorizedUserAccessSpec.url_map are deprecated and will be removed in next releases. Use spec.unauthorizedUserAccessSpec.targetRef instead.
+
 **Update note 8**: VMServiceScrape's `endpointslices` role is deprecated and will be removed in 0.70.0. Use `endpointslice` instead.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.134.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.134.0) version

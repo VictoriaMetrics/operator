@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -235,7 +237,6 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
-
 			// check storage
 			var sts appsv1.StatefulSet
 			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
@@ -277,4 +278,292 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		wantErr: true,
 	})
+}
+
+func TestVPACreate(t *testing.T) {
+	f := func(component vmv1beta1.ClusterComponent, cr *vmv1.VTCluster, wantVPAYAML string, predefinedObjects ...runtime.Object) {
+		t.Helper()
+		ctx := context.Background()
+		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+
+		if err := CreateOrUpdate(ctx, fclient, cr); err != nil {
+			t.Fatalf("CreateOrUpdate() error = %v", err)
+		}
+
+		vpaName := cr.PrefixedName(component)
+		var actualVPA vpav1.VerticalPodAutoscaler
+		if err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &actualVPA); err != nil {
+			t.Fatalf("VPA not found: %v", err)
+		}
+
+		var wantVPA vpav1.VerticalPodAutoscaler
+		if err := yaml.Unmarshal([]byte(wantVPAYAML), &wantVPA); err != nil {
+			t.Fatalf("BUG: expect VPA definition at yaml: %q", err)
+		}
+		assert.Equal(t, wantVPA, actualVPA)
+	}
+
+	updateModeInitial := vpav1.UpdateModeInitial
+	updateModeRecreate := vpav1.UpdateModeRecreate
+
+	// Minimal VPA - vtinsert
+	f(vmv1beta1.ClusterComponentInsert, &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1.VTClusterSpec{
+			Insert: &vmv1.VTInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &updateModeInitial,
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vtinsert-test
+    namespace: default
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vtinsert
+        app.kubernetes.io/part-of: vtcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    targetref:
+        apiversion: apps/v1
+        kind: Deployment
+        name: vtinsert-test
+    updatepolicy:
+        updatemode: Initial
+    resourcepolicy:
+        containerpolicies:
+            - containername: vtinsert
+`)
+
+	// Full VPA with all options - vtselect
+	f(vmv1beta1.ClusterComponentSelect, &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1.VTClusterSpec{
+			Select: &vmv1.VTSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &updateModeRecreate,
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{
+								ContainerName: "vtselect",
+								Mode:          ptr.To(vpav1.ContainerScalingModeAuto),
+							},
+						},
+					},
+					Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+						{Name: "custom-recommender"},
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vtselect-test
+    namespace: default
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vtselect
+        app.kubernetes.io/part-of: vtcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    targetref:
+        apiversion: apps/v1
+        kind: Deployment
+        name: vtselect-test
+    updatepolicy:
+        updatemode: Recreate
+    resourcepolicy:
+        containerpolicies:
+            - containername: vtselect
+              mode: Auto
+    recommenders:
+        - name: custom-recommender
+`)
+
+	// Storage VPA - vtstorage targets StatefulSet
+	f(vmv1beta1.ClusterComponentStorage, &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1.VTClusterSpec{
+			Storage: &vmv1.VTStorage{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &updateModeInitial,
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtstorage"},
+						},
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vtstorage-test
+    namespace: default
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vtstorage
+        app.kubernetes.io/part-of: vtcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    targetref:
+        apiversion: apps/v1
+        kind: StatefulSet
+        name: vtstorage-test
+    updatepolicy:
+        updatemode: Initial
+    resourcepolicy:
+        containerpolicies:
+            - containername: vtstorage
+`)
+}
+
+func TestVPAUpdate(t *testing.T) {
+	updateModeInitial := vpav1.UpdateModeInitial
+	updateModeRecreate := vpav1.UpdateModeRecreate
+
+	ctx := context.Background()
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+
+	// Create initial VPA with UpdateMode=Initial
+	cr := &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1.VTClusterSpec{
+			Insert: &vmv1.VTInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &updateModeInitial,
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			},
+		},
+	}
+	fclient.Scheme().Default(cr)
+	if err := CreateOrUpdate(ctx, fclient, cr); err != nil {
+		t.Fatalf("initial CreateOrUpdate() error = %v", err)
+	}
+
+	var vpa vpav1.VerticalPodAutoscaler
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vtinsert-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after create: %v", err)
+	}
+	assert.Equal(t, vpav1.UpdateModeInitial, *vpa.Spec.UpdatePolicy.UpdateMode)
+
+	// Update VPA to UpdateMode=Recreate with prevCR
+	updatedCR := cr.DeepCopy()
+	updatedCR.Spec.Insert.VPA.UpdatePolicy.UpdateMode = &updateModeRecreate
+	updatedCR.ParsedLastAppliedSpec = cr.Spec.DeepCopy()
+	fclient.Scheme().Default(updatedCR)
+	if err := CreateOrUpdate(ctx, fclient, updatedCR); err != nil {
+		t.Fatalf("update CreateOrUpdate() error = %v", err)
+	}
+
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vtinsert-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after update: %v", err)
+	}
+	assert.Equal(t, vpav1.UpdateModeRecreate, *vpa.Spec.UpdatePolicy.UpdateMode)
+}
+
+func TestVPARemoval(t *testing.T) {
+	updateModeInitial := vpav1.UpdateModeInitial
+
+	ctx := context.Background()
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+
+	// Create with VPA
+	cr := &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1.VTClusterSpec{
+			Insert: &vmv1.VTInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &updateModeInitial,
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			},
+		},
+	}
+	fclient.Scheme().Default(cr)
+	if err := CreateOrUpdate(ctx, fclient, cr); err != nil {
+		t.Fatalf("initial CreateOrUpdate() error = %v", err)
+	}
+
+	var vpa vpav1.VerticalPodAutoscaler
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vtinsert-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after create: %v", err)
+	}
+
+	// Remove VPA with prevCR tracking the old spec
+	removedCR := cr.DeepCopy()
+	removedCR.ParsedLastAppliedSpec = cr.Spec.DeepCopy()
+	removedCR.Spec.Insert.VPA = nil
+	fclient.Scheme().Default(removedCR)
+	if err := CreateOrUpdate(ctx, fclient, removedCR); err != nil {
+		t.Fatalf("removal CreateOrUpdate() error = %v", err)
+	}
+
+	err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vtinsert-test"}, &vpa)
+	assert.True(t, k8serrors.IsNotFound(err), "VPA should be removed, got error: %v", err)
 }

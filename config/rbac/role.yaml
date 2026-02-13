@@ -107,6 +107,12 @@ rules:
   resources:
   - horizontalpodautoscalers
 - apiGroups:
+  - autoscaling.k8s.io
+  verbs:
+  - "*"
+  resources:
+  - verticalpodautoscalers
+- apiGroups:
   - networking.k8s.io
   resources:
   - ingresses

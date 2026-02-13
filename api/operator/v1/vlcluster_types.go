@@ -241,6 +241,9 @@ type VLInsert struct {
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 	// SyslogSpec defines syslog listener configuration
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
@@ -423,6 +426,9 @@ type VLSelect struct {
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
@@ -545,6 +551,9 @@ type VLStorage struct {
 	// Note, downscaling is not supported.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 
 	// StorageDataPath - path to storage data
 	// +optional
@@ -704,6 +713,11 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
+		}
 	}
 	if cr.Spec.VLInsert != nil {
 		vli := cr.Spec.VLInsert
@@ -716,6 +730,11 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
+		if vli.VPA != nil {
+			if err := vli.VPA.Validate(); err != nil {
+				return err
+			}
+		}
 	}
 	if cr.Spec.VLStorage != nil {
 		vls := cr.Spec.VLStorage
@@ -725,6 +744,11 @@ func (cr *VLCluster) Validate() error {
 		}
 		if vls.HPA != nil && vls.HPA.Behaviour != nil && vls.HPA.Behaviour.ScaleDown != nil {
 			return fmt.Errorf("vlstorage scaledown HPA behavior is not supported")
+		}
+		if vls.VPA != nil {
+			if err := vls.VPA.Validate(); err != nil {
+				return err
+			}
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {

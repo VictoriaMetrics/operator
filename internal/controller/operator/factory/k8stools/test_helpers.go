@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -79,6 +80,10 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VLAgent{},
 		&gwapiv1.HTTPRoute{},
 		&apiextensionsv1.CustomResourceDefinition{},
+	)
+	s.AddKnownTypes(vpav1.SchemeGroupVersion,
+		&vpav1.VerticalPodAutoscaler{},
+		&vpav1.VerticalPodAutoscalerList{},
 	)
 	return s
 }

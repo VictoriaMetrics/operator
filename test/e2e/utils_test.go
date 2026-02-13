@@ -22,24 +22,31 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
-func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) string {
+func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) error {
 	GinkgoHelper()
 	podList := &corev1.PodList{}
 	if err := rclient.List(context.TODO(), podList, &client.ListOptions{
 		Namespace:     ns,
 		LabelSelector: labels.SelectorFromSet(lbs),
 	}); err != nil {
-		return err.Error()
+		return err
 	}
-	if len(podList.Items) != count {
-		return fmt.Sprintf("pod count mismatch, expect: %d, got: %d", count, len(podList.Items))
-	}
+	pods := podList.Items[:0]
 	for _, pod := range podList.Items {
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		pods = append(pods, pod)
+	}
+	if len(pods) != count {
+		return fmt.Errorf("pod count mismatch, expect: %d, got: %d", count, len(pods))
+	}
+	for _, pod := range pods {
 		if !reconcile.PodIsReady(&pod, 0) {
-			return fmt.Sprintf("pod isn't ready: %s,\n status: %s", pod.Name, pod.Status.String())
+			return fmt.Errorf("pod isn't ready: %s,\n status: %s", pod.Name, pod.Status.String())
 		}
 	}
-	return ""
+	return nil
 }
 
 func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) int32 {
@@ -231,8 +238,15 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 		Namespace:     ns,
 		LabelSelector: labels.SelectorFromSet(lbs),
 	})).To(Succeed())
-	Expect(podList.Items).ToNot(BeEmpty())
-	return &podList.Items[0]
+	pods := podList.Items[:0]
+	for _, pod := range podList.Items {
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		pods = append(pods, pod)
+	}
+	Expect(pods).ToNot(BeEmpty())
+	return &pods[0]
 }
 
 //nolint:dupl,lll

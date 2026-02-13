@@ -957,7 +957,7 @@ scrape_configs:
 			},
 		},
 		cfgMutator: func(c *config.BaseOperatorConf) {
-			c.VMServiceScrapeDefault.EnforceEndpointSlices = true
+			c.VMServiceScrape.EnforceEndpointSlices = true
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.Namespace{

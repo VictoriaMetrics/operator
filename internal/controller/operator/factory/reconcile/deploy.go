@@ -3,11 +3,11 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -20,15 +20,9 @@ import (
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
 func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.Deployment, hasHPA bool, owner *metav1.OwnerReference) error {
-	var isPrevEqual bool
-	var prevSpecDiff string
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
-		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
-		if !isPrevEqual {
-			prevSpecDiff = diffDeepDerivative(prevObj.Spec, newObj.Spec)
-		}
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
@@ -55,30 +49,20 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		if prevObj != nil {
 			prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 		}
-		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
 		if err != nil {
 			return err
 		}
-		if isEqual && isPrevEqual && !metaChanged {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		needsUpdate := metaChanged || len(specDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+		if !needsUpdate {
 			return nil
 		}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		existingObj.Spec = newObj.Spec
-		logMsg := fmt.Sprintf("updating Deployment %s configuration"+
-			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
-			newObj.Name, isPrevEqual, isEqual, prevObj == nil)
-
-		if len(prevSpecDiff) > 0 {
-			logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
-		}
-		if !isEqual {
-			logMsg += fmt.Sprintf(", curr_spec_diff=%s", specDiff)
-		}
-
-		logger.WithContext(ctx).Info(logMsg)
-
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot update Deployment=%s: %w", nsn, err)
 		}

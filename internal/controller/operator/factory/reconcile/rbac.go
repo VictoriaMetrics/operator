@@ -3,9 +3,9 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,13 +37,19 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Subjects, existingObj.Subjects) &&
-			equality.Semantic.DeepEqual(newObj.RoleRef, existingObj.RoleRef) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		subjectsDiff := diffDeepDerivative(newObj.Subjects, existingObj.Subjects)
+		needsUpdate := metaChanged || len(subjectsDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("subjects_diff=%s", subjectsDiff))
+		roleRefDiff := diffDeepDerivative(newObj.RoleRef, existingObj.RoleRef)
+		needsUpdate = needsUpdate || len(roleRefDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("role_ref_diff=%s", roleRefDiff))
+		if !needsUpdate {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding=%s", nsn))
 		existingObj.RoleRef = newObj.RoleRef
 		existingObj.Subjects = newObj.Subjects
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating RoleBinding %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }
@@ -71,11 +77,15 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Rules, existingObj.Rules) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		rulesDiff := diffDeepDerivative(newObj.Rules, existingObj.Rules)
+		needsUpdate := metaChanged || len(rulesDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("rules_diff=%s", rulesDiff))
+		if !needsUpdate {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating Role=%s", nsn))
 		existingObj.Rules = newObj.Rules
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Role %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }
@@ -103,13 +113,19 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Subjects, existingObj.Subjects) &&
-			equality.Semantic.DeepEqual(newObj.RoleRef, existingObj.RoleRef) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		subjectsDiff := diffDeepDerivative(newObj.Subjects, existingObj.Subjects)
+		needsUpdate := metaChanged || len(subjectsDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("subjects_diff=%s", subjectsDiff))
+		roleRefDiff := diffDeepDerivative(newObj.RoleRef, existingObj.RoleRef)
+		needsUpdate = needsUpdate || len(roleRefDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("role_ref_diff=%s", roleRefDiff))
+		if !needsUpdate {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding=%s", nsn))
 		existingObj.RoleRef = newObj.RoleRef
 		existingObj.Subjects = newObj.Subjects
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRoleBinding %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }
@@ -137,11 +153,15 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Rules, existingObj.Rules) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		rulesDiff := diffDeepDerivative(newObj.Rules, existingObj.Rules)
+		needsUpdate := metaChanged || len(rulesDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("rules_diff=%s", rulesDiff))
+		if !needsUpdate {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole=%s", nsn))
 		existingObj.Rules = newObj.Rules
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ClusterRole %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

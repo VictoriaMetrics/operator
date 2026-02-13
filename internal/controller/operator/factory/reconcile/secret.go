@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -33,11 +34,16 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Data, existingObj.Data) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn)}
+		isDataEqual := equality.Semantic.DeepDerivative(newObj.Data, existingObj.Data)
+		needsUpdate := metaChanged || !isDataEqual
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_changed=%t", !isDataEqual))
+
+		if !needsUpdate {
 			return nil
 		}
 		existingObj.Data = newObj.Data
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating Secret=%s", nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Secret %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

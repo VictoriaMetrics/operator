@@ -3,8 +3,8 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,10 +18,8 @@ import (
 func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwapiv1.HTTPRoute, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
-	var isPrevEqual bool
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
-		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
 	}
 	return retryOnConflict(func() error {
 		var existingObj gwapiv1.HTTPRoute
@@ -39,16 +37,15 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 		if err != nil {
 			return err
 		}
-		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
-		if isEqual && isPrevEqual && !metaChanged {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		needsUpdate := metaChanged || len(specDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+		if !needsUpdate {
 			return nil
 		}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		existingObj.Spec = newObj.Spec
-		logMsg := fmt.Sprintf("updating HTTPRoute=%s configuration spec_diff: %s"+
-			"is_prev_equal=%v,is_current_equal=%v,is_prev_nil=%v",
-			nsn, specDiff, isPrevEqual, isEqual, prevObj == nil)
-		logger.WithContext(ctx).Info(logMsg)
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HTTPRoute %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

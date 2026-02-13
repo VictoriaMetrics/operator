@@ -3,9 +3,9 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,12 +37,15 @@ func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.Horizon
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		needsUpdate := metaChanged || len(specDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+		if !needsUpdate {
 			return nil
 		}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA=%s spec_diff=%s", nsn, specDiff))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating HPA %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

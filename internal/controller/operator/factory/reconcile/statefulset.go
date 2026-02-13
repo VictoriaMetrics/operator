@@ -12,7 +12,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -72,18 +71,12 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
-	var isPrevEqual bool
-	var prevSpecDiff string
 	var mustRecreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
 	if prevObj != nil {
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 		prevMeta = &prevObj.ObjectMeta
-		isPrevEqual = equality.Semantic.DeepDerivative(prevObj.Spec, newObj.Spec)
-		if !isPrevEqual {
-			prevSpecDiff = diffDeepDerivative(prevObj.Spec, newObj.Spec)
-		}
 	}
 
 	rclient.Scheme().Default(newObj)
@@ -127,27 +120,20 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return nil
 		}
-
-		isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
 		if err != nil {
 			return err
 		}
-		if !metaChanged && isPrevEqual && isEqual {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		needsUpdate := metaChanged || len(specDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+		if !needsUpdate {
 			return nil
 		}
 		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		existingObj.Spec = newObj.Spec
-		logMsg := fmt.Sprintf("updating StatefulSet=%s configuration, is_current_equal=%v,is_prev_equal=%v,is_prev_nil=%v",
-			nsn, isEqual, isPrevEqual, prevObj == nil)
-		if !isEqual {
-			logMsg += fmt.Sprintf(", current_spec_diff=%s", specDiff)
-		}
-		if len(prevSpecDiff) > 0 {
-			logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
-		}
-		logger.WithContext(ctx).Info(logMsg)
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn, err)
 		}

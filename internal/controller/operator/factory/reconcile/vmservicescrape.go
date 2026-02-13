@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,12 +42,15 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, newObj, p
 		if err != nil {
 			return err
 		}
-		if !metaChanged && equality.Semantic.DeepEqual(newObj.Spec, existingObj.Spec) {
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		needsUpdate := metaChanged || len(specDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+		if !needsUpdate {
 			return nil
 		}
-		specDiff := diffDeep(newObj.Spec, existingObj.Spec)
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMServiceScrape=%s, spec_diff=%s", nsn, specDiff))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMServiceScrape %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

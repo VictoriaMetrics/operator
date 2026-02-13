@@ -3,9 +3,9 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,15 +46,9 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 	if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 		return err
 	}
-	var isPrevServiceEqual bool
 	var prevMeta *metav1.ObjectMeta
-	var prevSpecDiff string
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
-		isPrevServiceEqual = equality.Semantic.DeepDerivative(prevObj, newObj)
-		if !isPrevServiceEqual {
-			prevSpecDiff = diffDeepDerivative(prevObj, newObj)
-		}
 	}
 
 	spec := &newObj.Spec
@@ -120,25 +114,18 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 	}
 
 	rclient.Scheme().Default(newObj)
-	isEqual := equality.Semantic.DeepDerivative(newObj.Spec, existingObj.Spec)
 	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
 	if err != nil {
 		return err
 	}
-	if !metaChanged && isEqual && isPrevServiceEqual {
+	logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+	specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+	needsUpdate := metaChanged || len(specDiff) > 0
+	logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
+	if !needsUpdate {
 		return nil
 	}
-	specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 	existingObj.Spec = newObj.Spec
-	logMsg := fmt.Sprintf("updating service %s configuration, is_current_equal=%v, is_prev_equal=%v, is_prev_nil=%v",
-		newObj.Name, isEqual, isPrevServiceEqual, prevObj == nil)
-
-	if len(prevSpecDiff) > 0 {
-		logMsg += fmt.Sprintf(", prev_spec_diff=%s", prevSpecDiff)
-	}
-	if !isEqual {
-		logMsg += fmt.Sprintf(", curr_spec_diff=%s", specDiff)
-	}
-	logger.WithContext(ctx).Info(logMsg)
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating Service %s", strings.Join(logMessageMetadata, ", ")))
 	return rclient.Update(ctx, &existingObj)
 }

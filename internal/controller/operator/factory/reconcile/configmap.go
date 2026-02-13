@@ -3,9 +3,9 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,15 +34,23 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		if err != nil {
 			return err
 		}
-		if !metaChanged &&
-			equality.Semantic.DeepEqual(newObj.Data, existingObj.Data) &&
-			equality.Semantic.DeepEqual(newObj.BinaryData, existingObj.BinaryData) {
+
+		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn)}
+		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data)
+		needsUpdate := metaChanged || len(dataDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_diff=%s", dataDiff))
+
+		binDataDiff := diffDeepDerivative(newObj.BinaryData, existingObj.BinaryData)
+		needsUpdate = needsUpdate || len(binDataDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("bin_data_diff=%s", binDataDiff))
+
+		if !needsUpdate {
 			updated = false
 			return nil
 		}
 		existingObj.Data = newObj.Data
 		existingObj.BinaryData = newObj.BinaryData
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap=%s configuration", nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 	return updated, err

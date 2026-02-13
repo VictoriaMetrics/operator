@@ -316,6 +316,9 @@ type VMSelect struct {
 	// Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
@@ -390,6 +393,9 @@ type VMInsert struct {
 	*EmbeddedProbes     `json:",inline"`
 	// HPA defines kubernetes PodAutoScaling configuration version 2.
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonDefaultableParams           `json:",inline"`
 	CommonApplicationDeploymentParams `json:",inline"`
@@ -442,6 +448,9 @@ type VMStorage struct {
 	// Note, downscaling is not supported.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	// VMInsertPort for VMInsert connections
 	// +optional
@@ -640,6 +649,11 @@ func (cr *VMCluster) Validate() error {
 				return err
 			}
 		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
+		}
 		if vms.RollingUpdateStrategyBehavior != nil {
 			if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
 				return fmt.Errorf("vmselect: %w", err)
@@ -654,6 +668,11 @@ func (cr *VMCluster) Validate() error {
 		}
 		if vmi.HPA != nil {
 			if err := vmi.HPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if vmi.VPA != nil {
+			if err := vmi.VPA.Validate(); err != nil {
 				return err
 			}
 		}
@@ -676,6 +695,11 @@ func (cr *VMCluster) Validate() error {
 		}
 		if vms.HPA != nil && vms.HPA.Behaviour != nil && vms.HPA.Behaviour.ScaleDown != nil {
 			return fmt.Errorf("vmstorage scaledown HPA behavior is not supported")
+		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {

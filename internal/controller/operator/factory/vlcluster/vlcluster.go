@@ -88,6 +88,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
+		if newStorage.VPA != nil {
+			cc.KeepVPA(commonName)
+		}
 		if !ptr.Deref(newStorage.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
@@ -108,6 +111,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 		if newSelect.HPA != nil {
 			cc.KeepHPA(commonName)
+		}
+		if newSelect.VPA != nil {
+			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
 		if newSelect.ServiceSpec != nil && !newSelect.ServiceSpec.UseAsDefault {
@@ -134,6 +140,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 		if newInsert.HPA != nil {
 			cc.KeepHPA(commonName)
+		}
+		if newInsert.VPA != nil {
+			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
 		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {

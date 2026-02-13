@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -12,12 +13,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 type crObject interface {
-	FinalAnnotations() map[string]string
 	GetLabels() map[string]string
 	SelectorLabels() map[string]string
 	PrefixedName() string
@@ -54,16 +55,18 @@ func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance
 
 // AddFinalizer adds finalizer to instance if needed.
 func AddFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
-	return vmv1beta1.AddFinalizerAndThen(instance, func(o client.Object) error {
-		return patchReplaceFinalizers(ctx, rclient, o)
-	})
+	if controllerutil.AddFinalizer(instance, vmv1beta1.FinalizerName) {
+		return patchReplaceFinalizers(ctx, rclient, instance)
+	}
+	return nil
 }
 
 // RemoveFinalizer removes finalizer from instance if needed.
 func RemoveFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
-	return vmv1beta1.RemoveFinalizer(instance, func(o client.Object) error {
-		return patchReplaceFinalizers(ctx, rclient, o)
-	})
+	if controllerutil.RemoveFinalizer(instance, vmv1beta1.FinalizerName) {
+		return patchReplaceFinalizers(ctx, rclient, instance)
+	}
+	return nil
 }
 
 func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj client.Object, name, ns string) error {
@@ -77,9 +80,24 @@ func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient clie
 		}
 		return err
 	}
-	return vmv1beta1.RemoveFinalizerWithOwnerReference(obj, keepOwnerReference, func(o client.Object) error {
-		return patchReplaceFinalizers(ctx, rclient, o)
-	})
+	needsPatching := controllerutil.RemoveFinalizer(obj, vmv1beta1.FinalizerName)
+	if !keepOwnerReference {
+		existOwnerReferences := obj.GetOwnerReferences()
+		dstOwnerReferences := existOwnerReferences[:0]
+		// filter in-place
+		for _, s := range existOwnerReferences {
+			if strings.HasPrefix(s.APIVersion, vmv1beta1.APIGroup) {
+				needsPatching = true
+				continue
+			}
+			dstOwnerReferences = append(dstOwnerReferences, s)
+		}
+		obj.SetOwnerReferences(dstOwnerReferences)
+	}
+	if needsPatching {
+		return patchReplaceFinalizers(ctx, rclient, obj)
+	}
+	return nil
 }
 
 // SafeDelete removes object, ignores notfound error.
@@ -205,16 +223,4 @@ func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crO
 		return err
 	}
 	return nil
-}
-
-// FreeIfNeeded checks if resource must be freed from finalizer and garbage collected by kubernetes
-func FreeIfNeeded(ctx context.Context, rclient client.Client, object client.Object) error {
-	if object.GetDeletionTimestamp().IsZero() {
-		// fast path
-		return nil
-	}
-	if err := RemoveFinalizer(ctx, rclient, object); err != nil {
-		return fmt.Errorf("cannot remove finalizer from object=%s/%s, kind=%q: %w", object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind(), err)
-	}
-	return fmt.Errorf("deletionTimestamp is not zero=%q for object=%s/%s kind=%s, recreating it at next reconcile loop. Warning never delete object manually", object.GetDeletionTimestamp(), object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind())
 }

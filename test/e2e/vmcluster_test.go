@@ -403,8 +403,8 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						cr.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).To(BeEmpty())
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect))).To(BeEmpty())
+						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).To(Succeed())
+						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect))).To(Succeed())
 					},
 				},
 			),
@@ -507,10 +507,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						cr.Spec.VMInsert.ReplicaCount = ptr.To[int32](2)
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).To(BeEmpty())
-						Eventually(func() string {
+						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).To(Succeed())
+						Eventually(func() error {
 							return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentInsert))
-						}, eventualDeploymentPodTimeout).Should(BeEmpty())
+						}, eventualDeploymentPodTimeout).Should(Succeed())
 					},
 				},
 			),

@@ -142,7 +142,8 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
 	}
-	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
+	owner := cr.AsCRDOwner()
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -150,7 +151,8 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
 	}
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
+	owner := cr.AsCRDOwner()
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB, owner)
 }
 
 // migrateRBAC deletes incorrectly formatted resource names
@@ -214,8 +216,6 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
 		r.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
 	return r
@@ -234,8 +234,6 @@ func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
 		r.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
 	return r
@@ -247,7 +245,8 @@ func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv
 	if prevCR != nil {
 		prevRole = buildRole(prevCR)
 	}
-	return reconcile.Role(ctx, rclient, nr, prevRole)
+	owner := cr.AsOwner()
+	return reconcile.Role(ctx, rclient, nr, prevRole, &owner)
 }
 
 func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -256,7 +255,8 @@ func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	if prevCR != nil {
 		prevRB = buildRB(prevCR)
 	}
-	return reconcile.RoleBinding(ctx, rclient, rb, prevRB)
+	owner := cr.AsOwner()
+	return reconcile.RoleBinding(ctx, rclient, rb, prevRB, &owner)
 }
 
 func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {

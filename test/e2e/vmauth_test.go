@@ -73,7 +73,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
 					ps := dep.Spec.Template.Spec
@@ -101,7 +101,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
@@ -164,7 +164,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
@@ -204,7 +204,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).To(Succeed())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
 					ps := dep.Spec.Template.Spec
@@ -287,9 +287,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							cr.Spec.ReplicaCount = ptr.To[int32](2)
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 						},
 					},
 				),
@@ -317,9 +317,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							cr.Spec.UseDefaultResources = ptr.To(false)
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 						},
 					},
 					testStep{
@@ -345,9 +345,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							}
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 						},
 					},
 				),
@@ -378,9 +378,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							cr.Spec.InternalListenPort = "8426"
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 							pod := mustGetFirstPod(k8sClient, cr.Namespace, cr.SelectorLabels())
 							Expect(pod.Spec.Containers).To(HaveLen(2))
 							ac := pod.Spec.Containers[0]
@@ -463,9 +463,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							cr.Spec.PodDisruptionBudget = nil
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).To(Succeed())
 							waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
@@ -536,9 +536,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
 								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 
 						},
 					},
@@ -558,9 +558,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 
 						},
 					},
@@ -625,9 +625,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).
 								To(Succeed())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
-							Eventually(func() string {
+							Eventually(func() error {
 								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-							}, eventualDeploymentPodTimeout).Should(BeEmpty())
+							}, eventualDeploymentPodTimeout).Should(Succeed())
 
 						},
 					},

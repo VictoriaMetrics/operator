@@ -35,7 +35,8 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLSelect.PodDisruptionBudget)
 		}
-		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
+		owner := cr.AsOwner()
+		err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 		if err != nil {
 			return err
 		}
@@ -43,20 +44,8 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVLSelectHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	selectSvc, err := createOrUpdateVLSelectService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateVLSelectService(ctx, rclient, cr, prevCR); err != nil {
 		return err
-	}
-	if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
-		svs := build.VMServiceScrape(selectSvc, cr.Spec.VLSelect)
-		if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
-			// for backward compatibility we must keep job label value
-			svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
-		}
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs)
-		if err != nil {
-			return fmt.Errorf("cannot create VMServiceScrape for VLSelect: %w", err)
-		}
 	}
 	if err := createOrUpdateVLSelectDeployment(ctx, rclient, cr, prevCR); err != nil {
 		return err
@@ -80,32 +69,44 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLSelect.HPA)
 	}
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
 }
 
-func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
+func buildVLSelectScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || cr.Spec.VLSelect == nil || ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	svs := build.VMServiceScrape(svc, cr.Spec.VLSelect)
+	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
+		svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
+	}
+	return svs
+}
 
-	var prevService, prevAdditionalService *corev1.Service
+func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLSelect != nil {
-		prevService = buildVLSelectService(prevCR)
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLSelect.ServiceSpec)
+		prevSvc = buildVLSelectService(prevCR)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VLSelect.ServiceSpec)
 	}
 	svc := buildVLSelectService(cr)
+	owner := cr.AsOwner()
 	if err := cr.Spec.VLSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(svc, s)
-		if additionalService.Name == svc.Name {
-			return fmt.Errorf("VLSelect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, svc.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("VLSelect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile service for select: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, svc, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile select service: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile select service: %w", err)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		var prevPort string
@@ -114,10 +115,17 @@ func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, c
 		}
 		kind := vmv1beta1.ClusterComponentSelect
 		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VLSelect.Port, prevPort); err != nil {
-			return nil, fmt.Errorf("cannot create lb svc for select: %w", err)
+			return fmt.Errorf("cannot create lb svc for select: %w", err)
 		}
 	}
-	return svc, nil
+	if !ptr.Deref(cr.Spec.VLSelect.DisableSelfServiceScrape, false) {
+		svs := buildVLSelectScrape(cr, svc)
+		prevSvs := buildVLSelectScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create VMServiceScrape for VLSelect: %w", err)
+		}
+	}
+	return nil
 }
 
 func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
@@ -148,8 +156,8 @@ func createOrUpdateVLSelectDeployment(ctx context.Context, rclient client.Client
 	if err != nil {
 		return err
 	}
-
-	return reconcile.Deployment(ctx, rclient, newDep, prevDep, cr.Spec.VLSelect.HPA != nil)
+	owner := cr.AsOwner()
+	return reconcile.Deployment(ctx, rclient, newDep, prevDep, cr.Spec.VLSelect.HPA != nil, &owner)
 }
 
 func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {

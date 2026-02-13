@@ -3,45 +3,55 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // ConfigMap reconciles configmap object
-func ConfigMap(ctx context.Context, rclient client.Client, newCM *corev1.ConfigMap, prevCMMEta *metav1.ObjectMeta) error {
-	var currentCM corev1.ConfigMap
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newCM.Namespace, Name: newCM.Name}, &currentCM); err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap %s", newCM.Name))
-			return rclient.Create(ctx, newCM)
+func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	updated := true
+	err := retryOnConflict(func() error {
+		var existingObj corev1.ConfigMap
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap=%s", nsn))
+				return rclient.Create(ctx, newObj)
+			}
+			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn, err)
 		}
-	}
-	if !currentCM.DeletionTimestamp.IsZero() {
-		return newErrRecreate(ctx, &currentCM)
-	}
-	var prevCM *corev1.ConfigMap
-	if prevCMMEta != nil {
-		prevCM = &corev1.ConfigMap{
-			ObjectMeta: *prevCMMEta,
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+			return err
 		}
-	}
-	if equality.Semantic.DeepEqual(newCM.Data, currentCM.Data) &&
-		isObjectMetaEqual(&currentCM, newCM, prevCM) {
-		return nil
-	}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
 
-	vmv1beta1.AddFinalizer(newCM, &currentCM)
-	mergeObjectMetadataIntoNew(newCM, &currentCM, prevCM)
+		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn)}
+		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data)
+		needsUpdate := metaChanged || len(dataDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_diff=%s", dataDiff))
 
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s configuration", newCM.Name))
+		binDataDiff := diffDeepDerivative(newObj.BinaryData, existingObj.BinaryData)
+		needsUpdate = needsUpdate || len(binDataDiff) > 0
+		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("bin_data_diff=%s", binDataDiff))
 
-	return rclient.Update(ctx, newCM)
+		if !needsUpdate {
+			updated = false
+			return nil
+		}
+		existingObj.Data = newObj.Data
+		existingObj.BinaryData = newObj.BinaryData
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")))
+		return rclient.Update(ctx, &existingObj)
+	})
+	return updated, err
 }

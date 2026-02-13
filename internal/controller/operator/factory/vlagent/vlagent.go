@@ -53,12 +53,13 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		build.AddSyslogPortsToService(svc, syslogSpec)
 	})
 
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vlagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vlagent: %w", err)
 		}
 		return nil
@@ -66,10 +67,17 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
+	if err := reconcile.Service(ctx, rclient, newService, prevService, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile service for vlagent: %w", err)
 	}
 	return nil
+}
+
+func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
+	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMPodScrape(cr)
 }
 
 // CreateOrUpdate creates deployment for vlagent and configures it
@@ -83,12 +91,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if cr.Spec.K8sCollector.Enabled {
@@ -103,7 +112,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrape(cr)); err != nil {
+		svs := buildScrape(cr)
+		prevSvs := buildScrape(prevCR)
+		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}
@@ -113,7 +124,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
 		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB, &owner); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vlagent: %w", err)
 		}
 	}
@@ -133,13 +144,14 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vlagent: %w", err)
 	}
+	owner := cr.AsOwner()
 	switch newApp := newAppObj.(type) {
 	case *appsv1.DaemonSet:
 		var prevApp *appsv1.DaemonSet
 		if prevAppObj != nil {
 			prevApp, _ = prevAppObj.(*appsv1.DaemonSet)
 		}
-		if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+		if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile daemonset for vlagent: %w", err)
 		}
 		return nil
@@ -152,7 +164,7 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 			HasClaim:       len(newApp.Spec.VolumeClaimTemplates) > 0,
 			SelectorLabels: cr.SelectorLabels,
 		}
-		if err := reconcile.StatefulSet(ctx, rclient, stsOpts, newApp, prevApp); err != nil {
+		if err := reconcile.StatefulSet(ctx, rclient, stsOpts, newApp, prevApp, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile statefulset for vlagent: %w", err)
 		}
 		return nil

@@ -95,17 +95,6 @@ func MustSkipCRValidation(cr client.Object) bool {
 	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
 }
 
-// AddFinalizer conditionally adds vm-operator finalizer to the dst object
-// respectfully merges exist finalizers from src to dst
-func AddFinalizer(dst, src client.Object) {
-	srcFinalizers := src.GetFinalizers()
-	if !isContainsFinalizer(srcFinalizers) {
-		srcFinalizers = append(srcFinalizers, FinalizerName)
-		dst.SetFinalizers(srcFinalizers)
-	}
-	dst.SetFinalizers(srcFinalizers)
-}
-
 // AddClusterLabels adds to given labels cluster specific labels
 func AddClusterLabels(ls map[string]string, prefix string) map[string]string {
 	return labels.Merge(map[string]string{
@@ -139,71 +128,6 @@ func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bo
 		suffix = "internal"
 	}
 	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
-}
-
-// AddFinalizerAndThen conditionally adds vm-operator finalizer to the dst object
-// respectfully merges exist finalizers from src to dst
-// if finalizer was added, performs callback
-func AddFinalizerAndThen(src client.Object, andThen func(client.Object) error) error {
-	srcFinalizers := src.GetFinalizers()
-	var wasNotFinalizerFound bool
-	if !isContainsFinalizer(srcFinalizers) {
-		srcFinalizers = append(srcFinalizers, FinalizerName)
-		wasNotFinalizerFound = true
-		src.SetFinalizers(srcFinalizers)
-	}
-	if wasNotFinalizerFound {
-		return andThen(src)
-	}
-	return nil
-}
-
-func isContainsFinalizer(src []string) bool {
-	for _, s := range src {
-		if s == FinalizerName {
-			return true
-		}
-	}
-	return false
-}
-
-// RemoveFinalizer - removes vm-operator finalizer from finalizers list.
-// executes provided callback if finalizer found
-func RemoveFinalizer(src client.Object, andThen func(client.Object) error) error {
-	return RemoveFinalizerWithOwnerReference(src, true, andThen)
-}
-
-func RemoveFinalizerWithOwnerReference(src client.Object, keepOwnerReference bool, andThen func(client.Object) error) error {
-	existFinalizers := src.GetFinalizers()
-	var wasFound bool
-	dstFinalizers := existFinalizers[:0]
-	// filter in-place
-	for _, s := range existFinalizers {
-		if s == FinalizerName {
-			wasFound = true
-			continue
-		}
-		dstFinalizers = append(dstFinalizers, s)
-	}
-	src.SetFinalizers(dstFinalizers)
-	if !keepOwnerReference {
-		existOwnerReferences := src.GetOwnerReferences()
-		dstOwnerReferences := existOwnerReferences[:0]
-		// filter in-place
-		for _, s := range existOwnerReferences {
-			if strings.HasPrefix(s.APIVersion, APIGroup) {
-				wasFound = true
-				continue
-			}
-			dstOwnerReferences = append(dstOwnerReferences, s)
-		}
-		src.SetOwnerReferences(dstOwnerReferences)
-	}
-
-	if wasFound && andThen != nil {
-		return andThen(src)
-	}
-	return nil
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta

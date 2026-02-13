@@ -11,10 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,23 +45,23 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
 	}
 	cfg := config.MustGetBaseConfig()
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if err := createVMAuthSecretAccess(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 	}
-	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update vmauth service: %w", err)
 	}
-	if err := createOrUpdateIngress(ctx, rclient, cr); err != nil {
+	if err := createOrUpdateIngress(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 
@@ -77,14 +75,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
 	}
-
-	// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, buildServiceScrape(svc, cr)); err != nil {
-			return err
-		}
-	}
-
 	if err := CreateOrUpdateConfig(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
@@ -94,12 +84,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 		if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 			prevPDB = build.PodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget)
 		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget), prevPDB, &owner); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
+		var err error
 		prevDeploy, err = newDeployForVMAuth(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -110,7 +101,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
 	if prevCR != nil {
@@ -138,8 +129,8 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 			return err
 		}
 	}
-
-	return reconcile.HTTPRoute(ctx, rclient, newHTTPRoute, prevHTTPRoute)
+	owner := cr.AsOwner()
+	return reconcile.HTTPRoute(ctx, rclient, newHTTPRoute, prevHTTPRoute, &owner)
 }
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
@@ -423,7 +414,8 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if prevCR != nil {
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
 	}
-	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta); err != nil {
+	owner := cr.AsOwner()
+	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta, &owner); err != nil {
 		return err
 	}
 	pos.users.UpdateMetrics(ctx)
@@ -456,25 +448,17 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 }
 
 // createOrUpdateIngress handles ingress for vmauth.
-func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+func createOrUpdateIngress(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		return nil
 	}
 	newIngress := buildIngressConfig(cr)
-	var existIngress networkingv1.Ingress
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newIngress.Namespace, Name: newIngress.Name}, &existIngress); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return rclient.Create(ctx, newIngress)
-		}
-		return err
+	var prevIngress *networkingv1.Ingress
+	if prevCR != nil && prevCR.Spec.Ingress != nil {
+		prevIngress = buildIngressConfig(prevCR)
 	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existIngress); err != nil {
-		return err
-	}
-	// TODO compare
-	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
-	vmv1beta1.AddFinalizer(newIngress, &existIngress)
-	return rclient.Update(ctx, newIngress)
+	owner := cr.AsOwner()
+	return reconcile.Ingress(ctx, rclient, newIngress, prevIngress, &owner)
 }
 
 func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
@@ -560,30 +544,40 @@ func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 }
 
 // createOrUpdateService creates service for VMAuth
-func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) (*corev1.Service, error) {
-	var prevService, prevAdditionalService *corev1.Service
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, setInternalSvcPort(prevCR))
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, setInternalSvcPort(prevCR))
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
-	newService := build.Service(cr, cr.Spec.Port, setInternalSvcPort(cr))
+	svc := build.Service(cr, cr.Spec.Port, setInternalSvcPort(cr))
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
+	}
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vmauth: %w", err)
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmauth: %w", err)
+	// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
+		svs := buildScrape(cr, svc)
+		prevSvs := buildScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return err
+		}
 	}
-	return newService, nil
+
+	return nil
 }
 func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
 	if cr.Spec.HPA == nil {
@@ -599,7 +593,8 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	if prevCR != nil && prevCR.Spec.HPA != nil {
 		prevHPA = build.HPA(prevCR, targetRef, prevCR.Spec.HPA)
 	}
-	return reconcile.HPA(ctx, rclient, newHPA, prevHPA)
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
@@ -655,7 +650,10 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	return nil
 }
 
-func buildServiceScrape(svc *corev1.Service, cr *vmv1beta1.VMAuth) *vmv1beta1.VMServiceScrape {
+func buildScrape(cr *vmv1beta1.VMAuth, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) || cr.UseProxyProtocol() {
+		return nil
+	}
 	b := build.VMServiceScrape(svc, cr)
 	if len(cr.Spec.InternalListenPort) == 0 {
 		return b

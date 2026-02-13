@@ -6,42 +6,40 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // ServiceAccount creates service account or updates exist one
-func ServiceAccount(ctx context.Context, rclient client.Client, newSA, prevSA *corev1.ServiceAccount) error {
+func ServiceAccount(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.ServiceAccount, owner *metav1.OwnerReference) error {
+	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	var prevMeta *metav1.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
+	}
 	return retryOnConflict(func() error {
-		var currentSA corev1.ServiceAccount
-		if err := rclient.Get(ctx, types.NamespacedName{Name: newSA.Name, Namespace: newSA.Namespace}, &currentSA); err != nil {
+		var existingObj corev1.ServiceAccount
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount %s", newSA.Name))
-				return rclient.Create(ctx, newSA)
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount=%s", nsn))
+				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get ServiceAccount: %w", err)
+			return fmt.Errorf("cannot get ServiceAccount=%s: %w", nsn, err)
 		}
-		if !currentSA.DeletionTimestamp.IsZero() {
-			return newErrRecreate(ctx, &currentSA)
-		}
-		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSA); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		if isObjectMetaEqual(&currentSA, newSA, prevSA) {
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		if err != nil {
+			return err
+		}
+		if !metaChanged {
 			return nil
 		}
-		mergeObjectMetadataIntoNew(&currentSA, newSA, prevSA)
-		vmv1beta1.AddFinalizer(newSA, &currentSA)
-		// keep significant fields
-		newSA.Secrets = currentSA.Secrets
-		newSA.AutomountServiceAccountToken = currentSA.AutomountServiceAccountToken
-		newSA.ImagePullSecrets = currentSA.ImagePullSecrets
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount %s metadata", newSA.Name))
-
-		return rclient.Update(ctx, newSA)
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount=%s", nsn))
+		return rclient.Update(ctx, &existingObj)
 	})
 }

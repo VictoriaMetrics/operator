@@ -496,29 +496,30 @@ func TestCreateOrUpdate(t *testing.T) {
 }
 
 func TestCreatOrUpdateClusterServices(t *testing.T) {
-	f := func(component string, cr *vmv1beta1.VMCluster, wantSvcYAML string, predefinedObjects ...runtime.Object) {
+	f := func(component vmv1beta1.ClusterComponent, cr *vmv1beta1.VMCluster, wantSvcYAML string, predefinedObjects ...runtime.Object) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
 
-		var builderF func(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) (*corev1.Service, error)
+		var builderF func(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error
+		var svc *corev1.Service
 		switch component {
-		case "insert":
+		case vmv1beta1.ClusterComponentInsert:
 			builderF = createOrUpdateVMInsertService
-		case "storage":
+			svc = buildVMInsertService(cr)
+		case vmv1beta1.ClusterComponentStorage:
 			builderF = createOrUpdateVMStorageService
-		case "select":
+			svc = buildVMStorageService(cr)
+		case vmv1beta1.ClusterComponentSelect:
 			builderF = createOrUpdateVMSelectService
+			svc = buildVMSelectService(cr)
 
 		default:
 			t.Fatalf("BUG not expected component for test: %q", component)
 		}
-		svc, err := builderF(ctx, fclient, cr, nil)
-		if err != nil {
-			t.Fatalf("not expected error= %q", err)
-		}
+		assert.NoError(t, builderF(ctx, fclient, cr, nil))
 		var actualService corev1.Service
 		if err := fclient.Get(ctx, types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}, &actualService); err != nil {
 			t.Fatalf("create service not found: %q", err)
@@ -530,7 +531,7 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 		assert.Equal(t, wantService, actualService)
 	}
 
-	f("storage", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentStorage, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -580,7 +581,7 @@ spec:
     publishnotreadyaddresses: true
 `)
 	// with vmbackup and additional service ports
-	f("storage", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentStorage, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			License: &vmv1beta1.License{
@@ -657,7 +658,7 @@ spec:
     publishnotreadyaddresses: true
 `)
 
-	f("select", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentSelect, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -702,7 +703,7 @@ spec:
     publishnotreadyaddresses: true
 `)
 	// with native and extra service
-	f("select", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentSelect, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -748,7 +749,7 @@ spec:
     type: ClusterIP
     publishnotreadyaddresses: true
 `)
-	f("insert", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -796,7 +797,7 @@ spec:
     type: ClusterIP
 `)
 	// transit to headless
-	f("insert", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -872,7 +873,7 @@ spec:
 		},
 	})
 	// transit to loadbalancer
-	f("insert", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -959,7 +960,7 @@ spec:
 		},
 	})
 	// insert with load-balanacer
-	f("insert", &vmv1beta1.VMCluster{
+	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{

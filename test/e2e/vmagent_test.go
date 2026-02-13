@@ -120,9 +120,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 				},
 			}, nil, func(cr *vmv1beta1.VMAgent) {
-				Eventually(func() string {
+				Eventually(func() error {
 					return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-				}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+				}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 
 			}),
 			Entry("with statefulMode", "vm-stateful",
@@ -145,9 +145,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 				},
 			),
 			Entry("with additional service and insert ports", "insert-ports",
@@ -177,9 +177,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 
 				}),
 			Entry("with tls remote target", "remote-tls",
@@ -246,9 +246,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					}()).To(Succeed())
 				},
 				func(cr *vmv1beta1.VMAgent) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 					Expect(finalize.SafeDelete(
 						ctx,
 						k8sClient,
@@ -281,9 +281,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
 					// assert security
@@ -443,9 +443,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
 					verify: func(cr *vmv1beta1.VMAgent) {
-						Eventually(func() string {
+						Eventually(func() error {
 							return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-						}, eventualDeploymentAppReadyTimeout, 1).Should(BeEmpty())
+						}, eventualDeploymentAppReadyTimeout, 1).Should(Succeed())
 					},
 				},
 			),

@@ -48,42 +48,70 @@ const (
 	kubeNodeEnvTemplate = "%{" + kubeNodeEnvName + "}"
 )
 
-func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) (*corev1.Service, error) {
+func buildVMAgentServiceScrape(cr *vmv1beta1.VMAgent, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMServiceScrape(svc, cr)
+}
 
-	var prevService, prevAdditionalService *corev1.Service
+func buildVMAgentPodScrape(cr *vmv1beta1.VMAgent) *vmv1beta1.VMPodScrape {
+	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMPodScrape(cr)
+}
+
+func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
 			}
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
 	}
-	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
 		}
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
-
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, cr.Spec.ServiceSpec)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmagent: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmagent: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vmagent: %w", err)
 	}
-	return newService, nil
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		var err error
+		if cr.Spec.DaemonSetMode {
+			svs := buildVMAgentPodScrape(cr)
+			prevSvs := buildVMAgentPodScrape(prevCR)
+			err = reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner)
+		} else {
+			svs := buildVMAgentServiceScrape(cr, svc)
+			prevSvs := buildVMAgentServiceScrape(prevCR, prevSvc)
+			err = reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner)
+		}
+		if err != nil {
+			return fmt.Errorf("cannot create or update scrape object: %w", err)
+		}
+	}
+	return nil
 }
 
 // CreateOrUpdate creates deployment for vmagent and configures it
@@ -97,12 +125,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
@@ -112,32 +141,20 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 
-	svc, err := createOrUpdateService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return err
-	}
-
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		if cr.Spec.DaemonSetMode {
-			err = reconcile.VMPodScrapeForCRD(ctx, rclient, build.VMPodScrape(cr))
-		} else {
-			err = reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr))
-		}
-		if err != nil {
-			return fmt.Errorf("cannot create or update scrape object: %w", err)
-		}
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err = createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
+	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
 	}
 
-	if err = createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR, ac); err != nil {
+	if err := createOrUpdateRelabelConfigsAssets(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
-	if err = createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
+	if err := createOrUpdateStreamAggrConfig(ctx, rclient, cr, prevCR, ac); err != nil {
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
@@ -184,7 +201,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		err            error
 	}
 	rtCh := make(chan *returnValue)
-
+	owner := cr.AsOwner()
 	updateShard := func(shardNum int) {
 		var rv returnValue
 		defer func() {
@@ -198,7 +215,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, shardNum)
 			}
-			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB); err != nil {
+			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner); err != nil {
 				rv.err = err
 				return
 			}
@@ -238,7 +255,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false, &owner); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -282,7 +299,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					return selectorLabels
 				},
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -293,7 +310,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			if prevAppTpl != nil {
 				prevApp, _ = prevAppTpl.(*appsv1.DaemonSet)
 			}
-			if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp); err != nil {
+			if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp, &owner); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile daemonset for vmagent: %w", err)
 				return
 			}
@@ -806,7 +823,9 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Clie
 	if prevCR != nil {
 		prevConfigMeta = ptr.To(build.ResourceMeta(build.RelabelConfigResourceKind, prevCR))
 	}
-	return reconcile.ConfigMap(ctx, rclient, assetsCM, prevConfigMeta)
+	owner := cr.AsOwner()
+	_, err = reconcile.ConfigMap(ctx, rclient, assetsCM, prevConfigMeta, &owner)
+	return err
 }
 
 // buildStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
@@ -880,7 +899,9 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	if prevCR != nil {
 		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
 	}
-	return reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta)
+	owner := cr.AsOwner()
+	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta, &owner)
+	return err
 }
 
 type item struct {

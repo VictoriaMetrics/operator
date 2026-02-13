@@ -138,7 +138,7 @@ type BaseOperatorConf struct {
 		}
 	} `prefix:"VM_CONFIG_RELOADER_"`
 
-	VLogsDefault struct {
+	VLogs struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
 		Port                string `default:"9428"`
@@ -157,7 +157,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLOGSDEFAULT_"`
 
-	VLAgentDefault struct {
+	VLAgent struct {
 		Image               string `default:"victoriametrics/vlagent"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
 		Port                string `default:"9429"`
@@ -176,7 +176,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLAGENTDEFAULT_"`
 
-	VLSingleDefault struct {
+	VLSingle struct {
 		Image               string `default:"victoriametrics/victoria-logs"`
 		Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
 		Port                string `default:"9428"`
@@ -195,7 +195,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VLSINGLEDEFAULT_"`
 
-	VTSingleDefault struct {
+	VTSingle struct {
 		Image               string `default:"victoriametrics/victoria-traces"`
 		Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
 		Port                string `default:"10428"`
@@ -214,7 +214,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VTSINGLEDEFAULT_"`
 
-	VMAlertDefault struct {
+	VMAlert struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
 		Port                string `default:"8080"`
@@ -233,13 +233,13 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMALERTDEFAULT_"`
 
-	VMServiceScrapeDefault struct {
+	VMServiceScrape struct {
 		// Use endpointslices instead of endpoints as discovery role
 		// for vmservicescrape when generate scrape config for vmagent.
 		EnforceEndpointSlices bool `default:"false" env:"ENFORCEENDPOINTSLICES"`
 	} `prefix:"VM_VMSERVICESCRAPEDEFAULT_"`
 
-	VMAgentDefault struct {
+	VMAgent struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
 		Port                string `default:"8429"`
@@ -258,7 +258,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMAGENTDEFAULT_"`
 
-	VMAnomalyDefault struct {
+	VMAnomaly struct {
 		Image               string `default:"victoriametrics/vmanomaly"`
 		Version             string `env:",expand" default:"${VM_ANOMALY_VERSION}"`
 		Port                string `default:"8490"`
@@ -277,7 +277,7 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
 
-	VMSingleDefault struct {
+	VMSingle struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
 		Port                string `default:"8429"`
@@ -296,9 +296,9 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMSINGLEDEFAULT_"`
 
-	VMClusterDefault struct {
+	VMCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
-		VMSelectDefault     struct {
+		Select              struct {
 			Image    string `default:"victoriametrics/vmselect"`
 			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
 			Port     string `default:"8481"`
@@ -315,7 +315,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSELECTDEFAULT_"`
-		VMStorageDefault struct {
+		Storage struct {
 			Image        string `default:"victoriametrics/vmstorage"`
 			Version      string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
 			VMInsertPort string `default:"8400" env:"VMINSERTPORT"`
@@ -334,7 +334,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VMSTORAGEDEFAULT_"`
-		VMInsertDefault struct {
+		Insert struct {
 			Image    string `default:"victoriametrics/vminsert"`
 			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
 			Port     string `default:"8480"`
@@ -353,11 +353,12 @@ type BaseOperatorConf struct {
 		} `prefix:"VMINSERTDEFAULT_"`
 	} `prefix:"VM_VMCLUSTERDEFAULT_"`
 
-	VMAlertManager struct {
-		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
-		AlertManagerVersion          string `default:"v0.31.0" env:"ALERTMANAGERVERSION"`
-		UseDefaultResources          bool   `default:"true" env:"USEDEFAULTRESOURCES"`
-		Resource                     struct {
+	VMAlertmanager struct {
+		Image               string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
+		Version             string `default:"v0.31.0" env:"ALERTMANAGERVERSION"`
+		Port                string `default:"9093"`
+		UseDefaultResources bool   `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
 			Limit struct {
 				Mem              string `default:"256Mi"`
 				Cpu              string `default:"100m"`
@@ -390,7 +391,7 @@ type BaseOperatorConf struct {
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMBACKUP_"`
-	VMAuthDefault struct {
+	VMAuth struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `env:",expand" default:"${VM_METRICS_VERSION}"`
 		Port                string `default:"8427"`
@@ -409,9 +410,9 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 	} `prefix:"VM_VMAUTHDEFAULT_"`
 
-	VLClusterDefault struct {
+	VLCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
-		VLSelectDefault     struct {
+		Select              struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
 			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9471"`
@@ -428,7 +429,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSELECTDEFAULT_"`
-		VLStorageDefault struct {
+		Storage struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
 			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9491"`
@@ -445,7 +446,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"VLSTORAGEDEFAULT_"`
-		VLInsertDefault struct {
+		Insert struct {
 			Image    string `default:"victoriametrics/victoria-logs"`
 			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
 			Port     string `default:"9481"`
@@ -464,9 +465,9 @@ type BaseOperatorConf struct {
 		} `prefix:"VLINSERTDEFAULT_"`
 	} `prefix:"VM_VLCLUSTERDEFAULT_"`
 
-	VTClusterDefault struct {
+	VTCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
-		SelectDefault       struct {
+		Select              struct {
 			Image    string `default:"victoriametrics/victoria-traces"`
 			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
 			Port     string `default:"10471"`
@@ -483,7 +484,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"SELECT_"`
-		StorageDefault struct {
+		Storage struct {
 			Image    string `default:"victoriametrics/victoria-traces"`
 			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
 			Port     string `default:"10491"`
@@ -500,7 +501,7 @@ type BaseOperatorConf struct {
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
 		} `prefix:"STORAGE_"`
-		InsertDefault struct {
+		Insert struct {
 			Image    string `default:"victoriametrics/victoria-traces"`
 			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
 			Port     string `default:"10481"`
@@ -634,61 +635,61 @@ func (boc BaseOperatorConf) validate() error {
 	if err := validateResource("config-reloader", Resource(boc.ConfigReloader.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmagent", Resource(boc.VMAgentDefault.Resource)); err != nil {
+	if err := validateResource("vmagent", Resource(boc.VMAgent.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmalert", Resource(boc.VMAlertDefault.Resource)); err != nil {
+	if err := validateResource("vmalert", Resource(boc.VMAlert.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmalertmanager", Resource(boc.VMAlertManager.Resource)); err != nil {
+	if err := validateResource("vmalertmanager", Resource(boc.VMAlertmanager.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmselect", Resource(boc.VMClusterDefault.VMSelectDefault.Resource)); err != nil {
+	if err := validateResource("vmselect", Resource(boc.VMCluster.Select.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vminsert", Resource(boc.VMClusterDefault.VMInsertDefault.Resource)); err != nil {
+	if err := validateResource("vminsert", Resource(boc.VMCluster.Insert.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmstorage", Resource(boc.VMClusterDefault.VMStorageDefault.Resource)); err != nil {
+	if err := validateResource("vmstorage", Resource(boc.VMCluster.Storage.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmsingle", Resource(boc.VMSingleDefault.Resource)); err != nil {
+	if err := validateResource("vmsingle", Resource(boc.VMSingle.Resource)); err != nil {
 		return err
 	}
 	if err := validateResource("vmbackup", Resource(boc.VMBackup.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlogs", Resource(boc.VLogsDefault.Resource)); err != nil {
+	if err := validateResource("vlogs", Resource(boc.VLogs.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlagent", Resource(boc.VLAgentDefault.Resource)); err != nil {
+	if err := validateResource("vlagent", Resource(boc.VLAgent.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmanomaly", Resource(boc.VMAnomalyDefault.Resource)); err != nil {
+	if err := validateResource("vmanomaly", Resource(boc.VMAnomaly.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlsingle", Resource(boc.VLSingleDefault.Resource)); err != nil {
+	if err := validateResource("vlsingle", Resource(boc.VLSingle.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlselect", Resource(boc.VLClusterDefault.VLSelectDefault.Resource)); err != nil {
+	if err := validateResource("vlselect", Resource(boc.VLCluster.Select.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlinsert", Resource(boc.VLClusterDefault.VLInsertDefault.Resource)); err != nil {
+	if err := validateResource("vlinsert", Resource(boc.VLCluster.Insert.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vlstorage", Resource(boc.VLClusterDefault.VLStorageDefault.Resource)); err != nil {
+	if err := validateResource("vlstorage", Resource(boc.VLCluster.Storage.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vtsingle", Resource(boc.VTSingleDefault.Resource)); err != nil {
+	if err := validateResource("vtsingle", Resource(boc.VTSingle.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vtselect", Resource(boc.VTClusterDefault.SelectDefault.Resource)); err != nil {
+	if err := validateResource("vtselect", Resource(boc.VTCluster.Select.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vtinsert", Resource(boc.VTClusterDefault.InsertDefault.Resource)); err != nil {
+	if err := validateResource("vtinsert", Resource(boc.VTCluster.Insert.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vtstorage", Resource(boc.VTClusterDefault.StorageDefault.Resource)); err != nil {
+	if err := validateResource("vtstorage", Resource(boc.VTCluster.Storage.Resource)); err != nil {
 		return err
 	}
 	return nil

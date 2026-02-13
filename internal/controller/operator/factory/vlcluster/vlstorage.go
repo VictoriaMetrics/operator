@@ -35,7 +35,8 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLStorage.PodDisruptionBudget)
 		}
-		err := reconcile.PDB(ctx, rclient, pdb, prevPDB)
+		owner := cr.AsOwner()
+		err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 		if err != nil {
 			return err
 		}
@@ -46,53 +47,60 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 	if err := createOrUpdateVLStorageSTS(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-
-	storageSvc, err := createOrUpdateVLStorageService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateVLStorageService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(storageSvc, cr.Spec.VLStorage)); err != nil {
-			return fmt.Errorf("cannot create VMServiceScrape for VLStorage: %w", err)
-		}
-	}
-
 	return nil
 }
 
-func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) (*corev1.Service, error) {
+func buildVLStorageScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || cr.Spec.VLStorage == nil || ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMServiceScrape(svc, cr.Spec.VLStorage)
+}
+
+func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	newHeadless := build.Service(b, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
+	svc := build.Service(b, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 	})
-	var prevService, prevAdditionalService *corev1.Service
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevService = build.Service(b, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
+		prevSvc = build.Service(b, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.PublishNotReadyAddresses = true
 		})
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.VLStorage.ServiceSpec)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VLStorage.ServiceSpec)
 
 	}
+	owner := cr.AsOwner()
 	if err := cr.Spec.VLStorage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newHeadless, s)
-		if additionalService.Name == newHeadless.Name {
-			return fmt.Errorf("VLStorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("VLStorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile storage additional service: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newHeadless, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile storage service: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile storage service: %w", err)
 	}
-	return newHeadless, nil
+	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
+		svs := buildVLStorageScrape(cr, svc)
+		prevSvs := buildVLStorageScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create VMServiceScrape for VLStorage: %w", err)
+		}
+	}
+	return nil
 }
 
 func createOrUpdateVLStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
@@ -113,7 +121,8 @@ func createOrUpdateVLStorageHPA(ctx context.Context, rclient client.Client, cr, 
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLStorage.HPA)
 	}
 
-	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA)
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
 }
 
 func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
@@ -138,7 +147,8 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		},
 		UpdateBehavior: cr.Spec.VLStorage.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts)
+	owner := cr.AsOwner()
+	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
 }
 
 func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {

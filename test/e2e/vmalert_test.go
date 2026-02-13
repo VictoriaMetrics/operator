@@ -80,9 +80,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 				nil,
 				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 
 				},
 			),
@@ -208,9 +208,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					}()).To(Succeed())
 				},
 				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      tlsSecretName,
@@ -243,9 +243,9 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 				nil,
 				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout, 1).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout, 1).Should(Succeed())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).To(Succeed())
 					// assert security
@@ -315,18 +315,18 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					cr.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
 				},
 				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout).Should(Succeed())
 				}),
 			Entry("by updating revisionHistoryLimit to 3", "historylimit-3",
 				func(cr *vmv1beta1.VMAlert) {
 					cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
 				},
 				func(cr *vmv1beta1.VMAlert) {
-					Eventually(func() string {
+					Eventually(func() error {
 						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
-					}, eventualDeploymentPodTimeout).Should(BeEmpty())
+					}, eventualDeploymentPodTimeout).Should(Succeed())
 					Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
 						Name:      cr.PrefixedName(),
 						Namespace: nsn.Namespace,

@@ -51,7 +51,8 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
 	}
-	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
+	owner := cr.AsCRDOwner()
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
@@ -59,11 +60,12 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
 	}
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
+	owner := cr.AsCRDOwner()
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB, owner)
 }
 
 func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
-	r := &rbacv1.ClusterRoleBinding{
+	o := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
@@ -71,13 +73,11 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      rbacv1.ServiceAccountKind,
-				Name:      cr.GetServiceAccountName(),
-				Namespace: cr.GetNamespace(),
-			},
-		},
+		Subjects: []rbacv1.Subject{{
+			Kind:      rbacv1.ServiceAccountKind,
+			Name:      cr.GetServiceAccountName(),
+			Namespace: cr.GetNamespace(),
+		}},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Name:     cr.GetClusterRoleName(),
@@ -86,15 +86,13 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
+		o.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
-	return r
+	return o
 }
 
 func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
-	r := &rbacv1.ClusterRole{
+	o := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
 			Namespace:   cr.GetNamespace(),
@@ -106,9 +104,7 @@ func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
+		o.OwnerReferences = []metav1.OwnerReference{*owner}
 	}
-	return r
+	return o
 }

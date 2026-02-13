@@ -81,12 +81,12 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 	return statefulset, nil
 }
 
-func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
+func buildService(cr *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 	port, err := strconv.ParseInt(cr.Port(), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 	}
-	newService := build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
+	return build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.Ports[0].Port = int32(port)
 		svc.Spec.PublishNotReadyAddresses = true
@@ -104,51 +104,53 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 				Protocol:   corev1.ProtocolUDP,
 			},
 		)
-	})
-	var prevService, prevAdditionalService *corev1.Service
-	if prevCR != nil {
-		prevPort, err := strconv.ParseInt(prevCR.Port(), 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
-		}
-		prevService = build.Service(prevCR, prevCR.Spec.PortName, func(svc *corev1.Service) {
-			svc.Spec.ClusterIP = "None"
-			svc.Spec.Ports[0].Port = int32(prevPort)
-			svc.Spec.PublishNotReadyAddresses = true
-			svc.Spec.Ports = append(svc.Spec.Ports,
-				corev1.ServicePort{
-					Name:       "tcp-mesh",
-					Port:       9094,
-					TargetPort: intstr.FromInt(9094),
-					Protocol:   corev1.ProtocolTCP,
-				},
-				corev1.ServicePort{
-					Name:       "udp-mesh",
-					Port:       9094,
-					TargetPort: intstr.FromInt(9094),
-					Protocol:   corev1.ProtocolUDP,
-				},
-			)
-		})
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
-	}
+	}), nil
+}
 
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
+	}
+	return build.VMServiceScrape(svc, cr)
+}
+
+func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {
+	svc, err := buildService(cr)
+	if err != nil {
+		return err
+	}
+	var prevSvc, prevAdditionalSvc *corev1.Service
+	if prevCR != nil {
+		prevSvc, err = buildService(prevCR)
+		if err != nil {
+			return err
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
+	}
+	owner := cr.AsOwner()
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmalertmanager: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vmalertmanager: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vmalertmanager: %w", err)
 	}
-	return newService, nil
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		svs := buildScrape(cr, svc)
+		prevSvs := buildScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
@@ -554,7 +556,8 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		prevSecretMeta = buildConfigSecretMeta(prevCR)
 	}
 
-	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta); err != nil {
+	owner := cr.AsOwner()
+	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta, &owner); err != nil {
 		return err
 	}
 

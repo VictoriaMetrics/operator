@@ -30,7 +30,8 @@ func createOrUpdateVLogsPVC(ctx context.Context, rclient client.Client, cr, prev
 	if prevCR != nil && prevCR.Spec.Storage != nil {
 		prevPVC = newVLogsPVC(prevCR)
 	}
-	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC)
+	owner := cr.AsOwner()
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc, prevPVC, &owner)
 }
 
 func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
@@ -70,30 +71,24 @@ func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1bet
 		}
 	}
 
+	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
 			prevSA = build.ServiceAccount(prevCR)
 		}
-		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA); err != nil {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
-	svc, err := createOrUpdateVLogsService(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateVLogsService(ctx, rclient, cr, prevCR); err != nil {
 		return err
-	}
-
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrape(svc, cr))
-		if err != nil {
-			return fmt.Errorf("cannot create serviceScrape for vlsingle: %w", err)
-		}
 	}
 
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
+		var err error
 		prevDeploy, err = newVLogsDeployment(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -105,7 +100,7 @@ func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1bet
 		return fmt.Errorf("cannot generate new deploy for vlsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
 }
 
 func newVLogsDeployment(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
@@ -262,32 +257,46 @@ func makeVLogsPodSpec(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 	return vlsingleSpec, nil
 }
 
-// createOrUpdateService creates service for vlsingle
-func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) (*corev1.Service, error) {
-	var prevService, prevAdditionalService *corev1.Service
-	if prevCR != nil {
-		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
+func buildVLogsScrape(cr *vmv1beta1.VLogs, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		return nil
 	}
+	return build.VMServiceScrape(svc, cr)
+}
 
-	newService := build.Service(cr, cr.Spec.Port, nil)
+// createOrUpdateService creates service for vlsingle
+func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VLogs) error {
+	var prevSvc, prevAdditionalSvc *corev1.Service
+	if prevCR != nil {
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
+	}
+	svc := build.Service(cr, cr.Spec.Port, nil)
+	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, s)
-		if additionalService.Name == newService.Name {
-			return fmt.Errorf("vlsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("vlsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
-		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService); err != nil {
+		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vlsingle: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
-		return nil, fmt.Errorf("cannot reconcile service for vlsingle: %w", err)
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile service for vlsingle: %w", err)
 	}
-	return newService, nil
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		svs := buildVLogsScrape(cr, svc)
+		prevSvs := buildVLogsScrape(prevCR, prevSvc)
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+			return fmt.Errorf("cannot create serviceScrape for vlsingle: %w", err)
+		}
+	}
+	return nil
 }
 
 func deleteVLogsPrevStateResources(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLogs) error {

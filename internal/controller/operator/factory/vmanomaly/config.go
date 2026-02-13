@@ -28,14 +28,14 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 			secretConfigKey: data,
 		},
 	}
-
+	owner := cr.AsOwner()
 	for kind, secret := range ac.GetOutput() {
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return "", err
 		}
 	}
@@ -45,7 +45,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 		prevSecretMeta = ptr.To(build.ResourceMeta(build.SecretConfigResourceKind, prevCR))
 	}
 
-	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta); err != nil {
+	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta, &owner); err != nil {
 		return "", err
 	}
 

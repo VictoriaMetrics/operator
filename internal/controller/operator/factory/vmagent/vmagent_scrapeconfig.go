@@ -78,6 +78,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		return fmt.Errorf("generating config for vmagent failed: %w", err)
 	}
 
+	owner := cr.AsOwner()
 	for kind, secret := range ac.GetOutput() {
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
@@ -95,7 +96,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		secret.Annotations = map[string]string{
 			"generated": "true",
 		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta); err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return err
 		}
 	}

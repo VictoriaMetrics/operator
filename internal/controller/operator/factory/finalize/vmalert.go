@@ -30,9 +30,7 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 		return err
 	}
 	for _, cm := range cmList.Items {
-		if err := vmv1beta1.RemoveFinalizer(&cm, func(o client.Object) error {
-			return patchReplaceFinalizers(ctx, rclient, o)
-		}); err != nil {
+		if err := RemoveFinalizer(ctx, rclient, &cm); err != nil {
 			return fmt.Errorf("failed to remove finalizer from vmalert cm=%q: %w", cm.Name, err)
 		}
 	}

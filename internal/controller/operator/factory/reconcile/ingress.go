@@ -5,30 +5,30 @@ import (
 	"fmt"
 	"strings"
 
+	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// HTTPRoute creates or updates HTTPRoute object
-func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwapiv1.HTTPRoute, owner *metav1.OwnerReference) error {
+// Ingress creates or updates Ingress object
+func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.Ingress, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
 	return retryOnConflict(func() error {
-		var existingObj gwapiv1.HTTPRoute
+		var existingObj networkingv1.Ingress
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating HTTPRoute=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating Ingress=%s", nsn))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get existing HTTPRoute=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get existing Ingress=%s: %w", nsn, err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
@@ -45,7 +45,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating HTTPRoute %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Ingress %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

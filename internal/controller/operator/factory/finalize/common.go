@@ -80,21 +80,21 @@ func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient clie
 		}
 		return err
 	}
-	wasFound := controllerutil.RemoveFinalizer(obj, vmv1beta1.FinalizerName)
+	needsPatching := controllerutil.RemoveFinalizer(obj, vmv1beta1.FinalizerName)
 	if !keepOwnerReference {
 		existOwnerReferences := obj.GetOwnerReferences()
 		dstOwnerReferences := existOwnerReferences[:0]
 		// filter in-place
 		for _, s := range existOwnerReferences {
 			if strings.HasPrefix(s.APIVersion, vmv1beta1.APIGroup) {
-				wasFound = true
+				needsPatching = true
 				continue
 			}
 			dstOwnerReferences = append(dstOwnerReferences, s)
 		}
 		obj.SetOwnerReferences(dstOwnerReferences)
 	}
-	if wasFound {
+	if needsPatching {
 		return patchReplaceFinalizers(ctx, rclient, obj)
 	}
 	return nil

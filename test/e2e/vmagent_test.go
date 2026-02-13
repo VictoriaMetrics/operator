@@ -358,7 +358,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 						RoleRef: rbacv1.RoleRef{
 							APIGroup: rbacv1.GroupName,
-							Name:     cr.GetClusterRoleName(),
+							Name:     cr.GetRBACName(),
 							Kind:     "ClusterRole",
 						},
 					}

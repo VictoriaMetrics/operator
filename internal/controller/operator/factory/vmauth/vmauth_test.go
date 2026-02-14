@@ -92,17 +92,19 @@ func TestCreateOrUpdate(t *testing.T) {
 					Port: "8427",
 				},
 			},
-			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Port: "8427",
-				},
-				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-					ParentRefs: []gwapiv1.ParentReference{
-						{
-							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-							Namespace: ptr.To(gwapiv1.Namespace("default")),
-							Name:      gwapiv1.ObjectName("test"),
+			Status: vmv1beta1.VMAuthStatus{
+				LastAppliedSpec: &vmv1beta1.VMAuthSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Port: "8427",
+					},
+					HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+						ParentRefs: []gwapiv1.ParentReference{
+							{
+								Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+								Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+								Namespace: ptr.To(gwapiv1.Namespace("default")),
+								Name:      gwapiv1.ObjectName("test"),
+							},
 						},
 					},
 				},

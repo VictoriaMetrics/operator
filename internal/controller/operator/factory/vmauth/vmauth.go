@@ -40,9 +40,9 @@ const (
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 
 	var prevCR *vmv1beta1.VMAuth
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	cfg := config.MustGetBaseConfig()
 	owner := cr.AsOwner()
@@ -378,9 +378,9 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		return nil
 	}
 	var prevCR *vmv1beta1.VMAuth
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	s := &corev1.Secret{
 		ObjectMeta: buildConfigSecretMeta(cr),

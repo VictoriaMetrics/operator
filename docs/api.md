@@ -243,7 +243,7 @@ Appears in: [VLAgentSpec](#vlagentspec)
 
 VLAgentSpec defines the desired state of VLAgent
 
-Appears in: [VLAgent](#vlagent)
+Appears in: [VLAgent](#vlagent), [VLAgentStatus](#vlagentstatus)
 
 | Field | Description |
 | --- | --- |
@@ -327,7 +327,7 @@ VLCluster is fast, cost-effective and scalable logs database.
 
 VLClusterSpec defines the desired state of VLCluster
 
-Appears in: [VLCluster](#vlcluster)
+Appears in: [VLCluster](#vlcluster), [VLClusterStatus](#vlclusterstatus)
 
 | Field | Description |
 | --- | --- |
@@ -486,7 +486,7 @@ VLSingle is the Schema for the API
 
 VLSingleSpec defines the desired state of VLSingle
 
-Appears in: [VLSingle](#vlsingle)
+Appears in: [VLSingle](#vlsingle), [VLSingleStatus](#vlsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -765,7 +765,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 
 VMAnomalySpec defines the desired state of VMAnomaly.
 
-Appears in: [VMAnomaly](#vmanomaly)
+Appears in: [VMAnomaly](#vmanomaly), [VMAnomalyStatus](#vmanomalystatus)
 
 | Field | Description |
 | --- | --- |
@@ -884,7 +884,7 @@ VTCluster is fast, cost-effective and scalable traces database.
 
 VTClusterSpec defines the desired state of VTCluster
 
-Appears in: [VTCluster](#vtcluster)
+Appears in: [VTCluster](#vtcluster), [VTClusterStatus](#vtclusterstatus)
 
 | Field | Description |
 | --- | --- |
@@ -1041,7 +1041,7 @@ VTSingle is the Schema for the API
 
 VTSingleSpec defines the desired state of VTSingle
 
-Appears in: [VTSingle](#vtsingle)
+Appears in: [VTSingle](#vtsingle), [VTSingleStatus](#vtsinglestatus)
 
 | Field | Description |
 | --- | --- |
@@ -1344,7 +1344,7 @@ Appears in: [VMAgentNameAndSpec](#vmagentnameandspec)
 
 VMDistributedSpec defines configurable parameters for VMDistributed CR
 
-Appears in: [VMDistributed](#vmdistributed)
+Appears in: [VMDistributed](#vmdistributed), [VMDistributedStatus](#vmdistributedstatus)
 
 | Field | Description |
 | --- | --- |
@@ -3588,7 +3588,7 @@ VLogs is the Schema for the vlogs API
 VLogsSpec defines the desired state of VLogs
 VLogs is deprecated, migrate to the VLSingle
 
-Appears in: [VLogs](#vlogs)
+Appears in: [VLogs](#vlogs), [VLogsStatus](#vlogsstatus)
 
 | Field | Description |
 | --- | --- |
@@ -3716,7 +3716,7 @@ Appears in: [VMAgentSpec](#vmagentspec)
 
 VMAgentSpec defines the desired state of VMAgent
 
-Appears in: [VMAgent](#vmagent)
+Appears in: [VMAgent](#vmagent), [VMAgentStatus](#vmagentstatus)
 
 | Field | Description |
 | --- | --- |
@@ -3926,7 +3926,7 @@ Appears in: [VMAlertSpec](#vmalertspec)
 
 VMAlertSpec defines the desired state of VMAlert
 
-Appears in: [VMAlert](#vmalert)
+Appears in: [VMAlert](#vmalert), [VMAlertStatus](#vmalertstatus)
 
 | Field | Description |
 | --- | --- |
@@ -4086,7 +4086,7 @@ Appears in: [VMAlertmanagerWebConfig](#vmalertmanagerwebconfig)
 VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmanager cluster. More info:
 https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 
-Appears in: [VMAlertmanager](#vmalertmanager)
+Appears in: [VMAlertmanager](#vmalertmanager), [VMAlertmanagerStatus](#vmalertmanagerstatus)
 
 | Field | Description |
 | --- | --- |
@@ -4307,7 +4307,7 @@ Appears in: [VMAuthLoadBalancer](#vmauthloadbalancer)
 
 VMAuthSpec defines the desired state of VMAuth
 
-Appears in: [VMAuth](#vmauth), [VMAuthNameAndSpec](#vmauthnameandspec)
+Appears in: [VMAuth](#vmauth), [VMAuthNameAndSpec](#vmauthnameandspec), [VMAuthStatus](#vmauthstatus)
 
 | Field | Description |
 | --- | --- |
@@ -4475,7 +4475,7 @@ Cluster version with
 
 VMClusterSpec defines the desired state of VMCluster
 
-Appears in: [VMCluster](#vmcluster), [VMClusterObjOrRef](#vmclusterobjorref)
+Appears in: [VMCluster](#vmcluster), [VMClusterObjOrRef](#vmclusterobjorref), [VMClusterStatus](#vmclusterstatus)
 
 | Field | Description |
 | --- | --- |
@@ -5036,7 +5036,7 @@ VMSingle  is fast, cost-effective and scalable time-series database.
 
 VMSingleSpec defines the desired state of VMSingle
 
-Appears in: [VMSingle](#vmsingle)
+Appears in: [VMSingle](#vmsingle), [VMSingleStatus](#vmsinglestatus)
 
 | Field | Description |
 | --- | --- |

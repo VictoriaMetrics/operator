@@ -24,9 +24,9 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 	}
 	var prevCR *vmv1.VLCluster
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	if cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)

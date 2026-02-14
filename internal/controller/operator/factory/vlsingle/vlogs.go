@@ -59,9 +59,9 @@ func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 // CreateOrUpdate performs an update for vlogs resource
 func CreateOrUpdateVLogs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLogs) error {
 	var prevCR *vmv1beta1.VLogs
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := deleteVLogsPrevStateResources(ctx, rclient, cr); err != nil {
 			return err
 		}

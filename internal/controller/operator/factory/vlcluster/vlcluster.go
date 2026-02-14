@@ -25,9 +25,9 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 	}
 	var prevCR *vmv1.VLCluster
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	cfg := config.MustGetBaseConfig()
 	if !cfg.VPAAPIEnabled {

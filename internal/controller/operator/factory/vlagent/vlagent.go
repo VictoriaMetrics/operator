@@ -85,9 +85,9 @@ func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client) error {
 	var prevCR *vmv1.VLAgent
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}

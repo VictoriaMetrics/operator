@@ -138,6 +138,5 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
 }

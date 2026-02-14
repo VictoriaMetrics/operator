@@ -10,10 +10,10 @@ import (
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
@@ -36,8 +36,6 @@ type VMAlertmanager struct {
 	// Specification of the desired behavior of the VMAlertmanager cluster. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec VMAlertmanagerSpec `json:"spec"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAlertmanagerSpec `json:"-" yaml:"-"`
 
 	// Most recent observed status of the VMAlertmanager cluster.
 	// Operator API itself. More info:
@@ -215,11 +213,6 @@ type VMAlertmanagerSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAlertmanager) SetLastSpec(prevSpec VMAlertmanagerSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
 // GetReloadURL implements reloadable interface
 func (cr *VMAlertmanager) GetReloadURL(host string) string {
 	localReloadURL := &url.URL{
@@ -249,19 +242,6 @@ func (cr *VMAlertmanager) AutomountServiceAccountToken() bool {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
-	type pcr VMAlertmanager
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAlertmanagerSpec
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
@@ -287,6 +267,9 @@ type VMAlertmanagerList struct {
 // Operator API itself. More info:
 type VMAlertmanagerStatus struct {
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMAlertmanagerSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -498,14 +481,11 @@ func (cr *VMAlertmanager) IsUnmanaged() bool {
 	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMAlertmanager) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VMAlertmanager) Paused() bool {

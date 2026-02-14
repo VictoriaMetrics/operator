@@ -53,9 +53,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 	}
 	var prevCR *vmv1beta1.VMCluster
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {

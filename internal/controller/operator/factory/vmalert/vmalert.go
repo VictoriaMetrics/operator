@@ -95,9 +95,9 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
 	var prevCR *vmv1beta1.VMAlert
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := discoverNotifiersIfNeeded(ctx, rclient, prevCR); err != nil {
 			return fmt.Errorf("cannot discover notifiers for prev spec: %w", err)
 		}

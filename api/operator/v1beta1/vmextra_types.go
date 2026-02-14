@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,7 +67,6 @@ const (
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
 	PVCExpandableLabel               = "operator.victoriametrics.com/pvc-allow-volume-expansion"
-	LastAppliedSpecAnnotation        = "operator.victoriametrics/last-applied-spec"
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 )
@@ -1015,54 +1013,6 @@ type TLSClientConfig struct {
 // ScrapeObjectStatus defines the observed state of ScrapeObjects
 type ScrapeObjectStatus struct {
 	StatusMetadata `json:",inline"`
-}
-
-type objectWithLastAppliedState[T, ST any] interface {
-	GetAnnotations() map[string]string
-	SetLastSpec(ST)
-}
-
-// ParseLastAppliedStateTo parses spec from provided CR annotations and sets it to the given CR
-func ParseLastAppliedStateTo[T objectWithLastAppliedState[T, ST], ST any](cr T) error {
-	lastAppliedSpecJSON := cr.GetAnnotations()[LastAppliedSpecAnnotation]
-	if len(lastAppliedSpecJSON) == 0 {
-		return nil
-	}
-	var dst ST
-	if err := json.Unmarshal([]byte(lastAppliedSpecJSON), &dst); err != nil {
-		return fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", LastAppliedSpecAnnotation, err)
-	}
-	cr.SetLastSpec(dst)
-	return nil
-}
-
-// HasSpecChanges compares single spec with last applied single spec stored in annotation
-func HasStateChanges(crMeta metav1.ObjectMeta, spec any) (bool, error) {
-	lastAppliedSpecJSON := crMeta.GetAnnotations()[LastAppliedSpecAnnotation]
-	if len(lastAppliedSpecJSON) == 0 {
-		return true, nil
-	}
-
-	instanceSpecData, err := json.Marshal(spec)
-	if err != nil {
-		return false, err
-	}
-	if !bytes.Equal([]byte(lastAppliedSpecJSON), instanceSpecData) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// LastAppliedChangesAsPatch builds patch request from provided spec
-func LastAppliedChangesAsPatch(spec any) (client.Patch, error) {
-	data, err := json.Marshal(spec)
-	if err != nil {
-		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json: %w", err)
-	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q }}}`, LastAppliedSpecAnnotation, data)
-	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
-
 }
 
 // StatefulSetUpdateStrategyBehavior customizes behavior for StatefulSet updates.

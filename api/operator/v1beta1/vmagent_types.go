@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -121,11 +122,6 @@ type VMAgentSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAgent) SetLastSpec(prevSpec VMAgentSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
 func (cr *VMAgent) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
@@ -237,18 +233,6 @@ func (cr *VMAgent) UseProxyProtocol() bool {
 // AutomountServiceAccountToken implements reloadable interface
 func (cr *VMAgent) AutomountServiceAccountToken() bool {
 	return !cr.Spec.DisableAutomountServiceAccountToken
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAgent) UnmarshalJSON(src []byte) error {
-	type pcr VMAgent
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -406,6 +390,9 @@ type VMAgentStatus struct {
 	// ReplicaCount Total number of pods targeted by this VMAgent
 	Replicas       int32 `json:"replicas,omitempty"`
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMAgentSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -436,10 +423,7 @@ type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMAgentSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAgentSpec `json:"-" yaml:"-"`
-
+	Spec   VMAgentSpec   `json:"spec,omitempty"`
 	Status VMAgentStatus `json:"status,omitempty"`
 }
 
@@ -647,14 +631,11 @@ func (cr *VMAgent) IsUnmanaged(scrape client.Object) bool {
 
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAgent) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMAgent) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VMAgent) Paused() bool {

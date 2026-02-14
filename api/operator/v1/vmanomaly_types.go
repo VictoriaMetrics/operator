@@ -24,10 +24,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -180,6 +180,9 @@ type VMAnomalyStatus struct {
 	// Shards represents total number of vmanomaly statefulsets with uniq scrape targets
 	Shards                   int32 `json:"shards,omitempty"`
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMAnomalySpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -205,10 +208,7 @@ type VMAnomaly struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMAnomalySpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAnomalySpec `json:"-" yaml:"-"`
-
+	Spec   VMAnomalySpec   `json:"spec,omitempty"`
 	Status VMAnomalyStatus `json:"status,omitempty"`
 }
 
@@ -260,11 +260,6 @@ type VMAnomalyServerSpec struct {
 	// UIDefaultState defines default query state for anomaly UI
 	// +optional
 	UIDefaultState string `json:"uiDefaultState,omitempty" yaml:"ui_default_state,omitempty"`
-}
-
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAnomaly) SetLastSpec(prevSpec VMAnomalySpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
 // AsOwner returns owner references with current object as owner
@@ -455,31 +450,16 @@ func (cr *VMAnomaly) GetShardCount() int {
 	return *cr.Spec.ShardCount
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAnomaly) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAnomaly) HasSpecChanges() (bool, error) {
-	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMAnomaly) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 // Paused checks if given component reconcile loop should be stopped
 func (cr *VMAnomaly) Paused() bool {
 	return cr.Spec.Paused
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
-	type pcr VMAnomaly
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

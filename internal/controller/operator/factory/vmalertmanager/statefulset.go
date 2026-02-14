@@ -461,9 +461,9 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, childCR *vmv1beta1.VMAlertmanagerConfig) error {
 	l := logger.WithContext(ctx)
 	var prevCR *vmv1beta1.VMAlertmanager
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)

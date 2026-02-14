@@ -119,9 +119,9 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMAgent
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}

@@ -9,11 +9,11 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -396,24 +396,6 @@ func validateHTTPHeaders(headerValues []string) error {
 	return nil
 }
 
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAuth) SetLastSpec(prevSpec VMAuthSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAuth) UnmarshalJSON(src []byte) error {
-	type pcr VMAuth
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (cr *VMAuth) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
@@ -544,6 +526,9 @@ type EmbeddedIngress struct {
 // VMAuthStatus defines the observed state of VMAuth
 type VMAuthStatus struct {
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMAuthSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -564,10 +549,7 @@ type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMAuthSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAuthSpec `json:"-" yaml:"-"`
-
+	Spec   VMAuthSpec   `json:"spec,omitempty"`
 	Status VMAuthStatus `json:"status,omitempty"`
 }
 
@@ -747,14 +729,11 @@ func (cr *VMAuth) AutomountServiceAccountToken() bool {
 	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAuth) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMAuth) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VMAuth) Paused() bool {

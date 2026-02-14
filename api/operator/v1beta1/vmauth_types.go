@@ -140,6 +140,9 @@ type VMAuthSpec struct {
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 }
 
 // VMAuthUnauthorizedUserAccessSpec defines unauthorized_user section configuration for vmauth
@@ -467,6 +470,12 @@ func (cr *VMAuth) Validate() error {
 	if cr.Spec.HPA != nil {
 		if err := cr.Spec.HPA.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.hpa syntax: %w", err)
+		}
+	}
+
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return fmt.Errorf("incorrect cr.spec.vpa syntax: %w", err)
 		}
 	}
 

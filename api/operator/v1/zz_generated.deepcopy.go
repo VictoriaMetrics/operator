@@ -687,6 +687,11 @@ func (in *VLInsert) DeepCopyInto(out *VLInsert) {
 		*out = new(v1beta1.EmbeddedHPA)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.SyslogSpec != nil {
 		in, out := &in.SyslogSpec, &out.SyslogSpec
 		*out = new(SyslogServerSpec)
@@ -747,6 +752,11 @@ func (in *VLSelect) DeepCopyInto(out *VLSelect) {
 	if in.HPA != nil {
 		in, out := &in.HPA, &out.HPA
 		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.UpdateStrategy != nil {
@@ -954,6 +964,11 @@ func (in *VLStorage) DeepCopyInto(out *VLStorage) {
 	if in.HPA != nil {
 		in, out := &in.HPA, &out.HPA
 		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Storage != nil {
@@ -1516,6 +1531,11 @@ func (in *VTInsert) DeepCopyInto(out *VTInsert) {
 		*out = new(v1beta1.EmbeddedHPA)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.UpdateStrategy != nil {
 		in, out := &in.UpdateStrategy, &out.UpdateStrategy
 		*out = new(appsv1.DeploymentStrategyType)
@@ -1571,6 +1591,11 @@ func (in *VTSelect) DeepCopyInto(out *VTSelect) {
 	if in.HPA != nil {
 		in, out := &in.HPA, &out.HPA
 		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.UpdateStrategy != nil {
@@ -1768,6 +1793,11 @@ func (in *VTStorage) DeepCopyInto(out *VTStorage) {
 	if in.HPA != nil {
 		in, out := &in.HPA, &out.HPA
 		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Storage != nil {

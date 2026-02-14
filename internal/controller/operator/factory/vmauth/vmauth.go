@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -14,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -74,6 +76,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update hpa for vmauth: %w", err)
+	}
+	if err := createOrUpdateVPA(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update vpa for vmauth: %w", err)
 	}
 	if err := CreateOrUpdateConfig(ctx, rclient, cr, nil); err != nil {
 		return err
@@ -597,6 +602,24 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }
 
+func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAuth) error {
+	if cr.Spec.VPA == nil {
+		return nil
+	}
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(cr, targetRef, cr.Spec.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VPA != nil {
+		prevVPA = build.VPA(prevCR, targetRef, prevCR.Spec.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
+}
+
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
@@ -621,6 +644,11 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.Spec.HPA == nil {
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta}, &owner); err != nil {
 			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
+		}
+	}
+	if cr.Spec.VPA == nil {
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta}, &owner); err != nil {
+			return fmt.Errorf("cannot remove VPA from prev state: %w", err)
 		}
 	}
 

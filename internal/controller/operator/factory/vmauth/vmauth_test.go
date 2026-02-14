@@ -8,9 +8,12 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -214,6 +217,139 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestVMAuthVPACreate(t *testing.T) {
+	updateModeInitial := vpav1.UpdateModeInitial
+
+	ctx := context.Background()
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		k8stools.NewReadyDeployment("vmauth-test", "default"),
+	})
+	build.AddDefaults(fclient.Scheme())
+
+	cr := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			VPA: &vmv1beta1.EmbeddedVPA{
+				UpdatePolicy: &vpav1.PodUpdatePolicy{
+					UpdateMode: &updateModeInitial,
+				},
+				ResourcePolicy: &vpav1.PodResourcePolicy{
+					ContainerPolicies: []vpav1.ContainerResourcePolicy{
+						{ContainerName: "vmauth"},
+					},
+				},
+			},
+		},
+	}
+	if err := CreateOrUpdate(ctx, cr, fclient); err != nil {
+		t.Fatalf("CreateOrUpdate() error = %v", err)
+	}
+
+	var vpa vpav1.VerticalPodAutoscaler
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmauth-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found: %v", err)
+	}
+	assert.Equal(t, vpav1.UpdateModeInitial, *vpa.Spec.UpdatePolicy.UpdateMode)
+	assert.Equal(t, "vmauth-test", vpa.Spec.TargetRef.Name)
+	assert.Equal(t, "Deployment", vpa.Spec.TargetRef.Kind)
+}
+
+func TestVMAuthVPAUpdate(t *testing.T) {
+	updateModeInitial := vpav1.UpdateModeInitial
+	updateModeRecreate := vpav1.UpdateModeRecreate
+
+	ctx := context.Background()
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		k8stools.NewReadyDeployment("vmauth-test", "default"),
+	})
+	build.AddDefaults(fclient.Scheme())
+
+	// Create initial VPA
+	cr := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			VPA: &vmv1beta1.EmbeddedVPA{
+				UpdatePolicy: &vpav1.PodUpdatePolicy{
+					UpdateMode: &updateModeInitial,
+				},
+				ResourcePolicy: &vpav1.PodResourcePolicy{
+					ContainerPolicies: []vpav1.ContainerResourcePolicy{
+						{ContainerName: "vmauth"},
+					},
+				},
+			},
+		},
+	}
+	if err := CreateOrUpdate(ctx, cr, fclient); err != nil {
+		t.Fatalf("initial CreateOrUpdate() error = %v", err)
+	}
+
+	var vpa vpav1.VerticalPodAutoscaler
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmauth-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after create: %v", err)
+	}
+	assert.Equal(t, vpav1.UpdateModeInitial, *vpa.Spec.UpdatePolicy.UpdateMode)
+
+	// Update VPA to Recreate
+	updatedCR := cr.DeepCopy()
+	updatedCR.Spec.VPA.UpdatePolicy.UpdateMode = &updateModeRecreate
+	updatedCR.ParsedLastAppliedSpec = cr.Spec.DeepCopy()
+	if err := CreateOrUpdate(ctx, updatedCR, fclient); err != nil {
+		t.Fatalf("update CreateOrUpdate() error = %v", err)
+	}
+
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmauth-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after update: %v", err)
+	}
+	assert.Equal(t, vpav1.UpdateModeRecreate, *vpa.Spec.UpdatePolicy.UpdateMode)
+}
+
+func TestVMAuthVPARemoval(t *testing.T) {
+	updateModeInitial := vpav1.UpdateModeInitial
+
+	ctx := context.Background()
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		k8stools.NewReadyDeployment("vmauth-test", "default"),
+	})
+	build.AddDefaults(fclient.Scheme())
+
+	// Create with VPA
+	cr := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			VPA: &vmv1beta1.EmbeddedVPA{
+				UpdatePolicy: &vpav1.PodUpdatePolicy{
+					UpdateMode: &updateModeInitial,
+				},
+				ResourcePolicy: &vpav1.PodResourcePolicy{
+					ContainerPolicies: []vpav1.ContainerResourcePolicy{
+						{ContainerName: "vmauth"},
+					},
+				},
+			},
+		},
+	}
+	if err := CreateOrUpdate(ctx, cr, fclient); err != nil {
+		t.Fatalf("initial CreateOrUpdate() error = %v", err)
+	}
+
+	var vpa vpav1.VerticalPodAutoscaler
+	if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmauth-test"}, &vpa); err != nil {
+		t.Fatalf("VPA not found after create: %v", err)
+	}
+
+	// Remove VPA
+	removedCR := cr.DeepCopy()
+	removedCR.ParsedLastAppliedSpec = cr.Spec.DeepCopy()
+	removedCR.Spec.VPA = nil
+	if err := CreateOrUpdate(ctx, removedCR, fclient); err != nil {
+		t.Fatalf("removal CreateOrUpdate() error = %v", err)
+	}
+
+	err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmauth-test"}, &vpa)
+	assert.True(t, k8serrors.IsNotFound(err), "VPA should be removed, got error: %v", err)
 }
 
 func TestMakeSpecForAuthOk(t *testing.T) {

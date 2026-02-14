@@ -7,11 +7,13 @@ import (
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,7 +39,10 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVLInsertService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	return createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR)
+	if err := createOrUpdateVLInsertHPA(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
+	return createOrUpdateVLInsertVPA(ctx, rclient, cr, prevCR)
 }
 
 func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
@@ -269,6 +274,26 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	owner := cr.AsOwner()
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
+}
+
+func createOrUpdateVLInsertVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	if cr.Spec.VLInsert.VPA == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, cr.Spec.VLInsert.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VLInsert.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLInsert.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
 func buildVLInsertScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {

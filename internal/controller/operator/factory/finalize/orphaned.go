@@ -70,6 +70,16 @@ func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedC
 
 }
 
+// RemoveOrphanedVPAs removes VPAs detached from given object
+func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "autoscaling.k8s.io",
+		Version: "v1",
+		Kind:    "VerticalPodAutoscaler",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
 // RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
 func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
 	if build.IsControllerDisabled("VMServiceScrape") {

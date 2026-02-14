@@ -7,11 +7,13 @@ import (
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -44,6 +46,9 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVLSelectHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
+	if err := createOrUpdateVLSelectVPA(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
 	if err := createOrUpdateVLSelectService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
@@ -71,6 +76,26 @@ func createOrUpdateVLSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	owner := cr.AsOwner()
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
+}
+
+func createOrUpdateVLSelectVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	if cr.Spec.VLSelect.VPA == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, cr.Spec.VLSelect.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VLSelect.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLSelect.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
 func buildVLSelectScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {

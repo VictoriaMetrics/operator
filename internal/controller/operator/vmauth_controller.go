@@ -119,5 +119,5 @@ func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&vmv1beta1.VMAuth{}).
 		Owns(&appsv1.Deployment{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).Complete(r)
+		Complete(r)
 }

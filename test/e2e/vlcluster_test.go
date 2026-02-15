@@ -36,7 +36,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					Name:      nsn.Name,
 					Namespace: nsn.Namespace,
 				},
-			})).To(Succeed())
+			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLCluster{})
 		})
 		baseVLCluster := &vmv1.VLCluster{
@@ -66,10 +66,10 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				initCR.Namespace = namespace
 				nsn.Name = name
 				// setup test
-				Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+				}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 				for _, step := range steps {
 					if step.setup != nil {
@@ -77,15 +77,15 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					}
 					// perform update
 					var toUpdate vmv1.VLCluster
-					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 					var updated vmv1.VLCluster
-					Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 
 					// verify results
 					step.verify(&updated)
@@ -112,7 +112,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						}
 						for _, nss := range nsss {
 							sts := &appsv1.StatefulSet{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nss, sts)).ToNot(HaveOccurred())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
 						nsss = []types.NamespacedName{
@@ -121,7 +121,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						}
 						for _, nss := range nsss {
 							sts := &appsv1.Deployment{}
-							Expect(k8sClient.Get(ctx, nss, sts)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nss, sts)).ToNot(HaveOccurred())
 							assertStrictSecurity(sts.Spec.Template.Spec)
 						}
 					},
@@ -158,13 +158,13 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					verify: func(cr *vmv1.VLCluster) {
 
 						var dep appsv1.Deployment
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)))
 
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)))
 
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
@@ -191,10 +191,10 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &dep)
 
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentSelect)))
 
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentInsert)))
 
 						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
@@ -228,9 +228,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 								"TLS_KEY":  tlsKey,
 							},
 						}
-						Expect(k8sClient.Create(ctx, &tlsSecret)).To(Succeed())
+						Expect(k8sClient.Create(ctx, &tlsSecret)).ToNot(HaveOccurred())
 						DeferCleanup(func(ctx SpecContext) {
-							Expect(k8sClient.Delete(ctx, &tlsSecret)).To(Succeed())
+							Expect(k8sClient.Delete(ctx, &tlsSecret)).ToNot(HaveOccurred())
 						})
 						cr.Spec.VLInsert.SyslogSpec = &vmv1.SyslogServerSpec{
 							TCPListeners: []*vmv1.SyslogTCPListener{
@@ -263,11 +263,11 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						var svc corev1.Service
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Ports).To(HaveLen(3))
 
 						var dep appsv1.Deployment
-						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &dep)).ToNot(HaveOccurred())
 						Expect(dep.Spec.Template.Spec.Volumes).To(HaveLen(1))
 						Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
 					},
@@ -279,19 +279,19 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					modify: func(cr *vmv1.VLCluster) {
 						By("upscaling vlinsert, removing vlselect", func() {
 							cr.Spec.VLSelect = nil
-							cr.Spec.VLInsert.ReplicaCount = ptr.To(int32(3))
+							cr.Spec.VLInsert.ReplicaCount = ptr.To(int32(2))
 							cr.Spec.VLStorage.ReplicaCount = ptr.To(int32(1))
 						})
 					},
 					verify: func(cr *vmv1.VLCluster) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
 						sts := &appsv1.StatefulSet{}
-						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, sts)).ToNot(HaveOccurred())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(1)))
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
 						dep := &appsv1.Deployment{}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
-						Expect(*dep.Spec.Replicas).To(Equal(int32(3)))
+						Expect(k8sClient.Get(ctx, nsn, dep)).ToNot(HaveOccurred())
+						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
@@ -313,11 +313,11 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					verify: func(cr *vmv1.VLCluster) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
 						sts := &appsv1.StatefulSet{}
-						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, sts)).ToNot(HaveOccurred())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(2)))
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
 						dep := &appsv1.Deployment{}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, dep)).ToNot(HaveOccurred())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vlinsert must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
@@ -343,14 +343,14 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					verify: func(cr *vmv1.VLCluster) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
 						sts := &appsv1.StatefulSet{}
-						Expect(k8sClient.Get(ctx, nsn, sts)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, sts)).ToNot(HaveOccurred())
 						Expect(*sts.Spec.Replicas).To(Equal(int32(0)))
 						dep := &appsv1.Deployment{}
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, dep)).ToNot(HaveOccurred())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
-						Expect(k8sClient.Get(ctx, nsn, dep)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, dep)).ToNot(HaveOccurred())
 						Expect(*dep.Spec.Replicas).To(Equal(int32(0)))
 					},
 				},

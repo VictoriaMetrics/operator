@@ -94,7 +94,8 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) *TestClientWit
 
 // GetTestClientWithClientObjects returns testing client with optional predefined objects
 func GetTestClientWithClientObjects(predefinedObjects []client.Object) *TestClientWithStatsTrack {
-	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).
+	fclient := fake.NewClientBuilder().
+		WithScheme(testGetScheme()).
 		WithStatusSubresource(
 			&vmv1beta1.VMRule{},
 			&vmv1beta1.VMAlert{},

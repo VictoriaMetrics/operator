@@ -1,69 +1,30 @@
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: vmcluster-us-east-1
-spec:
-  vmstorage:
-    replicaCount: 1
-  vmselect:
-    replicaCount: 1
-  vminsert:
-    replicaCount: 1
----
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: vmcluster-us-west-2
-spec:
-  vmstorage:
-    replicaCount: 1
-  vmselect:
-    replicaCount: 1
-  vminsert:
-    replicaCount: 1
----
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: vmcluster-eu-west-1
-spec:
-  vmstorage:
-    replicaCount: 1
-  vmselect:
-    replicaCount: 1
-  vminsert:
-    replicaCount: 1
----
 apiVersion: operator.victoriametrics.com/v1alpha1
 kind: VMDistributed
 metadata:
   name: sample-override-versions
 spec:
-  vmagent:
-    name: global-write-vmagent
-    spec:
-      replicaCount: 1
   vmauth:
-    name: global-read-vmauth
+    name: global-vmauth
     spec:
       replicaCount: 1
-  commonZone:
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
     vmcluster:
-      ref:
-        name: vmcluster-%ZONE%
+      name: vmcluster-%ZONE%
+      spec:
+        vmstorage:
+          replicaCount: 1
+        vmselect:
+          replicaCount: 1
+          image:
+            tag: v1.90.0
+        vminsert:
+          replicaCount: 1
   zones:
     - name: us-east-1
-      vmcluster:
-        spec:
-          vmselect:
-            image:
-              tag: v1.90.0
     - name: us-west-2
-      vmcluster:
-        spec:
-          vmselect:
-            image:
-              tag: v1.90.0
     - name: eu-west-1
       vmcluster:
         spec:

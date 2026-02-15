@@ -4,31 +4,47 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-const (
-	vmclusterWaitReadyDeadline = time.Minute
-	httpTimeout                = time.Second * 5
-)
+func newVMAgent(name, namespace string) *vmv1beta1.VMAgent {
+	return &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Now(),
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+		},
+		Status: vmv1beta1.VMAgentStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
+			},
+			Replicas: 1,
+		},
+	}
+}
 
-func newVMCluster(name, version string) *vmv1beta1.VMCluster {
+func newVMCluster(name, namespace, version string) *vmv1beta1.VMCluster {
 	return &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-			Labels:    map[string]string{"tenant": "default"},
+			Name:              name,
+			Namespace:         namespace,
+			Labels:            map[string]string{"tenant": "default"},
+			CreationTimestamp: metav1.Now(),
 		},
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
@@ -50,43 +66,9 @@ func newVMCluster(name, version string) *vmv1beta1.VMCluster {
 		},
 		Status: vmv1beta1.VMClusterStatus{
 			StatusMetadata: vmv1beta1.StatusMetadata{
-				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
 			},
-		},
-	}
-}
-
-// newVMDistributed constructs a VMDistributed for tests.
-func newVMDistributed(name string, zones []vmv1alpha1.VMDistributedZone, vmAgentSpec vmv1alpha1.VMAgentNameAndSpec, extras ...any) *vmv1alpha1.VMDistributed {
-	var vmAuth vmv1alpha1.VMAuthNameAndSpec
-
-	// Parse extras to find VMAuth (ignore any legacy VMUser parameters).
-	for _, e := range extras {
-		switch v := e.(type) {
-		case vmv1alpha1.VMAuthNameAndSpec:
-			vmAuth = v
-		case *vmv1alpha1.VMAuthNameAndSpec:
-			if v != nil {
-				vmAuth = *v
-			}
-		default:
-			// unknown extra param — ignore
-		}
-	}
-
-	return &vmv1alpha1.VMDistributed{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "VMDistributed",
-			APIVersion: vmv1alpha1.GroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-		},
-		Spec: vmv1alpha1.VMDistributedSpec{
-			Zones:   zones,
-			VMAgent: vmAgentSpec,
-			VMAuth:  vmAuth,
 		},
 	}
 }
@@ -97,42 +79,60 @@ type opts struct {
 }
 
 type testData struct {
-	vmagent           *vmv1beta1.VMAgent
-	vmclusters        []*vmv1beta1.VMCluster
+	zones             *zones
 	cr                *vmv1alpha1.VMDistributed
 	predefinedObjects []runtime.Object
 }
 
 func beforeEach(o opts) *testData {
-	vmagent := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-vmagent", Namespace: "default"},
-		Spec: vmv1beta1.VMAgentSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{ReplicaCount: ptr.To(int32(1))},
-		},
-		Status: vmv1beta1.VMAgentStatus{Replicas: 1},
+	zonesCount := 3
+	zs := &zones{
+		vmclusters: make([]*vmv1beta1.VMCluster, 0, zonesCount),
+		vmagents:   make([]*vmv1beta1.VMAgent, 0, zonesCount),
 	}
-	vmclusters := []*vmv1beta1.VMCluster{
-		newVMCluster("vmcluster-1", "v1.0.0"),
-		newVMCluster("vmcluster-2", "v1.0.0"),
-	}
-	var zones []vmv1alpha1.VMDistributedZone
-	for i, cluster := range vmclusters {
-		zones = append(zones, vmv1alpha1.VMDistributedZone{
-			Name: fmt.Sprintf("vmcluster-%d", i+1),
-			VMCluster: &vmv1alpha1.VMClusterObjOrRef{
-				Ref: &corev1.LocalObjectReference{Name: cluster.Name},
+	namespace := "default"
+	dzs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
+	var predefinedObjects []runtime.Object
+	for i := range dzs {
+		name := fmt.Sprintf("vmcluster-%d", i+1)
+		vmCluster := newVMCluster(name, namespace, "v1.0.0")
+		vmAgent := newVMAgent(name, namespace)
+		zs.vmclusters = append(zs.vmclusters, vmCluster)
+		zs.vmagents = append(zs.vmagents, vmAgent)
+		predefinedObjects = append(predefinedObjects, vmAgent, vmCluster)
+		dzs[i] = vmv1alpha1.VMDistributedZone{
+			Name: name,
+			VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+				Name: name,
+				Spec: vmCluster.Spec,
 			},
-		})
+			VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+				Name: name,
+			},
+		}
 	}
-	vmAgentSpec := vmv1alpha1.VMAgentNameAndSpec{Name: vmagent.Name}
-	cr := newVMDistributed("test-vdc", zones, vmAgentSpec, vmv1alpha1.VMAuthNameAndSpec{Name: "vmauth-proxy"})
-	d := &testData{
-		vmagent:    vmagent,
-		vmclusters: vmclusters,
-		cr:         cr,
-		predefinedObjects: []runtime.Object{
-			vmagent, vmclusters[0], vmclusters[1], cr,
+	cr := &vmv1alpha1.VMDistributed{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VMDistributed",
+			APIVersion: vmv1alpha1.GroupVersion.String(),
 		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-vdc",
+			Namespace: namespace,
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			Zones: dzs,
+			VMAuth: vmv1alpha1.VMDistributedAuth{
+				Name: "vmauth-proxy",
+			},
+		},
+	}
+
+	predefinedObjects = append(predefinedObjects, cr)
+	d := &testData{
+		zones:             zs,
+		cr:                cr,
+		predefinedObjects: predefinedObjects,
 	}
 	o.prepare(d)
 	return d
@@ -153,44 +153,32 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.cr.Spec.Paused = true
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			assert.NoError(t, CreateOrUpdate(ctx, d.cr, rclient, httpTimeout))
+			assert.NoError(t, CreateOrUpdate(ctx, d.cr, rclient))
 			assert.Empty(t, rclient.TotalCallsCount(nil))
-		},
-	})
-
-	// missing VMCluster should return error
-	f(opts{
-		prepare: func(d *testData) {
-			d.cr.Spec.Zones[0].VMCluster.Ref.Name = "non-existent-vmcluster"
-		},
-		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			err := CreateOrUpdate(ctx, d.cr, rclient, httpTimeout)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "failed to fetch vmclusters")
 		},
 	})
 
 	// check existing remote write urls order
 	f(opts{
 		prepare: func(d *testData) {
-			for _, cluster := range d.vmclusters {
-				d.vmagent.Spec.RemoteWrite = append(d.vmagent.Spec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
-					URL: remoteWriteURL(cluster),
-				})
+			for _, vmAgent := range d.zones.vmagents {
+				for _, vmCluster := range d.zones.vmclusters {
+					vmAgent.Spec.RemoteWrite = append(vmAgent.Spec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
+						URL: vmCluster.GetRemoteWriteURL(),
+					})
+				}
 			}
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			_, err := updateOrCreateVMAgent(ctx, rclient, d.cr, d.vmclusters)
+			zs, err := getZones(ctx, rclient, d.cr)
 			assert.NoError(t, err)
 
-			// Fetch the resulting vmagent
-			var got vmv1beta1.VMAgent
-			assert.NoError(t, rclient.Get(ctx, client.ObjectKey{Name: d.vmagent.Name, Namespace: d.vmagent.Namespace}, &got))
-
 			// Verify urls order is preserved
-			assert.Len(t, got.Spec.RemoteWrite, len(d.vmclusters))
-			for i := range d.vmclusters {
-				assert.Equal(t, remoteWriteURL(d.vmclusters[i]), got.Spec.RemoteWrite[i].URL)
+			for i, vmCluster := range d.zones.vmclusters {
+				for _, vmAgent := range zs.vmagents {
+					assert.Len(t, vmAgent.Spec.RemoteWrite, len(d.zones.vmclusters))
+					assert.Equal(t, vmCluster.GetRemoteWriteURL(), vmAgent.Spec.RemoteWrite[i].URL)
+				}
 			}
 		},
 	})
@@ -198,41 +186,58 @@ func TestCreateOrUpdate(t *testing.T) {
 	// verify remote write urls is appended to vmagent in a valid order
 	f(opts{
 		prepare: func(d *testData) {
-			d.vmagent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
-				{URL: remoteWriteURL(d.vmclusters[0])},
+			for _, vmAgent := range d.zones.vmagents {
+				vmCluster := d.zones.vmclusters[2]
+				vmAgent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: vmCluster.GetRemoteWriteURL()},
+				}
 			}
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			_, err := updateOrCreateVMAgent(ctx, rclient, d.cr, d.vmclusters)
+			zs, err := getZones(ctx, rclient, d.cr)
 			assert.NoError(t, err)
 
-			// Fetch the resulting vmagent
-			got := &vmv1beta1.VMAgent{}
-			assert.NoError(t, rclient.Get(ctx, client.ObjectKey{Name: d.vmagent.Name, Namespace: d.vmagent.Namespace}, got))
-
 			// Verify urls order is preserved
-			assert.Len(t, got.Spec.RemoteWrite, 2)
-			for i := range d.vmclusters {
-				assert.Equal(t, remoteWriteURL(d.vmclusters[i]), got.Spec.RemoteWrite[i].URL)
+			for _, vmAgent := range zs.vmagents {
+				assert.Len(t, vmAgent.Spec.RemoteWrite, 3)
+				vmCluster0 := d.zones.vmclusters[0]
+				vmCluster1 := d.zones.vmclusters[1]
+				vmCluster2 := d.zones.vmclusters[2]
+				assert.Equal(t, vmCluster2.GetRemoteWriteURL(), vmAgent.Spec.RemoteWrite[0].URL)
+				assert.Equal(t, vmCluster0.GetRemoteWriteURL(), vmAgent.Spec.RemoteWrite[1].URL)
+				assert.Equal(t, vmCluster1.GetRemoteWriteURL(), vmAgent.Spec.RemoteWrite[2].URL)
 			}
 		},
 	})
 
-	// should do nothing if VMAuth name is empty
+	// should create VMAuth with default name
 	f(opts{
 		prepare: func(d *testData) {
 			d.cr.Spec.VMAuth.Name = ""
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, d.vmclusters))
-			assert.Empty(t, rclient.TotalCallsCount(nil))
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
+			assert.Equal(t, 3, rclient.TotalCallsCount(nil))
+			// Verify the VMAuth was created with the default name (cr.Name)
+			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      d.cr.Name,
+					Namespace: d.cr.Namespace,
+				},
+			})
+			assert.NotNil(t, createdItem, "VMAuth should be created with default name")
 		},
 	})
 
 	// should update VMAuth if spec changes
 	f(opts{
 		prepare: func(d *testData) {
-			d.vmclusters[0].Spec.VMSelect.Port = "8481"
+			d.zones.vmclusters[0].Spec.VMSelect.Port = "8481"
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
 			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
@@ -242,14 +247,25 @@ func TestCreateOrUpdate(t *testing.T) {
 				Spec: vmv1beta1.VMAuthSpec{
 					LogLevel: "ERROR",
 				},
+				Status: vmv1beta1.VMAuthStatus{
+					StatusMetadata: vmv1beta1.StatusMetadata{
+						UpdateStatus: vmv1beta1.UpdateStatusOperational,
+					},
+				},
 			})
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
-			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 
 			// Check for update call
 			item := rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
@@ -267,9 +283,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	// should not update VMAuth if spec matches
 	f(opts{
 		prepare: func(d *testData) {
-			d.vmclusters[0].Spec.VMSelect.Port = "8481"
+			d.zones.vmclusters[0].Spec.VMSelect.Port = "8481"
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
-			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
 			lb := &vmv1beta1.VMAuth{
@@ -277,17 +293,32 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name:            d.cr.Spec.VMAuth.Name,
 					Namespace:       d.cr.Namespace,
 					OwnerReferences: []metav1.OwnerReference{d.cr.AsOwner()},
+					Finalizers:      []string{vmv1beta1.FinalizerName},
 				},
-				Spec: *d.cr.Spec.VMAuth.Spec,
+				Spec: d.cr.Spec.VMAuth.Spec,
+				Status: vmv1beta1.VMAuthStatus{
+					StatusMetadata: vmv1beta1.StatusMetadata{
+						UpdateStatus: vmv1beta1.UpdateStatusOperational,
+					},
+				},
 			}
+			var targetRefs []vmv1beta1.TargetRef
+			targetRefs = appendVMAgentTargetRefs(targetRefs, d.zones.vmagents)
+			targetRefs = appendVMClusterTargetRefs(targetRefs, []*vmv1beta1.VMCluster{d.zones.vmclusters[0]})
 			lb.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-				TargetRefs: getVMClusterTargetRefs([]*vmv1beta1.VMCluster{d.vmclusters[0]}),
+				TargetRefs: targetRefs,
 			}
 			d.predefinedObjects = append(d.predefinedObjects, lb)
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 
 			// Should contain no updates
 			assert.Nil(t, rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
@@ -302,16 +333,21 @@ func TestCreateOrUpdate(t *testing.T) {
 	// should create VMAuth if it does not exist
 	f(opts{
 		prepare: func(d *testData) {
-			for i := range d.vmclusters {
-				d.vmclusters[i].Spec.VMSelect.Port = "8481"
+			for i := range d.zones.vmclusters {
+				d.zones.vmclusters[i].Spec.VMSelect.Port = "8481"
 			}
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
-			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, d.vmclusters))
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "vmauth-lb",
@@ -324,27 +360,26 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, "default", createdVMAuth.Namespace)
 			assert.Equal(t, "INFO", createdVMAuth.Spec.LogLevel)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 6)
 
-			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
-			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
-			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
-			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
-			assert.NotNil(t, firstTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[0].Name, firstTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[0].Namespace, firstTargetRef.CRD.Namespace)
-
-			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
-			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
-			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
-			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
-			assert.NotNil(t, secondTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[1].Name, secondTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[1].Namespace, secondTargetRef.CRD.Namespace)
+			for i := range createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs {
+				targetRef := &createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[i]
+				assert.Equal(t, ptr.To("first_available"), targetRef.LoadBalancingPolicy)
+				assert.Equal(t, []int{500, 502, 503}, targetRef.RetryStatusCodes)
+				assert.NotNil(t, targetRef.CRD)
+				if i < len(d.zones.vmagents) {
+					assert.Equal(t, d.zones.vmagents[i].Name, targetRef.CRD.Name)
+					assert.Equal(t, d.zones.vmagents[i].Namespace, targetRef.CRD.Namespace)
+					assert.Equal(t, []string{"/insert/.+"}, targetRef.Paths)
+					assert.Equal(t, "VMAgent", targetRef.CRD.Kind)
+				} else {
+					idx := i - len(d.zones.vmagents)
+					assert.Equal(t, d.zones.vmclusters[idx].Name, targetRef.CRD.Name)
+					assert.Equal(t, d.zones.vmclusters[idx].Namespace, targetRef.CRD.Namespace)
+					assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, targetRef.Paths)
+					assert.Equal(t, "VMCluster/vmselect", targetRef.CRD.Kind)
+				}
+			}
 
 			// Verify OwnerReference
 			assert.NotEmpty(t, createdVMAuth.OwnerReferences)
@@ -355,9 +390,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	// should adopt existing VMAuth if owner reference is missing
 	f(opts{
 		prepare: func(d *testData) {
-			d.vmclusters[0].Spec.VMSelect.Port = "8481"
+			d.zones.vmclusters[0].Spec.VMSelect.Port = "8481"
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
-			d.cr.Spec.VMAuth.Spec = &vmv1beta1.VMAuthSpec{
+			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
 			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
@@ -371,11 +406,22 @@ func TestCreateOrUpdate(t *testing.T) {
 					// AND set the owner ref.
 					LogLevel: "INFO",
 				},
+				Status: vmv1beta1.VMAuthStatus{
+					StatusMetadata: vmv1beta1.StatusMetadata{
+						UpdateStatus: vmv1beta1.UpdateStatusOperational,
+					},
+				},
 			})
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, clusters))
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			updatedVMAuth := rclient.UpdateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "vmauth-lb",
@@ -393,16 +439,21 @@ func TestCreateOrUpdate(t *testing.T) {
 	f(opts{
 		prepare: func(d *testData) {
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
-			for i := range d.vmclusters {
-				d.vmclusters[i].Spec.VMSelect.Port = "8481"
+			for i := range d.zones.vmclusters {
+				d.zones.vmclusters[i].Spec.VMSelect.Port = "8481"
 			}
 
 			// Enable load balancer for vmcluster[0]
-			d.vmclusters[0].Spec.RequestsLoadBalancer.Enabled = true
-			d.vmclusters[0].Spec.RequestsLoadBalancer.Spec.Port = "8427"
+			d.zones.vmclusters[0].Spec.RequestsLoadBalancer.Enabled = true
+			d.zones.vmclusters[0].Spec.RequestsLoadBalancer.Spec.Port = "8427"
 		},
 		verify: func(ctx context.Context, rclient *k8stools.TestClientWithStatsTrack, d *testData) {
-			assert.NoError(t, createOrUpdateVMAuthLB(ctx, rclient, d.cr, d.vmclusters))
+			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
+			vmAuth.Status.StatusMetadata = vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+			}
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			createdItem := rclient.CreateCalls.First(&vmv1beta1.VMAuth{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "vmauth-lb",
@@ -413,26 +464,26 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NotNil(t, createdItem)
 			createdVMAuth := createdItem.(*vmv1beta1.VMAuth)
 			assert.NotNil(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec)
-			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 2)
-			firstTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[0]
-			assert.Equal(t, ptr.To(0), firstTargetRef.DropSrcPathPrefixParts)
-			assert.Equal(t, ptr.To("first_available"), firstTargetRef.LoadBalancingPolicy)
-			assert.Equal(t, []int{500, 502, 503}, firstTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, firstTargetRef.Paths)
-			assert.NotNil(t, firstTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", firstTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[0].Name, firstTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[0].Namespace, firstTargetRef.CRD.Namespace)
+			assert.Len(t, createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs, 6)
 
-			secondTargetRef := createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[1]
-			assert.Equal(t, ptr.To(0), secondTargetRef.DropSrcPathPrefixParts)
-			assert.Equal(t, ptr.To("first_available"), secondTargetRef.LoadBalancingPolicy)
-			assert.Equal(t, []int{500, 502, 503}, secondTargetRef.RetryStatusCodes)
-			assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, secondTargetRef.Paths)
-			assert.NotNil(t, secondTargetRef.CRD)
-			assert.Equal(t, "VMCluster/vmselect", secondTargetRef.CRD.Kind)
-			assert.Equal(t, d.vmclusters[1].Name, secondTargetRef.CRD.Name)
-			assert.Equal(t, d.vmclusters[1].Namespace, secondTargetRef.CRD.Namespace)
+			for i := range createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs {
+				targetRef := &createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[i]
+				assert.Equal(t, ptr.To("first_available"), targetRef.LoadBalancingPolicy)
+				assert.Equal(t, []int{500, 502, 503}, targetRef.RetryStatusCodes)
+				assert.NotNil(t, targetRef.CRD)
+				if i < len(d.zones.vmagents) {
+					assert.Equal(t, d.zones.vmagents[i].Name, targetRef.CRD.Name)
+					assert.Equal(t, d.zones.vmagents[i].Namespace, targetRef.CRD.Namespace)
+					assert.Equal(t, []string{"/insert/.+"}, targetRef.Paths)
+					assert.Equal(t, "VMAgent", targetRef.CRD.Kind)
+				} else {
+					idx := i - len(d.zones.vmagents)
+					assert.Equal(t, d.zones.vmclusters[idx].Name, targetRef.CRD.Name)
+					assert.Equal(t, d.zones.vmclusters[idx].Namespace, targetRef.CRD.Namespace)
+					assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, targetRef.Paths)
+					assert.Equal(t, "VMCluster/vmselect", targetRef.CRD.Kind)
+				}
+			}
 		},
 	})
 }

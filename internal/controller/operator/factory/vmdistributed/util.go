@@ -2,13 +2,15 @@ package vmdistributed
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
+
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func fetchMetricValues(ctx context.Context, httpClient *http.Client, url, metricName, dimension string) (map[string]float64, error) {
@@ -242,78 +244,17 @@ func prevBackslashesCount(s string) int {
 	return n
 }
 
-// mergeDeep merges an override object into a base one.
-// Fields present in the override will overwrite corresponding fields in the base.
-func mergeDeep[T comparable](base, override T) (bool, error) {
-	var zero T
-	if override == zero {
-		return false, nil
-	}
-
-	baseJSON, err := json.Marshal(base)
+func mergeSpecs[T any](a, b *T, name string) (*T, error) {
+	merged, err := k8stools.RenderPlaceholders(a, map[string]string{
+		vmv1alpha1.ZonePlaceholder: name,
+	})
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal base spec: %w", err)
-	}
-	overrideJSON, err := json.Marshal(override)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal override spec: %w", err)
+		return nil, fmt.Errorf("failed to render spec: %w", err)
 	}
 
-	var baseMap map[string]any
-	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal base spec to map: %w", err)
+	// Apply cluster-specific override if it exist
+	if err := build.MergeDeep(merged, b); err != nil {
+		return nil, fmt.Errorf("failed to merge spec: %w", err)
 	}
-	var overrideMap map[string]any
-	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
-		return false, fmt.Errorf("failed to unmarshal override spec to map: %w", err)
-	}
-
-	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
-	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
-	updated := mergeMapsRecursive(baseMap, overrideMap)
-	mergedSpecJSON, err := json.Marshal(baseMap)
-	if err != nil {
-		return false, fmt.Errorf("failed to marshal merged spec map: %w", err)
-	}
-
-	if err := json.Unmarshal(mergedSpecJSON, base); err != nil {
-		return false, fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
-	}
-
-	return updated, nil
-}
-
-// mergeMapsRecursive deeply merges overrideMap into baseMap.
-// It handles nested maps (which correspond to nested structs after JSON unmarshal).
-// Values from overrideMap overwrite values in baseMap.
-// It returns a boolean indicating if the baseMap was modified.
-func mergeMapsRecursive(baseMap, overrideMap map[string]any) bool {
-	var modified bool
-	if len(overrideMap) == 0 {
-		return modified
-	}
-	for key, overrideValue := range overrideMap {
-		if baseVal, ok := baseMap[key]; ok {
-			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
-				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
-					// Both are nested maps, recurse
-					if mergeMapsRecursive(baseMapNested, overrideMapNested) {
-						modified = true
-					}
-					continue
-				}
-			}
-		}
-
-		// For all other cases (scalar values, or when types for nested maps don't match),
-		// override the baseMap value. This handles explicit zero values and ensures
-		// overrides take precedence.
-		// We assign first, then check if it was a modification.
-		oldValue, exists := baseMap[key]
-		baseMap[key] = overrideValue // Force the overwrite for this key
-		if !exists || !reflect.DeepEqual(oldValue, overrideValue) {
-			modified = true
-		}
-	}
-	return modified
+	return merged, nil
 }

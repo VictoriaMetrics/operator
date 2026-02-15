@@ -129,12 +129,12 @@ fi
 			},
 		},
 	}
-	Expect(k8sClient.Create(ctx, job)).To(Succeed())
+	Expect(k8sClient.Create(ctx, job)).ToNot(HaveOccurred())
 	nss := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
 	defer func() {
 		Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{
 			PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
-		})).To(Succeed())
+		})).ToNot(HaveOccurred())
 		waitResourceDeleted(ctx, k8sClient, nss, &batchv1.Job{})
 	}()
 	Eventually(func() error {
@@ -161,14 +161,14 @@ fi
 			}
 		}
 		return fmt.Errorf("unexpected job status, want Succeeded pod > 0 , pod status: %s", firstStatus)
-	}, 60).Should(Succeed())
+	}, 60).ShouldNot(HaveOccurred())
 }
 
 //nolint:dupl,lll
 func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, annotations map[string]string) {
 	GinkgoHelper()
 	for idx, obj := range objects {
-		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nss, obj)).ToNot(HaveOccurred())
 		gotAnnotations := obj.GetAnnotations()
 		for k, v := range annotations {
 			gv, ok := gotAnnotations[k]
@@ -188,7 +188,7 @@ func assertAnnotationsOnObjects(ctx context.Context, nss types.NamespacedName, o
 func assertLabelsOnObjects(ctx context.Context, nss types.NamespacedName, objects []client.Object, wantLabels map[string]string) {
 	GinkgoHelper()
 	for idx, obj := range objects {
-		Expect(k8sClient.Get(ctx, nss, obj)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nss, obj)).ToNot(HaveOccurred())
 		gotLabels := obj.GetLabels()
 		for k, v := range wantLabels {
 			gv, ok := gotLabels[k]
@@ -237,7 +237,7 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 	Expect(rclient.List(context.TODO(), &podList, &client.ListOptions{
 		Namespace:     ns,
 		LabelSelector: labels.SelectorFromSet(lbs),
-	})).To(Succeed())
+	})).ToNot(HaveOccurred())
 	pods := podList.Items[:0]
 	for _, pod := range podList.Items {
 		if pod.DeletionTimestamp != nil {

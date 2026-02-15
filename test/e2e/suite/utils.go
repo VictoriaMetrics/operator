@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint
+	. "github.com/onsi/gomega"    //nolint
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -57,7 +58,9 @@ func CollectK8SResources() {
 	if !CurrentSpecReport().Failed() {
 		return
 	}
-	if err := utils.RunCrustGather(context.Background(), 10*time.Minute); err != nil {
-		panic(fmt.Sprintf("crust-gather: %v", err))
+	err := utils.RunCrustGather(context.Background(), 10*time.Minute)
+	if err != nil {
+		fmt.Fprintf(GinkgoWriter, "Crust report generation failed: %v\n", err)
+		Expect(err).NotTo(HaveOccurred())
 	}
 }

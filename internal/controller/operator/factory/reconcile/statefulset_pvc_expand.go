@@ -152,7 +152,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 			case "true":
 				expandable = true
 			default:
-				return false, fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
+				return false, fmt.Errorf("unexpected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
 			}
 		}
 

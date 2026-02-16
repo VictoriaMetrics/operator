@@ -123,37 +123,36 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 	return nil
 }
 
-func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
-	srcSize := src.Spec.Resources.Requests.Storage()
-	dstSize := dst.Spec.Resources.Requests.Storage()
-	if srcSize == nil || dstSize == nil {
-		return nil
+func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) (bool, error) {
+	existingSize := existingObj.Spec.Resources.Requests.Storage()
+	newSize := newObj.Spec.Resources.Requests.Storage()
+	if existingSize == nil || newSize == nil {
+		return false, nil
 	}
 	var prevMeta *metav1.ObjectMeta
-	if prev != nil {
-		prevMeta = &prev.ObjectMeta
+	if prevObj != nil {
+		prevMeta = &prevObj.ObjectMeta
 	}
-	direction := dstSize.Cmp(*srcSize)
-	metaChanged, err := mergeMeta(src, dst, prevMeta, owner)
+	direction := newSize.Cmp(*existingSize)
+	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !metaChanged && direction == 0 {
-		return nil
+		return false, nil
 	}
-	pvc := src.DeepCopy()
 	if direction != 0 {
 		// do not perform any checks if user set annotation explicitly.
 		var expandable bool
-		v, ok := dst.Annotations[vmv1beta1.PVCExpandableLabel]
+		v, ok := existingObj.Annotations[vmv1beta1.PVCExpandableLabel]
 		if ok {
 			switch strings.ToLower(v) {
 			case "false":
-				return nil
+				return metaChanged, nil
 			case "true":
 				expandable = true
 			default:
-				return fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
+				return false, fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", vmv1beta1.PVCExpandableLabel, v)
 			}
 		}
 
@@ -161,29 +160,40 @@ func updatePVC(ctx context.Context, rclient client.Client, src, dst, prev *corev
 		if direction < 0 {
 			// probably, user updated pvc manually
 			// without applying this changes to the configuration.
-			l.Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", dst.Name, srcSize.String(), dstSize.String()))
-			return nil
+			l.Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", newObj.Name, existingSize.String(), newSize.String()))
+			return metaChanged, nil
 		}
 
-		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", dst.Name, srcSize, dstSize))
+		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", newObj.Name, existingSize, newSize))
 		if !expandable {
 			// check if storage class is expandable
 			var err error
-			expandable, err = isStorageClassExpandable(ctx, rclient, dst)
+			expandable, err = isStorageClassExpandable(ctx, rclient, existingObj)
 			if err != nil {
-				return fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", dst.Name, err)
+				return false, fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", newObj.Name, err)
 			}
 		}
 		if !expandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			sc := ptr.Deref(dst.Spec.StorageClassName, "default")
-			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", sc, dst.Name))
-			return nil
+			sc := ptr.Deref(newObj.Spec.StorageClassName, "default")
+			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", sc, newObj.Name))
+			return metaChanged, nil
 		}
-		pvc.Spec.Resources = *dst.Spec.Resources.DeepCopy()
+		existingObj.Spec.Resources = *newObj.Spec.Resources.DeepCopy()
 	}
-	if err := rclient.Update(ctx, pvc); err != nil {
-		return fmt.Errorf("failed to expand size for pvc %s: %v", dst.Name, err)
+	return true, nil
+}
+
+func updatePVC(ctx context.Context, rclient client.Client, existingObj, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
+	modified, err := modifyPVC(ctx, rclient, existingObj, newObj, prevObj, owner)
+	if err != nil {
+		return err
+	}
+	if !modified {
+		return nil
+	}
+	if err := rclient.Update(ctx, existingObj); err != nil {
+		return fmt.Errorf("failed to expand size for pvc %s: %v", newObj.Name, err)
 	}
 	return nil
 }

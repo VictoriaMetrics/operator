@@ -518,7 +518,10 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "999",
+					ResourceVersion: "1000",
+					Finalizers: []string{
+						vmv1beta1.FinalizerName,
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{

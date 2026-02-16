@@ -52,8 +52,8 @@ func (zs *zones) Less(i, j int) bool {
 	if isZeroI != isZeroJ {
 		return isZeroI
 	}
-	if zs.vmclusters[i].Status.ObservedGeneration != zs.vmclusters[j].Status.ObservedGeneration {
-		return zs.vmclusters[i].Status.ObservedGeneration > zs.vmclusters[j].Status.ObservedGeneration
+	if statusI.ObservedGeneration != statusJ.ObservedGeneration {
+		return statusI.ObservedGeneration > statusJ.ObservedGeneration
 	}
 	return zs.vmclusters[i].Name < zs.vmclusters[j].Name
 }

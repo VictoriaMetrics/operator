@@ -33,10 +33,10 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 			DeferCleanup(func() {
 				for _, alert := range args.alerts {
 					alert.Namespace = namespace
-					Expect(k8sClient.Delete(ctx, alert)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, alert)).ToNot(HaveOccurred())
 				}
 				for _, rule := range args.rules {
-					Expect(k8sClient.Delete(ctx, rule)).To(Succeed())
+					Expect(k8sClient.Delete(ctx, rule)).ToNot(HaveOccurred())
 				}
 				for _, alert := range args.alerts {
 					nsn := types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace}
@@ -50,10 +50,10 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 				step.setup()
 			}
 			for _, alert := range args.alerts {
-				Expect(k8sClient.Create(ctx, alert)).To(Succeed())
+				Expect(k8sClient.Create(ctx, alert)).ToNot(HaveOccurred())
 			}
 			for _, rule := range args.rules {
-				Expect(k8sClient.Create(ctx, rule)).To(Succeed())
+				Expect(k8sClient.Create(ctx, rule)).ToNot(HaveOccurred())
 			}
 
 			for _, alert := range args.alerts {
@@ -63,7 +63,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 						&vmv1beta1.VMAlert{},
 						types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace},
 						vmv1beta1.UpdateStatusOperational)
-				}, eventualReadyTimeout).Should(Succeed())
+				}, eventualReadyTimeout).ShouldNot(HaveOccurred())
 			}
 			if step.modify != nil {
 				step.modify()
@@ -128,7 +128,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							{Name: "rule-1", Namespace: namespace},
 						} {
 							var vmrule vmv1beta1.VMRule
-							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
 							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 						}
 					},
@@ -211,7 +211,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							{Name: "selector-1", Namespace: namespace},
 						} {
 							var vmrule vmv1beta1.VMRule
-							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
 							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
@@ -227,7 +227,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							{Name: "selector-miss-1", Namespace: namespace},
 						} {
 							var vmrule vmv1beta1.VMRule
-							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
 							var matched bool
 							for _, stCond := range vmrule.Status.Conditions {
 								if strings.Contains(stCond.Type, "selector-1") {
@@ -310,7 +310,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							{Name: "bad-template-1", Namespace: namespace},
 						} {
 							var vmrule vmv1beta1.VMRule
-							Expect(k8sClient.Get(ctx, nsn, &vmrule)).To(Succeed())
+							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
 							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
 							for _, cond := range vmrule.Status.Conditions {
 								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {

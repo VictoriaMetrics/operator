@@ -15,8 +15,8 @@ require (
 	github.com/go-test/deep v1.1.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/onsi/ginkgo/v2 v2.27.5
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/ginkgo/v2 v2.28.1
+	github.com/onsi/gomega v1.39.1
 	github.com/pires/go-proxyproto v0.8.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
 	github.com/prometheus/client_golang v1.23.2

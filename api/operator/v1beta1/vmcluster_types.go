@@ -616,6 +616,15 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 	return "vmselect-cachedir"
 }
 
+// GetRemoteWriteURL returns remote write url for VMCluster
+func (cr *VMCluster) GetRemoteWriteURL() string {
+	if cr == nil || cr.Spec.VMInsert == nil {
+		return ""
+	}
+	insertURL := cr.AsURL(ClusterComponentInsert)
+	return fmt.Sprintf("%s%s", insertURL, BuildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/multitenant/prometheus/api/v1/write"))
+}
+
 func (cr *VMCluster) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil

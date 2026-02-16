@@ -93,7 +93,7 @@ var _ = Describe("VM Operator", func() {
 			namespace = excludedNamespace
 		})
 
-		It("should NOT convert Prometheus operator objects to to VictoriaMetrics operator objects", func() {
+		It("should NOT convert Prometheus operator objects to VictoriaMetrics operator objects", func() {
 			Consistently(ListObjectsInNamespace, 10, 1).WithArguments(namespace, vmObjectListProtos).Should(BeEmpty())
 		})
 	})

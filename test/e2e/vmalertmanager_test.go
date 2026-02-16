@@ -53,19 +53,19 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					Name:      nsn.Name,
 					Namespace: nsn.Namespace,
 				},
-			})).To(Succeed())
+			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlertmanager{})
 		})
 		DescribeTable("should create alertmanager",
 			func(name string, cr *vmv1beta1.VMAlertmanager, verify func(*vmv1beta1.VMAlertmanager)) {
 				nsn.Name = name
 				cr.Name = name
-				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				var created vmv1beta1.VMAlertmanager
-				Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 				verify(&created)
 			},
 			Entry("with 1 replica", "replica-1",
@@ -80,7 +80,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					},
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 				},
 			),
 			Entry("with strict security", "strict-security",
@@ -100,9 +100,9 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					},
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var sts appsv1.StatefulSet
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).To(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).ToNot(HaveOccurred())
 					ps := sts.Spec.Template.Spec
 					Expect(ps.SecurityContext).NotTo(BeNil())
 					Expect(ps.SecurityContext.RunAsNonRoot).NotTo(BeNil())
@@ -118,10 +118,10 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					// assert k8s api access
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
 					alertmanagerPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
-					Expect(hasVolumeMount(alertmanagerPod.Spec.Containers[0].VolumeMounts, saTokenMount)).NotTo(Succeed())
-					Expect(hasVolume(sts.Spec.Template.Spec.Volumes, "kube-api-access")).To(Succeed())
-					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).To(Succeed())
-					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).To(Succeed())
+					Expect(hasVolumeMount(alertmanagerPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
+					Expect(hasVolume(sts.Spec.Template.Spec.Volumes, "kube-api-access")).ToNot(HaveOccurred())
+					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())
+					Expect(hasVolumeMount(ps.InitContainers[0].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())
 
 				},
 			),
@@ -143,24 +143,24 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				existAlertmanager := existAlertmanager.DeepCopy()
 				existAlertmanager.Name = name
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, existAlertmanager)).To(Succeed())
+				Expect(k8sClient.Create(ctx, existAlertmanager)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				// update and wait ready
 				var toUpdate vmv1beta1.VMAlertmanager
-				Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 				modify(&toUpdate)
-				Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+				Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
-				}, eventualExpandingTimeout).Should(Succeed())
+				}, eventualExpandingTimeout).ShouldNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).Should(Succeed())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				// verify
 				var updated vmv1beta1.VMAlertmanager
-				Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+				Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 				verify(&updated)
 			},
 			Entry("by changing replicas to 2", "update-replica-2",
@@ -168,7 +168,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.ReplicaCount = ptr.To[int32](2)
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 				},
 			),
 			Entry("by changing default config", "change-config",
@@ -185,13 +185,13 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 							"alertmanager.yaml": []byte(alertmanagerTestConf),
 						},
 					}
-					Expect(k8sClient.Create(ctx, &dstSecret)).To(Succeed())
+					Expect(k8sClient.Create(ctx, &dstSecret)).ToNot(HaveOccurred())
 					DeferCleanup(func(ctx SpecContext) {
 						Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      cr.Spec.ConfigSecret,
 								Namespace: namespace,
-							}})).To(Succeed())
+							}})).ToNot(HaveOccurred())
 					})
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
@@ -199,7 +199,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					dataGz, err := build.GzipConfig([]byte(alertmanagerTestConf))
 					Expect(err).ToNot(HaveOccurred())
 					Expect(k8sClient.Get(ctx,
-						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).To(Succeed())
+						types.NamespacedName{Name: cr.ConfigSecretName(), Namespace: namespace}, &amCfg)).ToNot(HaveOccurred())
 					Expect(amCfg.Data["alertmanager.yaml.gz"]).To(Equal(dataGz))
 				},
 			),
@@ -210,12 +210,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.UseDefaultResources = ptr.To(false)
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).To(Succeed())
+					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
 					var updatedSts appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: namespace,
 						Name:      cr.PrefixedName(),
-					}, &updatedSts)).To(Succeed())
+					}, &updatedSts)).ToNot(HaveOccurred())
 					Expect(updatedSts.Spec.Template.Spec.Containers).To(HaveLen(2))
 					Expect(updatedSts.Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{}))
 					Expect(updatedSts.Spec.Template.Spec.Containers[1].Resources).To(Equal(corev1.ResourceRequirements{}))

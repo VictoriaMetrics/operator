@@ -26,21 +26,15 @@ func TestAPIs(t *testing.T) {
 var (
 	k8sClient client.Client
 
-	_ = SynchronizedBeforeSuite(
-		func() {
-			suite.InitOperatorProcess()
-		},
-		func() {
-			k8sClient = suite.GetClient()
-		})
+	_ = SynchronizedBeforeSuite(func() []byte {
+		return suite.InitOperatorProcess()
+	}, func(data []byte) {
+		k8sClient = suite.GetClient(data)
+	})
 
-	_ = SynchronizedAfterSuite(
-		func() {
-			suite.StopClient()
-		},
-		func() {
-			suite.ShutdownOperatorProcess()
-		})
+	_ = SynchronizedAfterSuite(func() {}, func() {
+		suite.ShutdownOperatorProcess()
+	})
 
 	_ = AfterEach(suite.CollectK8SResources)
 	_ = ReportAfterSuite("allure report", func(report Report) {

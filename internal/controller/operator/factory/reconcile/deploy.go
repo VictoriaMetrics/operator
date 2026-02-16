@@ -21,8 +21,10 @@ import (
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
 func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.Deployment, hasHPA bool, owner *metav1.OwnerReference) error {
 	var prevMeta *metav1.ObjectMeta
+	var prevTemplateAnnotations map[string]string
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
+		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
@@ -45,22 +47,18 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		if hasHPA {
 			spec.Replicas = existingObj.Spec.Replicas
 		}
-		var prevTemplateAnnotations map[string]string
-		if prevObj != nil {
-			prevTemplateAnnotations = prevObj.Spec.Template.Annotations
-		}
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {

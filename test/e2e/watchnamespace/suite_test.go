@@ -1,15 +1,11 @@
 package watchnamespace
 
 import (
-	"context"
 	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
@@ -31,29 +27,17 @@ func TestAPIs(t *testing.T) {
 var (
 	k8sClient client.Client
 
-	_ = SynchronizedBeforeSuite(
-		func() {
-			Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
-			suite.InitOperatorProcess()
-		},
-		func() {
-			k8sClient = suite.GetClient()
-			testNamespace := corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: excludedNamespace,
-				},
-			}
-			err := k8sClient.Create(context.Background(), &testNamespace)
-			Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
-		})
+	_ = SynchronizedBeforeSuite(func() []byte {
+		Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
+		return suite.InitOperatorProcess(excludedNamespace)
+	}, func(data []byte) {
+		Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())
+		k8sClient = suite.GetClient(data)
+	})
 
-	_ = SynchronizedAfterSuite(
-		func() {
-			suite.StopClient()
-		},
-		func() {
-			suite.ShutdownOperatorProcess()
-		})
+	_ = SynchronizedAfterSuite(func() {}, func() {
+		suite.ShutdownOperatorProcess()
+	})
 
 	_ = AfterEach(suite.CollectK8SResources)
 	_ = ReportAfterSuite("allure report", func(report Report) {

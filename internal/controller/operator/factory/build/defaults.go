@@ -2,14 +2,17 @@ package build
 
 import (
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
@@ -37,6 +40,33 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
+}
+
+func addVMDistributedDefaults(objI any) {
+	cr := objI.(*vmv1alpha1.VMDistributed)
+
+	if cr.Spec.ZoneCommon.ReadyTimeout == nil {
+		cr.Spec.ZoneCommon.ReadyTimeout = &metav1.Duration{
+			Duration: 5 * time.Minute,
+		}
+	}
+	if cr.Spec.ZoneCommon.UpdatePause == nil {
+		cr.Spec.ZoneCommon.UpdatePause = &metav1.Duration{
+			Duration: 1 * time.Minute,
+		}
+	}
+	if cr.Spec.License.IsProvided() {
+		if !cr.Spec.VMAuth.Spec.License.IsProvided() {
+			cr.Spec.VMAuth.Spec.License = cr.Spec.License.DeepCopy()
+		}
+		if !cr.Spec.ZoneCommon.VMAgent.Spec.License.IsProvided() {
+			cr.Spec.ZoneCommon.VMAgent.Spec.License = cr.Spec.License.DeepCopy()
+		}
+		if !cr.Spec.ZoneCommon.VMCluster.Spec.License.IsProvided() {
+			cr.Spec.ZoneCommon.VMCluster.Spec.License = cr.Spec.License.DeepCopy()
+		}
+	}
 }
 
 // defaults according to

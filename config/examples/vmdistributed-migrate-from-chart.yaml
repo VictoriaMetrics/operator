@@ -1,0 +1,50 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: sample-new
+spec:
+  vmauth:
+    spec:
+      replicaCount: 1
+  zoneCommon:
+    vmagent:
+      name: vmagent-%ZONE%
+      spec:
+        replicaCount: 1
+    vmcluster:
+      name: vmcluster-%ZONE%
+      spec:
+        replicationFactor: 2
+        requestsLoadBalancer:
+          enabled: true
+          spec:
+            replicaCount: 2
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+        retentionPeriod: "14"
+        vminsert:
+          port: "8480"
+          replicaCount: 2
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+        vmselect:
+          port: "8481"
+          replicaCount: 2
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+        vmstorage:
+          replicaCount: 2
+          storageDataPath: /vm-data
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+  zones:
+    - name: zone-eu-1
+    - name: zone-us-1

@@ -47,30 +47,20 @@ func TestE2E(t *testing.T) {
 }
 
 var (
-	_ = SynchronizedBeforeSuite(
-		func() {
-			suite.InitOperatorProcess()
-		},
-		func() {
-			k8sClient = suite.GetClient()
-		},
-	)
+	k8sClient client.Client
 
-	_ = SynchronizedAfterSuite(
-		func() {
-			suite.StopClient()
-		},
-		func() {
-			suite.ShutdownOperatorProcess()
-		},
-	)
+	_ = SynchronizedBeforeSuite(func() []byte {
+		return suite.InitOperatorProcess()
+	}, func(data []byte) {
+		k8sClient = suite.GetClient(data)
+	})
+
+	_ = SynchronizedAfterSuite(func() {}, func() {
+		suite.ShutdownOperatorProcess()
+	})
 
 	_ = AfterEach(suite.CollectK8SResources)
 	_ = ReportAfterSuite("allure report", func(report Report) {
 		_ = allure.FromGinkgoReport(report)
 	})
-
-	// _ = AfterSuite()
-
-	k8sClient client.Client
 )

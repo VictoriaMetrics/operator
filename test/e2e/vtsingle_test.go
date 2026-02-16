@@ -37,7 +37,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					Name:      nsn.Name,
 					Namespace: nsn.Namespace,
 				},
-			})).To(Succeed())
+			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VTSingle{})
 		})
 		Context("crud", func() {
@@ -45,14 +45,14 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 				func(name string, cr *vmv1.VTSingle, verify func(*vmv1.VTSingle)) {
 					cr.Name = name
 					nsn.Name = name
-					Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
 					}, eventualDeploymentAppReadyTimeout,
-					).Should(Succeed())
+					).ShouldNot(HaveOccurred())
 
 					var created vmv1.VTSingle
-					Expect(k8sClient.Get(ctx, nsn, &created)).To(Succeed())
+					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 					verify(&created)
 				},
 				Entry("with strict security", "strict-security",
@@ -80,7 +80,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					func(cr *vmv1.VTSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext).NotTo(BeNil())
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot).NotTo(BeNil())
@@ -105,7 +105,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					func(cr *vmv1.VTSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(1))
@@ -150,7 +150,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					func(cr *vmv1.VTSingle) {
 						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						var createdDeploy appsv1.Deployment
-						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).To(Succeed())
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
 						ts := createdDeploy.Spec.Template.Spec
 						Expect(ts.Containers).To(HaveLen(1))
 						Expect(ts.Volumes).To(HaveLen(2))
@@ -184,25 +184,25 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					initCR.Namespace = namespace
 					nsn.Name = name
 					// setup test
-					Expect(k8sClient.Create(ctx, initCR)).To(Succeed())
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 					for _, step := range steps {
 						if step.setup != nil {
 							step.setup(initCR)
 						}
 						var toUpdate vmv1.VTSingle
-						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 						step.modify(&toUpdate)
-						Expect(k8sClient.Update(ctx, &toUpdate)).To(Succeed())
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 						Eventually(func() error {
 							return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VTSingle{}, nsn)
-						}, eventualDeploymentAppReadyTimeout).Should(Succeed())
+						}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
 
 						var updated vmv1.VTSingle
-						Expect(k8sClient.Get(ctx, nsn, &updated)).To(Succeed())
+						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 
 						// verify results
 						step.verify(&updated)
@@ -225,7 +225,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							assertAnnotationsOnObjects(ctx, nss, []client.Object{&appsv1.Deployment{}, &corev1.ServiceAccount{}, &corev1.Service{}}, expectedAnnotations)
 							var createdDeploy appsv1.Deployment
 							Expect(k8sClient.Get(ctx, nss, &createdDeploy)).
-								To(Succeed())
+								ToNot(HaveOccurred())
 						},
 					},
 					testStep{

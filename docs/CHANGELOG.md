@@ -17,7 +17,7 @@ aliases:
 
 **Update note 2**: deprecated VMProbe's `spec.targets.staticConfig`. Use `spec.targets.static` instead. Please check [example of VMProbe with static targets](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe.yaml). This field will be removed in v0.71.0.
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.135.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.135.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.136.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.45.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.45.0).
 
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added namespace to `--cluster.peer` arguments explicitly when `spec.clusterDomainName` is omitted and added unit tests to test this.

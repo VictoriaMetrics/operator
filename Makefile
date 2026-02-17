@@ -145,6 +145,9 @@ docs: build crd-ref-docs manifests
 	echo "$$FLAGS_HEADER" > docs/config-reloader-flags.md
 	bin/config-reloader --help 2>&1 | sed '1d' >> docs/config-reloader-flags.md
 	echo '```' >> docs/config-reloader-flags.md
+	# adjust flags with dynamic default values
+	# remove after https://github.com/VictoriaMetrics/VictoriaMetrics/issues/9680 implemented
+	sed -i '/The maximum number of concurrent goroutines to work with files;/ s/(default [0-9]\+)/(default fsutil.getDefaultConcurrency())/' docs/config-reloader-flags.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

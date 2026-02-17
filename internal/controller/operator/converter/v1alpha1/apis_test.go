@@ -30,7 +30,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 	}
 
 	// simple convert
-	o := opts{
+	f(opts{
 		promCfg: &promv1alpha1.AlertmanagerConfig{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-1"},
 			Spec: promv1alpha1.AlertmanagerConfigSpec{
@@ -57,11 +57,10 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			assert.Equal(t, convertedAMCfg.Spec.TimeIntervals[0].Name, "test")
 			assert.Equal(t, convertedAMCfg.Spec.TimeIntervals[0].TimeIntervals[0].Months, []string{"1:4"})
 		},
-	}
-	f(o)
+	})
 
 	// msteamsv2
-	o = opts{
+	f(opts{
 		promCfg: &promv1alpha1.AlertmanagerConfig{
 			Spec: promv1alpha1.AlertmanagerConfigSpec{
 				Receivers: []promv1alpha1.Receiver{
@@ -86,8 +85,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0].Title, "some title")
 			assert.Equal(t, convertedAMCfg.Spec.Receivers[0].MSTeamsV2Configs[0].URLSecret.Key, "some-key")
 		},
-	}
-	f(o)
+	})
 }
 
 func TestConvertScrapeConfig(t *testing.T) {
@@ -106,7 +104,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 	}
 
 	// with static config
-	o := opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				StaticConfigs: []promv1alpha1.StaticConfig{{
@@ -167,11 +165,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with httpsd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				HTTPSDConfigs: []promv1alpha1.HTTPSDConfig{
@@ -222,11 +219,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with k8s sd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
@@ -253,11 +249,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with consul sd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				ConsulSDConfigs: []promv1alpha1.ConsulSDConfig{{
@@ -278,11 +273,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with ec2 sd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				EC2SDConfigs: []promv1alpha1.EC2SDConfig{{
@@ -311,11 +305,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with owner
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -340,11 +333,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 			},
 			Spec: vmv1beta1.VMScrapeConfigSpec{},
 		},
-	}
-	f(o)
+	})
 
 	// with gce sd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				GCESDConfigs: []promv1alpha1.GCESDConfig{{
@@ -365,11 +357,10 @@ func TestConvertScrapeConfig(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with nomad sd config
-	o = opts{
+	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				NomadSDConfigs: []promv1alpha1.NomadSDConfig{{
@@ -392,6 +383,159 @@ func TestConvertScrapeConfig(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
+
+	// nomad with multiple regions and relabeling
+	f(opts{
+		scrapeConfig: &promv1alpha1.ScrapeConfig{
+			Spec: promv1alpha1.ScrapeConfigSpec{
+				ScrapeInterval: promv1.DurationPointer("20s"),
+				ScrapeTimeout:  promv1.DurationPointer("19s"),
+				NomadSDConfigs: []promv1alpha1.NomadSDConfig{
+					{
+						Server:     "https://nomad.example.com:4646",
+						Namespace:  ptr.To("default"),
+						AllowStale: ptr.To(true),
+						Authorization: &promv1.SafeAuthorization{
+							Credentials: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+								Key:                  "NOMAD_TOKEN",
+							},
+						},
+					},
+					{
+						Server:     "https://nomad.example.com:4646",
+						Namespace:  ptr.To("staging"),
+						AllowStale: ptr.To(true),
+						Authorization: &promv1.SafeAuthorization{
+							Credentials: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+								Key:                  "NOMAD_TOKEN",
+							},
+						},
+					},
+				},
+				RelabelConfigs: []promv1.RelabelConfig{
+					{Action: "replace", SourceLabels: []promv1.LabelName{"__meta_nomad_namespace"}, TargetLabel: "namespace"},
+					{Action: "replace", SourceLabels: []promv1.LabelName{"__meta_nomad_service"}, TargetLabel: "service"},
+					{Action: "replace", SourceLabels: []promv1.LabelName{"__meta_nomad_node_id"}, TargetLabel: "node"},
+					{Action: "keep", Regex: "metrics", SourceLabels: []promv1.LabelName{"__meta_nomad_service"}},
+				},
+				MetricRelabelConfigs: []promv1.RelabelConfig{
+					{
+						Action:       "replace",
+						Regex:        `org-id-123`,
+						Replacement:  ptr.To("my-org"),
+						SourceLabels: []promv1.LabelName{"customer"},
+						TargetLabel:  "tenant",
+					},
+				},
+			},
+		},
+		want: vmv1beta1.VMScrapeConfig{
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					ScrapeInterval: "20s",
+					ScrapeTimeout:  "19s",
+				},
+				NomadSDConfigs: []vmv1beta1.NomadSDConfig{
+					{
+						Server:     "https://nomad.example.com:4646",
+						Namespace:  ptr.To("default"),
+						AllowStale: ptr.To(true),
+						Authorization: &vmv1beta1.Authorization{
+							Credentials: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+								Key:                  "NOMAD_TOKEN",
+							},
+						},
+					},
+					{
+						Server:     "https://nomad.example.com:4646",
+						Namespace:  ptr.To("staging"),
+						AllowStale: ptr.To(true),
+						Authorization: &vmv1beta1.Authorization{
+							Credentials: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+								Key:                  "NOMAD_TOKEN",
+							},
+						},
+					},
+				},
+				EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+					RelabelConfigs: []*vmv1beta1.RelabelConfig{
+						{
+							Action:       "replace",
+							SourceLabels: []string{"__meta_nomad_namespace"},
+							TargetLabel:  "namespace",
+						},
+						{
+							Action:       "replace",
+							SourceLabels: []string{"__meta_nomad_service"},
+							TargetLabel:  "service",
+						},
+						{
+							Action:       "replace",
+							SourceLabels: []string{"__meta_nomad_node_id"},
+							TargetLabel:  "node",
+						},
+						{
+							Action:       "keep",
+							SourceLabels: []string{"__meta_nomad_service"},
+							Regex:        vmv1beta1.StringOrArray{"metrics"},
+						},
+					},
+					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{{
+						SourceLabels: []string{"customer"},
+						TargetLabel:  "tenant",
+						Regex:        vmv1beta1.StringOrArray{"org-id-123"},
+						Replacement:  ptr.To("my-org"),
+						Action:       "replace",
+					}},
+				},
+			},
+		},
+	})
+
+	// nomad with basic auth
+	f(opts{
+		scrapeConfig: &promv1alpha1.ScrapeConfig{
+			Spec: promv1alpha1.ScrapeConfigSpec{
+				NomadSDConfigs: []promv1alpha1.NomadSDConfig{{
+					Server:          "https://nomad.example.com:4646",
+					Namespace:       ptr.To("prod"),
+					Region:          ptr.To("us-west-1"),
+					TagSeparator:    ptr.To(","),
+					AllowStale:      ptr.To(true),
+					FollowRedirects: ptr.To(true),
+					BasicAuth: &promv1.BasicAuth{
+						Username: corev1.SecretKeySelector{Key: "user"},
+						Password: corev1.SecretKeySelector{Key: "pass"},
+					},
+					TLSConfig: &promv1.SafeTLSConfig{
+						InsecureSkipVerify: ptr.To(true),
+					},
+				}},
+			},
+		},
+		want: vmv1beta1.VMScrapeConfig{
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				NomadSDConfigs: []vmv1beta1.NomadSDConfig{{
+					Server:          "https://nomad.example.com:4646",
+					Namespace:       ptr.To("prod"),
+					Region:          ptr.To("us-west-1"),
+					TagSeparator:    ptr.To(","),
+					AllowStale:      ptr.To(true),
+					FollowRedirects: ptr.To(true),
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{Key: "user"},
+						Password: corev1.SecretKeySelector{Key: "pass"},
+					},
+					TLSConfig: &vmv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+					},
+				}},
+			},
+		},
+	})
 }

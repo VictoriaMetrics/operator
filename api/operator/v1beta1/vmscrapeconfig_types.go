@@ -80,6 +80,9 @@ type VMScrapeConfigSpec struct {
 	// DigitalOceanSDConfigs defines a list of DigitalOcean service discovery configurations.
 	// +optional
 	DigitalOceanSDConfigs []DigitalOceanSDConfig `json:"digitalOceanSDConfigs,omitempty"`
+	// NomadSDConfigs defines a list of Nomad service discovery configurations.
+	// +optional
+	NomadSDConfigs []NomadSDConfig `json:"nomadSDConfigs,omitempty"`
 	EndpointScrapeParams  `json:",inline"`
 	EndpointRelabelings   `json:",inline"`
 	EndpointAuth          `json:",inline"`
@@ -513,6 +516,57 @@ type DigitalOceanSDConfig struct {
 	// The port to scrape metrics from.
 	// +optional
 	Port *int `json:"port,omitempty"`
+}
+
+// NomadSDConfig configurations allow retrieving scrape targets from Nomad's Service API.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#nomad_sd_configs)
+// +k8s:openapi-gen=true
+type NomadSDConfig struct {
+	// A valid string consisting of a hostname or IP followed by an optional port number.
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	Server string `json:"server"`
+	// Namespace to use for Nomad service discovery.
+	// +optional
+	Namespace *string `json:"namespace,omitempty"`
+	// Region to use for Nomad service discovery.
+	// +optional
+	Region *string `json:"region,omitempty"`
+	// The string by which Nomad tags are joined into the tag label.
+	// If unset, use its default value.
+	// +optional
+	TagSeparator *string `json:"tagSeparator,omitempty"`
+	// The time after which the provided names are refreshed.
+	// On large setup it might be a good idea to increase this value because the catalog request might be expensive.
+	// If unset, use its default value.
+	// +optional
+	RefreshInterval *string `json:"refreshInterval,omitempty"`
+	// Allow stale Nomad results to reduce load on Nomad.
+	// If unset, use its default value.
+	// +optional
+	AllowStale *bool `json:"allowStale,omitempty"`
+	// BasicAuth information to use on every scrape request.
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// Authorization header to use on every scrape request.
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// TLS configuration to use on every scrape request
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
+	// +optional
+	ProxyURL *string `json:"proxyURL,omitempty"`
+	// ProxyClientConfig configures proxy auth settings for scraping
+	// See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy)
+	// +optional
+	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+	// Configure whether HTTP requests follow HTTP 3xx redirects.
+	// +optional
+	FollowRedirects *bool `json:"followRedirects,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

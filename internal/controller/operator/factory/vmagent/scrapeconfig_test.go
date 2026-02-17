@@ -521,6 +521,43 @@ digitalocean_sd_configs:
 `,
 	})
 
+	// basic nomadSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "nomadsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				NomadSDConfigs: []vmv1beta1.NomadSDConfig{
+					{
+						Server:       "localhost:4646",
+						Namespace:    ptr.To("default"),
+						Region:       ptr.To("global"),
+						TagSeparator: ptr.To(","),
+						AllowStale:   ptr.To(true),
+					},
+				},
+			},
+		},
+		want: `job_name: scrapeConfig/default/nomadsd-1
+honor_labels: false
+relabel_configs: []
+nomad_sd_configs:
+- server: localhost:4646
+  namespace: default
+  region: global
+  tag_separator: ','
+  allow_stale: true
+`,
+	})
+
 	// configs with auth and empty type
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

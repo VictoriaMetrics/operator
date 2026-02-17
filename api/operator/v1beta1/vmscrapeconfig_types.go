@@ -536,11 +536,6 @@ type NomadSDConfig struct {
 	// If unset, use its default value.
 	// +optional
 	TagSeparator *string `json:"tagSeparator,omitempty"`
-	// The time after which the provided names are refreshed.
-	// On large setup it might be a good idea to increase this value because the catalog request might be expensive.
-	// If unset, use its default value.
-	// +optional
-	RefreshInterval *string `json:"refreshInterval,omitempty"`
 	// Allow stale Nomad results to reduce load on Nomad.
 	// If unset, use its default value.
 	// +optional

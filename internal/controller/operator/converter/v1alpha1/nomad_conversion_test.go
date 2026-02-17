@@ -21,10 +21,9 @@ func TestConvertNomadScrapeConfigMultiNamespace(t *testing.T) {
 			ScrapeTimeout:  promv1.DurationPointer("19s"),
 			NomadSDConfigs: []promv1alpha1.NomadSDConfig{
 				{
-					Server:          "https://nomad.example.com:4646",
-					Namespace:       ptr.To("default"),
-					AllowStale:      ptr.To(true),
-					RefreshInterval: promv1.DurationPointer("15s"),
+					Server:     "https://nomad.example.com:4646",
+					Namespace:  ptr.To("default"),
+					AllowStale: ptr.To(true),
 					Authorization: &promv1.SafeAuthorization{
 						Credentials: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
@@ -33,10 +32,9 @@ func TestConvertNomadScrapeConfigMultiNamespace(t *testing.T) {
 					},
 				},
 				{
-					Server:          "https://nomad.example.com:4646",
-					Namespace:       ptr.To("staging"),
-					AllowStale:      ptr.To(true),
-					RefreshInterval: promv1.DurationPointer("15s"),
+					Server:     "https://nomad.example.com:4646",
+					Namespace:  ptr.To("staging"),
+					AllowStale: ptr.To(true),
 					Authorization: &promv1.SafeAuthorization{
 						Credentials: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
@@ -107,33 +105,6 @@ func TestConvertNomadScrapeConfigMultiNamespace(t *testing.T) {
 	}
 }
 
-// TestConvertNomadRefreshInterval verifies that refreshInterval is correctly
-// preserved during Prometheus→VM conversion.
-func TestConvertNomadRefreshInterval(t *testing.T) {
-	promSC := &promv1alpha1.ScrapeConfig{
-		Spec: promv1alpha1.ScrapeConfigSpec{
-			NomadSDConfigs: []promv1alpha1.NomadSDConfig{{
-				Server:          "https://nomad.example.com:4646",
-				RefreshInterval: promv1.DurationPointer("15s"),
-			}},
-		},
-	}
-
-	got := ConvertScrapeConfig(promSC, &config.BaseOperatorConf{})
-
-	if len(got.Spec.NomadSDConfigs) != 1 {
-		t.Fatalf("expected 1 NomadSDConfig, got %d", len(got.Spec.NomadSDConfigs))
-	}
-
-	cfg := got.Spec.NomadSDConfigs[0]
-	assertEqual(t, "Server", cfg.Server, "https://nomad.example.com:4646")
-
-	if cfg.RefreshInterval == nil {
-		t.Fatal("RefreshInterval is nil, expected '15s'")
-	}
-	assertEqual(t, "RefreshInterval", *cfg.RefreshInterval, "15s")
-}
-
 func assertEqual[T comparable](t *testing.T, name string, got, want T) {
 	t.Helper()
 	if got != want {
@@ -178,7 +149,6 @@ func TestVerifyNomadFieldMapping(t *testing.T) {
 				TagSeparator:    ptr.To(","),
 				AllowStale:      ptr.To(true),
 				FollowRedirects: ptr.To(true),
-				RefreshInterval: promv1.DurationPointer("30s"),
 				BasicAuth: &promv1.BasicAuth{
 					Username: corev1.SecretKeySelector{Key: "user"},
 					Password: corev1.SecretKeySelector{Key: "pass"},
@@ -199,7 +169,6 @@ func TestVerifyNomadFieldMapping(t *testing.T) {
 	assertPtrEqual(t, "TagSeparator", cfg.TagSeparator, ",")
 	assertPtrEqual(t, "AllowStale", cfg.AllowStale, true)
 	assertPtrEqual(t, "FollowRedirects", cfg.FollowRedirects, true)
-	assertPtrEqual(t, "RefreshInterval", cfg.RefreshInterval, "30s")
 
 	if cfg.BasicAuth == nil {
 		t.Fatal("BasicAuth is nil")

@@ -803,13 +803,6 @@ func generateScrapeConfig(
 				})
 			}
 
-			if config.RefreshInterval != nil {
-				configs[i] = append(configs[i], yaml.MapItem{
-					Key:   "refresh_interval",
-					Value: config.RefreshInterval,
-				})
-			}
-
 			if config.AllowStale != nil {
 				configs[i] = append(configs[i], yaml.MapItem{
 					Key:   "allow_stale",

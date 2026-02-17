@@ -373,24 +373,22 @@ func TestConvertScrapeConfig(t *testing.T) {
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
 				NomadSDConfigs: []promv1alpha1.NomadSDConfig{{
-					Server:          "http://nomad.example.com:4646",
-					Namespace:       ptr.To("default"),
-					Region:          ptr.To("global"),
-					TagSeparator:    ptr.To(","),
-					AllowStale:      ptr.To(true),
-					RefreshInterval: promv1.DurationPointer("15s"),
+					Server:       "http://nomad.example.com:4646",
+					Namespace:    ptr.To("default"),
+					Region:       ptr.To("global"),
+					TagSeparator: ptr.To(","),
+					AllowStale:   ptr.To(true),
 				}},
 			},
 		},
 		want: vmv1beta1.VMScrapeConfig{
 			Spec: vmv1beta1.VMScrapeConfigSpec{
 				NomadSDConfigs: []vmv1beta1.NomadSDConfig{{
-					Server:          "http://nomad.example.com:4646",
-					Namespace:       ptr.To("default"),
-					Region:          ptr.To("global"),
-					TagSeparator:    ptr.To(","),
-					AllowStale:      ptr.To(true),
-					RefreshInterval: ptr.To("15s"),
+					Server:       "http://nomad.example.com:4646",
+					Namespace:    ptr.To("default"),
+					Region:       ptr.To("global"),
+					TagSeparator: ptr.To(","),
+					AllowStale:   ptr.To(true),
 				}},
 			},
 		},

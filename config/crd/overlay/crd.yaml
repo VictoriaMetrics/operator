@@ -32654,8 +32654,6 @@ spec:
                       type: object
                     proxyURL:
                       type: string
-                    refreshInterval:
-                      type: string
                     region:
                       type: string
                     server:

@@ -2198,11 +2198,6 @@ func (in *NomadSDConfig) DeepCopyInto(out *NomadSDConfig) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.RefreshInterval != nil {
-		in, out := &in.RefreshInterval, &out.RefreshInterval
-		*out = new(string)
-		**out = **in
-	}
 	if in.AllowStale != nil {
 		in, out := &in.AllowStale, &out.AllowStale
 		*out = new(bool)

@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -54,6 +55,7 @@ func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.Deployment{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
@@ -80,6 +82,7 @@ func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
@@ -105,6 +108,7 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
@@ -149,6 +153,7 @@ func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr 
 type ChildCleaner struct {
 	pdbs     map[string]struct{}
 	hpas     map[string]struct{}
+	vpas     map[string]struct{}
 	services map[string]struct{}
 	scrapes  map[string]struct{}
 }
@@ -158,6 +163,7 @@ func NewChildCleaner() *ChildCleaner {
 	return &ChildCleaner{
 		pdbs:     make(map[string]struct{}),
 		hpas:     make(map[string]struct{}),
+		vpas:     make(map[string]struct{}),
 		services: make(map[string]struct{}),
 		scrapes:  make(map[string]struct{}),
 	}
@@ -171,6 +177,11 @@ func (cc *ChildCleaner) KeepPDB(v string) {
 // KeepHPA adds given HorizontalPodAutoscaler's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepHPA(v string) {
 	cc.hpas[v] = struct{}{}
+}
+
+// KeepVPA adds given VerticalPodAutoscaler's name to a map of resource names to be excluded from deletion
+func (cc *ChildCleaner) KeepVPA(v string) {
+	cc.vpas[v] = struct{}{}
 }
 
 // KeepService adds given HorizontalPodAutoscaler's name to a map of resource names to be excluded from deletion
@@ -191,6 +202,9 @@ func (cc *ChildCleaner) RemoveOrphaned(ctx context.Context, rclient client.Clien
 	}
 	if err := RemoveOrphanedHPAs(ctx, rclient, b, cc.hpas); err != nil {
 		return fmt.Errorf("cannot remove orphaned HPAs: %w", err)
+	}
+	if err := RemoveOrphanedVPAs(ctx, rclient, b, cc.vpas); err != nil {
+		return fmt.Errorf("cannot remove orphaned VPAs: %w", err)
 	}
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, cc.scrapes); err != nil {
 		return fmt.Errorf("cannot remove orphaned vmservicescrapes: %w", err)

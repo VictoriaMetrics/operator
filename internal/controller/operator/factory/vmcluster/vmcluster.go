@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,6 +38,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err
+		}
+	}
+	cfg := config.MustGetBaseConfig()
+	if !cfg.VPAAPIEnabled {
+		if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.VPA != nil {
+			return fmt.Errorf("spec.vmstorage.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.VMSelect != nil && cr.Spec.VMSelect.VPA != nil {
+			return fmt.Errorf("spec.vmselect.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.VMInsert != nil && cr.Spec.VMInsert.VPA != nil {
+			return fmt.Errorf("spec.vminsert.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
 		}
 	}
 	var prevCR *vmv1beta1.VMCluster
@@ -81,6 +95,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
+		if err := createOrUpdateVMStorageVPA(ctx, rclient, cr, prevCR); err != nil {
+			return err
+		}
 	}
 
 	if cr.Spec.VMSelect != nil {
@@ -94,6 +111,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 
 		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr, prevCR); err != nil {
+			return err
+		}
+		if err := createOrUpdateVMSelectVPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 		// create vmselect service
@@ -115,6 +135,9 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 			return err
 		}
 		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
+			return err
+		}
+		if err := createOrUpdateVMInsertVPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 	}
@@ -1212,6 +1235,67 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
 }
 
+func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMInsert.VPA == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, cr.Spec.VMInsert.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMInsert.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
+}
+
+func createOrUpdateVMSelectVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMSelect.VPA == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, cr.Spec.VMSelect.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMSelect.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
+}
+
+func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	vpa := cr.Spec.VMStorage.VPA
+	if vpa == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, vpa)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMStorage.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
+}
+
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) error {
 	newStorage := cr.Spec.VMStorage
 	newSelect := cr.Spec.VMSelect
@@ -1219,7 +1303,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	newLB := cr.Spec.RequestsLoadBalancer
 
 	cc := finalize.NewChildCleaner()
-
 	if newStorage == nil {
 		if err := finalize.OnStorageDelete(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
@@ -1231,6 +1314,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
+		}
+		if newStorage.VPA != nil {
+			cc.KeepVPA(commonName)
 		}
 		if !ptr.Deref(newStorage.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
@@ -1252,6 +1338,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 		if newSelect.HPA != nil {
 			cc.KeepHPA(commonName)
+		}
+		if newSelect.VPA != nil {
+			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
 		if newSelect.ServiceSpec != nil && !newSelect.ServiceSpec.UseAsDefault {
@@ -1278,6 +1367,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 		if newInsert.HPA != nil {
 			cc.KeepHPA(commonName)
+		}
+		if newInsert.VPA != nil {
+			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
 		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {

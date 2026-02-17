@@ -4,14 +4,20 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -26,6 +32,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cfgMutator        func(*config.BaseOperatorConf)
 		wantErr           bool
 		predefinedObjects []runtime.Object
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth)
 	}
 
 	f := func(o opts) {
@@ -38,9 +45,12 @@ func TestCreateOrUpdate(t *testing.T) {
 			}()
 		}
 		ctx := context.Background()
-		tc := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		if err := CreateOrUpdate(ctx, o.cr, tc); (err != nil) != o.wantErr {
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		if err := CreateOrUpdate(ctx, o.cr, fclient); (err != nil) != o.wantErr {
 			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+		}
+		if o.validate != nil {
+			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
@@ -212,6 +222,192 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
+		},
+	})
+
+	// create VPA
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName()
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(),
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// update VPA
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmauth-test",
+					Namespace: "default",
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       "vmauth-test",
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			},
+		},
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				VPA: &vmv1beta1.EmbeddedVPA{
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName()
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(),
+					ResourceVersion: "1000",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// remove VPA
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "vmauth-test",
+					Namespace:       "default",
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+					Labels: map[string]string{
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+						"app.kubernetes.io/name":      "vmauth",
+					},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       "vmauth-test",
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vmauth"},
+						},
+					},
+				},
+			},
+		},
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta:            metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec:                  vmv1beta1.VMAuthSpec{},
+			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName()
+			err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got)
+			assert.Error(t, err)
+			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
 }

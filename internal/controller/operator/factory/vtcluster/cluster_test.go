@@ -6,19 +6,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -26,12 +30,21 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VTCluster
-		validate          func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster)
+		cfgMutator        func(*config.BaseOperatorConf)
 		predefinedObjects []runtime.Object
 		wantErr           bool
 	}
 	f := func(o opts) {
 		t.Helper()
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
@@ -142,9 +155,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if o.validate != nil {
-			if err := o.validate(ctx, fclient, o.cr); err != nil {
-				t.Fatalf("unexpected validation error: %s", err)
-			}
+			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
@@ -179,7 +190,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
 			// ensure SA created
 			var sa corev1.ServiceAccount
 			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.Namespace}, &sa))
@@ -211,8 +222,6 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10491", "-storageDataPath=/vtstorage-data"})
 			assert.Nil(t, sts.Annotations)
 			assert.Equal(t, sts.Labels, cr.FinalLabels(vmv1beta1.ClusterComponentStorage))
-
-			return nil
 		},
 	})
 
@@ -234,16 +243,13 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
-
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
 			// check storage
 			var sts appsv1.StatefulSet
 			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
 			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 			cnt := sts.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-httpListenAddr=:10491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vtstorage-data"})
-
-			return nil
 		},
 	})
 
@@ -276,5 +282,347 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		wantErr: true,
+	})
+
+	// with insert VPA
+	f(opts{
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1.VTClusterSpec{
+				Insert: &vmv1.VTInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+					VPA: &vmv1beta1.EmbeddedVPA{
+						UpdatePolicy: &vpav1.PodUpdatePolicy{
+							UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+						},
+						ResourcePolicy: &vpav1.PodResourcePolicy{
+							ContainerPolicies: []vpav1.ContainerResourcePolicy{
+								{ContainerName: "vtinsert"},
+							},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// with select VPA
+	f(opts{
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1.VTClusterSpec{
+				Select: &vmv1.VTSelect{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+					VPA: &vmv1beta1.EmbeddedVPA{
+						UpdatePolicy: &vpav1.PodUpdatePolicy{
+							UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+						},
+						ResourcePolicy: &vpav1.PodResourcePolicy{
+							ContainerPolicies: []vpav1.ContainerResourcePolicy{
+								{
+									ContainerName: "vtselect",
+									Mode:          ptr.To(vpav1.ContainerScalingModeAuto),
+								},
+							},
+						},
+						Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+							{Name: "custom-recommender"},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
+			var got vpav1.VerticalPodAutoscaler
+			component := vmv1beta1.ClusterComponentSelect
+			vpaName := cr.PrefixedName(component)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(component),
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{{
+							ContainerName: "vtselect",
+							Mode:          ptr.To(vpav1.ContainerScalingModeAuto),
+						}},
+					},
+					Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+						{Name: "custom-recommender"},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// with storage VPA
+	f(opts{
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1.VTClusterSpec{
+				Storage: &vmv1.VTStorage{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+					VPA: &vmv1beta1.EmbeddedVPA{
+						UpdatePolicy: &vpav1.PodUpdatePolicy{
+							UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+						},
+						ResourcePolicy: &vpav1.PodResourcePolicy{
+							ContainerPolicies: []vpav1.ContainerResourcePolicy{
+								{ContainerName: "vtstorage"},
+							},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
+			component := vmv1beta1.ClusterComponentStorage
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName(component)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(component),
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtstorage"},
+						},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// update VPA on insert
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vtinsert-test",
+					Namespace: "default",
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       "vtinsert-test",
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			},
+		},
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1.VTClusterSpec{
+				Insert: &vmv1.VTInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+					VPA: &vmv1beta1.EmbeddedVPA{
+						UpdatePolicy: &vpav1.PodUpdatePolicy{
+							UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+						},
+						ResourcePolicy: &vpav1.PodResourcePolicy{
+							ContainerPolicies: []vpav1.ContainerResourcePolicy{
+								{ContainerName: "vtinsert"},
+							},
+						},
+					},
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
+			component := vmv1beta1.ClusterComponentInsert
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName(component)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			expected := vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            vpaName,
+					Namespace:       cr.Namespace,
+					Labels:          cr.FinalLabels(component),
+					ResourceVersion: "1000",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       vpaName,
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			}
+			if !cmp.Equal(got, expected) {
+				diff := cmp.Diff(got, expected)
+				t.Fatal("not expected output with diff: ", diff)
+			}
+		},
+	})
+
+	// remove insert VPA
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "vtinsert-test",
+					Namespace:       "default",
+					ResourceVersion: "1",
+					Finalizers:      []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
+					Labels: map[string]string{
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+						"app.kubernetes.io/name":      "vtinsert",
+						"app.kubernetes.io/part-of":   "vtcluster",
+					},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						Name:       "vtinsert-test",
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: ptr.To(vpav1.UpdateModeInitial),
+					},
+					ResourcePolicy: &vpav1.PodResourcePolicy{
+						ContainerPolicies: []vpav1.ContainerResourcePolicy{
+							{ContainerName: "vtinsert"},
+						},
+					},
+				},
+			},
+		},
+		cr: &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1.VTClusterSpec{
+				Insert: &vmv1.VTInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+				},
+			},
+			ParsedLastAppliedSpec: &vmv1.VTClusterSpec{},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) {
+			component := vmv1beta1.ClusterComponentInsert
+			var got vpav1.VerticalPodAutoscaler
+			vpaName := cr.PrefixedName(component)
+			err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got)
+			assert.Error(t, err)
+			assert.True(t, k8serrors.IsNotFound(err))
+		},
 	})
 }

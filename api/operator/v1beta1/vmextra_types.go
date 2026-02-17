@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -424,6 +425,29 @@ type EmbeddedHPA struct {
 func (cr *EmbeddedHPA) Validate() error {
 	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
 		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
+	}
+	return nil
+}
+
+// EmbeddedVPA embeds VerticalPodAutoscaler spec v1.
+// https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+type EmbeddedVPA struct {
+	// UpdatePolicy controls how the autoscaler applies changes to pod resources.
+	UpdatePolicy *vpav1.PodUpdatePolicy `json:"updatePolicy,omitempty"`
+	// ResourcePolicy controls how the autoscaler computes recommended resources per container.
+	ResourcePolicy *vpav1.PodResourcePolicy `json:"resourcePolicy,omitempty"`
+	// Recommenders specifies custom VPA recommender names.
+	// +optional
+	Recommenders []*vpav1.VerticalPodAutoscalerRecommenderSelector `json:"recommenders,omitempty"`
+}
+
+// Validate validates VPA configuration
+func (cr *EmbeddedVPA) Validate() error {
+	if cr.UpdatePolicy == nil || cr.UpdatePolicy.UpdateMode == nil {
+		return fmt.Errorf("VPA must have updatePolicy.updateMode")
+	}
+	if cr.ResourcePolicy == nil || len(cr.ResourcePolicy.ContainerPolicies) == 0 {
+		return fmt.Errorf("VPA must have resourcePolicy.containerPolicies")
 	}
 	return nil
 }

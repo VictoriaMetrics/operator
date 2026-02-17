@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
@@ -68,6 +69,20 @@ func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedC
 	}
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 
+}
+
+// RemoveOrphanedVPAs removes VPAs detached from given object
+func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+	cfg := config.MustGetBaseConfig()
+	if !cfg.VPAAPIEnabled {
+		return nil
+	}
+	gvk := schema.GroupVersionKind{
+		Group:   "autoscaling.k8s.io",
+		Version: "v1",
+		Kind:    "VerticalPodAutoscaler",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
 // RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object

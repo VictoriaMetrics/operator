@@ -7,11 +7,13 @@ import (
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -42,6 +44,9 @@ func createOrUpdateVLStorage(ctx context.Context, rclient client.Client, cr, pre
 		}
 	}
 	if err := createOrUpdateVLStorageHPA(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
+	if err := createOrUpdateVLStorageVPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 	if err := createOrUpdateVLStorageSTS(ctx, rclient, cr, prevCR); err != nil {
@@ -123,6 +128,27 @@ func createOrUpdateVLStorageHPA(ctx context.Context, rclient client.Client, cr, 
 
 	owner := cr.AsOwner()
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
+}
+
+func createOrUpdateVLStorageVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
+	vpa := cr.Spec.VLStorage.VPA
+	if vpa == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(b, targetRef, vpa)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VLStorage != nil && prevCR.Spec.VLStorage.VPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLStorage.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
 func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {

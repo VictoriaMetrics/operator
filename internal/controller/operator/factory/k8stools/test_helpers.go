@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -25,7 +26,7 @@ import (
 
 func testGetScheme() *runtime.Scheme {
 	s := scheme.Scheme
-	s.AddKnownTypes(vmv1beta1.GroupVersion,
+	s.AddKnownTypes(vmv1beta1.SchemeGroupVersion,
 		&vmv1beta1.VMAgent{},
 		&vmv1beta1.VMAgentList{},
 		&vmv1beta1.VMAlert{},
@@ -42,17 +43,6 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfigList{},
 		&vmv1beta1.VMClusterList{},
 		&vmv1beta1.VLogsList{},
-		&vmv1alpha1.VMDistributedList{},
-		&vmv1.VLSingleList{},
-		&vmv1.VTSingleList{},
-		&vmv1.VLClusterList{},
-		&vmv1.VTClusterList{},
-		&vmv1.VMAnomalyList{},
-		&vmv1.VLAgentList{},
-		&gwapiv1.HTTPRouteList{},
-		&apiextensionsv1.CustomResourceDefinitionList{},
-	)
-	s.AddKnownTypes(vmv1beta1.GroupVersion,
 		&vmv1beta1.VMPodScrape{},
 		&vmv1beta1.VMPodScrapeList{},
 		&vmv1beta1.VMServiceScrapeList{},
@@ -70,15 +60,36 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMScrapeConfig{},
 		&vmv1beta1.VMCluster{},
 		&vmv1beta1.VLogs{},
+	)
+	s.AddKnownTypes(vmv1alpha1.SchemeGroupVersion,
+		&vmv1alpha1.VMDistributedList{},
 		&vmv1alpha1.VMDistributed{},
+	)
+	s.AddKnownTypes(vmv1.SchemeGroupVersion,
+		&vmv1.VLSingleList{},
+		&vmv1.VTSingleList{},
+		&vmv1.VLClusterList{},
+		&vmv1.VTClusterList{},
+		&vmv1.VMAnomalyList{},
+		&vmv1.VLAgentList{},
 		&vmv1.VLSingle{},
 		&vmv1.VLCluster{},
 		&vmv1.VTSingle{},
 		&vmv1.VTCluster{},
 		&vmv1.VMAnomaly{},
 		&vmv1.VLAgent{},
+	)
+	s.AddKnownTypes(gwapiv1.SchemeGroupVersion,
+		&gwapiv1.HTTPRouteList{},
 		&gwapiv1.HTTPRoute{},
+	)
+	s.AddKnownTypes(apiextensionsv1.SchemeGroupVersion,
+		&apiextensionsv1.CustomResourceDefinitionList{},
 		&apiextensionsv1.CustomResourceDefinition{},
+	)
+	s.AddKnownTypes(vpav1.SchemeGroupVersion,
+		&vpav1.VerticalPodAutoscaler{},
+		&vpav1.VerticalPodAutoscalerList{},
 	)
 	return s
 }
@@ -121,6 +132,7 @@ func GetTestClientWithClientObjects(predefinedObjects []client.Object) *TestClie
 			&vmv1.VMAnomaly{},
 			&vmv1.VLAgent{},
 			&gwapiv1.HTTPRoute{},
+			&vpav1.VerticalPodAutoscaler{},
 		).
 		WithObjects(predefinedObjects...).Build()
 	withStats := TestClientWithStatsTrack{

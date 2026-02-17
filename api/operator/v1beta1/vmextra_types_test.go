@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {
@@ -125,4 +126,136 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 	f(`""
 `, yaml.Unmarshal, StringOrArray{""})
 
+}
+
+func TestEmbeddedVPAValidation(t *testing.T) {
+	type opts struct {
+		vpa     *EmbeddedVPA
+		wantErr bool
+	}
+	updateModeRecreate := vpav1.UpdateModeRecreate
+	f := func(o opts) {
+		t.Helper()
+		err := o.vpa.Validate()
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	// empty VPA should fail
+	f(opts{
+		vpa:     &EmbeddedVPA{},
+		wantErr: true,
+	})
+
+	// VPA with empty updatePolicy should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			UpdatePolicy: &vpav1.PodUpdatePolicy{},
+		},
+		wantErr: true,
+	})
+
+	// VPA with updateMode only should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			UpdatePolicy: &vpav1.PodUpdatePolicy{
+				UpdateMode: &updateModeRecreate,
+			},
+		},
+		wantErr: true,
+	})
+
+	// VPA with empty resourcePolicy should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			ResourcePolicy: &vpav1.PodResourcePolicy{},
+		},
+		wantErr: true,
+	})
+
+	// VPA with containerPolicies only should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			ResourcePolicy: &vpav1.PodResourcePolicy{
+				ContainerPolicies: []vpav1.ContainerResourcePolicy{
+					{ContainerName: "test"},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// VPA with recommenders only should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+				{Name: "test"},
+			},
+		},
+		wantErr: true,
+	})
+
+	// VPA with updateMode and recommenders should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			UpdatePolicy: &vpav1.PodUpdatePolicy{
+				UpdateMode: &updateModeRecreate,
+			},
+			Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+				{Name: "test"},
+			},
+		},
+		wantErr: true,
+	})
+
+	// VPA with containerPolicies and recommenders should fail
+	f(opts{
+		vpa: &EmbeddedVPA{
+			ResourcePolicy: &vpav1.PodResourcePolicy{
+				ContainerPolicies: []vpav1.ContainerResourcePolicy{
+					{ContainerName: "test"},
+				},
+			},
+			Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+				{Name: "test"},
+			},
+		},
+		wantErr: true,
+	})
+
+	// VPA with updateMode and containerPolicies should pass
+	f(opts{
+		vpa: &EmbeddedVPA{
+			UpdatePolicy: &vpav1.PodUpdatePolicy{
+				UpdateMode: &updateModeRecreate,
+			},
+			ResourcePolicy: &vpav1.PodResourcePolicy{
+				ContainerPolicies: []vpav1.ContainerResourcePolicy{
+					{ContainerName: "test"},
+				},
+			},
+		},
+		wantErr: false,
+	})
+
+	// VPA with all configs should pass
+	f(opts{
+		vpa: &EmbeddedVPA{
+			UpdatePolicy: &vpav1.PodUpdatePolicy{
+				UpdateMode: &updateModeRecreate,
+			},
+			ResourcePolicy: &vpav1.PodResourcePolicy{
+				ContainerPolicies: []vpav1.ContainerResourcePolicy{
+					{ContainerName: "test"},
+				},
+			},
+			Recommenders: []*vpav1.VerticalPodAutoscalerRecommenderSelector{
+				{Name: "test"},
+			},
+		},
+		wantErr: false,
+	})
 }

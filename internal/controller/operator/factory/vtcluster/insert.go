@@ -278,7 +278,7 @@ func createOrUpdateVTInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newVPA := build.VPA(b, targetRef, cr.Spec.Insert.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.Insert.VPA != nil {
+	if prevCR != nil && prevCR.Spec.Insert != nil && prevCR.Spec.Insert.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.Insert.VPA)
 	}

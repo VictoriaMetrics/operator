@@ -143,7 +143,7 @@ func createOrUpdateVLStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	}
 	newVPA := build.VPA(b, targetRef, vpa)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VLStorage.VPA != nil {
+	if prevCR != nil && prevCR.Spec.VLStorage != nil && prevCR.Spec.VLStorage.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLStorage.VPA)
 	}

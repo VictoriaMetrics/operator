@@ -11,6 +11,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -28,6 +29,18 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.ParsedLastAppliedSpec
+	}
+	cfg := config.MustGetBaseConfig()
+	if !cfg.VPAAPIEnabled {
+		if cr.Spec.Storage != nil && cr.Spec.Storage.VPA != nil {
+			return fmt.Errorf("spec.storage.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.Select != nil && cr.Spec.Select.VPA != nil {
+			return fmt.Errorf("spec.select.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.Insert != nil && cr.Spec.Insert.VPA != nil {
+			return fmt.Errorf("spec.insert.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
 	}
 	if cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)

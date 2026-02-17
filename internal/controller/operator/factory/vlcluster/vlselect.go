@@ -90,7 +90,7 @@ func createOrUpdateVLSelectVPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newVPA := build.VPA(b, targetRef, cr.Spec.VLSelect.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VLSelect.VPA != nil {
+	if prevCR != nil && prevCR.Spec.VLSelect != nil && prevCR.Spec.VLSelect.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLSelect.VPA)
 	}

@@ -27,6 +27,7 @@ aliases:
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added tracing support. See [#1770](https://github.com/VictoriaMetrics/operator/issues/1770).
 * FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.kubernetes` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): added nomad_sd_config support. See [#1809](https://github.com/VictoriaMetrics/operator/issues/1809).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support VPA for vmcluster, vtcluster, vlcluster and vmauth. See [#1795](https://github.com/VictoriaMetrics/operator/issues/1795).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).

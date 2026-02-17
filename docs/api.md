@@ -403,6 +403,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | useStrictSecurity<a href="#vlinsert-usestrictsecurity" id="vlinsert-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlinsert-volumemounts" id="vlinsert-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlinsert-volumes" id="vlinsert-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vlinsert-vpa" id="vlinsert-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VLSelect
@@ -461,6 +462,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | useStrictSecurity<a href="#vlselect-usestrictsecurity" id="vlselect-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlselect-volumemounts" id="vlselect-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlselect-volumes" id="vlselect-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vlselect-vpa" id="vlselect-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VLSingle
@@ -613,6 +615,7 @@ Appears in: [VLClusterSpec](#vlclusterspec)
 | useStrictSecurity<a href="#vlstorage-usestrictsecurity" id="vlstorage-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlstorage-volumemounts" id="vlstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlstorage-volumes" id="vlstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vlstorage-vpa" id="vlstorage-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VLStorageNode
@@ -958,6 +961,7 @@ Appears in: [VTClusterSpec](#vtclusterspec)
 | useStrictSecurity<a href="#vtinsert-usestrictsecurity" id="vtinsert-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vtinsert-volumemounts" id="vtinsert-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vtinsert-volumes" id="vtinsert-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vtinsert-vpa" id="vtinsert-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VTSelect
@@ -1016,6 +1020,7 @@ Appears in: [VTClusterSpec](#vtclusterspec)
 | useStrictSecurity<a href="#vtselect-usestrictsecurity" id="vtselect-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vtselect-volumemounts" id="vtselect-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vtselect-volumes" id="vtselect-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vtselect-vpa" id="vtselect-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VTSingle
@@ -1166,6 +1171,7 @@ Appears in: [VTClusterSpec](#vtclusterspec)
 | useStrictSecurity<a href="#vtstorage-usestrictsecurity" id="vtstorage-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vtstorage-volumemounts" id="vtstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vtstorage-volumes" id="vtstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vtstorage-vpa" id="vtstorage-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VTStorageNode
@@ -1509,7 +1515,7 @@ Appears in: [Endpoint](#endpoint), [KubernetesSDConfig](#kubernetessdconfig), [P
 
 Authorization configures generic authorization params
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1545,7 +1551,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2115,6 +2121,22 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 | startupProbe<a href="#embeddedprobes-startupprobe" id="embeddedprobes-startupprobe">#</a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>StartupProbe that will be added to CRD pod |
 
 
+#### EmbeddedVPA
+
+
+
+EmbeddedVPA embeds VerticalPodAutoscaler spec v1.
+https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+
+Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTStorage](#vtstorage)
+
+| Field | Description |
+| --- | --- |
+| recommenders<a href="#embeddedvpa-recommenders" id="embeddedvpa-recommenders">#</a><br/>_VerticalPodAutoscalerRecommenderSelector array_ | _(Optional)_<br/>Recommenders specifies custom VPA recommender names. |
+| resourcePolicy<a href="#embeddedvpa-resourcepolicy" id="embeddedvpa-resourcepolicy">#</a><br/>_[PodResourcePolicy](#podresourcepolicy)_ | _(Required)_<br/>ResourcePolicy controls how the autoscaler computes recommended resources per container. |
+| updatePolicy<a href="#embeddedvpa-updatepolicy" id="embeddedvpa-updatepolicy">#</a><br/>_[PodUpdatePolicy](#podupdatepolicy)_ | _(Required)_<br/>UpdatePolicy controls how the autoscaler applies changes to pod resources. |
+
+
 #### Endpoint
 
 
@@ -2592,13 +2614,38 @@ Appears in: [DiscoverySelector](#discoveryselector), [VMPodScrapeSpec](#vmpodscr
 | matchNames<a href="#namespaceselector-matchnames" id="namespaceselector-matchnames">#</a><br/>_string array_ | _(Optional)_<br/>List of namespace names. |
 
 
+#### NomadSDConfig
+
+
+
+NomadSDConfig configurations allow retrieving scrape targets from Nomad's Service API.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#nomad_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| allowStale<a href="#nomadsdconfig-allowstale" id="nomadsdconfig-allowstale">#</a><br/>_boolean_ | _(Optional)_<br/>Allow stale Nomad results to reduce load on Nomad.<br />If unset, use its default value. |
+| authorization<a href="#nomadsdconfig-authorization" id="nomadsdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#nomadsdconfig-basicauth" id="nomadsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#nomadsdconfig-followredirects" id="nomadsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| namespace<a href="#nomadsdconfig-namespace" id="nomadsdconfig-namespace">#</a><br/>_string_ | _(Optional)_<br/>Namespace to use for Nomad service discovery. |
+| oauth2<a href="#nomadsdconfig-oauth2" id="nomadsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#nomadsdconfig-proxyurl" id="nomadsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#nomadsdconfig-proxy_client_config" id="nomadsdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| region<a href="#nomadsdconfig-region" id="nomadsdconfig-region">#</a><br/>_string_ | _(Optional)_<br/>Region to use for Nomad service discovery. |
+| server<a href="#nomadsdconfig-server" id="nomadsdconfig-server">#</a><br/>_string_ | _(Required)_<br/>A valid string consisting of a hostname or IP followed by an optional port number. |
+| tagSeparator<a href="#nomadsdconfig-tagseparator" id="nomadsdconfig-tagseparator">#</a><br/>_string_ | _(Optional)_<br/>The string by which Nomad tags are joined into the tag label.<br />If unset, use its default value. |
+| tlsConfig<a href="#nomadsdconfig-tlsconfig" id="nomadsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
+
+
 #### OAuth2
 
 
 
 OAuth2 defines OAuth2 configuration
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -2762,7 +2809,7 @@ ProxyAuth represent proxy auth config
 Only VictoriaMetrics scrapers supports it.
 See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [VMScrapeParams](#vmscrapeparams)
+Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [VMScrapeParams](#vmscrapeparams)
 
 | Field | Description |
 | --- | --- |
@@ -3349,7 +3396,7 @@ Appears in: [VMAlertmanagerGossipConfig](#vmalertmanagergossipconfig), [VMAlertm
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
@@ -4400,6 +4447,7 @@ Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 | userSelector<a href="#vmauthspec-userselector" id="vmauthspec-userselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Optional)_<br/>UserSelector defines VMUser to be selected for config file generation.<br />Works in combination with NamespaceSelector.<br />NamespaceSelector nil - only objects at VMAuth namespace.<br />If both nil - behaviour controlled by selectAllByDefault |
 | volumeMounts<a href="#vmauthspec-volumemounts" id="vmauthspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmauthspec-volumes" id="vmauthspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vmauthspec-vpa" id="vmauthspec-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 
@@ -4567,6 +4615,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | useStrictSecurity<a href="#vminsert-usestrictsecurity" id="vminsert-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vminsert-volumemounts" id="vminsert-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vminsert-volumes" id="vminsert-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vminsert-vpa" id="vminsert-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VMNodeScrape
@@ -4885,6 +4934,7 @@ Appears in: [VMScrapeConfig](#vmscrapeconfig)
 | kubernetesSDConfigs<a href="#vmscrapeconfigspec-kubernetessdconfigs" id="vmscrapeconfigspec-kubernetessdconfigs">#</a><br/>_[KubernetesSDConfig](#kubernetessdconfig) array_ | _(Optional)_<br/>KubernetesSDConfigs defines a list of Kubernetes service discovery configurations. |
 | max_scrape_size<a href="#vmscrapeconfigspec-max_scrape_size" id="vmscrapeconfigspec-max_scrape_size">#</a><br/>_string_ | _(Optional)_<br/>MaxScrapeSize defines a maximum size of scraped data for a job |
 | metricRelabelConfigs<a href="#vmscrapeconfigspec-metricrelabelconfigs" id="vmscrapeconfigspec-metricrelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>MetricRelabelConfigs to apply to samples after scrapping. |
+| nomadSDConfigs<a href="#vmscrapeconfigspec-nomadsdconfigs" id="vmscrapeconfigspec-nomadsdconfigs">#</a><br/>_[NomadSDConfig](#nomadsdconfig) array_ | _(Optional)_<br/>NomadSDConfigs defines a list of Nomad service discovery configurations. |
 | oauth2<a href="#vmscrapeconfigspec-oauth2" id="vmscrapeconfigspec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | openstackSDConfigs<a href="#vmscrapeconfigspec-openstacksdconfigs" id="vmscrapeconfigspec-openstacksdconfigs">#</a><br/>_[OpenStackSDConfig](#openstacksdconfig) array_ | _(Optional)_<br/>OpenStackSDConfigs defines a list of OpenStack service discovery configurations. |
 | params<a href="#vmscrapeconfigspec-params" id="vmscrapeconfigspec-params">#</a><br/>_object (keys:string, values:string array)_ | _(Optional)_<br/>Optional HTTP URL parameters |
@@ -4983,6 +5033,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | useStrictSecurity<a href="#vmselect-usestrictsecurity" id="vmselect-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vmselect-volumemounts" id="vmselect-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmselect-volumes" id="vmselect-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vmselect-vpa" id="vmselect-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VMServiceScrape
@@ -5206,6 +5257,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | vmSelectPort<a href="#vmstorage-vmselectport" id="vmstorage-vmselectport">#</a><br/>_string_ | _(Optional)_<br/>VMSelectPort for VMSelect connections |
 | volumeMounts<a href="#vmstorage-volumemounts" id="vmstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmstorage-volumes" id="vmstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
+| vpa<a href="#vmstorage-vpa" id="vmstorage-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
 #### VMUser

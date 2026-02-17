@@ -101,6 +101,7 @@ type BaseOperatorConf struct {
 	TracesVertsion    string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
 	OperatorVersion   string `default:"${VM_OPERATOR_VERSION}" env:"VM_OPERATOR_VERSION,expand"`
 	GatewayAPIEnabled bool   `default:"false" env:"VM_GATEWAY_API_ENABLED"`
+	VPAAPIEnabled     bool   `default:"false" env:"VM_VPA_API_ENABLED"`
 
 	// Defines a list of namespaces to be watched by operator.
 	// Operator don't perform any cluster wide API calls if namespaces not empty.

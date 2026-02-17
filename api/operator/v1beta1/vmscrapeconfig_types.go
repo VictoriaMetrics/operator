@@ -82,10 +82,10 @@ type VMScrapeConfigSpec struct {
 	DigitalOceanSDConfigs []DigitalOceanSDConfig `json:"digitalOceanSDConfigs,omitempty"`
 	// NomadSDConfigs defines a list of Nomad service discovery configurations.
 	// +optional
-	NomadSDConfigs []NomadSDConfig `json:"nomadSDConfigs,omitempty"`
-	EndpointScrapeParams  `json:",inline"`
-	EndpointRelabelings   `json:",inline"`
-	EndpointAuth          `json:",inline"`
+	NomadSDConfigs       []NomadSDConfig `json:"nomadSDConfigs,omitempty"`
+	EndpointScrapeParams `json:",inline"`
+	EndpointRelabelings  `json:",inline"`
+	EndpointAuth         `json:",inline"`
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`

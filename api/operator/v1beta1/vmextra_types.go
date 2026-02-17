@@ -433,10 +433,8 @@ func (cr *EmbeddedHPA) Validate() error {
 // https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
 type EmbeddedVPA struct {
 	// UpdatePolicy controls how the autoscaler applies changes to pod resources.
-	// +optional
 	UpdatePolicy *vpav1.PodUpdatePolicy `json:"updatePolicy,omitempty"`
 	// ResourcePolicy controls how the autoscaler computes recommended resources per container.
-	// +optional
 	ResourcePolicy *vpav1.PodResourcePolicy `json:"resourcePolicy,omitempty"`
 	// Recommenders specifies custom VPA recommender names.
 	// +optional

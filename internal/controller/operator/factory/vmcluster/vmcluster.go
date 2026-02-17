@@ -40,6 +40,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 			return err
 		}
 	}
+	cfg := config.MustGetBaseConfig()
+	if !cfg.VPAAPIEnabled {
+		if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.VPA != nil {
+			return fmt.Errorf("spec.vmstorage.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.VMSelect != nil && cr.Spec.VMSelect.VPA != nil {
+			return fmt.Errorf("spec.vmselect.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		if cr.Spec.VMInsert != nil && cr.Spec.VMInsert.VPA != nil {
+			return fmt.Errorf("spec.vminsert.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+	}
 	var prevCR *vmv1beta1.VMCluster
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -1235,7 +1247,7 @@ func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newVPA := build.VPA(b, targetRef, cr.Spec.VMInsert.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMInsert.VPA != nil {
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMInsert.VPA)
 	}
@@ -1255,7 +1267,7 @@ func createOrUpdateVMSelectVPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newVPA := build.VPA(b, targetRef, cr.Spec.VMSelect.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMSelect.VPA != nil {
+	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMSelect.VPA)
 	}
@@ -1276,7 +1288,7 @@ func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	}
 	newVPA := build.VPA(b, targetRef, vpa)
 	var prevVPA *vpav1.VerticalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMStorage.VPA != nil {
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.VPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMStorage.VPA)
 	}
@@ -1291,7 +1303,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	newLB := cr.Spec.RequestsLoadBalancer
 
 	cc := finalize.NewChildCleaner()
-
 	if newStorage == nil {
 		if err := finalize.OnStorageDelete(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)

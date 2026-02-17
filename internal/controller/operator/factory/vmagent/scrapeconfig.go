@@ -772,5 +772,93 @@ func generateScrapeConfig(
 			Value: configs,
 		})
 	}
+
+	// build nomadSDConfig
+	if len(spec.NomadSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.NomadSDConfigs))
+		for i, config := range spec.NomadSDConfigs {
+			configs[i] = append(configs[i], yaml.MapItem{
+				Key:   "server",
+				Value: config.Server,
+			})
+
+			if config.Namespace != nil {
+				configs[i] = append(configs[i], yaml.MapItem{
+					Key:   "namespace",
+					Value: config.Namespace,
+				})
+			}
+
+			if config.Region != nil {
+				configs[i] = append(configs[i], yaml.MapItem{
+					Key:   "region",
+					Value: config.Region,
+				})
+			}
+
+			if config.TagSeparator != nil {
+				configs[i] = append(configs[i], yaml.MapItem{
+					Key:   "tag_separator",
+					Value: config.TagSeparator,
+				})
+			}
+
+			if config.AllowStale != nil {
+				configs[i] = append(configs[i], yaml.MapItem{
+					Key:   "allow_stale",
+					Value: config.AllowStale,
+				})
+			}
+
+			if config.BasicAuth != nil {
+				if c, err := ac.BasicAuthToYAML(sc.Namespace, config.BasicAuth); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: c})
+				}
+			}
+			if config.Authorization != nil {
+				if c, err := ac.AuthorizationToYAML(sc.Namespace, config.Authorization); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
+			if config.OAuth2 != nil {
+				if c, err := ac.OAuth2ToYAML(sc.Namespace, config.OAuth2); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
+			if config.ProxyURL != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
+			}
+			if config.ProxyClientConfig != nil {
+				if c, err := ac.ProxyAuthToYAML(sc.Namespace, config.ProxyClientConfig); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], c...)
+				}
+			}
+
+			if config.FollowRedirects != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "follow_redirects", Value: config.FollowRedirects})
+			}
+
+			if config.TLSConfig != nil {
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
+			}
+		}
+
+		cfg = append(cfg, yaml.MapItem{
+			Key:   "nomad_sd_configs",
+			Value: configs,
+		})
+	}
 	return cfg, nil
 }

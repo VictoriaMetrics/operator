@@ -101,7 +101,8 @@ jobs:
           make lint
           make manifests
           make api-gen
-          # check for uncommited changes crds
+          make docs
+          # check for uncommited changes to crds, docs or API
           git diff --exit-code
           sudo apt update
           sudo apt install -y libgpgme-dev

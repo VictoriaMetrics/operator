@@ -470,20 +470,295 @@ func TestCreateOrUpdate(t *testing.T) {
 				targetRef := &createdVMAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs[i]
 				assert.Equal(t, ptr.To("first_available"), targetRef.LoadBalancingPolicy)
 				assert.Equal(t, []int{500, 502, 503}, targetRef.RetryStatusCodes)
-				assert.NotNil(t, targetRef.CRD)
-				if i < len(d.zones.vmagents) {
-					assert.Equal(t, d.zones.vmagents[i].Name, targetRef.CRD.Name)
-					assert.Equal(t, d.zones.vmagents[i].Namespace, targetRef.CRD.Namespace)
-					assert.Equal(t, []string{"/insert/.+", "/api/v1/write"}, targetRef.Paths)
-					assert.Equal(t, "VMAgent", targetRef.CRD.Kind)
-				} else {
-					idx := i - len(d.zones.vmagents)
-					assert.Equal(t, d.zones.vmclusters[idx].Name, targetRef.CRD.Name)
-					assert.Equal(t, d.zones.vmclusters[idx].Namespace, targetRef.CRD.Namespace)
+
+				// Handle StaticRef for vmcluster-1 (LoadBalancer enabled)
+				if targetRef.Static != nil {
+					assert.Contains(t, targetRef.Static.URL, "vmclusterlb-vmcluster-1")
 					assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, targetRef.Paths)
-					assert.Equal(t, "VMCluster/vmselect", targetRef.CRD.Kind)
+					continue
+				}
+
+				assert.NotNil(t, targetRef.CRD)
+				switch targetRef.CRD.Kind {
+				case "VMAgent":
+					assert.Equal(t, []string{"/insert/.+", "/api/v1/write"}, targetRef.Paths)
+					assert.Contains(t, targetRef.CRD.Name, "vmcluster-")
+				case "VMCluster/vmselect":
+					assert.Equal(t, []string{"/select/.+", "/admin/tenants"}, targetRef.Paths)
+					assert.Contains(t, targetRef.CRD.Name, "vmcluster-")
+					assert.NotEqual(t, "vmcluster-1", targetRef.CRD.Name)
+				default:
+					t.Errorf("unexpected targetRef kind: %s", targetRef.CRD.Kind)
 				}
 			}
+		},
+	})
+}
+
+func Test_appendVMClusterTargetRefs(t *testing.T) {
+	type opts struct {
+		targetRefs []vmv1beta1.TargetRef
+		vmClusters []*vmv1beta1.VMCluster
+		excludeIds []int
+		want       []vmv1beta1.TargetRef
+	}
+	f := func(name string, o opts) {
+		t.Run(name, func(t *testing.T) {
+			got := appendVMClusterTargetRefs(o.targetRefs, o.vmClusters, o.excludeIds...)
+			assert.Equal(t, o.want, got)
+		})
+	}
+
+	f("default cluster", opts{
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+			},
+		},
+		want: []vmv1beta1.TargetRef{
+			{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				CRD: &vmv1beta1.CRDRef{
+					Kind:      "VMCluster/vmselect",
+					Name:      "cluster1",
+					Namespace: "ns1",
+				},
+			},
+		},
+	})
+
+	f("load balancer enabled", opts{
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled: true,
+					},
+				},
+			},
+		},
+		want: []vmv1beta1.TargetRef{
+			{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				Static: &vmv1beta1.StaticRef{
+					URL: "http://vmclusterlb-cluster1.ns1.svc:8427",
+				},
+			},
+		},
+	})
+
+	f("load balancer enabled with custom port", opts{
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled: true,
+						Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								Port: "8080",
+							},
+						},
+					},
+				},
+			},
+		},
+		want: []vmv1beta1.TargetRef{
+			{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				Static: &vmv1beta1.StaticRef{
+					URL: "http://vmclusterlb-cluster1.ns1.svc:8080",
+				},
+			},
+		},
+	})
+
+	f("load balancer enabled but select balancing disabled", opts{
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled:                true,
+						DisableSelectBalancing: true,
+					},
+				},
+			},
+		},
+		want: []vmv1beta1.TargetRef{
+			{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				CRD: &vmv1beta1.CRDRef{
+					Kind:      "VMCluster/vmselect",
+					Name:      "cluster1",
+					Namespace: "ns1",
+				},
+			},
+		},
+	})
+
+	f("exclude id", opts{
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster2",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+			},
+		},
+		excludeIds: []int{0},
+		want: []vmv1beta1.TargetRef{
+			{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				CRD: &vmv1beta1.CRDRef{
+					Kind:      "VMCluster/vmselect",
+					Name:      "cluster2",
+					Namespace: "ns1",
+				},
+			},
+		},
+	})
+}
+
+func Test_buildVMAuthLB(t *testing.T) {
+	type opts struct {
+		cr         *vmv1alpha1.VMDistributed
+		vmAgents   []*vmv1beta1.VMAgent
+		vmClusters []*vmv1beta1.VMCluster
+		excludeIds []int
+		want       *vmv1beta1.VMAuth
+	}
+	f := func(name string, o opts) {
+		t.Run(name, func(t *testing.T) {
+			got := buildVMAuthLB(o.cr, o.vmAgents, o.vmClusters, o.excludeIds...)
+			assert.Equal(t, o.want, got)
+		})
+	}
+
+	f("sorts targets correctly", opts{
+		cr: &vmv1alpha1.VMDistributed{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1alpha1",
+				Kind:       "VMDistributed",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist1",
+				Namespace: "ns1",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				VMAuth: vmv1alpha1.VMDistributedAuth{
+					Spec: vmv1beta1.VMAuthSpec{},
+				},
+			},
+		},
+		vmClusters: []*vmv1beta1.VMCluster{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster1",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled: true,
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "cluster2",
+					Namespace:         "ns1",
+					CreationTimestamp: metav1.Now(),
+				},
+			},
+		},
+		want: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist1",
+				Namespace: "ns1",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "operator.victoriametrics.com/v1alpha1",
+						Kind:               "VMDistributed",
+						Name:               "dist1",
+						Controller:         ptr.To(true),
+						BlockOwnerDeletion: ptr.To(true),
+					},
+				},
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								LoadBalancingPolicy: ptr.To("first_available"),
+								RetryStatusCodes:    []int{500, 502, 503},
+							},
+							Paths: []string{"/select/.+", "/admin/tenants"},
+							Static: &vmv1beta1.StaticRef{
+								URL: "http://vmclusterlb-cluster1.ns1.svc:8427",
+							},
+						},
+						{
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								LoadBalancingPolicy: ptr.To("first_available"),
+								RetryStatusCodes:    []int{500, 502, 503},
+							},
+							Paths: []string{"/select/.+", "/admin/tenants"},
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMCluster/vmselect",
+								Name:      "cluster2",
+								Namespace: "ns1",
+							},
+						},
+					},
+				},
+			},
 		},
 	})
 }

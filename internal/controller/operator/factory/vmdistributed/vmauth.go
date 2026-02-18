@@ -2,6 +2,7 @@ package vmdistributed
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +19,23 @@ func appendVMClusterTargetRefs(targetRefs []vmv1beta1.TargetRef, vmClusters []*v
 		}
 		vmCluster := vmClusters[i]
 		if vmCluster.CreationTimestamp.IsZero() {
+			continue
+		}
+		if vmCluster.Spec.RequestsLoadBalancer.Enabled && !vmCluster.Spec.RequestsLoadBalancer.DisableSelectBalancing {
+			port := "8427"
+			if vmCluster.Spec.RequestsLoadBalancer.Spec.Port != "" {
+				port = vmCluster.Spec.RequestsLoadBalancer.Spec.Port
+			}
+			targetRefs = append(targetRefs, vmv1beta1.TargetRef{
+				URLMapCommon: vmv1beta1.URLMapCommon{
+					LoadBalancingPolicy: ptr.To("first_available"),
+					RetryStatusCodes:    []int{500, 502, 503},
+				},
+				Paths: []string{"/select/.+", "/admin/tenants"},
+				Static: &vmv1beta1.StaticRef{
+					URL: fmt.Sprintf("http://%s.%s.svc:%s", vmCluster.PrefixedName(vmv1beta1.ClusterComponentBalancer), vmCluster.Namespace, port),
+				},
+			})
 			continue
 		}
 		targetRefs = append(targetRefs, vmv1beta1.TargetRef{
@@ -77,9 +95,25 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 	targetRefs = appendVMClusterTargetRefs(targetRefs, vmClusters, excludeIds...)
 	targetRefs = appendVMAgentTargetRefs(targetRefs, vmAgents, excludeIds...)
 	slices.SortFunc(targetRefs, func(a, b vmv1beta1.TargetRef) int {
+		aKind, aName := "", ""
+		if a.CRD != nil {
+			aKind = a.CRD.Kind
+			aName = a.CRD.Name
+		} else if a.Static != nil {
+			aKind = "Static"
+			aName = a.Static.URL
+		}
+		bKind, bName := "", ""
+		if b.CRD != nil {
+			bKind = b.CRD.Kind
+			bName = b.CRD.Name
+		} else if b.Static != nil {
+			bKind = "Static"
+			bName = b.Static.URL
+		}
 		return cmp.Or(
-			cmp.Compare(a.CRD.Kind, b.CRD.Kind),
-			cmp.Compare(a.CRD.Name, b.CRD.Name),
+			cmp.Compare(aKind, bKind),
+			cmp.Compare(aName, bName),
 		)
 	})
 	vmAuth.Spec.UnauthorizedUserAccessSpec.URLMap = nil

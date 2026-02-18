@@ -370,7 +370,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				if i < len(d.zones.vmagents) {
 					assert.Equal(t, d.zones.vmagents[i].Name, targetRef.CRD.Name)
 					assert.Equal(t, d.zones.vmagents[i].Namespace, targetRef.CRD.Namespace)
-					assert.Equal(t, []string{"/insert/.+"}, targetRef.Paths)
+					assert.Equal(t, []string{"/insert/.+", "/api/v1/write"}, targetRef.Paths)
 					assert.Equal(t, "VMAgent", targetRef.CRD.Kind)
 				} else {
 					idx := i - len(d.zones.vmagents)
@@ -474,7 +474,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				if i < len(d.zones.vmagents) {
 					assert.Equal(t, d.zones.vmagents[i].Name, targetRef.CRD.Name)
 					assert.Equal(t, d.zones.vmagents[i].Namespace, targetRef.CRD.Namespace)
-					assert.Equal(t, []string{"/insert/.+"}, targetRef.Paths)
+					assert.Equal(t, []string{"/insert/.+", "/api/v1/write"}, targetRef.Paths)
 					assert.Equal(t, "VMAgent", targetRef.CRD.Kind)
 				} else {
 					idx := i - len(d.zones.vmagents)

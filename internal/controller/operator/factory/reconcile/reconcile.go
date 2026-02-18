@@ -39,7 +39,7 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duratio
 // it deletes only labels and annotations managed by operator CRDs
 // 3-rd party kubernetes annotations and labels must be preserved
 func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string {
-	dst := make(map[string]string)
+	var dst map[string]string
 	var deleted map[string]struct{}
 
 	for k := range prevMap {
@@ -55,9 +55,15 @@ func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string
 		if _, ok := deleted[k]; ok {
 			continue
 		}
+		if dst == nil {
+			dst = make(map[string]string)
+		}
 		dst[k] = v
 	}
 	for k, v := range newMap {
+		if dst == nil {
+			dst = make(map[string]string)
+		}
 		dst[k] = v
 	}
 	return dst

@@ -14,6 +14,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,6 +33,7 @@ type zones struct {
 	httpClient *http.Client
 	vmagents   []*vmv1beta1.VMAgent
 	vmclusters []*vmv1beta1.VMCluster
+	hasChanges []bool
 }
 
 func (zs *zones) Len() int {
@@ -61,6 +63,7 @@ func (zs *zones) Less(i, j int) bool {
 func (zs *zones) Swap(i, j int) {
 	zs.vmagents[i], zs.vmagents[j] = zs.vmagents[j], zs.vmagents[i]
 	zs.vmclusters[i], zs.vmclusters[j] = zs.vmclusters[j], zs.vmclusters[i]
+	zs.hasChanges[i], zs.hasChanges[j] = zs.hasChanges[j], zs.hasChanges[i]
 }
 
 // getZones builds desired zones
@@ -69,8 +72,9 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		httpClient: &http.Client{
 			Timeout: httpTimeout,
 		},
-		vmagents:   make([]*vmv1beta1.VMAgent, 0, len(cr.Spec.Zones)),
-		vmclusters: make([]*vmv1beta1.VMCluster, 0, len(cr.Spec.Zones)),
+		vmagents:   make([]*vmv1beta1.VMAgent, len(cr.Spec.Zones)),
+		vmclusters: make([]*vmv1beta1.VMCluster, len(cr.Spec.Zones)),
+		hasChanges: make([]bool, len(cr.Spec.Zones)),
 	}
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
@@ -94,8 +98,11 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		if err != nil {
 			return nil, fmt.Errorf("spec.zones[%d].vmcluster.spec: %w", i, err)
 		}
+		prevClusterSpec := vmCluster.Spec
 		vmCluster.Spec = *vmClusterSpec
-		zs.vmclusters = append(zs.vmclusters, &vmCluster)
+		rclient.Scheme().Default(&vmCluster)
+		zs.hasChanges[i] = !equality.Semantic.DeepEqual(&vmCluster.Spec, &prevClusterSpec)
+		zs.vmclusters[i] = &vmCluster
 	}
 
 	for i := range cr.Spec.Zones {
@@ -160,8 +167,11 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			}
 			return idxK < idxJ
 		})
+		prevAgentSpec := vmAgent.Spec
 		vmAgent.Spec = *vmAgentSpec
-		zs.vmagents = append(zs.vmagents, &vmAgent)
+		rclient.Scheme().Default(&vmAgent)
+		zs.hasChanges[i] = zs.hasChanges[i] || !equality.Semantic.DeepEqual(&vmAgent.Spec, &prevAgentSpec)
+		zs.vmagents[i] = &vmAgent
 	}
 
 	sort.Sort(zs)
@@ -179,7 +189,13 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
 	logger.WithContext(ctx).Info("reconciling VMCluster", "item", item, "name", nsnCluster)
 
-	if !vmCluster.CreationTimestamp.IsZero() && !vmAgent.CreationTimestamp.IsZero() {
+	// vmCluster or vmAgent have been created
+	needsLBUpdate := !vmCluster.CreationTimestamp.IsZero() && !vmAgent.CreationTimestamp.IsZero()
+	// No vmcluster or vmagent spec changes required
+	if !zs.hasChanges[i] {
+		needsLBUpdate = false
+	}
+	if needsLBUpdate {
 		// wait for empty persistent queue
 		if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
 			return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty: %w", item, nsnCluster, err)

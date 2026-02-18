@@ -9029,9 +9029,6 @@ spec:
                   - time_intervals
                   type: object
                 type: array
-            required:
-            - receivers
-            - route
             type: object
           status:
             properties:

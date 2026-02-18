@@ -71,9 +71,6 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 				return err
 			}
 		}
-		if cfg.Spec.Route == nil {
-			return fmt.Errorf("spec.route cannot be empty")
-		}
 		var receiverCfgs []yaml.MapSlice
 		for _, receiver := range cfg.Spec.Receivers {
 			receiverCfg, err := buildReceiver(cfg, receiver, &globalConfigOpts, ac)
@@ -88,9 +85,12 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 		if err != nil {
 			return err
 		}
-		route, err := buildRoute(cfg, cfg.Spec.Route, true, cr)
-		if err != nil {
-			return err
+		if cfg.Spec.Route != nil {
+			route, err := buildRoute(cfg, cfg.Spec.Route, true, cr)
+			if err != nil {
+				return err
+			}
+			subRoutes = append(subRoutes, route)
 		}
 		baseYAMLCfg.Receivers = append(baseYAMLCfg.Receivers, receiverCfgs...)
 		for _, rule := range cfg.Spec.InhibitRules {
@@ -99,7 +99,6 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 		if len(mtis) > 0 {
 			timeIntervals = append(timeIntervals, mtis...)
 		}
-		subRoutes = append(subRoutes, route)
 		return nil
 	})
 	if len(subRoutes) > 0 {

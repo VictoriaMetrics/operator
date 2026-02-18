@@ -42,14 +42,15 @@ import (
 // it must reference only locally defined objects
 type VMAlertmanagerConfigSpec struct {
 	// Route definition for alertmanager, may include nested routes.
+	// +optional
 	Route *Route `json:"route"`
 	// Receivers defines alert receivers
+	// +optional
 	Receivers []Receiver `json:"receivers"`
 	// InhibitRules will only apply for alerts matching
 	// the resource's namespace.
 	// +optional
 	InhibitRules []InhibitRule `json:"inhibit_rules,omitempty" yaml:"inhibit_rules,omitempty"`
-
 	// TimeIntervals defines named interval for active/mute notifications interval
 	// See https://prometheus.io/docs/alerting/latest/configuration/#time_interval
 	// +optional
@@ -112,41 +113,33 @@ func (r *VMAlertmanagerConfig) Validate() error {
 	if MustSkipCRValidation(r) {
 		return nil
 	}
-	validateSpec := r.DeepCopy()
-	if r.Spec.Route == nil {
-		return fmt.Errorf("no routes provided")
-	}
-	if r.Spec.Route.Receiver == "" {
-		return fmt.Errorf("root route receiver cannot be empty")
-	}
-
+	receivers := make(map[string]struct{})
 	for idx, recv := range r.Spec.Receivers {
+		if _, ok := receivers[recv.Name]; ok {
+			return fmt.Errorf("notification config name %q is not unique", recv.Name)
+		}
+		receivers[recv.Name] = struct{}{}
 		if err := validateReceiver(recv); err != nil {
 			return fmt.Errorf("receiver at idx=%d is invalid: %w", idx, err)
 		}
 	}
-
-	if err := parseNestedRoutes(validateSpec.Spec.Route); err != nil {
-		return fmt.Errorf("cannot parse nested route for alertmanager config err: %w", err)
-	}
-
-	names := map[string]struct{}{}
-	for _, rcv := range r.Spec.Receivers {
-		if _, ok := names[rcv.Name]; ok {
-			return fmt.Errorf("notification config name %q is not unique", rcv.Name)
-		}
-		names[rcv.Name] = struct{}{}
-	}
-
-	if _, ok := names[r.Spec.Route.Receiver]; !ok {
-		return fmt.Errorf("receiver=%q for spec root not found at receivers", r.Spec.Route.Receiver)
-	}
-
 	tiNames, err := validateTimeIntervals(r.Spec.TimeIntervals)
 	if err != nil {
 		return err
 	}
-
+	if r.Spec.Route == nil {
+		return nil
+	}
+	if len(r.Spec.Route.Receiver) == 0 {
+		return fmt.Errorf("root route receiver cannot be empty")
+	}
+	if _, ok := receivers[r.Spec.Route.Receiver]; !ok {
+		return fmt.Errorf("receiver=%q for spec root not found at receivers", r.Spec.Route.Receiver)
+	}
+	validateSpec := r.DeepCopy()
+	if err := parseNestedRoutes(validateSpec.Spec.Route); err != nil {
+		return fmt.Errorf("cannot parse nested route for alertmanager config err: %w", err)
+	}
 	for _, ti := range r.Spec.Route.ActiveTimeIntervals {
 		if _, ok := tiNames[ti]; !ok {
 			return fmt.Errorf("undefined active time interval %q used in root route", ti)
@@ -158,11 +151,10 @@ func (r *VMAlertmanagerConfig) Validate() error {
 		}
 	}
 	for idx, sr := range r.Spec.Route.Routes {
-		if err := checkRouteReceiver(sr, names, tiNames); err != nil {
+		if err := checkRouteReceiver(sr, receivers, tiNames); err != nil {
 			return fmt.Errorf("subRoute=%d is not valid: %w", idx, err)
 		}
 	}
-
 	return nil
 }
 
@@ -231,9 +223,11 @@ type Route struct {
 	// Child routes.
 	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
 	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
+	// +optional
 	Routes []*SubRoute `json:"-" yaml:"-"`
 	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
+	// +optional
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty" yaml:"routes,omitempty"`
 	// MuteTimeIntervals is a list of interval names that will mute matched alert
 	// +optional

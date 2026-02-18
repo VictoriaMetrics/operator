@@ -219,14 +219,16 @@ func TestFormatContainerImage(t *testing.T) {
 	f("", "victoria-metrics/storage", "victoria-metrics/storage")
 	f("docker.io", "victoria-metrics/storage", "docker.io/victoria-metrics/storage")
 	// strip quay and replace with global repo
-	f("docker.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "docker.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
+	f("docker.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
 	f("private.github.io", "victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
 	// for private repo
-	f("private.github.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "private.github.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
+	f("private.github.io", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1", "quay.io/prometheus-operator/prometheus-config-reloader:v0.82.1")
 	// edge case
-	f("private.github.io", "quay.io/victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
-	// correct behaviour, user must fix image naming
-	f("private.github.io", "my-private.registry/victoria-metrics/storage", "private.github.io/my-private.registry/victoria-metrics/storage")
+	f("private.github.io", "quay.io/victoria-metrics/storage", "quay.io/victoria-metrics/storage")
+	// replace registry
+	f("private.github.io", "my-private.registry/victoria-metrics/storage", "my-private.registry/victoria-metrics/storage")
+	f("docker.proxy.org/public-repo-proxy-docker-hub", "docker.proxy.org/public-repo-proxy-docker-hub/victoriametrics/vmauth", "docker.proxy.org/public-repo-proxy-docker-hub/victoriametrics/vmauth")
+	f("docker.io", "alpine", "docker.io/library/alpine")
 }
 
 func TestAddSyslogArgsTo(t *testing.T) {

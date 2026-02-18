@@ -217,19 +217,24 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 }
 
 // formatContainerImage returns container image with registry prefix if needed.
-func formatContainerImage(globalRepo string, containerImage string) string {
-	if globalRepo == "" {
+func formatContainerImage(registry string, containerImage string) string {
+	if registry == "" {
 		// no need to add global repo
 		return containerImage
 	}
-	if !strings.HasSuffix(globalRepo, "/") {
-		globalRepo += "/"
+	if !strings.HasSuffix(registry, "/") {
+		registry += "/"
 	}
-	// operator has built-in images hosted at quay, check for it.
-	if !strings.HasPrefix(containerImage, "quay.io/") {
-		return globalRepo + containerImage
+	// getting location of repo/image separator
+	if idx := strings.LastIndex(containerImage, "/"); idx != -1 {
+		// getting location of registry/repo separator
+		if idx = strings.LastIndex(containerImage[:idx], "/"); idx != -1 {
+			return containerImage
+		}
+	} else {
+		containerImage = "library/" + containerImage
 	}
-	return globalRepo + containerImage[len("quay.io/"):]
+	return registry + containerImage
 }
 
 // AppendInsertPorts conditionally adds ingestPorts to the given ports slice

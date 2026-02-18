@@ -303,8 +303,6 @@ Appears in: [VLAgent](#vlagent)
 | volumes<a href="#vlagentspec-volumes" id="vlagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
-
-
 #### VLCluster
 
 
@@ -343,8 +341,6 @@ Appears in: [VLCluster](#vlcluster)
 | vlinsert<a href="#vlclusterspec-vlinsert" id="vlclusterspec-vlinsert">#</a><br/>_[VLInsert](#vlinsert)_ | _(Required)_<br/> |
 | vlselect<a href="#vlclusterspec-vlselect" id="vlclusterspec-vlselect">#</a><br/>_[VLSelect](#vlselect)_ | _(Required)_<br/> |
 | vlstorage<a href="#vlclusterspec-vlstorage" id="vlclusterspec-vlstorage">#</a><br/>_[VLStorage](#vlstorage)_ | _(Required)_<br/> |
-
-
 
 
 #### VLInsert
@@ -545,8 +541,6 @@ Appears in: [VLSingle](#vlsingle)
 | useStrictSecurity<a href="#vlsinglespec-usestrictsecurity" id="vlsinglespec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlsinglespec-volumemounts" id="vlsinglespec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlsinglespec-volumes" id="vlsinglespec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
-
-
 
 
 #### VLStorage
@@ -828,8 +822,6 @@ Appears in: [VMAnomaly](#vmanomaly)
 | writer<a href="#vmanomalyspec-writer" id="vmanomalyspec-writer">#</a><br/>_[VMAnomalyWritersSpec](#vmanomalywritersspec)_ | _(Required)_<br/>Metrics destination for VMAnomaly<br />See https://docs.victoriametrics.com/anomaly-detection/components/writer/ |
 
 
-
-
 #### VMAnomalyVMWriterMetricFormatSpec
 
 
@@ -902,8 +894,6 @@ Appears in: [VTCluster](#vtcluster)
 | serviceAccountName<a href="#vtclusterspec-serviceaccountname" id="vtclusterspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the<br />VTSelect, VTInsert and VTStorage Pods. |
 | storage<a href="#vtclusterspec-storage" id="vtclusterspec-storage">#</a><br/>_[VTStorage](#vtstorage)_ | _(Required)_<br/> |
 | useStrictSecurity<a href="#vtclusterspec-usestrictsecurity" id="vtclusterspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
-
-
 
 
 #### VTInsert
@@ -1103,8 +1093,6 @@ Appears in: [VTSingle](#vtsingle)
 | volumes<a href="#vtsinglespec-volumes" id="vtsinglespec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
-
-
 #### VTStorage
 
 
@@ -1243,8 +1231,6 @@ Appears in: [VMDistributed](#vmdistributed)
 | vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMDistributedAuth](#vmdistributedauth)_ | _(Required)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
 | zoneCommon<a href="#vmdistributedspec-zonecommon" id="vmdistributedspec-zonecommon">#</a><br/>_[VMDistributedZoneCommon](#vmdistributedzonecommon)_ | _(Optional)_<br/>ZoneCommon defines common properties for all zones |
 | zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[VMDistributedZone](#vmdistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
-
-
 
 
 #### VMDistributedZone
@@ -1780,24 +1766,6 @@ Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspe
 | ignoreNamespaceSelectors<a href="#commonscrapesecurityenforcements-ignorenamespaceselectors" id="commonscrapesecurityenforcements-ignorenamespaceselectors">#</a><br/>_boolean_ | _(Optional)_<br/>IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from<br />scrape objects, and they will only discover endpoints<br />within their current namespace. Defaults to false. |
 | overrideHonorLabels<a href="#commonscrapesecurityenforcements-overridehonorlabels" id="commonscrapesecurityenforcements-overridehonorlabels">#</a><br/>_boolean_ | _(Optional)_<br/>OverrideHonorLabels if set to true overrides all user configured honor_labels.<br />If HonorLabels is set in scrape objects to true, this overrides honor_labels to false. |
 | overrideHonorTimestamps<a href="#commonscrapesecurityenforcements-overridehonortimestamps" id="commonscrapesecurityenforcements-overridehonortimestamps">#</a><br/>_boolean_ | _(Optional)_<br/>OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs. |
-
-
-#### Condition
-
-
-
-Condition defines status condition of the resource
-
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMDistributedStatus](#vmdistributedstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
-
-| Field | Description |
-| --- | --- |
-| lastTransitionTime<a href="#condition-lasttransitiontime" id="condition-lasttransitiontime">#</a><br/>_[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#time-v1-meta)_ | _(Required)_<br/>lastTransitionTime is the last time the condition transitioned from one status to another. |
-| lastUpdateTime<a href="#condition-lastupdatetime" id="condition-lastupdatetime">#</a><br/>_[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#time-v1-meta)_ | _(Required)_<br/>LastUpdateTime is the last time of given type update.<br />This value is used for status TTL update and removal |
-| message<a href="#condition-message" id="condition-message">#</a><br/>_string_ | _(Optional)_<br/>message is a human readable message indicating details about the transition.<br />This may be an empty string. |
-| observedGeneration<a href="#condition-observedgeneration" id="condition-observedgeneration">#</a><br/>_integer_ | _(Optional)_<br/>observedGeneration represents the .metadata.generation that the condition was set based upon.<br />For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br />with respect to the current state of the instance. |
-| reason<a href="#condition-reason" id="condition-reason">#</a><br/>_string_ | _(Required)_<br/>reason contains a programmatic identifier indicating the reason for the condition's last transition.<br />Producers of specific condition types may define expected values and meanings for this field,<br />and whether the values are considered a guaranteed API.<br />The value should be a CamelCase string.<br />This field may not be empty. |
-| type<a href="#condition-type" id="condition-type">#</a><br/>_string_ | _(Required)_<br/>Type of condition in CamelCase or in name.namespace.resource.victoriametrics.com/CamelCase. |
 
 
 #### ConfigMapKeyReference
@@ -3072,8 +3040,6 @@ Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspe
 | tlsConfig<a href="#scrapeclass-tlsconfig" id="scrapeclass-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 
 
-
-
 #### SecretOrConfigMap
 
 
@@ -3274,22 +3240,6 @@ Appears in: [TargetRef](#targetref)
 | --- | --- |
 | url<a href="#staticref-url" id="staticref-url">#</a><br/>_string_ | _(Required)_<br/>URL http url for given staticRef. |
 | urls<a href="#staticref-urls" id="staticref-urls">#</a><br/>_string array_ | _(Optional)_<br/>URLs allows setting multiple urls for load-balancing at vmauth-side. |
-
-
-#### StatusMetadata
-
-
-
-StatusMetadata holds metadata of application update status
-
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMDistributedStatus](#vmdistributedstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
-
-| Field | Description |
-| --- | --- |
-| conditions<a href="#statusmetadata-conditions" id="statusmetadata-conditions">#</a><br/>_[Condition](#condition) array_ | _(Required)_<br/>Known .status.conditions.type are: "Available", "Progressing", and "Degraded" |
-| observedGeneration<a href="#statusmetadata-observedgeneration" id="statusmetadata-observedgeneration">#</a><br/>_integer_ | _(Required)_<br/>ObservedGeneration defines current generation picked by operator for the<br />reconcile |
-| reason<a href="#statusmetadata-reason" id="statusmetadata-reason">#</a><br/>_string_ | _(Required)_<br/>Reason defines human readable error reason |
-| updateStatus<a href="#statusmetadata-updatestatus" id="statusmetadata-updatestatus">#</a><br/>_[UpdateStatus](#updatestatus)_ | _(Required)_<br/>UpdateStatus defines a status for update rollout |
 
 
 #### StorageSpec
@@ -3614,16 +3564,6 @@ Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmaut
 | url_prefix<a href="#unauthorizedaccessconfigurlmap-url_prefix" id="unauthorizedaccessconfigurlmap-url_prefix">#</a><br/>_[StringOrArray](#stringorarray)_ | _(Required)_<br/>UrlPrefix contains backend url prefixes for the proxied request url.<br />URLPrefix defines prefix prefix for destination |
 
 
-#### UpdateStatus
-
-_Underlying type:_ _string_
-
-UpdateStatus defines status for application
-
-Appears in: [ScrapeObjectStatus](#scrapeobjectstatus), [StatusMetadata](#statusmetadata), [VLAgentStatus](#vlagentstatus), [VLClusterStatus](#vlclusterstatus), [VLSingleStatus](#vlsinglestatus), [VLogsStatus](#vlogsstatus), [VMAgentStatus](#vmagentstatus), [VMAlertStatus](#vmalertstatus), [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus), [VMAlertmanagerStatus](#vmalertmanagerstatus), [VMAnomalyStatus](#vmanomalystatus), [VMAuthStatus](#vmauthstatus), [VMClusterStatus](#vmclusterstatus), [VMDistributedStatus](#vmdistributedstatus), [VMRuleStatus](#vmrulestatus), [VMSingleStatus](#vmsinglestatus), [VMUserStatus](#vmuserstatus), [VTClusterStatus](#vtclusterstatus), [VTSingleStatus](#vtsinglestatus)
-
-
-
 #### VLogs
 
 
@@ -3703,8 +3643,6 @@ Appears in: [VLogs](#vlogs)
 | useStrictSecurity<a href="#vlogsspec-usestrictsecurity" id="vlogsspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
 | volumeMounts<a href="#vlogsspec-volumemounts" id="vlogsspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlogsspec-volumes" id="vlogsspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
-
-
 
 
 #### VMAgent
@@ -3888,8 +3826,6 @@ Appears in: [VMAgent](#vmagent)
 | volumes<a href="#vmagentspec-volumes" id="vmagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
-
-
 #### VMAlert
 
 
@@ -4058,8 +3994,6 @@ Appears in: [VMAlert](#vmalert)
 | volumes<a href="#vmalertspec-volumes" id="vmalertspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
-
-
 #### VMAlertmanager
 
 
@@ -4107,8 +4041,6 @@ Appears in: [VMAlertmanagerConfig](#vmalertmanagerconfig)
 | receivers<a href="#vmalertmanagerconfigspec-receivers" id="vmalertmanagerconfigspec-receivers">#</a><br/>_[Receiver](#receiver) array_ | _(Optional)_<br/>Receivers defines alert receivers |
 | route<a href="#vmalertmanagerconfigspec-route" id="vmalertmanagerconfigspec-route">#</a><br/>_[Route](#route)_ | _(Optional)_<br/>Route definition for alertmanager, may include nested routes. |
 | time_intervals<a href="#vmalertmanagerconfigspec-time_intervals" id="vmalertmanagerconfigspec-time_intervals">#</a><br/>_[TimeIntervals](#timeintervals) array_ | _(Optional)_<br/>TimeIntervals defines named interval for active/mute notifications interval<br />See https://prometheus.io/docs/alerting/latest/configuration/#time_interval |
-
-
 
 
 #### VMAlertmanagerGossipConfig
@@ -4225,8 +4157,6 @@ Appears in: [VMAlertmanager](#vmalertmanager)
 | volumeMounts<a href="#vmalertmanagerspec-volumemounts" id="vmalertmanagerspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmalertmanagerspec-volumes" id="vmalertmanagerspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 | webConfig<a href="#vmalertmanagerspec-webconfig" id="vmalertmanagerspec-webconfig">#</a><br/>_[VMAlertmanagerWebConfig](#vmalertmanagerwebconfig)_ | _(Optional)_<br/>WebConfig defines configuration for webserver<br />https://github.com/prometheus/alertmanager/blob/main/docs/https.md |
-
-
 
 
 #### VMAlertmanagerTracingConfig
@@ -4450,8 +4380,6 @@ Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 | vpa<a href="#vmauthspec-vpa" id="vmauthspec-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
 
 
-
-
 #### VMAuthUnauthorizedUserAccessSpec
 
 
@@ -4554,8 +4482,6 @@ Appears in: [VMCluster](#vmcluster), [VMDistributedZoneCluster](#vmdistributedzo
 | vminsert<a href="#vmclusterspec-vminsert" id="vmclusterspec-vminsert">#</a><br/>_[VMInsert](#vminsert)_ | _(Optional)_<br/> |
 | vmselect<a href="#vmclusterspec-vmselect" id="vmclusterspec-vmselect">#</a><br/>_[VMSelect](#vmselect)_ | _(Optional)_<br/> |
 | vmstorage<a href="#vmclusterspec-vmstorage" id="vmclusterspec-vmstorage">#</a><br/>_[VMStorage](#vmstorage)_ | _(Optional)_<br/> |
-
-
 
 
 #### VMInsert
@@ -4887,8 +4813,6 @@ Appears in: [VMRule](#vmrule)
 | groups<a href="#vmrulespec-groups" id="vmrulespec-groups">#</a><br/>_[RuleGroup](#rulegroup) array_ | _(Required)_<br/>Groups list of group rules |
 
 
-
-
 #### VMScrapeConfig
 
 
@@ -5158,8 +5082,6 @@ Appears in: [VMSingle](#vmsingle)
 | volumes<a href="#vmsinglespec-volumes" id="vmsinglespec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Required)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated.<br />/ +optional |
 
 
-
-
 #### VMStaticScrape
 
 
@@ -5346,8 +5268,6 @@ Appears in: [VMUser](#vmuser)
 | tlsConfig<a href="#vmuserspec-tlsconfig" id="vmuserspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig defines tls configuration for the backend connection |
 | tokenRef<a href="#vmuserspec-tokenref" id="vmuserspec-tokenref">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>TokenRef allows fetching token from user-created secrets by its name and key. |
 | username<a href="#vmuserspec-username" id="vmuserspec-username">#</a><br/>_string_ | _(Optional)_<br/>Username basic auth user name for accessing protected endpoint,<br />will be replaced with metadata.name of VMUser if omitted. |
-
-
 
 
 #### VictorOpsConfig

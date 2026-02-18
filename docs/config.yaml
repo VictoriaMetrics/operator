@@ -4,6 +4,9 @@ render:
 processor:
   ignoreTypes:
     - ".*List$"
+    - ".*Status$"
+    - "StatusMetadata"
+    - "Condition"
   ignoreFields:
     - "status$"
     - "TypeMeta$"

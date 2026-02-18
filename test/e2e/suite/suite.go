@@ -42,7 +42,7 @@ var (
 	stopped       = make(chan struct{})
 )
 
-func GetClient(data []byte) client.Client {
+func GetClient(data []byte) client.WithWatch {
 	var cfg rest.Config
 	dec := gob.NewDecoder(bytes.NewReader(data))
 	Expect(dec.Decode(&cfg)).To(Succeed())
@@ -99,7 +99,7 @@ func GetClient(data []byte) client.Client {
 	Expect(gwapiv1.Install(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(apiextensionsv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
 	build.AddDefaults(scheme.Scheme)
-	k8sClient, err := client.New(&cfg, client.Options{Scheme: scheme.Scheme})
+	k8sClient, err := client.NewWithWatch(&cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 	return k8sClient

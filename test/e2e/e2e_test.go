@@ -47,7 +47,7 @@ func TestE2E(t *testing.T) {
 }
 
 var (
-	k8sClient client.Client
+	k8sClient client.WithWatch
 
 	_ = SynchronizedBeforeSuite(func() []byte {
 		return suite.InitOperatorProcess()

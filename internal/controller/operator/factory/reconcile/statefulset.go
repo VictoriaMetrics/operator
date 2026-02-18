@@ -341,12 +341,13 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 }
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
-	var pod *corev1.Pod
+	var pod corev1.Pod
 	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(_ context.Context) (done bool, err error) {
-		var pod corev1.Pod
-		err = rclient.Get(ctx, nsn, &pod)
-		if err != nil {
-			return false, fmt.Errorf("cannot get pod: %q: %w", nsn, err)
+		if err := rclient.Get(ctx, nsn, &pod); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, fmt.Errorf("cannot get pod %s: %w", nsn, err)
 		}
 		if !pod.DeletionTimestamp.IsZero() {
 			return false, nil
@@ -358,10 +359,10 @@ func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.Names
 		}
 		return PodIsReady(&pod, minReadySeconds), nil
 	}); err != nil {
-		if pod == nil {
+		if len(pod.Name) == 0 {
 			return err
 		}
-		return podStatusesToError(err, pod)
+		return podStatusesToError(err, &pod)
 	}
 	return nil
 }

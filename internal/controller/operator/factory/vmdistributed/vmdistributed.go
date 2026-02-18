@@ -54,7 +54,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		}
 
 		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
-		if i != lastZoneIdx {
+		if i != lastZoneIdx && zs.hasChanges[i] {
 			item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 			logger.WithContext(ctx).Info("pausing between zone updates", "name", nsn, "zone", item, "updatePause", cr.Spec.ZoneCommon.UpdatePause.Duration)
 			select {

@@ -50,7 +50,7 @@ func appendVMAgentTargetRefs(targetRefs []vmv1beta1.TargetRef, vmAgents []*vmv1b
 				LoadBalancingPolicy: ptr.To("first_available"),
 				RetryStatusCodes:    []int{500, 502, 503},
 			},
-			Paths: []string{"/insert/.+"},
+			Paths: []string{"/insert/.+", "/api/v1/write"},
 			CRD: &vmv1beta1.CRDRef{
 				Kind:      "VMAgent",
 				Name:      vmAgent.Name,

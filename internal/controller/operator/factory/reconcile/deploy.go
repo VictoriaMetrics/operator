@@ -143,11 +143,11 @@ func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, o
 	}); err != nil {
 		return fmt.Errorf("cannot list pods for selector=%q: %w", selector.String(), err)
 	}
-	for _, dp := range podList.Items {
-		if PodIsReady(&dp, minReadySeconds) {
+	for _, pod := range podList.Items {
+		if !pod.DeletionTimestamp.IsZero() || PodIsReady(&pod, minReadySeconds) {
 			continue
 		}
-		return podStatusesToError(origin, &dp)
+		return podStatusesToError(origin, &pod)
 	}
 	return fmt.Errorf("cannot find any pod for selector=%q, check kubernetes events: %w", selector.String(), origin)
 }

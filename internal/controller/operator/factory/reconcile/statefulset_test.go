@@ -2,16 +2,21 @@ package reconcile
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -19,25 +24,31 @@ import (
 
 func Test_waitForPodReady(t *testing.T) {
 	type opts struct {
-		ns                string
-		podName           string
+		nsn               types.NamespacedName
 		desiredVersion    string
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
 		t.Helper()
+		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		nsn := types.NamespacedName{Namespace: o.ns, Name: o.podName}
-		if err := waitForPodReady(context.Background(), fclient, nsn, o.desiredVersion, 0); (err != nil) != o.wantErr {
-			t.Errorf("waitForPodReady() error = %v, wantErr %v", err, o.wantErr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := waitForPodReady(ctx, fclient, o.nsn, o.desiredVersion, 0)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 
 	// testing pod with unready status
 	f(opts{
-		ns:      "default",
-		podName: "vmselect-example-0",
+		nsn: types.NamespacedName{
+			Namespace: "default",
+			Name:      "vmselect-example-0",
+		},
 		predefinedObjects: []runtime.Object{
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -65,8 +76,10 @@ func Test_waitForPodReady(t *testing.T) {
 
 	// testing pod with ready status
 	f(opts{
-		ns:      "default",
-		podName: "vmselect-example-0",
+		nsn: types.NamespacedName{
+			Namespace: "default",
+			Name:      "vmselect-example-0",
+		},
 		predefinedObjects: []runtime.Object{
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -95,8 +108,10 @@ func Test_waitForPodReady(t *testing.T) {
 
 	// with desiredVersion
 	f(opts{
-		ns:             "default",
-		podName:        "vmselect-example-0",
+		nsn: types.NamespacedName{
+			Namespace: "default",
+			Name:      "vmselect-example-0",
+		},
 		desiredVersion: "some-version",
 		predefinedObjects: []runtime.Object{
 			&corev1.Pod{
@@ -129,8 +144,10 @@ func Test_waitForPodReady(t *testing.T) {
 
 	// with missing desiredVersion
 	f(opts{
-		ns:             "default",
-		podName:        "vmselect-example-0",
+		nsn: types.NamespacedName{
+			Namespace: "default",
+			Name:      "vmselect-example-0",
+		},
 		desiredVersion: "some-version",
 		predefinedObjects: []runtime.Object{
 			&corev1.Pod{
@@ -260,28 +277,78 @@ func Test_podIsReady(t *testing.T) {
 
 func Test_performRollingUpdateOnSts(t *testing.T) {
 	type opts struct {
-		stsName           string
-		ns                string
-		podLabels         map[string]string
-		podMaxUnavailable int
+		sts               *appsv1.StatefulSet
+		opts              rollingUpdateOpts
 		wantErr           bool
 		predefinedObjects []runtime.Object
+		actions           []string
 	}
 	f := func(o opts) {
 		t.Helper()
-		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-
-		if err := performRollingUpdateOnSts(context.Background(), false, fclient, o.stsName, o.ns, o.podLabels, o.podMaxUnavailable); (err != nil) != o.wantErr {
-			t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, o.wantErr)
+		ctx := context.Background()
+		var mu sync.Mutex
+		var actions []string
+		fclient := k8stools.GetTestClientWithObjectsAndInterceptors(o.predefinedObjects, interceptor.Funcs{
+			SubResourceCreate: func(ctx context.Context, cl client.Client, _ string, obj client.Object, subResource client.Object, _ ...client.SubResourceCreateOption) error {
+				pod, podOk := obj.(*corev1.Pod)
+				_, evictionOk := subResource.(*policyv1.Eviction)
+				if evictionOk && podOk {
+					mu.Lock()
+					actions = append(actions, "Evict")
+					mu.Unlock()
+					pod.Labels[podRevisionLabel] = o.sts.Status.UpdateRevision
+					return cl.Update(ctx, pod)
+				}
+				return nil
+			},
+			Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+				assert.NoError(t, cl.Delete(ctx, obj, opts...))
+				pod, podOk := obj.(*corev1.Pod)
+				if podOk {
+					mu.Lock()
+					actions = append(actions, "Delete")
+					mu.Unlock()
+					pod.Labels[podRevisionLabel] = o.sts.Status.UpdateRevision
+					pod.ResourceVersion = ""
+					return cl.Create(ctx, pod)
+				}
+				return nil
+			},
+			Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				_, podOk := obj.(*corev1.Pod)
+				if podOk {
+					mu.Lock()
+					actions = append(actions, "Get")
+					mu.Unlock()
+				}
+				return cl.Get(ctx, key, obj)
+			},
+		})
+		err := performRollingUpdateOnSts(ctx, fclient, o.sts, o.opts)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
+		assert.ElementsMatch(t, actions, o.actions)
 	}
 
 	// rolling update is not needed
 	f(opts{
-		stsName:           "vmselect-sts",
-		ns:                "default",
-		podLabels:         map[string]string{"app": "vmselect"},
-		podMaxUnavailable: 1,
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev1",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 1,
+		},
 		predefinedObjects: []runtime.Object{
 			&appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
@@ -313,12 +380,245 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		},
 	})
 
+	// evict pods
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev1",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 4,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To(int32(4)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev1",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-1",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-2",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-3",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+		},
+		actions: []string{"Evict", "Evict", "Evict", "Get", "Get", "Get"},
+	})
+
+	// recreating pods
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev1",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 4,
+			delete:         true,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: ptr.To(int32(4)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev1",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-1",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-2",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev0"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-3",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+		},
+		actions: []string{"Delete", "Get", "Delete", "Get", "Delete", "Get"},
+	})
+
 	// rolling update is timeout
 	f(opts{
-		stsName:           "vmselect-sts",
-		ns:                "default",
-		podLabels:         map[string]string{"app": "vmselect"},
-		podMaxUnavailable: 1,
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev1",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 1,
+		},
 		predefinedObjects: []runtime.Object{
 			&appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{

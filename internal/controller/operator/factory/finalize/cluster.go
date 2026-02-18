@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
@@ -55,7 +56,10 @@ func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.Deployment{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
+	}
+	cfg := config.MustGetBaseConfig()
+	if cfg.VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
@@ -82,7 +86,10 @@ func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
+	}
+	cfg := config.MustGetBaseConfig()
+	if cfg.VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {
@@ -108,7 +115,10 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
-		&vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta},
+	}
+	cfg := config.MustGetBaseConfig()
+	if cfg.VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	owner := cr.AsOwner()
 	for _, objToRemove := range objsToRemove {

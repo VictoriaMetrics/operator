@@ -27,7 +27,7 @@ aliases:
 * FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): added tracing support. See [#1770](https://github.com/VictoriaMetrics/operator/issues/1770).
 * FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.kubernetes` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): added nomad_sd_config support. See [#1809](https://github.com/VictoriaMetrics/operator/issues/1809).
-* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support VPA for vmcluster, vtcluster, vlcluster and vmauth. See [#1795](https://github.com/VictoriaMetrics/operator/issues/1795).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support VPA for vmcluster, vtcluster, vlcluster and vmauth. See [#1795](https://github.com/VictoriaMetrics/operator/issues/1795). Thanks to the @dctrwatson for the pull request [#1803](https://github.com/VictoriaMetrics/operator/pull/1803).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).
@@ -41,6 +41,9 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously StatefulSet/Deployment/DaemonSet rollouts could proceed in parallel, now pods are rolled out sequentially. See [#1693](https://github.com/VictoriaMetrics/operator/issues/1693).
 * BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): previously `--only-init-config` still kept the reloader running background watchers; now it exits after the initial config update so the pod terminates as expected. See [#1785](https://github.com/VictoriaMetrics/operator/issues/1785).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously, recreating a resource after deletion could hang and block updates; now resource recreation completes normally. See [#1707](https://github.com/VictoriaMetrics/operator/issues/1707).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use global image registry unless image.repository is defined. See [#1813](https://github.com/VictoriaMetrics/operator/issues/1813).
+* BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): previously spec.route and spec.receivers were required; now both parameters are optional to align with prometheus operator. VMAlertmanager now can be used to set just the global inhibition rules. See [#1800](https://github.com/VictoriaMetrics/operator/issues/1800).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use global image registry unless image.repository is defined. See [#1813](https://github.com/VictoriaMetrics/operator/issues/1813).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

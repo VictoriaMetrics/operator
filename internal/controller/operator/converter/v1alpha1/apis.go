@@ -103,6 +103,10 @@ func convertPromInhibitRule(promIR promv1alpha1.InhibitRule) vmv1beta1.InhibitRu
 
 // ConvertAlertmanagerConfig creates VMAlertmanagerConfig from prometheus alertmanagerConfig
 func ConvertAlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf *config.BaseOperatorConf) (*vmv1beta1.VMAlertmanagerConfig, error) {
+	convertedRoute, err := convertPromRoute(promAMCfg.Spec.Route)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
+	}
 	vamc := &vmv1beta1.VMAlertmanagerConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        promAMCfg.Name,
@@ -111,18 +115,12 @@ func ConvertAlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf 
 			Labels:      converter.FilterPrefixes(promAMCfg.Labels, conf.FilterPrometheusConverterLabelPrefixes),
 		},
 		Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+			Route:         convertedRoute,
+			Receivers:     convertReceivers(promAMCfg.Spec.Receivers),
 			InhibitRules:  convertSliceStruct(promAMCfg.Spec.InhibitRules, convertPromInhibitRule),
 			TimeIntervals: convertSliceStruct(promAMCfg.Spec.MuteTimeIntervals, convertPromMuteTimeInterval),
 		},
 	}
-	convertedRoute, err := convertPromRoute(promAMCfg.Spec.Route)
-	if err != nil {
-		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
-	}
-	vamc.Spec.Route = convertedRoute
-	convertedReceivers := convertReceivers(promAMCfg.Spec.Receivers)
-
-	vamc.Spec.Receivers = convertedReceivers
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		vamc.OwnerReferences = []metav1.OwnerReference{
 			{

@@ -545,9 +545,6 @@ spec:
           metadata:
             type: object
           spec:
-            required:
-            - receivers
-            - route
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:

@@ -77,7 +77,7 @@ func GetClient(data []byte) client.Client {
 	}
 	resources := map[string]string{
 		"CPU": "10m",
-		"MEM": "10Mi",
+		"MEM": "20Mi",
 	}
 	for _, prefix := range resourceEnvsPrefixes {
 		for _, t := range []string{"LIMIT", "REQUEST"} {

@@ -227,62 +227,34 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		return nil
 	}
 	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, podMustRecreate))
-	podList := &corev1.PodList{}
-	labelSelector := labels.SelectorFromSet(podLabels)
-	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
-	if err := rclient.List(ctx, podList, listOps); err != nil {
+	var podList corev1.PodList
+	opts := &client.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labels.SelectorFromSet(podLabels),
+	}
+	if err := rclient.List(ctx, &podList, opts); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-	keepOnlyStsPods(podList)
 	if err := sortStsPodsByID(podList.Items); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
+	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, podMustRecreate)
+	totalPodsCount := len(readyPods) + len(updatedPods) + len(podsForUpdate)
+
 	switch {
 	// sanity check, should help to catch possible bugs
-	case len(podList.Items) > neededPodCount:
+	case totalPodsCount > neededPodCount:
 		l.Info(fmt.Sprintf("unexpected count of pods=%d, want pod count=%d for sts. "+
 			"It seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events to find out source of problem", len(podList.Items), neededPodCount))
+			" check kubectl events to find out source of problem", totalPodsCount, neededPodCount))
 	// usual case when some param misconfigured
 	// or kubernetes for some reason cannot create pod
 	// it's better to fail fast
-	case len(podList.Items) < neededPodCount:
-		return fmt.Errorf("actual pod count: %d less than needed: %d, possible statefulset misconfiguration", len(podList.Items), neededPodCount)
-	}
-
-	// first we must ensure, that already updated pods in ready status
-	// then we can update other pods
-	// if pod is not ready
-	// it must be at first place for update
-	podsForUpdate := make([]corev1.Pod, 0, len(podList.Items))
-	// if pods were already updated to some version, we have to wait its readiness
-	updatedPods := make([]corev1.Pod, 0, len(podList.Items))
-
-	if podMustRecreate {
-		podsForUpdate = podList.Items
-	} else {
-		for _, pod := range podList.Items {
-			podRev := pod.Labels[podRevisionLabel]
-			if podRev == stsVersion {
-				// wait for readiness only for not ready pods
-				if !PodIsReady(&pod, sts.Spec.MinReadySeconds) {
-					updatedPods = append(updatedPods, pod)
-				}
-				continue
-			}
-
-			// move unready pods to the begging of list for update
-			if !PodIsReady(&pod, sts.Spec.MinReadySeconds) {
-				podsForUpdate = append([]corev1.Pod{pod}, podsForUpdate...)
-				continue
-			}
-
-			podsForUpdate = append(podsForUpdate, pod)
-		}
+	case totalPodsCount < neededPodCount:
+		return fmt.Errorf("actual pod count: %d less than needed: %d, possible statefulset misconfiguration", totalPodsCount, neededPodCount)
 	}
 
 	updatedNeeded := len(podsForUpdate) != 0 || len(updatedPods) != 0
-
 	if !updatedNeeded {
 		l.Info("no pod needs to be updated")
 		return nil
@@ -294,8 +266,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	for _, pod := range updatedPods {
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
 		podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
-		err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds)
-		if err != nil {
+		if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
 	}
@@ -355,10 +326,6 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 
 // PodIsReady check is pod is ready
 func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
-	if pod.DeletionTimestamp != nil {
-		return false
-	}
-
 	if pod.Status.Phase != corev1.PodRunning {
 		return false
 	}
@@ -376,20 +343,20 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
 	var pod *corev1.Pod
 	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(_ context.Context) (done bool, err error) {
-		pod = &corev1.Pod{}
-		err = rclient.Get(ctx, nsn, pod)
+		var pod corev1.Pod
+		err = rclient.Get(ctx, nsn, &pod)
 		if err != nil {
 			return false, fmt.Errorf("cannot get pod: %q: %w", nsn, err)
+		}
+		if !pod.DeletionTimestamp.IsZero() {
+			return false, nil
 		}
 		revision := pod.Labels[podRevisionLabel]
 		if revision != desiredRevision {
 			logger.WithContext(ctx).Info(fmt.Sprintf("unexpected pod label %s=%s, want revision=%s", podRevisionLabel, revision, desiredRevision))
 			return false, nil
 		}
-		if PodIsReady(pod, minReadySeconds) {
-			return true, nil
-		}
-		return false, nil
+		return PodIsReady(&pod, minReadySeconds), nil
 	}); err != nil {
 		if pod == nil {
 			return err
@@ -475,24 +442,33 @@ func sortStsPodsByID(src []corev1.Pod) error {
 	return firstParseError
 }
 
-func keepOnlyStsPods(podList *corev1.PodList) {
-	var cnt int
-	for _, pod := range podList.Items {
-		var ownedBySts bool
-		for _, ow := range pod.OwnerReferences {
-			if ow.Kind == "StatefulSet" {
-				ownedBySts = true
-				break
-			}
+func isSTSPod(pod *corev1.Pod) bool {
+	for _, ref := range pod.OwnerReferences {
+		if ref.Kind == "StatefulSet" {
+			return true
 		}
-		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
-		if !ownedBySts {
-			continue
-		}
-		podList.Items[cnt] = pod
-		cnt++
 	}
-	podList.Items = podList.Items[:cnt]
+	return false
+}
+
+func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, recreate bool) ([]corev1.Pod, []corev1.Pod, []corev1.Pod) {
+	var readyPods, updatedPods, podsForUpdate []corev1.Pod
+	for _, pod := range pods {
+		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
+		isSameRevision := pod.Labels[podRevisionLabel] == revision
+		switch {
+		case !isSTSPod(&pod):
+		case !pod.DeletionTimestamp.IsZero() || recreate:
+			podsForUpdate = append(podsForUpdate, pod)
+		case PodIsReady(&pod, minReadySeconds) && isSameRevision:
+			readyPods = append(readyPods, pod)
+		case isSameRevision:
+			updatedPods = append(updatedPods, pod)
+		default:
+			podsForUpdate = append(podsForUpdate, pod)
+		}
+	}
+	return readyPods, updatedPods, podsForUpdate
 }
 
 // validateStatefulSet performs validation Statefulset spec

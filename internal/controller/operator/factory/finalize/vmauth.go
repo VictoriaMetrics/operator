@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -67,6 +68,11 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	// check HPA
 	if err := removeFinalizeObjByName(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
 		return err
+	}
+	if cfg.VPAAPIEnabled {
+		if err := removeFinalizeObjByName(ctx, rclient, &vpav1.VerticalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
+			return err
+		}
 	}
 
 	if err := deleteSA(ctx, rclient, cr); err != nil {

@@ -2999,7 +2999,7 @@ Appears in: [SubRoute](#subroute), [VMAlertmanagerConfigSpec](#vmalertmanagercon
 | mute_time_intervals<a href="#route-mute_time_intervals" id="route-mute_time_intervals">#</a><br/>_string array_ | _(Optional)_<br/>MuteTimeIntervals is a list of interval names that will mute matched alert |
 | receiver<a href="#route-receiver" id="route-receiver">#</a><br/>_string_ | _(Required)_<br/>Name of the receiver for this route. |
 | repeat_interval<a href="#route-repeat_interval" id="route-repeat_interval">#</a><br/>_string_ | _(Optional)_<br/>How long to wait before repeating the last notification. |
-| routes<a href="#route-routes" id="route-routes">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#json-v1-apiextensions-k8s-io) array_ | _(Required)_<br/>Child routes.<br />https://prometheus.io/docs/alerting/latest/configuration/#route |
+| routes<a href="#route-routes" id="route-routes">#</a><br/>_[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#json-v1-apiextensions-k8s-io) array_ | _(Optional)_<br/>Child routes.<br />https://prometheus.io/docs/alerting/latest/configuration/#route |
 
 
 #### Rule
@@ -4104,8 +4104,8 @@ Appears in: [VMAlertmanagerConfig](#vmalertmanagerconfig)
 | Field | Description |
 | --- | --- |
 | inhibit_rules<a href="#vmalertmanagerconfigspec-inhibit_rules" id="vmalertmanagerconfigspec-inhibit_rules">#</a><br/>_[InhibitRule](#inhibitrule) array_ | _(Optional)_<br/>InhibitRules will only apply for alerts matching<br />the resource's namespace. |
-| receivers<a href="#vmalertmanagerconfigspec-receivers" id="vmalertmanagerconfigspec-receivers">#</a><br/>_[Receiver](#receiver) array_ | _(Required)_<br/>Receivers defines alert receivers |
-| route<a href="#vmalertmanagerconfigspec-route" id="vmalertmanagerconfigspec-route">#</a><br/>_[Route](#route)_ | _(Required)_<br/>Route definition for alertmanager, may include nested routes. |
+| receivers<a href="#vmalertmanagerconfigspec-receivers" id="vmalertmanagerconfigspec-receivers">#</a><br/>_[Receiver](#receiver) array_ | _(Optional)_<br/>Receivers defines alert receivers |
+| route<a href="#vmalertmanagerconfigspec-route" id="vmalertmanagerconfigspec-route">#</a><br/>_[Route](#route)_ | _(Optional)_<br/>Route definition for alertmanager, may include nested routes. |
 | time_intervals<a href="#vmalertmanagerconfigspec-time_intervals" id="vmalertmanagerconfigspec-time_intervals">#</a><br/>_[TimeIntervals](#timeintervals) array_ | _(Optional)_<br/>TimeIntervals defines named interval for active/mute notifications interval<br />See https://prometheus.io/docs/alerting/latest/configuration/#time_interval |
 
 

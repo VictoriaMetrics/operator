@@ -33,7 +33,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 	}
 	pods := podList.Items[:0]
 	for _, pod := range podList.Items {
-		if pod.DeletionTimestamp != nil {
+		if !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
 		pods = append(pods, pod)
@@ -240,7 +240,7 @@ func mustGetFirstPod(rclient client.Client, ns string, lbs map[string]string) *c
 	})).ToNot(HaveOccurred())
 	pods := podList.Items[:0]
 	for _, pod := range podList.Items {
-		if pod.DeletionTimestamp != nil {
+		if !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
 		pods = append(pods, pod)

@@ -30,7 +30,7 @@ func RunCrustGather(ctx context.Context, resourceWaitTimeout time.Duration) erro
 	report := ginkgo.CurrentSpecReport()
 	reportHash := fmt.Sprintf("%016x", xxhash.Sum64([]byte(report.FullText())))
 	reportDir := filepath.Join(reportsLocation, reportHash)
-	cmd := exec.CommandContext(timeBoundContext, crustGatherBin, "collect", "-f", reportDir)
+	cmd := exec.CommandContext(timeBoundContext, crustGatherBin, "collect", "-v", "WARN", "-f", reportDir)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb

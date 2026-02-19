@@ -168,15 +168,15 @@ func isLabelsMatchSelectors(objLabels map[string]string, selectorLabels map[stri
 
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
 func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, owner *metav1.OwnerReference) error {
-	objName, objNs := r.GetName(), r.GetNamespace()
-	if objName == "" || objNs == "" {
-		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
+	nsn := types.NamespacedName{
+		Name:      r.GetName(),
+		Namespace: r.GetNamespace(),
+	}
+	if len(nsn.Name) == 0 {
+		return fmt.Errorf("BUG: object name cannot be empty")
 	}
 	// reload object from API to properly remove finalizer
-	if err := rclient.Get(ctx, types.NamespacedName{
-		Namespace: objNs,
-		Name:      objName,
-	}, r); err != nil {
+	if err := rclient.Get(ctx, nsn, r); err != nil {
 		// fast path
 		if k8serrors.IsNotFound(err) {
 			return nil

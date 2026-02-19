@@ -251,7 +251,6 @@ spec:
       target_path_suffix: '/select/1'
       paths:
         - '/prometheus/.*'
----
 ```
 
 

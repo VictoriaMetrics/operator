@@ -19,8 +19,6 @@ import (
 )
 
 type crObject interface {
-	GetLabels() map[string]string
-	SelectorLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
 	AsOwner() metav1.OwnerReference

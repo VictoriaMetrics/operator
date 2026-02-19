@@ -252,7 +252,6 @@ spec:
         - '/prometheus/.*'
 ```
 
-
 ## Unauthorized access
 
 You can expose some routes without authorization with `unauthorizedUserAccessSpec`.

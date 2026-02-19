@@ -1509,8 +1509,8 @@ up{baz="bar"} 123
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("checking that update process runs as configured")
 						Eventually(func() int {
-							podList := &corev1.PodList{}
-							k8sClient.List(ctx, podList, &client.ListOptions{
+							var podList corev1.PodList
+							k8sClient.List(ctx, &podList, &client.ListOptions{
 								Namespace:     namespace,
 								LabelSelector: labels.SelectorFromSet(cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)),
 							})
@@ -1520,14 +1520,16 @@ up{baz="bar"} 123
 									podsUpdated++
 								}
 							}
+							return podsUpdated
+						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically("==", 4))
+						Eventually(func() int32 {
 							var pdb policyv1.PodDisruptionBudget
 							k8sClient.Get(ctx, types.NamespacedName{
 								Namespace: namespace,
 								Name:      cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 							}, &pdb)
-							Expect(pdb.Status.CurrentHealthy).To(BeNumerically(">=", 3), "at least 3 pods should be healthy during the update")
-							return podsUpdated
-						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically("==", 4))
+							return pdb.Status.CurrentHealthy
+						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically(">=", 3))
 					},
 				},
 			),

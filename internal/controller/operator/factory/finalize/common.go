@@ -19,8 +19,6 @@ import (
 )
 
 type crObject interface {
-	GetLabels() map[string]string
-	SelectorLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
 	AsOwner() metav1.OwnerReference
@@ -110,62 +108,6 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 	return nil
 }
 
-// SafeDeleteForSelectorsWithFinalizer removes given object if it matches provided label selectors
-func SafeDeleteForSelectorsWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, selectors map[string]string, owner *metav1.OwnerReference) error {
-	objName, objNs := r.GetName(), r.GetNamespace()
-	if objName == "" || objNs == "" {
-		return fmt.Errorf("BUG: object name=%q or object namespace=%q cannot be empty", objName, objNs)
-	}
-	// reload object from API to properly remove finalizer
-	if err := rclient.Get(ctx, types.NamespacedName{
-		Namespace: objNs,
-		Name:      objName,
-	}, r); err != nil {
-		// fast path
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	if !isLabelsMatchSelectors(r.GetLabels(), selectors) {
-		// object has a different set of labels
-		// most probably it is not managed by operator
-		return nil
-	}
-	if !canBeRemoved(r, owner) {
-		return nil
-	}
-	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-	if err := rclient.Delete(ctx, r); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func isLabelsMatchSelectors(objLabels map[string]string, selectorLabels map[string]string) bool {
-	for k, v := range selectorLabels {
-		isFound := false
-		objV, ok := objLabels[k]
-		if ok {
-			if objV != v {
-				return false
-			}
-			isFound = true
-		}
-		if !isFound {
-			return false
-		}
-	}
-	return true
-}
-
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
 func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{
@@ -202,7 +144,7 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r clien
 func deleteSA(ctx context.Context, rclient client.Client, cr crObject) error {
 	owner := cr.AsOwner()
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: cr.GetNamespace(), Name: cr.GetServiceAccountName()}}
-	return SafeDeleteForSelectorsWithFinalizer(ctx, rclient, sa, cr.SelectorLabels(), &owner)
+	return SafeDeleteWithFinalizer(ctx, rclient, sa, &owner)
 }
 
 func finalizePDB(ctx context.Context, rclient client.Client, cr crObject) error {
@@ -214,12 +156,6 @@ func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crO
 		return err
 	}
 	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.PrefixedName(), cr.GetNamespace()); err != nil {
-		return err
-	}
-	if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
-		return err
-	}
-	if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}}); err != nil {
 		return err
 	}
 	return nil

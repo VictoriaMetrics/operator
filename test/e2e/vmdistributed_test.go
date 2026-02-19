@@ -801,6 +801,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				cr.Spec.Paused = true
 				return k8sClient.Update(ctx, cr)
 			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusPaused(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
+			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
 
 			By("attempting to scale the VMCluster while paused")
 			var vmCluster1 vmv1beta1.VMCluster

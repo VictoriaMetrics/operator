@@ -60,9 +60,6 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if err := removeFinalizeObjByName(ctx, rclient, httpRoute, cr.PrefixedName(), cr.Namespace); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, httpRoute); err != nil {
-			return err
-		}
 	}
 
 	// check HPA

@@ -63,11 +63,19 @@ func expectObjectStatusExpanding(ctx context.Context,
 	name types.NamespacedName) error {
 	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusExpanding)
 }
+
 func expectObjectStatusOperational(ctx context.Context,
 	rclient client.Client,
 	object client.Object,
 	name types.NamespacedName) error {
 	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusOperational)
+}
+
+func expectObjectStatusPaused(ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	name types.NamespacedName) error {
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusPaused)
 }
 
 type httpRequestOpts struct {

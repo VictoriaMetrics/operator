@@ -89,24 +89,63 @@ VMDistributed can be used alongside the resources created by the distributed cha
 In order to update VMClusters in a coordinated manner, add VMCluster resources to the `zones` list:
 ```
 spec:
+  vmauth:
+    spec:
+      replicaCount: 1
+  zoneCommon:
+    vmagent:
+      name: vmagent-%ZONE%
+      spec:
+        replicaCount: 1
+    vmcluster:
+      name: vmcluster-%ZONE%
+      spec:
+        replicationFactor: 1
+        requestsLoadBalancer:
+          enabled: true
+          spec:
+            nodeSelector:
+              kubernetes.io/os: linux
+            replicaCount: 2
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+        retentionPeriod: "14"
+        vminsert:
+          nodeSelector:
+            kubernetes.io/os: linux
+          port: "8480"
+          replicaCount: 2
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+        vmselect:
+          nodeSelector:
+            kubernetes.io/os: linux
+          port: "8481"
+          replicaCount: 2
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
+        vmstorage:
+          nodeSelector:
+            kubernetes.io/os: linux
+          replicaCount: 2
+          storageDataPath: /vm-data
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: ScheduleAnyway
   zones:
-    - name: zone-1 
-      vmcluster:
-        name: cluster-1
-    - name: zone-2
-      vmcluster:
-        name: cluster-2
-    - name: zone-3
-      vmcluster:
-        name: cluster-3
+    - name: central
+    - name: east
+    - name: west
 ```
 
-and set vmauth pointing to global read vmauth:
-```
-spec:
-  vmauth:
-    name: vmauth-global-read-<release name>
-```
+Note that VMDistributed will create a single VMAuth, which encapsulates rules for both read and write access to the zones, unlike the distributed chart which creates separate VMAuths for read and write paths. This provides a convenient way to migrate the traffic between VMDistributed and distributed helm chart implementations.
 
 ### Ownership and references
 

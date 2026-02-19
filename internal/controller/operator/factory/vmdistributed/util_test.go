@@ -112,7 +112,7 @@ func TestMergeSpecs(t *testing.T) {
 		}, &vmv1alpha1.VMDistributedZoneAgentSpec{}, "zone-b", &vmv1alpha1.VMDistributedZoneAgentSpec{
 			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 				NodeSelector: map[string]string{
-					"topology.kubernetes.io/zone": "zone-a",
+					"topology.kubernetes.io/zone": "zone-b",
 				},
 			},
 		})

@@ -192,7 +192,6 @@ type: Opaque
 
 ### Bearer Token
 ```yaml
----
 apiVersion: v1
 kind: Secret
 metadata:

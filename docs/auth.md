@@ -188,6 +188,70 @@ data:
 type: Opaque
 ```
 
+## Create VMUser using an existing secret
+
+### Bearer Token
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: victoria-reader-password # Name of the secret
+  namespace: vm # Ensure this matches the namespace of your VMUser
+type: Opaque
+data:
+  token: dmljdG9yaWEtaXMtY29vbA== # Base64 encoded value of 'victoria-is-cool'
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: victoria-reader
+spec:
+  name: victoria-reader
+  bearerTokenSecret:
+    name: victoria-reader-token
+    key: token
+  targetRefs:
+    - crd:
+        kind: VMCluster/vmselect
+        name: victoriametrics-cluster
+        namespace: vm
+      target_path_suffix: '/select/1'
+      paths:
+        - '/prometheus/.*'
+---
+```
+### Username and Password
+```yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: victoria-reader-token # Name of the secret
+  namespace: vm # Ensure this matches the namespace of your VMUser
+type: Opaque
+data:
+  password: dmljdG9yaWEtaXMtY29vbA== # Base64 encoded value of 'victoria-is-cool'
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: victoria-reader-basic
+spec:
+  name: victoria-reader-basic
+  username: victoria-reader
+  passwordRef:
+    name: victoria-reader-password
+    key: password
+  targetRefs:
+    - crd:
+        kind: VMCluster/vmselect
+        name: victoriametrics-cluster
+        namespace: vm
+      target_path_suffix: '/select/1'
+      paths:
+        - '/prometheus/.*'
+```
+
 ## Unauthorized access
 
 You can expose some routes without authorization with `unauthorizedUserAccessSpec`.

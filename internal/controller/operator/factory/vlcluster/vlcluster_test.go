@@ -2,11 +2,8 @@ package vlcluster
 
 import (
 	"context"
-	"sync"
 	"testing"
-	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -47,112 +44,13 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
+		ctx := context.Background()
 		fclient.Scheme().Default(o.cr)
-		ctx, cancel := context.WithCancel(context.Background())
-		var wg sync.WaitGroup
-		defer func() {
-			cancel()
-			wg.Wait()
-		}()
-		eventuallyUpdateStatusToOk := func(cb func() error) {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				tc := time.NewTicker(time.Millisecond * 100)
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-tc.C:
-						if err := cb(); err != nil {
-							if k8serrors.IsNotFound(err) {
-								continue
-							}
-							t.Errorf("callback error: %s", err)
-							return
-						}
-						return
-					}
-				}
-			}()
-		}
-		if o.cr.Spec.VLStorage != nil {
-			var vlst appsv1.StatefulSet
-			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: o.cr.Namespace}, &vlst); err != nil {
-					return err
-				}
-				vlst.Status.ReadyReplicas = *o.cr.Spec.VLStorage.ReplicaCount
-				vlst.Status.UpdatedReplicas = *o.cr.Spec.VLStorage.ReplicaCount
-				if err := fclient.Status().Update(ctx, &vlst); err != nil {
-					return err
-				}
-
-				return nil
-			})
-		}
-		if o.cr.Spec.VLSelect != nil {
-			var vls appsv1.Deployment
-			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: o.cr.Namespace}, &vls); err != nil {
-					return err
-				}
-				vls.Status.Conditions = append(vls.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				vls.Status.UpdatedReplicas = *vls.Spec.Replicas
-				vls.Status.AvailableReplicas = vls.Status.UpdatedReplicas
-				if err := fclient.Status().Update(ctx, &vls); err != nil {
-					return err
-				}
-
-				return nil
-			})
-
-		}
-		if o.cr.Spec.VLInsert != nil {
-			var vli appsv1.Deployment
-			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: o.cr.Namespace}, &vli); err != nil {
-					return err
-				}
-				vli.Status.Conditions = append(vli.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				vli.Status.UpdatedReplicas = *vli.Spec.Replicas
-				vli.Status.AvailableReplicas = vli.Status.UpdatedReplicas
-				if err := fclient.Status().Update(ctx, &vli); err != nil {
-					return err
-				}
-				return nil
-			})
-
-		}
-		if o.cr.Spec.RequestsLoadBalancer.Enabled {
-			var vmauthLB appsv1.Deployment
-			eventuallyUpdateStatusToOk(func() error {
-				if err := fclient.Get(ctx, types.NamespacedName{Name: o.cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: o.cr.Namespace}, &vmauthLB); err != nil {
-					return err
-				}
-				vmauthLB.Status.Conditions = append(vmauthLB.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				if err := fclient.Status().Update(ctx, &vmauthLB); err != nil {
-					return err
-				}
-
-				return nil
-			})
-		}
 		err := CreateOrUpdate(ctx, fclient, o.cr.DeepCopy())
-		if (err != nil) != o.wantErr {
-			t.Fatalf("unexpected error: %s", err)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		if o.validate != nil {
 			o.validate(ctx, fclient, o.cr)
@@ -383,10 +281,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 
@@ -455,10 +350,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 
@@ -517,10 +409,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 
@@ -602,10 +491,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 

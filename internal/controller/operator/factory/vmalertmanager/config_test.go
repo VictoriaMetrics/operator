@@ -24,9 +24,7 @@ import (
 func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
 	t.Helper()
 	data, err := json.Marshal(r)
-	if err != nil {
-		t.Fatalf("unexpected json marshal error: %s", err)
-	}
+	assert.NoError(t, err)
 	return apiextensionsv1.JSON{Raw: data}
 }
 
@@ -1879,8 +1877,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		ctx := context.TODO()
 
 		// Create secret with alert manager config
-		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
+		err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 		opts := &k8stools.SelectorOpts{
@@ -1912,15 +1913,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 		// check secret config after creating
 		d, ok := createdSecret.Data[alertmanagerSecretConfigKeyGz]
-		if !ok {
-			t.Fatalf("config for alertmanager not exist")
-		}
+		assert.True(t, ok)
 		var secretConfig alertmanagerConfig
-		if data, err := build.GunzipConfig(d); err != nil {
-			t.Fatalf("failed to gunzip config: %s", err)
-		} else {
-			assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
-		}
+		data, err := build.GunzipConfig(d)
+		assert.NoError(t, err)
+		assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
 		var amc vmv1beta1.VMAlertmanagerConfig
 		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: "test-amc"}, &amc))
 		// we add blachole as first route by default
@@ -1929,8 +1926,11 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		assert.Len(t, secretConfig.Route.Routes, 1)
 		assert.Len(t, secretConfig.Route.Routes[0], len(amc.Spec.Route.Routes)+2)
 		// Update secret with alert manager config
-		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
+		err = CreateOrUpdateConfig(ctx, fclient, o.cr, nil)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 
 		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret); err != nil {
@@ -1942,14 +1942,10 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 
 		// check secret config after updating
 		d, ok = createdSecret.Data[alertmanagerSecretConfigKeyGz]
-		if !ok {
-			t.Fatalf("config for alertmanager not exist")
-		}
-		if data, err := build.GunzipConfig(d); err != nil {
-			t.Fatalf("failed to gunzip alertmanager config: %s", err)
-		} else {
-			assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
-		}
+		assert.True(t, ok)
+		data, err = build.GunzipConfig(d)
+		assert.NoError(t, err)
+		assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
 		assert.Len(t, secretConfig.Receivers, len(amc.Spec.Receivers)+1)
 		assert.Len(t, secretConfig.InhibitRules, len(amc.Spec.InhibitRules))
 		assert.Len(t, secretConfig.Route.Routes, 1)
@@ -2034,8 +2030,10 @@ func TestBuildWebConfig(t *testing.T) {
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		c, err := buildWebServerConfigYAML(o.cr, ac)
-		if (err != nil) != o.wantErr {
-			t.Fatalf("unexpected error: %q", err)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		assert.Equal(t, o.want, string(c))
 	}
@@ -2184,7 +2182,6 @@ func TestBuildGossipConfig(t *testing.T) {
 		cr                *vmv1beta1.VMAlertmanager
 		predefinedObjects []runtime.Object
 		want              string
-		wantErr           bool
 	}
 
 	f := func(o opts) {
@@ -2193,9 +2190,7 @@ func TestBuildGossipConfig(t *testing.T) {
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		c, err := buildGossipConfigYAML(o.cr, ac)
-		if (err != nil) != o.wantErr {
-			t.Fatalf("unexpected error: %q", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, o.want, string(c))
 	}
 

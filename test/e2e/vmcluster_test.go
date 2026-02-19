@@ -391,9 +391,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -403,8 +404,18 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						cr.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).ToNot(HaveOccurred())
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect))).ToNot(HaveOccurred())
+						Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
+							},
+						}, 2)).ToNot(HaveOccurred())
+						Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
+							},
+						}, 2)).ToNot(HaveOccurred())
 					},
 				},
 			),
@@ -507,9 +518,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						cr.Spec.VMInsert.ReplicaCount = ptr.To[int32](2)
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage))).ToNot(HaveOccurred())
+						Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
+							},
+						}, 2)).ToNot(HaveOccurred())
 						Eventually(func() error {
-							return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels(vmv1beta1.ClusterComponentInsert))
+							return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: namespace,
+									Labels:    cr.SelectorLabels(vmv1beta1.ClusterComponentInsert),
+								},
+							}, 2)
 						}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 					},
 				},

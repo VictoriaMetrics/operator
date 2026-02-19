@@ -80,7 +80,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					},
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 				},
 			),
 			Entry("with strict security", "strict-security",
@@ -100,7 +105,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					},
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var sts appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).ToNot(HaveOccurred())
 					ps := sts.Spec.Template.Spec
@@ -168,7 +178,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.ReplicaCount = ptr.To[int32](2)
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 2)).ToNot(HaveOccurred())
 				},
 			),
 			Entry("by changing default config", "change-config",
@@ -210,7 +225,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					cr.Spec.UseDefaultResources = ptr.To(false)
 				},
 				func(cr *vmv1beta1.VMAlertmanager) {
-					Expect(expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var updatedSts appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: namespace,

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -70,14 +71,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 	f := func(opts opts) {
 		t.Helper()
 		got := ConvertRelabelConfig(opts.prc)
-		if len(got) != len(opts.want) {
-			t.Fatalf("len of relabelConfigs mismatch, want: %d, got %d", len(opts.want), len(got))
-		}
-		for i, wantRelabelConfig := range opts.want {
-			if !reflect.DeepEqual(*wantRelabelConfig, *got[i]) {
-				t.Fatalf("ConvertRelabelConfig() = %v, want %v", *got[i], *wantRelabelConfig)
-			}
-		}
+		assert.Equal(t, got, opts.want)
 	}
 
 	// test empty cfg

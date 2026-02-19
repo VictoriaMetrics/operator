@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,7 +26,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr                *vmv1beta1.VMAlert
 		cmNames           []string
 		predefinedObjects []runtime.Object
-		validator         func(*appsv1.Deployment, *corev1.Secret) error
+		validate          func(*appsv1.Deployment, *corev1.Secret)
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -39,26 +38,18 @@ func TestCreateOrUpdate(t *testing.T) {
 			return
 		}
 
-		if o.validator != nil {
+		if o.validate != nil {
 			var generatedDeploment appsv1.Deployment
-			if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &generatedDeploment); err != nil {
-				t.Fatalf("cannot find generated deployment=%q, err: %v", o.cr.PrefixedName(), err)
-			}
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &generatedDeploment))
 			var generatedTLSSecret corev1.Secret
 			tlsSecretName := build.ResourceName(build.TLSAssetsResourceKind, o.cr)
-			if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: tlsSecretName}, &generatedTLSSecret); err != nil {
-				if !k8serrors.IsNotFound(err) {
-					t.Fatalf("unexpected error during attempt to get tls secret=%q, err: %v", build.ResourceName(build.TLSAssetsResourceKind, o.cr), err)
-				}
-			}
-			if err := o.validator(&generatedDeploment, &generatedTLSSecret); err != nil {
-				t.Fatalf("unexpected error at deployment validation: %v", err)
-			}
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: tlsSecretName}, &generatedTLSSecret))
+			o.validate(&generatedDeploment, &generatedTLSSecret)
 		}
 	}
 
 	// base-spec-gen
-	o := opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -90,11 +81,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// base-spec-gen with externalLabels
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -137,7 +127,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validator: func(d *appsv1.Deployment, s *corev1.Secret) error {
+		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
 			var foundOk bool
 			for _, cnt := range d.Spec.Template.Spec.Containers {
 				if cnt.Name == "vmalert" {
@@ -146,23 +136,17 @@ func TestCreateOrUpdate(t *testing.T) {
 						if strings.HasPrefix(arg, "-external.label") {
 							foundOk = true
 							kv := strings.ReplaceAll(arg, "-external.label=", "")
-							if kv != "label1=value1" && kv != "label2=value-2" {
-								return fmt.Errorf("unexpected value for external.label arg: %s", kv)
-							}
+							assert.True(t, kv == "label1=value1" || kv == "label2=value-2")
 						}
 					}
 				}
 			}
-			if !foundOk {
-				return fmt.Errorf("expected to found arg: -external.label at vmalert container")
-			}
-			return nil
+			assert.True(t, foundOk)
 		},
-	}
-	f(o)
+	})
 
 	// with-remote-tls
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -261,23 +245,15 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validator: func(d *appsv1.Deployment, s *corev1.Secret) error {
-			if _, ok := s.Data["default_configmap_datasource-tls_ca"]; !ok {
-				return fmt.Errorf("failed to find expected TLS CA")
-			}
-			if _, ok := s.Data["default_configmap_datasource-tls_cert"]; !ok {
-				return fmt.Errorf("failed to find expected TLS cert")
-			}
-			if _, ok := s.Data["default_datasource-tls_key"]; !ok {
-				return fmt.Errorf("failed to find TLS key")
-			}
-			return nil
+		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
+			assert.NotEmpty(t, s.Data["default_configmap_datasource-tls_ca"])
+			assert.NotEmpty(t, s.Data["default_configmap_datasource-tls_cert"])
+			assert.NotEmpty(t, s.Data["default_datasource-tls_key"])
 		},
-	}
-	f(o)
+	})
 
 	// with-notifiers-tls
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -358,11 +334,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with tlsconfig insecure true
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -437,11 +412,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with notifier config
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -483,8 +457,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 }
 
 func TestBuildNotifiers(t *testing.T) {
@@ -506,7 +479,7 @@ func TestBuildNotifiers(t *testing.T) {
 	}
 
 	// ok build args
-	o := opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -541,11 +514,10 @@ func TestBuildNotifiers(t *testing.T) {
 			"-notifier.tlsCAFile=,/tmp/ca.cert,",
 			"-notifier.tlsInsecureSkipVerify=false,true,false",
 		},
-	}
-	f(o)
+	})
 
 	// ok build args with config
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -562,11 +534,10 @@ func TestBuildNotifiers(t *testing.T) {
 		},
 		want:              []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
 		predefinedObjects: []runtime.Object{},
-	}
-	f(o)
+	})
 
 	// with headers and oauth2
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -637,8 +608,7 @@ func TestBuildNotifiers(t *testing.T) {
 			},
 		},
 		want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/default_bearer_bearer", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/default_oauth2_client-secret,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
-	}
-	f(o)
+	})
 }
 
 func TestCreateOrUpdateService(t *testing.T) {
@@ -666,7 +636,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	}
 
 	// base test
-	o := opts{
+	f(opts{
 		c: config.MustGetBaseConfig(),
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
@@ -680,8 +650,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 			}
 			return nil
 		},
-	}
-	f(o)
+	})
 }
 
 func Test_buildVMAlertArgs(t *testing.T) {
@@ -708,7 +677,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 	}
 
 	// basic args
-	o := opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
@@ -727,11 +696,10 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
 		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
-	}
-	f(o)
+	})
 
 	// with tls args
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
@@ -758,11 +726,10 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
 		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
-	}
-	f(o)
+	})
 
 	// with static and selector notifiers
-	o = opts{
+	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic-vmalert",
@@ -839,6 +806,5 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			"-notifier.tlsKeyFile=,/tmp/key.pem,,,",
 			"-notifier.url=http://am-1,http://am-2,http://am-3,http://vmalertmanager-test-system-0.vmalertmanager-test-system.monitoring.svc:9093,http://vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring.svc:9093",
 		},
-	}
-	f(o)
+	})
 }

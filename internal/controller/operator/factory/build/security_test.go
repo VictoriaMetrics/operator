@@ -22,15 +22,11 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		if err := k8stools.SetKubernetesVersionWithDefaults(&o.kubeletVersion, 0, 0); err != nil {
-			t.Fatalf("cannot set k8s version for testing: %q", err)
-		}
+		assert.NoError(t, k8stools.SetKubernetesVersionWithDefaults(&o.kubeletVersion, 0, 0))
 		defer func() {
 			// return back defaults after test
 			restoreVersion := version.Info{Major: "0", Minor: "0"}
-			if err := k8stools.SetKubernetesVersionWithDefaults(&restoreVersion, 0, 0); err != nil {
-				t.Fatalf("cannot set k8s version for testing: %q", err)
-			}
+			assert.NoError(t, k8stools.SetKubernetesVersionWithDefaults(&restoreVersion, 0, 0))
 		}()
 		res := AddStrictSecuritySettingsToPod(o.psp, o.enableStrictSecurity)
 		assert.Equal(t, res, o.expected)

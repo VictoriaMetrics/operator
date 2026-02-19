@@ -28,7 +28,6 @@ func Test_waitForPodReady(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-
 		nsn := types.NamespacedName{Namespace: o.ns, Name: o.podName}
 		if err := waitForPodReady(context.Background(), fclient, nsn, o.desiredVersion, 0); (err != nil) != o.wantErr {
 			t.Errorf("waitForPodReady() error = %v, wantErr %v", err, o.wantErr)
@@ -357,13 +356,9 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 func TestSortPodsByID(t *testing.T) {
 	f := func(unorderedPods []corev1.Pod, expectedOrder []corev1.Pod) {
 		t.Helper()
-		if err := sortStsPodsByID(unorderedPods); err != nil {
-			t.Fatalf("unexpected error during pod sorting: %s", err)
-		}
+		assert.NoError(t, sortStsPodsByID(unorderedPods))
 		for idx, pod := range expectedOrder {
-			if pod.Name != unorderedPods[idx].Name {
-				t.Fatalf("order mismatch want pod: %s at idx: %d, got: %s", pod.Name, idx, unorderedPods[idx].Name)
-			}
+			assert.Equal(t, pod.Name, unorderedPods[idx].Name)
 		}
 	}
 	podsFromNames := func(podNames []string) []corev1.Pod {
@@ -387,7 +382,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.StatefulSet
 		predefinedObjects []runtime.Object
-		validate          func(*k8stools.TestClientWithStatsTrack, *appsv1.StatefulSet)
+		validate          func(*appsv1.StatefulSet)
+		actions           []string
 		wantErr           bool
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
@@ -435,9 +431,9 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		cl := getTestClient(o.new, o.predefinedObjects)
 		var emptyOpts STSOptions
-		err := StatefulSet(ctx, rclient, emptyOpts, o.new, o.prev, nil)
+		err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
 		if o.wantErr {
 			assert.Error(t, err)
 			return
@@ -448,29 +444,18 @@ func TestStatefulsetReconcile(t *testing.T) {
 			Name:      o.new.Name,
 			Namespace: o.new.Namespace,
 		}
-		var got appsv1.StatefulSet
-		assert.NoError(t, rclient.Get(ctx, nsn, &got))
+		assert.Equal(t, o.actions, cl.actions)
 		if o.validate != nil {
-			o.validate(rclient, &got)
+			var got appsv1.StatefulSet
+			assert.NoError(t, cl.Get(ctx, nsn, &got))
+			o.validate(&got)
 		}
 	}
 
 	// create statefulset
 	f(opts{
-		new: getSts(),
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
-			assert.Equal(t, 2, rclient.GetCalls.Count(s))
-			assert.Equal(t, 1, rclient.CreateCalls.Count(s))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
-
-			assert.Len(t, rclient.Actions, 4)
-			action := rclient.Actions[0]
-			assert.Equal(t, action.GetVerb(), "Get")
-			action = rclient.Actions[1]
-			assert.Equal(t, action.GetVerb(), "Create")
-			action = rclient.Actions[2]
-			assert.Equal(t, action.GetVerb(), "Get")
-		},
+		new:     getSts(),
+		actions: []string{"Get", "Create", "Get"},
 	})
 
 	// no updates
@@ -482,11 +467,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
-			assert.Equal(t, 3, rclient.GetCalls.Count(s))
-			assert.Equal(t, 0, rclient.CreateCalls.Count(s))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(s))
-		},
+		actions: []string{"Get", "Get"},
 	})
 
 	// add annotations
@@ -498,9 +479,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getSts(),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(s))
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(s))
+		actions: []string{"Get", "Update", "Get"},
+		validate: func(s *appsv1.StatefulSet) {
 			assert.Equal(t, "value", s.Spec.Template.Annotations["new-annotation"])
 		},
 	})
@@ -516,8 +496,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, s *appsv1.StatefulSet) {
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(s))
+		actions: []string{"Get", "Update", "Get"},
+		validate: func(s *appsv1.StatefulSet) {
 			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
 		},
 	})
@@ -540,9 +520,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 func TestValidateStatefulSetFail(t *testing.T) {
 	f := func(sts appsv1.StatefulSet) {
 		t.Helper()
-		if err := validateStatefulSet(&sts); err == nil {
-			t.Fatalf("expected non-empty error")
-		}
+		assert.Error(t, validateStatefulSet(&sts))
 	}
 	// missing volume name
 	f(appsv1.StatefulSet{
@@ -636,9 +614,7 @@ func TestValidateStatefulSetFail(t *testing.T) {
 func TestValidateStatefulSetOk(t *testing.T) {
 	f := func(sts appsv1.StatefulSet) {
 		t.Helper()
-		if err := validateStatefulSet(&sts); err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, validateStatefulSet(&sts))
 	}
 	// empty case
 	f(appsv1.StatefulSet{

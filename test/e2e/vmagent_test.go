@@ -121,7 +121,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 			}, nil, func(cr *vmv1beta1.VMAgent) {
 				Eventually(func() error {
-					return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)
 				}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 			}),
@@ -146,7 +151,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 				},
 			),
@@ -178,7 +188,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 				}),
@@ -247,7 +262,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 				func(cr *vmv1beta1.VMAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					Expect(finalize.SafeDelete(
 						ctx,
@@ -282,7 +302,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
@@ -444,7 +469,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.ReplicaCount = ptr.To[int32](2) },
 					verify: func(cr *vmv1beta1.VMAgent) {
 						Eventually(func() error {
-							return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
+							return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: namespace,
+									Labels:    cr.SelectorLabels(),
+								},
+							}, 2)
 						}, eventualDeploymentAppReadyTimeout, 1).ShouldNot(HaveOccurred())
 					},
 				},
@@ -463,7 +493,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 				testStep{
 					setup: func(cr *vmv1beta1.VMAgent) {
-						Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
+						Expect(getRevisionHistoryLimit(ctx, k8sClient, types.NamespacedName{
 							Namespace: cr.Namespace,
 							Name:      cr.PrefixedName(),
 						})).To(Equal(int32(11)))
@@ -474,7 +504,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 							Name:      cr.PrefixedName(),
 							Namespace: namespace,
 						}
-						Expect(getRevisionHistoryLimit(k8sClient, nsnDeployment)).To(Equal(int32(3)))
+						Expect(getRevisionHistoryLimit(ctx, k8sClient, nsnDeployment)).To(Equal(int32(3)))
 					},
 				},
 			),

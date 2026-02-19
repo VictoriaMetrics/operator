@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"k8s.io/utils/ptr"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -46,7 +45,7 @@ func TestMergeSpecs(t *testing.T) {
 		f := func(common, zone *vmv1beta1.VMClusterSpec, zoneName string, expected *vmv1beta1.VMClusterSpec) {
 			t.Helper()
 			got, err := mergeSpecs(common, zone, zoneName)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, expected, got)
 		}
 
@@ -99,7 +98,7 @@ func TestMergeSpecs(t *testing.T) {
 		f := func(common, zone *vmv1alpha1.VMDistributedZoneAgentSpec, zoneName string, expected *vmv1alpha1.VMDistributedZoneAgentSpec) {
 			t.Helper()
 			got, err := mergeSpecs(common, zone, zoneName)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, expected, got)
 		}
 

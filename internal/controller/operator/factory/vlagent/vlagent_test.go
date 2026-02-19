@@ -2,14 +2,9 @@ package vlagent
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"sort"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -28,326 +22,276 @@ import (
 )
 
 func TestCreateOrUpdate(t *testing.T) {
-	f := func(cr *vmv1.VLAgent, mustAddPrevSpec, wantErr bool, validate func(set *appsv1.StatefulSet) error, predefinedObjects ...runtime.Object) {
+	type opts struct {
+		cr                *vmv1.VLAgent
+		validate          func(set *appsv1.StatefulSet)
+		predefinedObjects []runtime.Object
+	}
+	f := func(o opts) {
 		t.Helper()
-		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		if mustAddPrevSpec {
-			jsonSpec, err := json.Marshal(cr.Spec)
-			if err != nil {
-				t.Fatalf("cannot set last applied spec: %s", err)
-			}
-			if cr.Annotations == nil {
-				cr.Annotations = make(map[string]string)
-			}
-			cr.Annotations["operator.victoriametrics/last-applied-spec"] = string(jsonSpec)
-		}
-		errC := make(chan error, 1)
 		build.AddDefaults(fclient.Scheme())
-		fclient.Scheme().Default(cr)
-		go func() {
-			err := CreateOrUpdate(ctx, cr, fclient)
-			errC <- err
-		}()
-		err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
-			var sts appsv1.StatefulSet
-			if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vlagent-%s", cr.Name)}, &sts); err != nil {
-				return false, nil
-			}
-			sts.Status.ReadyReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-			sts.Status.UpdatedReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-			sts.Status.CurrentReplicas = ptr.Deref(cr.Spec.ReplicaCount, 0)
-			sts.Status.ObservedGeneration = sts.GetGeneration()
-			err = fclient.Status().Update(ctx, &sts)
-			if err != nil {
-				return false, err
-			}
-			return true, nil
-		})
-		if err != nil {
-			t.Errorf("cannot wait sts ready: %s", err)
-		}
-		err = <-errC
-		if (err != nil) != wantErr {
-			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, wantErr)
-			return
-		}
-		var got appsv1.StatefulSet
-		if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got); (err != nil) != wantErr {
-			t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, wantErr)
-		}
-		if err := validate(&got); err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		fclient.Scheme().Default(o.cr)
+		assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
+		if o.validate != nil {
+			var got appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+			o.validate(&got)
 		}
 	}
 
 	// generate vlagent statefulset with storage
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://remote-write"},
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
 			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(0)),
-			},
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-			Storage: &vmv1beta1.StorageSpec{
-				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To("embed-sc"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: map[corev1.ResourceName]resource.Quantity{
-								corev1.ResourceStorage: resource.MustParse("10Gi"),
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
+				Storage: &vmv1beta1.StorageSpec{
+					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+						Spec: corev1.PersistentVolumeClaimSpec{
+							StorageClassName: ptr.To("embed-sc"),
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceStorage: resource.MustParse("10Gi"),
+								},
+							},
+						},
+					},
+				},
+				ClaimTemplates: []corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "extraTemplate",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							StorageClassName: ptr.To("default"),
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceStorage: resource.MustParse("2Gi"),
+								},
 							},
 						},
 					},
 				},
 			},
-			ClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "extraTemplate",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To("default"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: map[corev1.ResourceName]resource.Quantity{
-								corev1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
-					},
-				},
-			},
 		},
-	}, false, false, func(got *appsv1.StatefulSet) error {
-		if len(got.Spec.Template.Spec.Containers) != 1 {
-			return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
-		}
-		if len(got.Spec.VolumeClaimTemplates) != 2 {
-			return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
-		}
-		if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
-			return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-		}
-		if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("10Gi"),
-			},
-		}); len(diff) != 0 {
-			return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
-		}
-		if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
-			return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-		}
-		if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("2Gi"),
-			},
-		}); len(diff) != 0 {
-			return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
-		}
-		return nil
+		validate: func(got *appsv1.StatefulSet) {
+			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
+			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
+				},
+			})
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("2Gi"),
+				},
+			})
+		},
 	})
 
 	// generate vlagent with tls-secret
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent-tls",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(0)),
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-tls",
+				Namespace: "default",
 			},
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://remote-write"},
-				{
-					URL: "http://remote-write2",
-					TLSConfig: &vmv1.TLSConfig{
-						CASecret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "remote2-secret",
+			Spec: vmv1.VLAgentSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+					{
+						URL: "http://remote-write2",
+						TLSConfig: &vmv1.TLSConfig{
+							CASecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "remote2-secret",
+								},
+								Key: "ca",
 							},
-							Key: "ca",
-						},
-						CertSecret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "remote2-secret",
+							CertSecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "remote2-secret",
+								},
+								Key: "ca",
 							},
-							Key: "ca",
-						},
-						KeySecret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "remote2-secret",
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "remote2-secret",
+								},
+								Key: "key",
 							},
-							Key: "key",
 						},
 					},
-				},
-				{
-					URL: "http://remote-write3",
-					TLSConfig: &vmv1.TLSConfig{
-						KeySecret: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "remote3-secret",
+					{
+						URL: "http://remote-write3",
+						TLSConfig: &vmv1.TLSConfig{
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "remote3-secret",
+								},
+								Key: "key",
 							},
-							Key: "key",
 						},
 					},
-				},
-				{
-					URL:       "http://remote-write4",
-					TLSConfig: &vmv1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
+					{
+						URL:       "http://remote-write4",
+						TLSConfig: &vmv1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
+					},
 				},
 			},
 		},
-	}, false, false, func(set *appsv1.StatefulSet) error { return nil }, &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"},
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
-		Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote2-secret", Namespace: "default"},
-		Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote3-secret", Namespace: "default"},
-		Data:       map[string][]byte{"key": []byte(`key-data`)},
-	}, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote3-cm", Namespace: "default"},
-		Data:       map[string]string{"ca": "ca-data", "cert": "cert-data"},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
+				Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "remote2-secret", Namespace: "default"},
+				Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "remote3-secret", Namespace: "default"},
+				Data:       map[string][]byte{"key": []byte(`key-data`)},
+			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "remote3-cm", Namespace: "default"},
+				Data:       map[string]string{"ca": "ca-data", "cert": "cert-data"},
+			},
+		},
 	})
 
 	// generate vlagent with prevSpec
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-agent",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://remote-write"},
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
 			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(1)),
-			},
-			Storage: &vmv1beta1.StorageSpec{
-				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To("embed-sc"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: map[corev1.ResourceName]resource.Quantity{
-								corev1.ResourceStorage: resource.MustParse("10Gi"),
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+				Storage: &vmv1beta1.StorageSpec{
+					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+						Spec: corev1.PersistentVolumeClaimSpec{
+							StorageClassName: ptr.To("embed-sc"),
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceStorage: resource.MustParse("10Gi"),
+								},
+							},
+						},
+					},
+				},
+				ClaimTemplates: []corev1.PersistentVolumeClaim{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "extraTemplate",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{
+							StorageClassName: ptr.To("default"),
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceStorage: resource.MustParse("2Gi"),
+								},
 							},
 						},
 					},
 				},
 			},
-			ClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "extraTemplate",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To("default"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: map[corev1.ResourceName]resource.Quantity{
-								corev1.ResourceStorage: resource.MustParse("2Gi"),
-							},
-						},
-					},
-				},
-			},
 		},
-	}, true, false, func(got *appsv1.StatefulSet) error {
-		if len(got.Spec.Template.Spec.Containers) != 1 {
-			return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
-		}
-		if len(got.Spec.VolumeClaimTemplates) != 2 {
-			return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
-		}
-		if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
-			return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-		}
-		if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("10Gi"),
-			},
-		}); len(diff) != 0 {
-			return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
-		}
-		if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
-			return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-		}
-		if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceStorage: resource.MustParse("2Gi"),
-			},
-		}); len(diff) != 0 {
-			return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
-		}
-		return nil
+		validate: func(got *appsv1.StatefulSet) {
+			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
+			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
+				},
+			})
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("2Gi"),
+				},
+			})
+		},
 	})
 
 	// with oauth2 rw
-	f(&vmv1.VLAgent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "oauth2",
-			Namespace: "default",
-		},
-		Spec: vmv1.VLAgentSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-				ReplicaCount: ptr.To(int32(0)),
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "oauth2",
+				Namespace: "default",
 			},
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{
-					URL: "http://some-url",
-					OAuth2: &vmv1.OAuth2{
-						TokenURL: "http://oauth2-svc/auth",
-						ClientIDSecret: &corev1.SecretKeySelector{
-							Key: "client-id",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "oauth2-access",
+			Spec: vmv1.VLAgentSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{
+						URL: "http://some-url",
+						OAuth2: &vmv1.OAuth2{
+							TokenURL: "http://oauth2-svc/auth",
+							ClientIDSecret: &corev1.SecretKeySelector{
+								Key: "client-id",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "oauth2-access",
+								},
+							},
+							ClientSecret: &corev1.SecretKeySelector{
+								Key: "client-secret",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "oauth2-access",
+								},
 							},
 						},
-						ClientSecret: &corev1.SecretKeySelector{
-							Key: "client-secret",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "oauth2-access",
-							},
-						},
+						TLSConfig: &vmv1.TLSConfig{},
 					},
-					TLSConfig: &vmv1.TLSConfig{},
 				},
 			},
 		},
-	}, false, false, func(set *appsv1.StatefulSet) error {
-		cnt := set.Spec.Template.Spec.Containers[0]
-		if cnt.Name != "vlagent" {
-			return fmt.Errorf("unexpected container name: %q, want: vlagent", cnt.Name)
-		}
-		hasClientSecretArg := false
-		for _, arg := range cnt.Args {
-			if strings.Contains(arg, "remoteWrite.oauth2.clientSecretFile") {
-				hasClientSecretArg = true
-				break
-			}
-		}
-		if !hasClientSecretArg {
-			return fmt.Errorf("container must have remoteWrite.oauth2.clientSecretFile flag, has only: %s", strings.Join(cnt.Args, ":,:"))
-		}
-		return nil
-	}, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "oauth2-access",
-			Namespace: "default",
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
+			cnt := set.Spec.Template.Spec.Containers[0]
+			assert.Equal(t, cnt.Name, "vlagent")
+			assert.Contains(t, cnt.Args, "-remoteWrite.oauth2.clientSecretFile=/etc/vl/remote-write-assets/oauth2-access/client-secret")
 		},
-		Data: map[string][]byte{
-			"client-secret": []byte(`some-secret-value`),
-			"client-id":     []byte(`some-id-value`),
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "oauth2-access",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"client-secret": []byte(`some-secret-value`),
+					"client-id":     []byte(`some-id-value`),
+				},
+			},
 		},
 	})
 }
@@ -357,9 +301,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		t.Helper()
 		sort.Strings(want)
 		got, err := buildRemoteWriteArgs(cr)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, err)
 		sort.Strings(got)
 		assert.Equal(t, want, got)
 	}
@@ -798,22 +740,13 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		scheme.Default(cr)
 		// this trick allows to omit empty fields for yaml
 		var wantSpec corev1.PodSpec
-		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
-			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
-		}
+		assert.NoError(t, yaml.Unmarshal([]byte(wantYaml), &wantSpec))
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
-		if err != nil {
-			t.Fatalf("BUG: cannot parse as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		got, err := newPodSpec(cr)
-		if err != nil {
-			t.Fatalf("not expected error=%q", err)
-		}
+		assert.NoError(t, err)
 		gotYAML, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("cannot parse got as yaml: %q", err)
-		}
-
+		assert.NoError(t, err)
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 	f(&vmv1.VLAgent{

@@ -14,13 +14,13 @@ func Test_mergeServiceSpec(t *testing.T) {
 	type opts struct {
 		svc      *corev1.Service
 		svcSpec  *vmv1beta1.AdditionalServiceSpec
-		validate func(svc *corev1.Service) error
+		validate func(svc *corev1.Service)
 	}
 
 	f := func(o opts) {
 		t.Helper()
 		additionalSvc := AdditionalServiceFromDefault(o.svc, o.svcSpec)
-		assert.NoError(t, o.validate(additionalSvc))
+		o.validate(additionalSvc)
 	}
 
 	// override ports
@@ -42,11 +42,10 @@ func Test_mergeServiceSpec(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
+		validate: func(svc *corev1.Service) {
 			assert.Equal(t, "some-name-additional-service", svc.Name)
 			assert.Len(t, svc.Spec.Ports, 1)
 			assert.Equal(t, "metrics", svc.Spec.Ports[0].Name)
-			return nil
 		},
 	})
 
@@ -67,11 +66,10 @@ func Test_mergeServiceSpec(t *testing.T) {
 				Type: corev1.ServiceTypeNodePort,
 			},
 		},
-		validate: func(svc *corev1.Service) error {
+		validate: func(svc *corev1.Service) {
 			assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
 			assert.Len(t, svc.Spec.Ports, 1)
 			assert.Equal(t, "metrics", svc.Spec.Ports[0].Name)
-			return nil
 		},
 	})
 
@@ -99,11 +97,10 @@ func Test_mergeServiceSpec(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
+		validate: func(svc *corev1.Service) {
 			assert.Equal(t, map[string]string{"app-2": "value-3"}, svc.Spec.Selector)
 			assert.Len(t, svc.Spec.Ports, 1)
 			assert.Equal(t, "metrics", svc.Spec.Ports[0].Name)
-			return nil
 		},
 	})
 }

@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ func Test_reCreateSTS(t *testing.T) {
 	type opts struct {
 		newSTS          *appsv1.StatefulSet
 		oldSTS          *appsv1.StatefulSet
-		validate        func(sts *appsv1.StatefulSet) error
+		validate        func(sts *appsv1.StatefulSet)
 		mustRecreateSTS bool
 		mustRecreatePod bool
 	}
@@ -41,7 +40,7 @@ func Test_reCreateSTS(t *testing.T) {
 		var updatedSTS appsv1.StatefulSet
 		nsn := types.NamespacedName{Namespace: o.newSTS.Namespace, Name: o.newSTS.Name}
 		assert.NoError(t, cl.Get(ctx, nsn, &updatedSTS))
-		assert.NoError(t, o.validate(&updatedSTS))
+		o.validate(&updatedSTS)
 		assert.Equal(t, mustRecreateSTS, o.mustRecreateSTS)
 		assert.Equal(t, mustRecreatePod, o.mustRecreatePod)
 	}
@@ -68,11 +67,8 @@ func Test_reCreateSTS(t *testing.T) {
 				},
 			}},
 		},
-		validate: func(sts *appsv1.StatefulSet) error {
-			if len(sts.Spec.VolumeClaimTemplates) != 1 {
-				return fmt.Errorf("unexpected configuration for volumeclaim at sts: %v, want at least one, got: %v", sts.Name, sts.Spec.VolumeClaimTemplates)
-			}
-			return nil
+		validate: func(sts *appsv1.StatefulSet) {
+			assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
 		},
 		mustRecreateSTS: true,
 		mustRecreatePod: true,
@@ -116,15 +112,10 @@ func Test_reCreateSTS(t *testing.T) {
 				},
 			}},
 		},
-		validate: func(sts *appsv1.StatefulSet) error {
-			if len(sts.Spec.VolumeClaimTemplates) != 1 {
-				return fmt.Errorf("unexpected configuration for volumeclaim at sts: %v, want at least one, got: %v", sts.Name, sts.Spec.VolumeClaimTemplates)
-			}
+		validate: func(sts *appsv1.StatefulSet) {
+			assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
 			sz := sts.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests.Storage().String()
-			if sz != "15Gi" {
-				return fmt.Errorf("unexpected sts size, got: %v, want: %v", sz, "15Gi")
-			}
-			return nil
+			assert.Equal(t, sz, "15Gi")
 		},
 		mustRecreateSTS: true,
 		mustRecreatePod: false,
@@ -170,15 +161,10 @@ func Test_reCreateSTS(t *testing.T) {
 				},
 			}},
 		},
-		validate: func(sts *appsv1.StatefulSet) error {
-			if len(sts.Spec.VolumeClaimTemplates) != 1 {
-				return fmt.Errorf("unexpected configuration for volumeclaim at sts: %v, want at least one, got: %v", sts.Name, sts.Spec.VolumeClaimTemplates)
-			}
+		validate: func(sts *appsv1.StatefulSet) {
+			assert.Len(t, sts.Spec.VolumeClaimTemplates, 1)
 			name := *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName
-			if name != "new-sc" {
-				return fmt.Errorf("unexpected sts storageClass name, got: %v, want: %v", name, "new-sc")
-			}
-			return nil
+			assert.Equal(t, name, "new-sc")
 		},
 		mustRecreateSTS: true,
 		mustRecreatePod: false,
@@ -204,11 +190,8 @@ func Test_reCreateSTS(t *testing.T) {
 				ServiceName: "new-service",
 			},
 		},
-		validate: func(sts *appsv1.StatefulSet) error {
-			if sts.Spec.ServiceName != "new-service" {
-				return fmt.Errorf("unexpected serviceName at sts: %s, want: %s", sts.Spec.ServiceName, "new-service")
-			}
-			return nil
+		validate: func(sts *appsv1.StatefulSet) {
+			assert.Equal(t, sts.Spec.ServiceName, "new-service")
 		},
 		mustRecreateSTS: true,
 		mustRecreatePod: true,

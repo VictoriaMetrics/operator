@@ -80,7 +80,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				},
 			}, nil, func(cr *vmv1.VLAgent) {
 				Eventually(func() error {
-					return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+					return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)
 				}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 				var sts appsv1.StatefulSet
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).ToNot(HaveOccurred())
@@ -115,7 +120,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 				}, nil, func(cr *vmv1.VLAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 				}),
@@ -194,7 +204,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				},
 				func(cr *vmv1.VLAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 					var sts appsv1.StatefulSet
@@ -293,7 +308,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				},
 				func(cr *vmv1.VLAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					var sts appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).ToNot(HaveOccurred())
@@ -331,7 +351,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 				}, nil, func(cr *vmv1.VLAgent) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
@@ -401,7 +426,12 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					modify: func(cr *vmv1.VLAgent) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
 					verify: func(cr *vmv1.VLAgent) {
 						Eventually(func() error {
-							return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
+							return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: namespace,
+									Labels:    cr.SelectorLabels(),
+								},
+							}, 3)
 						}, eventualDeploymentAppReadyTimeout, 1).ShouldNot(HaveOccurred())
 					},
 				},

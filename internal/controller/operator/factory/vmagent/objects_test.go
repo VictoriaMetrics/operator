@@ -3,11 +3,9 @@ package vmagent
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,9 +62,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 			gotNames = append(gotNames, fmt.Sprintf("%s/%s", monitorName.Namespace, monitorName.Name))
 		}
 		sort.Strings(gotNames)
-		if !reflect.DeepEqual(gotNames, o.want) {
-			t.Errorf("SelectServiceScrapes(): %s", cmp.Diff(gotNames, o.want))
-		}
+		assert.Equal(t, gotNames, o.want)
 	}
 
 	// select service scrape inside vmagent namespace
@@ -295,9 +291,7 @@ func TestSelectPodMonitors(t *testing.T) {
 			gotNames = append(gotNames, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 		}
 		sort.Strings(gotNames)
-		if !reflect.DeepEqual(gotNames, o.want) {
-			t.Errorf("SelectPodScrapes(): %s", cmp.Diff(gotNames, o.want))
-		}
+		assert.Equal(t, gotNames, o.want)
 	}
 
 	// selector pod scrape at vmagent ns
@@ -380,9 +374,7 @@ func TestSelectProbes(t *testing.T) {
 			result = append(result, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 		}
 		sort.Strings(result)
-		if !reflect.DeepEqual(result, o.want) {
-			t.Errorf("SelectProbes(): %s", cmp.Diff(result, o.want))
-		}
+		assert.Equal(t, result, o.want)
 	}
 
 	// select vmProbe with static conf

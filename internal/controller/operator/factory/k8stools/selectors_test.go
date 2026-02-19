@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,12 +22,8 @@ func Test_discoverNamespacesOk(t *testing.T) {
 		t.Helper()
 		fclient := GetTestClientWithObjects(opts.predefinedObjects)
 		got, err := discoverNamespaces(context.TODO(), fclient, &opts.selectorOpts)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
-		if d := cmp.Diff(got, opts.want, cmp.AllowUnexported(discoverNamespacesResponse{})); len(d) > 0 {
-			t.Fatalf("unexpected diff: %s", d)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, got, opts.want)
 	}
 
 	// match nothing on namespace selector mismatch
@@ -101,8 +96,6 @@ func TestVisitSelected(t *testing.T) {
 			},
 		}
 	}
-	ignoreDiffOpts := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
-
 	f := func(opts opts) {
 		cfg := config.MustGetBaseConfig()
 		if len(opts.watchNamespaces) > 0 {
@@ -116,15 +109,13 @@ func TestVisitSelected(t *testing.T) {
 		ctx := context.Background()
 		fclient := GetTestClientWithObjects(opts.predefinedObjects)
 		var gotPods []corev1.Pod
-		err := VisitSelected(ctx, fclient, opts.so, func(pl *corev1.PodList) {
-			gotPods = append(gotPods, pl.Items...)
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
-		if d := cmp.Diff(opts.wantPods, gotPods, ignoreDiffOpts); len(d) > 0 {
-			t.Fatalf("unexpected diff: %s", d)
-		}
+		assert.NoError(t, VisitSelected(ctx, fclient, opts.so, func(pl *corev1.PodList) {
+			for _, p := range pl.Items {
+				p.ResourceVersion = ""
+				gotPods = append(gotPods, p)
+			}
+		}))
+		assert.Equal(t, opts.wantPods, gotPods)
 	}
 	// empty objects
 	o := opts{

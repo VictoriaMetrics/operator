@@ -2,10 +2,8 @@ package vmalert
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,9 +31,7 @@ func TestSelectRules(t *testing.T) {
 			return
 		}
 		for ruleName, content := range got {
-			if !assert.Equal(t, o.want[ruleName], content) {
-				t.Errorf("SelectRules(): %s", cmp.Diff(content, o.want[ruleName]))
-			}
+			assert.Equal(t, o.want[ruleName], content)
 		}
 	}
 
@@ -242,9 +238,7 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 			t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v", err)
 			return
 		}
-		if !reflect.DeepEqual(got, o.want) {
-			t.Errorf("CreateOrUpdateRuleConfigMaps(): %s", cmp.Diff(got, o.want))
-		}
+		assert.Equal(t, got, o.want)
 	}
 
 	// base-rules-empty
@@ -274,9 +268,7 @@ func Test_deduplicateRules(t *testing.T) {
 	f := func(origin, want []*vmv1beta1.VMRule) {
 		t.Helper()
 		got := deduplicateRules(context.Background(), origin)
-		if diff := cmp.Diff(got, want); len(diff) > 0 {
-			t.Errorf("deduplicateRules() %s", diff)
-		}
+		assert.Equal(t, got, want)
 	}
 
 	// dedup group

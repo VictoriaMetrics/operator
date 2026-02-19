@@ -1,10 +1,9 @@
 package operator
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_mergeLabelsWithStrategy(t *testing.T) {
@@ -16,9 +15,8 @@ func Test_mergeLabelsWithStrategy(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		if got := mergeLabelsWithStrategy(o.old, o.new, o.mergeStrategy); !reflect.DeepEqual(got, o.want) {
-			t.Errorf("mergeLabelsWithStrategy(): %s", cmp.Diff(got, o.want))
-		}
+		got := mergeLabelsWithStrategy(o.old, o.new, o.mergeStrategy)
+		assert.Equal(t, got, o.want)
 	}
 
 	// delete not existing label

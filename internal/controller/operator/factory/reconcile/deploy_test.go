@@ -9,18 +9,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestDeployReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.Deployment
 		predefinedObjects []runtime.Object
-		validate          func(*k8stools.TestClientWithStatsTrack, *appsv1.Deployment)
-		wantErr           bool
+		actions           []string
 	}
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
@@ -34,6 +32,7 @@ func TestDeployReconcile(t *testing.T) {
 						"label": "value",
 					},
 				},
+				Replicas: ptr.To[int32](1),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{"label": "value"},
@@ -57,10 +56,9 @@ func TestDeployReconcile(t *testing.T) {
 						Status: "True",
 					},
 				},
-				ReadyReplicas:     1,
-				UpdatedReplicas:   1,
-				AvailableReplicas: 1,
-				Replicas:          1,
+				ReadyReplicas:   1,
+				UpdatedReplicas: 1,
+				Replicas:        1,
 			},
 		}
 		for _, fn := range fns {
@@ -71,36 +69,15 @@ func TestDeployReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		err := Deployment(ctx, rclient, o.new, o.prev, false, nil)
-		if err != nil {
-			t.Fatalf("failed to wait deployment created: %s", err)
-		}
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		} else {
-			assert.NoError(t, err)
-		}
-		nsn := types.NamespacedName{
-			Name:      o.new.Name,
-			Namespace: o.new.Namespace,
-		}
-		var got appsv1.Deployment
-		assert.NoError(t, rclient.Get(ctx, nsn, &got))
-		if o.validate != nil {
-			o.validate(rclient, &got)
-		}
+		cl := getTestClient(o.new, o.predefinedObjects)
+		assert.NoError(t, Deployment(ctx, cl, o.new, o.prev, false, nil))
+		assert.Equal(t, o.actions, cl.actions)
 	}
 
 	// create deployment
 	f(opts{
-		new: getDeploy(),
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
-			assert.Equal(t, 2, rclient.GetCalls.Count(d))
-			assert.Equal(t, 1, rclient.CreateCalls.Count(d))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(d))
-		},
+		new:     getDeploy(),
+		actions: []string{"Get", "Create", "Get"},
 	})
 
 	// no updates
@@ -112,11 +89,7 @@ func TestDeployReconcile(t *testing.T) {
 				d.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
-			assert.Equal(t, 3, rclient.GetCalls.Count(d))
-			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(d))
-		},
+		actions: []string{"Get", "Get"},
 	})
 
 	// update spec
@@ -128,10 +101,7 @@ func TestDeployReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getDeploy(),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(d))
-		},
+		actions: []string{"Get", "Update", "Get"},
 	})
 
 	// remove template annotations
@@ -143,9 +113,6 @@ func TestDeployReconcile(t *testing.T) {
 				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, d *appsv1.Deployment) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(d))
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(d))
-		},
+		actions: []string{"Get", "Update", "Get"},
 	})
 }

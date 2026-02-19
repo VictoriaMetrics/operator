@@ -2,9 +2,9 @@ package reconcile
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,24 +20,17 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		newService        *corev1.Service
 		prevService       *corev1.Service
 		predefinedObjects []runtime.Object
-		validate          func(svc *corev1.Service) error
+		validate          func(svc *corev1.Service)
 	}
 
 	f := func(opts opts) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
 		ctx := context.Background()
-		err := Service(ctx, cl, opts.newService, opts.prevService, nil)
-		if err != nil {
-			t.Fatalf("unexpected reconcileServiceForCRD() error = %s", err)
-		}
+		assert.NoError(t, Service(ctx, cl, opts.newService, opts.prevService, nil))
 		var gotSvc corev1.Service
-		if err := cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if err := opts.validate(&gotSvc); err != nil {
-			t.Errorf("unexpected result service error: %s", err)
-		}
+		assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc))
+		opts.validate(&gotSvc)
 	}
 
 	f(opts{
@@ -50,11 +43,8 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				Type: corev1.ServiceTypeNodePort,
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
 		},
 	})
 
@@ -81,11 +71,8 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if *svc.Spec.LoadBalancerClass != "some-class" {
-				return fmt.Errorf("unexpected LoadBalancerClass: %s, want: some-classs", *svc.Spec.LoadBalancerClass)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, *svc.Spec.LoadBalancerClass, "some-class")
 		},
 	})
 
@@ -123,18 +110,11 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if *svc.Spec.LoadBalancerClass != "some-class" {
-				return fmt.Errorf("unexpected LoadBalancerClass: %s, want: some-classs", *svc.Spec.LoadBalancerClass)
-			}
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, *svc.Spec.LoadBalancerClass, "some-class")
 			l, ok := svc.Labels["custom"]
-			if !ok {
-				return fmt.Errorf("missing 'custom' label on svc")
-			}
-			if l != "label" {
-				return fmt.Errorf("unexpected value of 'custom' label on svc, got: %v, want: 'value'", l)
-			}
-			return nil
+			assert.True(t, ok)
+			assert.Equal(t, l, "label")
 		},
 	})
 
@@ -161,14 +141,9 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			if svc.Spec.ClusterIP == "None" {
-				return fmt.Errorf("unexpected value for clusterIP, want ip, got: %v", svc.Spec.ClusterIP)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
+			assert.Empty(t, svc.Spec.ClusterIP)
 		},
 	})
 
@@ -196,14 +171,9 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			if svc.Spec.ClusterIP != "None" {
-				return fmt.Errorf("unexpected value for clusterIP, want ip, got: %v", svc.Spec.ClusterIP)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
+			assert.Equal(t, svc.Spec.ClusterIP, "None")
 		},
 	})
 
@@ -231,14 +201,9 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			if svc.Spec.ClusterIP != "192.168.1.5" {
-				return fmt.Errorf("unexpected value for clusterIP, want ip, got: %v", svc.Spec.ClusterIP)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
+			assert.Equal(t, svc.Spec.ClusterIP, "192.168.1.5")
 		},
 	})
 
@@ -266,17 +231,10 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			if svc.Spec.Type != corev1.ServiceTypeClusterIP {
-				return fmt.Errorf("unexpected type: %v", svc.Spec.Type)
-			}
-			if svc.Spec.ClusterIP != "192.168.1.5" {
-				return fmt.Errorf("unexpected value for clusterIP, want ip, got: %v", svc.Spec.ClusterIP)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
+			assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeClusterIP)
+			assert.Equal(t, svc.Spec.ClusterIP, "192.168.1.5")
 		},
 	})
 
@@ -317,20 +275,11 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
-			if svc.Spec.Type != corev1.ServiceTypeNodePort {
-				return fmt.Errorf("unexpected type: %v", svc.Spec.Type)
-			}
-			if svc.Spec.ClusterIP != "192.168.1.5" {
-				return fmt.Errorf("unexpected value for clusterIP, want ip, got: %v", svc.Spec.ClusterIP)
-			}
-			if svc.Spec.Ports[0].NodePort != 331 {
-				return fmt.Errorf("unexpected value for node port: %v", svc.Spec.Ports[0])
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
+			assert.Equal(t, svc.Spec.Type, corev1.ServiceTypeNodePort)
+			assert.Equal(t, svc.Spec.ClusterIP, "192.168.1.5")
+			assert.Equal(t, svc.Spec.Ports[0].NodePort, int32(331))
 		},
 	})
 
@@ -358,18 +307,11 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 				},
 			},
 		},
-		validate: func(svc *corev1.Service) error {
-			if svc.Name != "prefixed-1" {
-				return fmt.Errorf("unexpected name, got: %v, want: prefixed-1", svc.Name)
-			}
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "prefixed-1")
 			l, ok := svc.Labels["custom"]
-			if !ok {
-				return fmt.Errorf("missing 'custom' label on svc")
-			}
-			if l != "label" {
-				return fmt.Errorf("unexpected value of 'custom' label on svc, got: %v, want: 'value'", l)
-			}
-			return nil
+			assert.True(t, ok)
+			assert.Equal(t, l, "label")
 		},
 	})
 }

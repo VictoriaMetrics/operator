@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,24 +20,17 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 		cr                orphanedCRD
 		keepDeployments   map[string]struct{}
 		wantDepCount      int
-		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		if err := RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments); (err != nil) != o.wantErr {
-			t.Errorf("RemoveOrphanedDeployments() error = %v, wantErr %v", err, o.wantErr)
-		}
+		assert.NoError(t, RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments))
 		var existDep appsv1.DeploymentList
 		lo := client.ListOptions{Namespace: o.cr.GetNamespace(), LabelSelector: labels.SelectorFromSet(o.cr.SelectorLabels())}
-		if err := cl.List(ctx, &existDep, &lo); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if o.wantDepCount != len(existDep.Items) {
-			t.Fatalf("unexpected count of deployments, got:%v, want: %v", len(existDep.Items), o.wantDepCount)
-		}
+		assert.NoError(t, cl.List(ctx, &existDep, &lo))
+		assert.Len(t, existDep.Items, o.wantDepCount)
 	}
 
 	// remove nothing

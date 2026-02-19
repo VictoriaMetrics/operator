@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -274,10 +273,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 
@@ -353,10 +349,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			if !cmp.Equal(got, expected) {
-				diff := cmp.Diff(got, expected)
-				t.Fatal("not expected output with diff: ", diff)
-			}
+			assert.Equal(t, got, expected)
 		},
 	})
 
@@ -420,21 +413,13 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		build.AddDefaults(scheme)
 		scheme.Default(cr)
 		var wantSpec corev1.PodSpec
-		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
-			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
-		}
+		assert.NoError(t, yaml.Unmarshal([]byte(wantYaml), &wantSpec))
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
-		if err != nil {
-			t.Fatalf("BUG: cannot parse as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		got, err := makeSpecForVMAuth(cr)
-		if err != nil {
-			t.Fatalf("not expected error=%q", err)
-		}
+		assert.NoError(t, err)
 		gotYAML, err := yaml.Marshal(got.Spec)
-		if err != nil {
-			t.Fatalf("cannot parse got as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 
@@ -672,18 +657,12 @@ func TestBuildIngressForAuthOk(t *testing.T) {
 		build.AddDefaults(scheme)
 		scheme.Default(cr)
 		var wantSpec networkingv1.IngressSpec
-		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
-			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
-		}
+		assert.NoError(t, yaml.Unmarshal([]byte(wantYaml), &wantSpec))
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
-		if err != nil {
-			t.Fatalf("BUG: cannot parse as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		got := buildIngressConfig(cr)
 		gotYAML, err := yaml.Marshal(got.Spec)
-		if err != nil {
-			t.Fatalf("cannot parse got as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 

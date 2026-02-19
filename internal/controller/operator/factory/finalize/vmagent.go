@@ -88,13 +88,6 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
-			return err
-		}
-
-		if err := SafeDelete(ctx, rclient, &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
-			return err
-		}
 	}
 
 	if cr.Spec.AdditionalScrapeConfigs != nil {

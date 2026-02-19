@@ -195,7 +195,7 @@ type: Opaque
 apiVersion: v1
 kind: Secret
 metadata:
-  name: victoria-reader-token # Name of the secret
+  name: victoria-reader-password # Name of the secret
   namespace: vm # Ensure this matches the namespace of your VMUser
 type: Opaque
 data:

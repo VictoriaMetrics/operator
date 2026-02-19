@@ -436,6 +436,11 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				DisableNotifications: obj.DisableNotifications,
 				ParseMode:            obj.ParseMode,
 			}
+
+			if obj.MessageThreadID != nil {
+				vo.MessageThreadID = int(*obj.MessageThreadID)
+			}
+
 			dst.TelegramConfigs = append(dst.TelegramConfigs, vo)
 		}
 		for _, obj := range promR.MSTeamsConfigs {

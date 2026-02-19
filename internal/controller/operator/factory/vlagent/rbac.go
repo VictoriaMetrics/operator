@@ -68,7 +68,6 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 	o := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
@@ -95,7 +94,6 @@ func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
 	o := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},

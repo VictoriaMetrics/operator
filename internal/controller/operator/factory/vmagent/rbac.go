@@ -8,6 +8,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -15,102 +16,76 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-var (
-	singleNSPolicyRules = []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{"discovery.k8s.io"},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"endpointslices",
-			},
-		},
-		{
+func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
+	var rules []rbacv1.PolicyRule
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+		rules = append(rules, rbacv1.PolicyRule{
 			APIGroups: []string{""},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"services",
-				"endpoints",
-				"pods",
-				"secrets",
-				"configmaps",
-			},
-		},
-		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"ingresses",
-			},
-		},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"configmaps", "secrets"},
+		})
 	}
-	clusterWidePolicyRules = []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{"discovery.k8s.io"},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		rules = append(rules, []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"discovery.k8s.io"},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"endpointslices"},
 			},
-			Resources: []string{
-				"endpointslices",
+			{
+				APIGroups: []string{""},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"services", "endpoints", "pods"},
 			},
-		},
-		{
+			{
+				APIGroups: []string{"networking.k8s.io", "extensions"},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"ingresses"},
+			},
+		}...)
+	}
+	return rules
+}
+
+func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
+	var rules []rbacv1.PolicyRule
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+		rules = append(rules, rbacv1.PolicyRule{
 			APIGroups: []string{""},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"nodes",
-				"nodes/metrics",
-				"services",
-				"endpoints",
-				"pods",
-				"configmaps",
-				"namespaces",
-				"secrets",
-			},
-		},
-		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
-			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-			Resources: []string{
-				"ingresses",
-			},
-		},
-		{
-			NonResourceURLs: []string{"/metrics", "/metrics/resources", "/metrics/slis"},
-			Verbs:           []string{"get", "list", "watch"},
-		},
-		{
-			APIGroups: []string{"route.openshift.io", "image.openshift.io"},
-			Verbs: []string{
-				"get",
-			},
-			Resources: []string{
-				"routers/metrics", "registry/metrics",
-			},
-		},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"configmaps", "secrets"},
+		})
 	}
-)
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		rules = append(rules, []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"discovery.k8s.io"},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"endpointslices"},
+			},
+			{
+				APIGroups: []string{""},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"nodes", "nodes/metrics", "services", "endpoints", "pods", "namespaces"},
+			},
+			{
+				APIGroups: []string{"networking.k8s.io", "extensions"},
+				Verbs:     []string{"get", "list", "watch"},
+				Resources: []string{"ingresses"},
+			},
+			{
+				NonResourceURLs: []string{"/metrics", "/metrics/resources", "/metrics/slis"},
+				Verbs:           []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{"route.openshift.io", "image.openshift.io"},
+				Verbs:     []string{"get"},
+				Resources: []string{"routers/metrics", "registry/metrics"},
+			},
+		}...)
+	}
+	return rules
+}
 
 // createK8sAPIAccess - creates RBAC access rules for vmagent
 func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, clusterWide bool) error {
@@ -166,8 +141,8 @@ func migrateRBAC(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAge
 
 	// explicitly set namespace via ObjetMeta for unit tests
 	toMigrateObjects := []client.Object{
-		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
-		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Namespace: cr.Namespace}},
+		&rbacv1.ClusterRole{},
+		&rbacv1.ClusterRoleBinding{},
 	}
 	if !clusterWide {
 		toMigrateObjects = []client.Object{
@@ -196,7 +171,6 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	r := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
@@ -225,12 +199,11 @@ func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 	r := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
-		Rules: clusterWidePolicyRules,
+		Rules: getClusterWideRules(cr),
 	}
 	owner := cr.AsCRDOwner()
 	if owner != nil {
@@ -269,7 +242,7 @@ func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
-		Rules: singleNSPolicyRules,
+		Rules: getSingleNamespaceRules(cr),
 	}
 }
 

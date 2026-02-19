@@ -200,6 +200,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Labels[vmv1beta1.VMAuthLBServiceProxyJobNameLabel] = b.PrefixedName()
+		svc.Spec.Selector = cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)
 	}
 
 	return svc
@@ -338,6 +339,7 @@ func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Labels[vmv1beta1.VMAuthLBServiceProxyJobNameLabel] = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		svc.Spec.Selector = cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)
 	}
 	return svc
 }

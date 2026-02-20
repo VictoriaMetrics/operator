@@ -11,7 +11,7 @@ spec:
     insecureSkipVerify: true
     caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-  metrics_path: /metrics/cadvisor
+  path: /metrics/cadvisor
   relabelConfigs:
   - action: labelmap
     regex: __meta_kubernetes_node_label_(.+)

@@ -2,26 +2,20 @@ package vmagent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-test/deep"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -32,8 +26,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
-		mustAddPrevSpec   bool
-		validate          func(set *appsv1.StatefulSet) error
+		validate          func(set *appsv1.StatefulSet)
 		statefulsetMode   bool
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -43,99 +36,18 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		if o.mustAddPrevSpec {
-			jsonSpec, err := json.Marshal(o.cr.Spec)
-			if err != nil {
-				t.Fatalf("cannot set last applied spec: %s", err)
-			}
-			if o.cr.Annotations == nil {
-				o.cr.Annotations = make(map[string]string)
-			}
-			o.cr.Annotations["operator.victoriametrics/last-applied-spec"] = string(jsonSpec)
-		}
-		errC := make(chan error, 1)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
-		go func() {
-			err := CreateOrUpdate(ctx, o.cr, fclient)
-			errC <- err
-		}()
-
-		if o.statefulsetMode {
-			if o.cr.Spec.ShardCount != nil {
-				for i := 0; i < *o.cr.Spec.ShardCount; i++ {
-					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
-						var sts appsv1.StatefulSet
-						if err := fclient.Get(ctx, types.NamespacedName{
-							Namespace: "default",
-							Name:      fmt.Sprintf("vmagent-%s-%d", o.cr.Name, i),
-						}, &sts); err != nil {
-
-							return false, nil
-						}
-						sts.Status.ObservedGeneration = sts.Generation
-						sts.Status.ReadyReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-						sts.Status.UpdatedReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-						sts.Status.CurrentReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-						if err := fclient.Status().Update(ctx, &sts); err != nil {
-							return false, err
-						}
-
-						return true, nil
-					})
-					if err != nil {
-						t.Errorf("cannot wait sts ready: %s", err)
-					}
-					if o.cr.Spec.PodDisruptionBudget != nil {
-						err = wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
-							var pdb policyv1.PodDisruptionBudget
-							if err := fclient.Get(ctx, types.NamespacedName{
-								Namespace: "default",
-								Name:      fmt.Sprintf("vmagent-%s-%d", o.cr.Name, i),
-							}, &pdb); err != nil {
-
-								return false, nil
-							}
-							return true, nil
-						})
-						if err != nil {
-							t.Errorf("pdb vmagent-%s-%d didn't get created: %s", o.cr.Name, i, err)
-						}
-					}
-				}
-			} else {
-				err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, true, func(ctx context.Context) (done bool, err error) {
-					var sts appsv1.StatefulSet
-					if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vmagent-%s", o.cr.Name)}, &sts); err != nil {
-						return false, nil
-					}
-					sts.Status.ReadyReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-					sts.Status.UpdatedReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-					sts.Status.CurrentReplicas = ptr.Deref(o.cr.Spec.ReplicaCount, 0)
-					err = fclient.Status().Update(ctx, &sts)
-					if err != nil {
-						return false, err
-					}
-					return true, nil
-				})
-				if err != nil {
-					t.Errorf("cannot wait sts ready: %s", err)
-				}
-			}
-		}
-		err := <-errC
-		if (err != nil) != o.wantErr {
-			t.Errorf("CreateOrUpdate() error: %s", cmp.Diff(err, o.wantErr))
-			return
+		err := CreateOrUpdate(ctx, o.cr, fclient)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		if o.statefulsetMode && o.cr.Spec.ShardCount == nil {
 			var got appsv1.StatefulSet
-			if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got); (err != nil) != o.wantErr {
-				t.Fatalf("CreateOrUpdate() statefulMode error: %s", cmp.Diff(err, o.wantErr))
-			}
-			if err := o.validate(&got); err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+			o.validate(&got)
 		}
 	}
 
@@ -187,26 +99,21 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) error {
+		validate: func(got *appsv1.StatefulSet) {
 			assert.Equal(t, 1, len(got.Spec.Template.Spec.Containers))
 			assert.Equal(t, 2, len(got.Spec.VolumeClaimTemplates))
 			assert.Equal(t, "embed-sc", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName)
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
-			}
+			})
 			assert.Equal(t, "default", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName)
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
-			}
-			return nil
+			})
 		},
 		statefulsetMode: true,
 		predefinedObjects: []runtime.Object{
@@ -223,7 +130,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			Spec: vmv1beta1.VMAgentSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(0)),
+					ReplicaCount: ptr.To(int32(1)),
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
@@ -521,11 +428,8 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) error {
-			if got.Spec.ServiceName != "my-headless-additional-service" {
-				return fmt.Errorf("unexpected serviceName, got: %s, want: %s", got.Spec.ServiceName, "my-headless-additional-service")
-			}
-			return nil
+		validate: func(got *appsv1.StatefulSet) {
+			assert.Equal(t, got.Spec.ServiceName, "my-headless-additional-service")
 		},
 		statefulsetMode: true,
 		predefinedObjects: []runtime.Object{
@@ -535,7 +439,6 @@ func TestCreateOrUpdate(t *testing.T) {
 
 	// generate vmagent sharded statefulset with prevSpec
 	f(opts{
-		mustAddPrevSpec: true,
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "example-agent",
@@ -586,41 +489,27 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) error {
-			if len(got.Spec.Template.Spec.Containers) != 1 {
-				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
-			}
-			if len(got.Spec.VolumeClaimTemplates) != 2 {
-				return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
-			}
-			if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
-				return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-			}
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+		validate: func(got *appsv1.StatefulSet) {
+			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
+			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
-			}
-			if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
-				return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-			}
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+			})
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
-			}
-			return nil
+			})
 		},
 		statefulsetMode: true,
 	})
 
 	// generate vmagent statefulset with prevSpec
 	f(opts{
-		mustAddPrevSpec: true,
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "example-agent",
@@ -666,34 +555,21 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) error {
-			if len(got.Spec.Template.Spec.Containers) != 1 {
-				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
-			}
-			if len(got.Spec.VolumeClaimTemplates) != 2 {
-				return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
-			}
-			if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
-				return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-			}
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+		validate: func(got *appsv1.StatefulSet) {
+			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
+			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
-			}
-			if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
-				return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-			}
-			if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+			})
+			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				},
-			}); len(diff) != 0 {
-				return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
-			}
-			return nil
+			})
 		},
 		statefulsetMode: true,
 	})
@@ -748,11 +624,9 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		statefulsetMode: true,
-		validate: func(set *appsv1.StatefulSet) error {
+		validate: func(set *appsv1.StatefulSet) {
 			cnt := set.Spec.Template.Spec.Containers[0]
-			if cnt.Name != "vmagent" {
-				return fmt.Errorf("unexpected container name: %q, want: vmagent", cnt.Name)
-			}
+			assert.Equal(t, cnt.Name, "vmagent")
 			hasClientSecretArg := false
 			for _, arg := range cnt.Args {
 				if strings.Contains(arg, "remoteWrite.oauth2.clientSecretFile") {
@@ -760,10 +634,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					break
 				}
 			}
-			if !hasClientSecretArg {
-				return fmt.Errorf("container must have remoteWrite.oauth2.clientSecretFile flag, has only: %s", strings.Join(cnt.Args, ":,:"))
-			}
-			return nil
+			assert.True(t, hasClientSecretArg)
 		},
 	})
 }
@@ -781,9 +652,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		sort.Strings(o.want)
 		got, err := buildRemoteWriteArgs(o.cr, ac)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, err)
 		sort.Strings(got)
 		assert.Equal(t, o.want, got)
 	}
@@ -1748,12 +1617,8 @@ func TestCreateOrUpdateService(t *testing.T) {
 		}
 		if o.wantAdditionalService != nil {
 			var additionalSvc corev1.Service
-			if err := cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.Spec.ServiceSpec.NameOrDefault(o.cr.Name)}, &additionalSvc); err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
-			if err := o.wantAdditionalService(&additionalSvc); err != nil {
-				t.Fatalf("CreateOrUpdateService validation failed for additional service: %s", err)
-			}
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.Spec.ServiceSpec.NameOrDefault(o.cr.Name)}, &additionalSvc))
+			assert.NoError(t, o.wantAdditionalService(&additionalSvc))
 		}
 	}
 
@@ -1894,26 +1759,20 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
 		predefinedObjects []runtime.Object
-		validate          func(cm *corev1.ConfigMap) error
+		validate          func(cm *corev1.ConfigMap)
 	}
 	f := func(o opts) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		if err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac); err != nil {
-			t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v", err)
-		}
+		assert.NoError(t, createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac))
 		var createdCM corev1.ConfigMap
-		if err := cl.Get(ctx, types.NamespacedName{
+		assert.NoError(t, cl.Get(ctx, types.NamespacedName{
 			Namespace: o.cr.Namespace,
 			Name:      build.ResourceName(build.RelabelConfigResourceKind, o.cr),
-		}, &createdCM); err != nil {
-			t.Fatalf("cannot fetch created cm: %v", err)
-		}
-		if err := o.validate(&createdCM); err != nil {
-			t.Fatalf("cannot validate created cm: %v", err)
-		}
+		}, &createdCM))
+		o.validate(&createdCM)
 	}
 
 	// simple relabelcfg
@@ -1936,18 +1795,15 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				},
 			},
 		},
-		validate: func(cm *corev1.ConfigMap) error {
+		validate: func(cm *corev1.ConfigMap) {
 			data, ok := cm.Data[globalRelabelingName]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantGlobal := `- source_labels:
   - pod
   regex: .*
   action: DROP
 `
 			assert.Equal(t, wantGlobal, data)
-			return nil
 		},
 	})
 
@@ -1974,11 +1830,9 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				},
 			},
 		},
-		validate: func(cm *corev1.ConfigMap) error {
+		validate: func(cm *corev1.ConfigMap) {
 			data, ok := cm.Data[globalRelabelingName]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantGlobal := strings.TrimSpace(`
 - source_labels:
   - pod
@@ -1987,7 +1841,6 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 - action: DROP
   source_labels: ["pod-1"]`)
 			assert.Equal(t, wantGlobal, data)
-			return nil
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
@@ -2006,7 +1859,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
 		predefinedObjects []runtime.Object
-		validate          func(cm *corev1.ConfigMap) error
+		validate          func(cm *corev1.ConfigMap)
 	}
 
 	f := func(o opts) {
@@ -2014,21 +1867,15 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		if err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac); err != nil {
-			t.Fatalf("CreateOrUpdateStreamAggrConfig() error = %v", err)
-		}
+		assert.NoError(t, createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac))
 		var createdCM corev1.ConfigMap
-		if err := cl.Get(ctx,
+		assert.NoError(t, cl.Get(ctx,
 			types.NamespacedName{
 				Namespace: o.cr.Namespace,
 				Name:      build.ResourceName(build.StreamAggrConfigResourceKind, o.cr),
 			}, &createdCM,
-		); err != nil {
-			t.Fatalf("cannot fetch created cm: %v", err)
-		}
-		if err := o.validate(&createdCM); err != nil {
-			t.Fatalf("cannot validate created cm: %v", err)
-		}
+		))
+		o.validate(&createdCM)
 	}
 
 	// simple stream aggr config
@@ -2052,18 +1899,15 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				},
 			},
 		},
-		validate: func(cm *corev1.ConfigMap) error {
+		validate: func(cm *corev1.ConfigMap) {
 			data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantGlobal := `- interval: 1m
   outputs:
   - total
   - avg
 `
 			assert.Equal(t, wantGlobal, data)
-			return nil
 		},
 	})
 
@@ -2106,11 +1950,9 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				},
 			},
 		},
-		validate: func(cm *corev1.ConfigMap) error {
+		validate: func(cm *corev1.ConfigMap) {
 			globalData, ok := cm.Data["global_aggregation.yaml"]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "global_aggregation.yaml", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantGlobal := `- match: test
   interval: 30s
   outputs:
@@ -2123,9 +1965,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 `
 			assert.Equal(t, wantGlobal, globalData)
 			remoteData, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantRemote := `- match:
   - '{__name__="count1"}'
   - '{__name__="count2"}'
@@ -2143,7 +1983,6 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   - regex: (.+):.+
 `
 			assert.Equal(t, wantRemote, remoteData)
-			return nil
 		},
 	})
 
@@ -2178,11 +2017,9 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				},
 			},
 		},
-		validate: func(cm *corev1.ConfigMap) error {
+		validate: func(cm *corev1.ConfigMap) {
 			data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
-			if !ok {
-				return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
-			}
+			assert.True(t, ok)
 			wantGlobal := `- match:
   - '{__name__="count1"}'
   - '{__name__="count2"}'
@@ -2204,7 +2041,6 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
     - vmauth
 `
 			assert.Equal(t, wantGlobal, data)
-			return nil
 		},
 	})
 }
@@ -2225,22 +2061,13 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		scheme.Default(o.cr)
 		// this trick allows to omit empty fields for yaml
 		var wantSpec corev1.PodSpec
-		if err := yaml.Unmarshal([]byte(o.wantYaml), &wantSpec); err != nil {
-			t.Fatalf("unexpected error: %e", err)
-		}
+		assert.NoError(t, yaml.Unmarshal([]byte(o.wantYaml), &wantSpec))
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
-		if err != nil {
-			t.Fatalf("BUG: cannot parse as yaml: %q", err)
-		}
+		assert.NoError(t, err)
 		got, err := newPodSpec(o.cr, ac)
-		if err != nil {
-			t.Fatalf("not expected error=%q", err)
-		}
+		assert.NoError(t, err)
 		gotYAML, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("cannot parse got as yaml: %q", err)
-		}
-
+		assert.NoError(t, err)
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 	f(opts{

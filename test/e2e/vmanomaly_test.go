@@ -221,7 +221,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				},
 				func(cr *vmv1.VMAnomaly) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, anomalyReadyTimeout, 1).ShouldNot(HaveOccurred())
 					Expect(finalize.SafeDelete(
 						ctx,
@@ -268,7 +273,12 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 				}, nil, func(cr *vmv1.VMAnomaly) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, anomalyReadyTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.StatefulSet
 					Expect(k8sClient.Get(ctx, types.NamespacedName{

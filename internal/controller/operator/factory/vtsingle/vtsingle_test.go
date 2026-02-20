@@ -2,10 +2,8 @@ package vtsingle
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -168,12 +166,8 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
-		if !reflect.DeepEqual(got.Name, o.want.Name) {
-			t.Errorf("CreateOrUpdateService(): %s", cmp.Diff(got, o.want))
-		}
-		if len(got.Spec.Ports) != o.wantPortsLen {
-			t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), o.wantPortsLen)
-		}
+		assert.Equal(t, got.Name, o.want.Name)
+		assert.Len(t, got.Spec.Ports, o.wantPortsLen)
 	}
 
 	// base service test

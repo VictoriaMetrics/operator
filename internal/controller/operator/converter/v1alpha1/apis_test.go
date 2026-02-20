@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -23,9 +22,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		converted, err := ConvertAlertmanagerConfig(o.promCfg, &config.BaseOperatorConf{})
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, err)
 		o.validate(converted)
 	}
 
@@ -97,10 +94,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 	f := func(opts opts) {
 		t.Helper()
 		got := ConvertScrapeConfig(opts.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: opts.ownerRef})
-		if !cmp.Equal(*got, opts.want) {
-			diff := cmp.Diff(*got, opts.want)
-			t.Fatal("not expected output with diff: ", diff)
-		}
+		assert.Equal(t, *got, opts.want)
 	}
 
 	// with static config

@@ -24,19 +24,12 @@ func Test_generateRelabelConfig(t *testing.T) {
 	f := func(rc *vmv1beta1.RelabelConfig, want string) {
 		// related fields only filled during json unmarshal
 		j, err := json.Marshal(rc)
-		if err != nil {
-			t.Fatalf("cannot serialize relabelConfig: %s", err)
-		}
+		assert.NoError(t, err)
 		var rlbCfg vmv1beta1.RelabelConfig
-		if err := json.Unmarshal(j, &rlbCfg); err != nil {
-			t.Fatalf("cannot parse relabelConfig: %s", err)
-		}
+		assert.NoError(t, json.Unmarshal(j, &rlbCfg))
 		got := generateRelabelConfig(&rlbCfg)
 		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal generateRelabelConfig to yaml: %e", err)
-			return
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, want, string(gotBytes))
 	}
 
@@ -127,14 +120,10 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 			t.Errorf("CreateOrUpdateConfigurationSecret() error = %v", err)
 		}
 		var expectSecret corev1.Secret
-		if err := testClient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &expectSecret); err != nil {
-			t.Fatalf("cannot get vmagent config secret: %s", err)
-		}
+		assert.NoError(t, testClient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &expectSecret))
 		gotCfg := expectSecret.Data[scrapeGzippedFilename]
 		data, err := build.GunzipConfig(gotCfg)
-		if err != nil {
-			t.Fatalf("cannot gunzip vmagent config: %s", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, o.wantConfig, string(data))
 	}
 
@@ -2213,7 +2202,7 @@ func TestScrapeObjectFailedStatus(t *testing.T) {
 scrape_configs: []
 `
 		ctx := context.TODO()
-		testClient := k8stools.GetTestClientWithClientObjects([]client.Object{so})
+		testClient := k8stools.GetTestClientWithObjects([]runtime.Object{so})
 		build.AddDefaults(testClient.Scheme())
 
 		cr := &vmv1beta1.VMAgent{
@@ -2237,20 +2226,14 @@ scrape_configs: []
 			t.Errorf("CreateOrUpdateConfigurationSecret() error = %s", err)
 		}
 		var configSecret corev1.Secret
-		if err := testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret); err != nil {
-			t.Fatalf("cannot get vmagent config secret: %s", err)
-		}
+		assert.NoError(t, testClient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &configSecret))
 
 		gotCfg := configSecret.Data[scrapeGzippedFilename]
 		data, err := build.GunzipConfig(gotCfg)
-		if err != nil {
-			t.Fatalf("cannot gunzip vmagent config: %s", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, expectedConfig, string(data))
 
-		if err := testClient.Get(ctx, types.NamespacedName{Name: so.GetName(), Namespace: so.GetNamespace()}, so); err != nil {
-			t.Fatalf("cannot reload object: %s", err)
-		}
+		assert.NoError(t, testClient.Get(ctx, types.NamespacedName{Name: so.GetName(), Namespace: so.GetNamespace()}, so))
 		status := so.(getStatusMeta).GetStatusMetadata()
 		assert.Equal(t, vmv1beta1.UpdateStatusFailed, status.UpdateStatus)
 		assert.NotEmpty(t, status.Reason)

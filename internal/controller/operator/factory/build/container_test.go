@@ -48,12 +48,12 @@ func Test_buildProbe(t *testing.T) {
 	type opts struct {
 		container corev1.Container
 		cr        testBuildProbeCR
-		validate  func(corev1.Container) error
+		validate  func(corev1.Container)
 	}
 	f := func(o opts) {
 		t.Helper()
 		got := Probe(o.container, o.cr)
-		assert.NoError(t, o.validate(got))
+		o.validate(got)
 	}
 
 	// build default probe with empty ep
@@ -67,11 +67,10 @@ func Test_buildProbe(t *testing.T) {
 			scheme:          "HTTP",
 		},
 		container: corev1.Container{},
-		validate: func(container corev1.Container) error {
+		validate: func(container corev1.Container) {
 			assert.NotNil(t, container.LivenessProbe)
 			assert.NotNil(t, container.ReadinessProbe)
 			assert.Equal(t, corev1.URIScheme("HTTP"), container.ReadinessProbe.HTTPGet.Scheme)
-			return nil
 		},
 	})
 
@@ -86,12 +85,11 @@ func Test_buildProbe(t *testing.T) {
 			scheme:          "HTTPS",
 		},
 		container: corev1.Container{},
-		validate: func(container corev1.Container) error {
+		validate: func(container corev1.Container) {
 			assert.NotNil(t, container.LivenessProbe)
 			assert.Equal(t, corev1.URIScheme("HTTPS"), container.LivenessProbe.HTTPGet.Scheme)
 			assert.NotNil(t, container.ReadinessProbe)
 			assert.Equal(t, corev1.URIScheme("HTTPS"), container.ReadinessProbe.HTTPGet.Scheme)
-			return nil
 		},
 	})
 
@@ -130,7 +128,7 @@ func Test_buildProbe(t *testing.T) {
 			},
 		},
 		container: corev1.Container{},
-		validate: func(container corev1.Container) error {
+		validate: func(container corev1.Container) {
 			assert.NotNil(t, container.LivenessProbe)
 			assert.Equal(t, "/live1", container.LivenessProbe.HTTPGet.Path)
 			assert.Equal(t, int32(20), container.LivenessProbe.InitialDelaySeconds)
@@ -139,7 +137,6 @@ func Test_buildProbe(t *testing.T) {
 			assert.Len(t, container.ReadinessProbe.Exec.Command, 2)
 			assert.NotNil(t, container.StartupProbe)
 			assert.Equal(t, "some", container.StartupProbe.HTTPGet.Host)
-			return nil
 		},
 	})
 }

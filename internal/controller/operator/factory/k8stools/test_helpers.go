@@ -2,21 +2,19 @@ package k8stools
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
 
-	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -94,18 +92,52 @@ func testGetScheme() *runtime.Scheme {
 	return s
 }
 
-// GetTestClientWithObjects returns testing client with optional predefined objects
-func GetTestClientWithObjects(predefinedObjects []runtime.Object) *TestClientWithStatsTrack {
-	obj := make([]client.Object, 0, len(predefinedObjects))
-	for _, o := range predefinedObjects {
-		obj = append(obj, o.(client.Object))
-	}
-	return GetTestClientWithClientObjects(obj)
+// GetTestClientWithObjectsAndInterceptors returns testing client with optional predefined objects and interceptors
+func GetTestClientWithObjectsAndInterceptors(predefinedObjects []runtime.Object, fns interceptor.Funcs) client.Client {
+	return getTestClient(predefinedObjects, &fns)
 }
 
-// GetTestClientWithClientObjects returns testing client with optional predefined objects
-func GetTestClientWithClientObjects(predefinedObjects []client.Object) *TestClientWithStatsTrack {
-	fclient := fake.NewClientBuilder().
+// GetTestClientWithObjects returns testing client with optional predefined objects
+func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
+	fns := interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			switch v := obj.(type) {
+			case *appsv1.StatefulSet:
+				v.Status.ObservedGeneration = v.Generation
+				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
+			case *appsv1.Deployment:
+				v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
+					Type:   appsv1.DeploymentProgressing,
+					Reason: "NewReplicaSetAvailable",
+					Status: "True",
+				})
+				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+			}
+			return cl.Create(ctx, obj, opts...)
+		},
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			switch v := obj.(type) {
+			case *appsv1.StatefulSet:
+				v.Status.ObservedGeneration = v.Generation
+				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
+			case *appsv1.Deployment:
+				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+	}
+	return getTestClient(predefinedObjects, &fns)
+}
+
+func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) client.Client {
+	builder := fake.NewClientBuilder().
 		WithScheme(testGetScheme()).
 		WithStatusSubresource(
 			&vmv1beta1.VMRule{},
@@ -134,28 +166,19 @@ func GetTestClientWithClientObjects(predefinedObjects []client.Object) *TestClie
 			&gwapiv1.HTTPRoute{},
 			&vpav1.VerticalPodAutoscaler{},
 		).
-		WithObjects(predefinedObjects...).Build()
-	withStats := TestClientWithStatsTrack{
-		origin: fclient,
+		WithRuntimeObjects(predefinedObjects...)
+	if fns != nil {
+		builder = builder.WithInterceptorFuncs(*fns)
 	}
-	return &withStats
+	return builder.Build()
 }
 
 // CompareObjectMeta compares metadata objects
 func CompareObjectMeta(t *testing.T, got, want metav1.ObjectMeta) {
-	if diff := deep.Equal(got.Labels, want.Labels); len(diff) > 0 {
-		t.Fatalf("objects not match, labels diff: %v", diff)
-	}
-	if diff := deep.Equal(got.Annotations, want.Annotations); len(diff) > 0 {
-		t.Fatalf("objects not match, annotations diff: %v", diff)
-	}
-
-	if diff := deep.Equal(got.Name, want.Name); len(diff) > 0 {
-		t.Fatalf("objects not match, Name diff: %v", diff)
-	}
-	if diff := deep.Equal(got.Namespace, want.Namespace); len(diff) > 0 {
-		t.Fatalf("objects not match, namespace diff: %v", diff)
-	}
+	assert.Equal(t, got.Labels, want.Labels)
+	assert.Equal(t, got.Annotations, want.Annotations)
+	assert.Equal(t, got.Name, want.Name)
+	assert.Equal(t, got.Namespace, want.Namespace)
 }
 
 // NewReadyDeployment returns a new deployment with ready status condition
@@ -173,191 +196,9 @@ func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
 					Status: "True",
 				},
 			},
-			UpdatedReplicas:   1,
-			AvailableReplicas: 1,
-			Replicas:          1,
+			UpdatedReplicas: 1,
+			ReadyReplicas:   1,
+			Replicas:        1,
 		},
 	}
-}
-
-type calls struct {
-	objects []client.Object
-	mu      sync.Mutex
-}
-
-func getKey(obj client.Object) string {
-	return fmt.Sprintf("%T/%s/%s", obj, obj.GetNamespace(), obj.GetName())
-}
-
-func (c *calls) add(obj client.Object) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.objects = append(c.objects, obj)
-}
-
-// Count returns calls count for given obj
-func (c *calls) Count(obj client.Object) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if obj == nil {
-		return len(c.objects)
-	}
-	var count int
-	key := getKey(obj)
-	for _, o := range c.objects {
-		if getKey(o) == key {
-			count++
-		}
-	}
-	return count
-}
-
-// First returns first call, that matches given obj
-func (c *calls) First(obj client.Object) client.Object {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if obj == nil {
-		if len(c.objects) > 0 {
-			return c.objects[0]
-		}
-		return nil
-	}
-	key := getKey(obj)
-	for _, o := range c.objects {
-		if getKey(o) == key {
-			return o
-		}
-	}
-	return nil
-}
-
-type callType int
-
-const (
-	GetCallType callType = iota
-	DeleteCallType
-	CreateCallType
-	UpdateCallType
-	PatchCallType
-)
-
-func (d callType) String() string {
-	return [...]string{"Get", "Delete", "Create", "Update", "Patch"}[d]
-}
-
-type action struct {
-	obj  client.Object
-	call callType
-	opts interface{}
-}
-
-func (a action) GetVerb() string {
-	return a.call.String()
-}
-
-func (a action) GetObject() client.Object {
-	return a.obj
-}
-
-func (a action) GetOpts() interface{} {
-	return a.opts
-}
-
-// TestClientWithStatsTrack helps to track actual requests to the api server
-type TestClientWithStatsTrack struct {
-	origin      client.Client
-	GetCalls    calls
-	DeleteCalls calls
-	CreateCalls calls
-	UpdateCalls calls
-	PatchCalls  calls
-	mu          sync.Mutex
-	Actions     []action
-}
-
-func (tcs *TestClientWithStatsTrack) TotalCallsCount(obj client.Object) int {
-	var count int
-	count += tcs.GetCalls.Count(obj)
-	count += tcs.DeleteCalls.Count(obj)
-	count += tcs.CreateCalls.Count(obj)
-	count += tcs.UpdateCalls.Count(obj)
-	count += tcs.PatchCalls.Count(obj)
-	return count
-}
-
-func (tcs *TestClientWithStatsTrack) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	tcs.GetCalls.add(obj)
-	tcs.mu.Lock()
-	tcs.Actions = append(tcs.Actions, action{obj: obj, call: GetCallType, opts: opts})
-	tcs.mu.Unlock()
-	return tcs.origin.Get(ctx, key, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	tcs.CreateCalls.add(obj)
-	tcs.mu.Lock()
-	tcs.Actions = append(tcs.Actions, action{obj: obj, call: CreateCallType, opts: opts})
-	tcs.mu.Unlock()
-	return tcs.origin.Create(ctx, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	tcs.DeleteCalls.add(obj)
-	tcs.mu.Lock()
-	tcs.Actions = append(tcs.Actions, action{obj: obj, call: DeleteCallType, opts: opts})
-	tcs.mu.Unlock()
-	return tcs.origin.Delete(ctx, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	tcs.UpdateCalls.add(obj)
-	tcs.mu.Lock()
-	tcs.Actions = append(tcs.Actions, action{obj: obj, call: UpdateCallType, opts: opts})
-	tcs.mu.Unlock()
-	return tcs.origin.Update(ctx, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	tcs.PatchCalls.add(obj)
-	tcs.mu.Lock()
-	tcs.Actions = append(tcs.Actions, action{obj: obj, call: PatchCallType, opts: opts})
-	tcs.mu.Unlock()
-	return tcs.origin.Patch(ctx, obj, patch, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
-	return tcs.origin.Apply(ctx, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	return tcs.origin.List(ctx, list, opts...)
-}
-
-// DeleteAllOf deletes all objects of the given type matching the given options.
-func (tcs *TestClientWithStatsTrack) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
-	return tcs.origin.DeleteAllOf(ctx, obj, opts...)
-}
-
-func (tcs *TestClientWithStatsTrack) Status() client.SubResourceWriter {
-	return tcs.origin.Status()
-}
-
-func (tcs *TestClientWithStatsTrack) SubResource(subResource string) client.SubResourceClient {
-	return tcs.origin.SubResource(subResource)
-}
-
-func (tcs *TestClientWithStatsTrack) Scheme() *runtime.Scheme {
-	return tcs.origin.Scheme()
-}
-
-func (tcs *TestClientWithStatsTrack) RESTMapper() meta.RESTMapper {
-	return tcs.origin.RESTMapper()
-}
-
-func (tcs *TestClientWithStatsTrack) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
-	return tcs.origin.GroupVersionKindFor(obj)
-}
-
-func (tcs *TestClientWithStatsTrack) IsObjectNamespaced(obj runtime.Object) (bool, error) {
-	return tcs.origin.IsObjectNamespaced(obj)
 }

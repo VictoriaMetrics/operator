@@ -73,7 +73,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 					ps := dep.Spec.Template.Spec
@@ -101,7 +106,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
@@ -164,7 +174,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var httproute gwapiv1.HTTPRoute
 					Expect(k8sClient.Get(ctx, types.NamespacedName{
 						Namespace: cr.Namespace,
@@ -204,7 +219,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 					},
 				}, func(cr *vmv1beta1.VMAuth) {
-					Expect(expectPodCount(k8sClient, 1, cr.Namespace, cr.SelectorLabels())).ToNot(HaveOccurred())
+					Expect(expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					}, 1)).ToNot(HaveOccurred())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
 					ps := dep.Spec.Template.Spec
@@ -288,7 +308,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 2)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
@@ -318,7 +343,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
@@ -346,7 +376,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 						},
 					},
@@ -379,7 +414,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 							pod := mustGetFirstPod(k8sClient, cr.Namespace, cr.SelectorLabels())
 							Expect(pod.Spec.Containers).To(HaveLen(2))
@@ -464,7 +504,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						},
 						verify: func(cr *vmv1beta1.VMAuth) {
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 2, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 2)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).ToNot(HaveOccurred())
@@ -537,7 +582,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 								ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},
@@ -559,7 +609,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Expect(dep.Spec.Template.Spec.Containers[0].VolumeMounts).To(HaveLen(1))
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},
@@ -626,7 +681,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 								ToNot(HaveOccurred())
 							Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
 							Eventually(func() error {
-								return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+								return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: namespace,
+										Labels:    cr.SelectorLabels(),
+									},
+								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 
 						},

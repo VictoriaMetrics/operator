@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,9 +32,10 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 		}
 		cache := NewAssetsCache(context.TODO(), fclient, cfg)
 		got, err := cache.LoadKeyFromSecret(o.ns, o.ss)
-		if (err != nil) != o.wantErr {
-			t.Errorf("LoadKeyFromSecret() error %s", cmp.Diff(err, o.wantErr))
-			return
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		assert.Equal(t, o.want, got)
 	}

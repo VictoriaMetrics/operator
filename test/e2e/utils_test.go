@@ -22,21 +22,72 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
-func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) error {
+func expectPodCount(ctx context.Context, rclient client.Client, obj client.Object, count int) error {
 	GinkgoHelper()
-	podList := &corev1.PodList{}
-	if err := rclient.List(context.TODO(), podList, &client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(lbs),
+	var podList corev1.PodList
+	if err := rclient.List(ctx, &podList, &client.ListOptions{
+		Namespace:     obj.GetNamespace(),
+		LabelSelector: labels.SelectorFromSet(obj.GetLabels()),
 	}); err != nil {
 		return err
 	}
-	pods := podList.Items[:0]
+	podsByHash := make(map[string][]corev1.Pod)
+	var labelName, kind string
+	owners := make(map[string]struct{})
+	switch obj.(type) {
+	case *appsv1.StatefulSet:
+		labelName = "controller-revision-hash"
+		kind = "StatefulSet"
+	case *appsv1.ReplicaSet:
+		labelName = "pod-template-hash"
+		kind = "ReplicaSet"
+	default:
+		panic(fmt.Sprintf("kind=%T is not supported", obj))
+	}
 	for _, pod := range podList.Items {
 		if !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
-		pods = append(pods, pod)
+		labelValue, ok := pod.Labels[labelName]
+		if !ok {
+			continue
+		}
+		for _, ref := range pod.OwnerReferences {
+			if ref.Kind != kind {
+				continue
+			}
+			if _, ok := owners[ref.Name]; !ok {
+				owners[ref.Name] = struct{}{}
+			}
+		}
+		podsByHash[labelValue] = append(podsByHash[labelValue], pod)
+	}
+	var creationTimestamp metav1.Time
+	var currentHash string
+	for owner := range owners {
+		nsn := types.NamespacedName{
+			Name:      owner,
+			Namespace: obj.GetNamespace(),
+		}
+		if err := rclient.Get(ctx, nsn, obj); err != nil {
+			return fmt.Errorf("failed to get %T=%s", obj, nsn)
+		}
+		ts := obj.GetCreationTimestamp()
+		if creationTimestamp.IsZero() || (!ts.IsZero() && ts.After(creationTimestamp.Time)) {
+			creationTimestamp = ts
+			switch v := obj.(type) {
+			case *appsv1.StatefulSet:
+				currentHash = v.Status.UpdateRevision
+			case *appsv1.ReplicaSet:
+				currentHash = v.Labels[labelName]
+			default:
+				panic(fmt.Sprintf("kind=%T is not supported", obj))
+			}
+		}
+	}
+	var pods []corev1.Pod
+	if len(currentHash) > 0 {
+		pods = podsByHash[currentHash]
 	}
 	if len(pods) != count {
 		return fmt.Errorf("pod count mismatch, expect: %d, got: %d", count, len(pods))
@@ -49,9 +100,9 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 	return nil
 }
 
-func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) int32 {
+func getRevisionHistoryLimit(ctx context.Context, rclient client.Client, name types.NamespacedName) int32 {
 	app := &appsv1.Deployment{}
-	if err := rclient.Get(context.TODO(), name, app); err != nil {
+	if err := rclient.Get(ctx, name, app); err != nil {
 		return 0
 	}
 	return *app.Spec.RevisionHistoryLimit

@@ -2,16 +2,15 @@ package vmsingle
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -29,10 +28,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		if err := CreateOrUpdate(context.TODO(), o.cr, fclient); err != nil {
-			t.Errorf("CreateOrUpdate() error = %v", err)
-			return
-		}
+		assert.NoError(t, CreateOrUpdate(context.TODO(), o.cr, fclient))
 	}
 
 	// base-vmsingle-gen
@@ -105,10 +101,8 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
-		if !reflect.DeepEqual(got.Name, o.want.Name) {
-			t.Errorf("createOrUpdateService(): %s", cmp.Diff(got, o.want))
-		}
-		assert.Equal(t, len(o.want.Spec.Ports), len(got.Spec.Ports))
+		assert.Equal(t, got.Name, o.want.Name)
+		assert.ElementsMatch(t, got.Spec.Ports, o.want.Spec.Ports)
 	}
 
 	// base service test
@@ -125,7 +119,18 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{{}, {}},
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "http",
+						Protocol:   "TCP",
+						TargetPort: intstr.FromString(""),
+					}, {
+						Name:       "http-alias",
+						Port:       8428,
+						Protocol:   "TCP",
+						TargetPort: intstr.FromString(""),
+					},
+				},
 			},
 		},
 	})
@@ -152,7 +157,53 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{{}, {}, {}, {}, {}, {}, {}, {}, {}},
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "http",
+						Protocol:   "TCP",
+						TargetPort: intstr.FromString(""),
+					}, {
+						Name:       "http-alias",
+						Protocol:   "TCP",
+						Port:       8428,
+						TargetPort: intstr.FromString(""),
+					}, {
+						Name:       "graphite-tcp",
+						Protocol:   "TCP",
+						Port:       8053,
+						TargetPort: intstr.FromInt(8053),
+					}, {
+						Name:       "graphite-udp",
+						Protocol:   "UDP",
+						Port:       8053,
+						TargetPort: intstr.FromInt(8053),
+					}, {
+						Name:       "influx-tcp",
+						Protocol:   "TCP",
+						Port:       8051,
+						TargetPort: intstr.FromInt(8051),
+					}, {
+						Name:       "influx-udp",
+						Protocol:   "UDP",
+						Port:       8051,
+						TargetPort: intstr.FromInt(8051),
+					}, {
+						Name:       "opentsdb-tcp",
+						Protocol:   "TCP",
+						Port:       8054,
+						TargetPort: intstr.FromInt(8054),
+					}, {
+						Name:       "opentsdb-udp",
+						Protocol:   "UDP",
+						Port:       8054,
+						TargetPort: intstr.FromInt(8054),
+					}, {
+						Name:       "opentsdb-http",
+						Protocol:   "TCP",
+						Port:       8052,
+						TargetPort: intstr.FromInt(8052),
+					},
+				},
 			},
 		},
 	})
@@ -179,7 +230,18 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{{}, {}},
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "http",
+						Protocol:   "TCP",
+						TargetPort: intstr.FromString(""),
+					}, {
+						Name:       "http-alias",
+						Port:       8428,
+						Protocol:   "TCP",
+						TargetPort: intstr.FromString(""),
+					},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{

@@ -81,7 +81,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				nil,
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 
 				},
@@ -209,7 +214,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					Expect(finalize.SafeDelete(ctx, k8sClient, &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -244,7 +254,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				nil,
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
 					var dep appsv1.Deployment
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
@@ -316,7 +331,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 3, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 3)
 					}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 				}),
 			Entry("by updating revisionHistoryLimit to 3", "historylimit-3",
@@ -325,9 +345,14 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 				func(cr *vmv1beta1.VMAlert) {
 					Eventually(func() error {
-						return expectPodCount(k8sClient, 1, namespace, cr.SelectorLabels())
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
 					}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
-					Expect(getRevisionHistoryLimit(k8sClient, types.NamespacedName{
+					Expect(getRevisionHistoryLimit(ctx, k8sClient, types.NamespacedName{
 						Name:      cr.PrefixedName(),
 						Namespace: nsn.Namespace,
 					})).To(Equal(int32(3)))

@@ -3,16 +3,14 @@ package reconcile
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/equality"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDiffDeepOk(t *testing.T) {
 	f := func(oldObj, newObj any, expected string) {
 		t.Helper()
 		got := diffDeep(oldObj, newObj)
-		if got != expected {
-			t.Fatalf("unexpected diff, \ngot:\n%s\nwant:\n%s\n", got, expected)
-		}
+		assert.Equal(t, got, expected)
 	}
 	var a1Slice []string
 	a2SliceNonNil := make([]string, 0)
@@ -47,12 +45,8 @@ func TestDiffDeepOk(t *testing.T) {
 func TestDiffDeepDerivativeOk(t *testing.T) {
 	f := func(oldObj, newObj any, expected string) {
 		t.Helper()
-		sym := equality.Semantic.DeepDerivative(oldObj, newObj)
-
 		got := diffDeepDerivative(oldObj, newObj)
-		if got != expected {
-			t.Fatalf("unexpected diff, \ngot:\n%s\nwant:\n%s,\nsym=%v", got, expected, sym)
-		}
+		assert.Equal(t, got, expected)
 	}
 	var oldS []string
 	newS := make([]string, 0)

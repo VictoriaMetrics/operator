@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,14 +40,14 @@ func TestLoad(t *testing.T) {
 		}
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
 		loaded, err := Load(o.cr, ac)
-		if (err != nil) != o.wantErr {
-			t.Fatalf("Load() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		expected := strings.TrimSpace(o.expected)
 		got := strings.TrimSpace(string(loaded))
-		if got != expected {
-			t.Fatalf("unexpected config produced by Load(): \nexpected:\n%s\ngot:\n%s", expected, got)
-		}
+		assert.Equal(t, got, expected)
 	}
 
 	// no custom readers and writers

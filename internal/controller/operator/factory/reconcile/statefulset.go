@@ -37,25 +37,24 @@ type STSOptions struct {
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
+	if newObj.Spec.Replicas == nil {
+		return nil
+	}
 	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
-		// fast path
-		if newObj.Spec.Replicas == nil {
-			return true, nil
-		}
-		var stsForStatus appsv1.StatefulSet
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &stsForStatus); err != nil {
+		var existingObj appsv1.StatefulSet
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		if stsForStatus.Generation > stsForStatus.Status.ObservedGeneration ||
+		if existingObj.Generation > existingObj.Status.ObservedGeneration ||
 			// special case to prevent possible race condition between updated object and local cache
 			// See this issue https://github.com/VictoriaMetrics/operator/issues/1579
-			newObj.Generation > stsForStatus.Generation {
+			newObj.Generation > existingObj.Generation {
 			return false, nil
 		}
-		if *newObj.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newObj.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {
+		if *newObj.Spec.Replicas != existingObj.Status.ReadyReplicas || *newObj.Spec.Replicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil

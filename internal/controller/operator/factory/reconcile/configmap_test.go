@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestConfigMapReconcile(t *testing.T) {
@@ -20,22 +19,24 @@ func TestConfigMapReconcile(t *testing.T) {
 		prevMeta          *metav1.ObjectMeta
 		owner             *metav1.OwnerReference
 		predefinedObjects []runtime.Object
-		validate          func(*k8stools.TestClientWithStatsTrack, *corev1.ConfigMap)
+		actions           []string
+		validate          func(*corev1.ConfigMap)
 	}
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		rclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		_, err := ConfigMap(ctx, rclient, o.new, o.prevMeta, o.owner)
+		cl := getTestClient(o.new, o.predefinedObjects)
+		_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
 		assert.NoError(t, err)
-		var got corev1.ConfigMap
-		nsn := types.NamespacedName{
-			Name:      o.new.Name,
-			Namespace: o.new.Namespace,
-		}
-		assert.NoError(t, rclient.Get(ctx, nsn, &got))
+		assert.Equal(t, o.actions, cl.actions)
 		if o.validate != nil {
-			o.validate(rclient, &got)
+			var got corev1.ConfigMap
+			nsn := types.NamespacedName{
+				Name:      o.new.Name,
+				Namespace: o.new.Namespace,
+			}
+			assert.NoError(t, cl.Get(ctx, nsn, &got))
+			o.validate(&got)
 		}
 	}
 
@@ -50,9 +51,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				"data": "test",
 			},
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, c *corev1.ConfigMap) {
-			assert.Equal(t, 1, rclient.CreateCalls.Count(c))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(c))
+		actions: []string{"Get", "Create"},
+		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
 	})
@@ -84,9 +84,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, c *corev1.ConfigMap) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(c))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(c))
+		actions: []string{"Get"},
+		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
 	})
@@ -120,9 +119,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, c *corev1.ConfigMap) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(c))
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(c))
+		actions: []string{"Get", "Update"},
+		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "value", c.Annotations["key"])
 		},
 	})
@@ -153,9 +151,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, c *corev1.ConfigMap) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(c))
-			assert.Equal(t, 1, rclient.UpdateCalls.Count(c))
+		actions: []string{"Get", "Update"},
+		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "after", c.Data["data"])
 		},
 	})
@@ -197,9 +194,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		validate: func(rclient *k8stools.TestClientWithStatsTrack, c *corev1.ConfigMap) {
-			assert.Equal(t, 0, rclient.CreateCalls.Count(c))
-			assert.Equal(t, 0, rclient.UpdateCalls.Count(c))
+		actions: []string{"Get"},
+		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
 	})

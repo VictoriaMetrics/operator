@@ -2,12 +2,9 @@ package vmalertmanager
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +23,7 @@ import (
 func TestCreateOrUpdateAlertManager(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlertmanager
-		validate          func(set *appsv1.StatefulSet) error
+		validate          func(set *appsv1.StatefulSet)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -36,44 +33,17 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		ctx := context.TODO()
-		ctx, cancel := context.WithTimeout(ctx, time.Second*20)
-		defer cancel()
-
-		go func() {
-			tc := time.NewTicker(time.Millisecond * 100)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tc.C:
-					var got appsv1.StatefulSet
-					if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got); err != nil {
-						if !k8serrors.IsNotFound(err) {
-							t.Errorf("cannot get statefulset for alertmanager: %s", err)
-							return
-						}
-						continue
-					}
-					got.Status.ReadyReplicas = *o.cr.Spec.ReplicaCount
-					got.Status.UpdatedReplicas = *o.cr.Spec.ReplicaCount
-
-					if err := fclient.Status().Update(ctx, &got); err != nil {
-						t.Errorf("cannot update status statefulset for alertmanager: %s", err)
-					}
-					return
-				}
-			}
-		}()
 		err := CreateOrUpdateAlertManager(ctx, o.cr, fclient)
-		if (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
-		// TODO add client.Default
-		var got appsv1.StatefulSet
-		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got); (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, o.wantErr)
+		if o.validate != nil {
+			var got appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+			o.validate(&got)
 		}
-		assert.NoError(t, o.validate(&got))
 	}
 
 	// simple alertmanager
@@ -93,11 +63,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
-			if set.Name != "vmalertmanager-test-am" {
-				return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
-			}
-			if diff := deep.Equal(set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Equal(t, set.Name, "vmalertmanager-test-am")
+			assert.Equal(t, set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("100m"),
 					corev1.ResourceMemory: resource.MustParse("256Mi"),
@@ -106,19 +74,14 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					corev1.ResourceCPU:    resource.MustParse("30m"),
 					corev1.ResourceMemory: resource.MustParse("56Mi"),
 				},
-			}); len(diff) > 0 {
-				return fmt.Errorf("unexpected diff with resources: %v", diff)
-			}
-			if diff := deep.Equal(set.Labels, map[string]string{
+			})
+			assert.Equal(t, set.Labels, map[string]string{
 				"app.kubernetes.io/component": "monitoring",
 				"app.kubernetes.io/instance":  "test-am",
 				"app.kubernetes.io/name":      "vmalertmanager",
 				"managed-by":                  "vm-operator",
 				"main":                        "system",
-			}); len(diff) > 0 {
-				return fmt.Errorf("unexpected diff with labels: %v", diff)
-			}
-			return nil
+			})
 		},
 	})
 
@@ -142,14 +105,13 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
+		validate: func(set *appsv1.StatefulSet) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, vmaContainer.Name, "alertmanager")
 			assert.Equal(t, vmaContainer.LivenessProbe.TimeoutSeconds, int32(20))
 			assert.Equal(t, vmaContainer.LivenessProbe.HTTPGet.Path, "/-/healthy")
 			assert.Equal(t, vmaContainer.ReadinessProbe.HTTPGet.Path, "/-/healthy")
-			return nil
 		},
 	})
 
@@ -181,51 +143,26 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
-			if set.Name != "vmalertmanager-test-am" {
-				return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
-			}
-			if len(set.Spec.Template.Spec.Volumes) != 4 {
-				return fmt.Errorf("unexpected count of volumes, got: %d, want: %d", len(set.Spec.Template.Spec.Volumes), 4)
-			}
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Equal(t, set.Name, "vmalertmanager-test-am")
+			assert.Len(t, set.Spec.Template.Spec.Volumes, 4)
 			templatesVolume := set.Spec.Template.Spec.Volumes[2]
-			if templatesVolume.Name != "templates-test-am" {
-				return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolume.Name, "templates-test-am")
-			}
-			if templatesVolume.ConfigMap.Name != "test-am" {
-				return fmt.Errorf("unexpected configmap name, got: %s, want: %s", templatesVolume.ConfigMap.Name, "test-am")
-			}
-
+			assert.Equal(t, templatesVolume.Name, "templates-test-am")
+			assert.Equal(t, templatesVolume.ConfigMap.Name, "test-am")
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
-			if vmaContainer.Name != "alertmanager" {
-				return fmt.Errorf("unexpected container name, got: %s, want: %s", vmaContainer.Name, "alertmanager")
-			}
-
-			if len(vmaContainer.VolumeMounts) != 4 {
-				return fmt.Errorf("unexpected count of volume mounts, got: %d, want: %d", len(vmaContainer.VolumeMounts), 4)
-			}
+			assert.Equal(t, vmaContainer.Name, "alertmanager")
+			assert.Len(t, vmaContainer.VolumeMounts, 4)
 			templatesVolumeMount := vmaContainer.VolumeMounts[3]
-			if templatesVolumeMount.Name != "templates-test-am" {
-				return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolumeMount.Name, "templates-test-am")
-			}
-			if templatesVolumeMount.MountPath != "/etc/vm/templates/test-am" {
-				return fmt.Errorf("unexpected volume mount path, got: %s, want: %s", templatesVolumeMount.MountPath, "/etc/vm/templates/test-am")
-			}
-			if !templatesVolumeMount.ReadOnly {
-				return fmt.Errorf("unexpected volume mount read only, got: %t, want: %t", templatesVolumeMount.ReadOnly, true)
-			}
-
+			assert.Equal(t, templatesVolumeMount.Name, "templates-test-am")
+			assert.Equal(t, templatesVolumeMount.MountPath, "/etc/vm/templates/test-am")
+			assert.True(t, templatesVolumeMount.ReadOnly)
 			foundTemplatesDir := false
 			for _, arg := range set.Spec.Template.Spec.Containers[1].Args {
 				if arg == "--watched-dir=/etc/vm/templates/test-am" {
 					foundTemplatesDir = true
 				}
 			}
-			if !foundTemplatesDir {
-				return fmt.Errorf("templates dir not found in args of config-reloader container")
-			}
-
-			return nil
+			assert.True(t, foundTemplatesDir)
 		},
 	})
 
@@ -244,7 +181,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
+		validate: func(set *appsv1.StatefulSet) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 
@@ -260,7 +197,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring:9094",
 			}, "unexpected cluster peer arguments found")
-			return nil
 		},
 	})
 
@@ -280,7 +216,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
+		validate: func(set *appsv1.StatefulSet) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 
@@ -296,7 +232,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 			}, "unexpected cluster peer arguments found")
-			return nil
 		},
 	})
 }
@@ -312,16 +247,17 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		if err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, o.wantErr)
-		}
+		err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil)
 		if o.wantErr {
+			assert.Error(t, err)
 			return
+		} else {
+			assert.NoError(t, err)
 		}
 		var createdSecret corev1.Secret
 		secretName := o.cr.ConfigSecretName()
 
-		err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
+		err = fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
 		if err != nil {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
@@ -332,9 +268,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		var amcfgs vmv1beta1.VMAlertmanagerConfigList
 		assert.Nil(t, fclient.List(ctx, &amcfgs))
 		for _, amcfg := range amcfgs.Items {
-			if amcfg.Status.UpdateStatus != vmv1beta1.UpdateStatusOperational {
-				t.Fatalf("unexpected non-operational status: %s for amcfg: %s reason: %s ", amcfg.Status.UpdateStatus, amcfg.Name, amcfg.Status.Reason)
-			}
+			assert.Equal(t, amcfg.Status.UpdateStatus, vmv1beta1.UpdateStatusOperational)
 		}
 	}
 

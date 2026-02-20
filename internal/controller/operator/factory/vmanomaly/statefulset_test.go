@@ -2,11 +2,8 @@ package vmanomaly
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,53 +23,27 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VMAnomaly
-		validate          func(set *appsv1.StatefulSet) error
+		validate          func(set *appsv1.StatefulSet)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
 		t.Helper()
+		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
-		ctx, cancel := context.WithTimeout(context.TODO(), time.Second*20)
-		defer cancel()
-
-		go func() {
-			tc := time.NewTicker(time.Millisecond * 100)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tc.C:
-					var got appsv1.StatefulSet
-					if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got); err != nil {
-						if !k8serrors.IsNotFound(err) {
-							t.Errorf("cannot get statefulset for vmanomaly: %s", err)
-							return
-						}
-						continue
-					}
-					got.Status.ReadyReplicas = *o.cr.Spec.ReplicaCount
-					got.Status.UpdatedReplicas = *o.cr.Spec.ReplicaCount
-
-					if err := fclient.Status().Update(ctx, &got); err != nil {
-						t.Errorf("cannot update status statefulset for vmanomaly: %s", err)
-					}
-					return
-				}
-			}
-		}()
 		err := CreateOrUpdate(ctx, o.cr, fclient)
-		if (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
-		// TODO add client.Default
-		var got appsv1.StatefulSet
-		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got); (err != nil) != o.wantErr {
-			t.Fatalf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+		if o.validate != nil {
+			var got appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+			o.validate(&got)
 		}
-		assert.NoError(t, o.validate(&got))
 	}
 
 	// simple vmanomaly
@@ -119,11 +90,9 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
-			if set.Name != "vmanomaly-test-anomaly" {
-				return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmanomaly-test-anomaly")
-			}
-			if diff := deep.Equal(set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Equal(t, set.Name, "vmanomaly-test-anomaly")
+			assert.Equal(t, set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("200m"),
 					corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -132,18 +101,13 @@ schedulers:
 					corev1.ResourceCPU:    resource.MustParse("50m"),
 					corev1.ResourceMemory: resource.MustParse("200Mi"),
 				},
-			}); len(diff) > 0 {
-				return fmt.Errorf("unexpected diff with resources: %v", diff)
-			}
-			if diff := deep.Equal(set.Labels, map[string]string{
+			})
+			assert.Equal(t, set.Labels, map[string]string{
 				"app.kubernetes.io/component": "monitoring",
 				"app.kubernetes.io/instance":  "test-anomaly",
 				"app.kubernetes.io/name":      "vmanomaly",
 				"managed-by":                  "vm-operator",
-			}); len(diff) > 0 {
-				return fmt.Errorf("unexpected diff with labels: %v", diff)
-			}
-			return nil
+			})
 		},
 	})
 
@@ -194,25 +158,13 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
-			if len(set.Spec.Template.Spec.Containers) != 1 {
-				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 2)
-			}
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			container := set.Spec.Template.Spec.Containers[0]
-			if container.Name != "vmanomaly" {
-				return fmt.Errorf("unexpected container name, got: %s, want: %s", container.Name, "vmanomaly")
-			}
-			if container.LivenessProbe.TimeoutSeconds != 20 {
-				return fmt.Errorf("unexpected liveness probe config, want timeout: %d, got: %d", container.LivenessProbe.TimeoutSeconds, 20)
-			}
-			if container.LivenessProbe.HTTPGet.Path != "/health" {
-				return fmt.Errorf("unexpected path for probe, got: %s, want: %s", container.LivenessProbe.HTTPGet.Path, "/health")
-			}
-			if container.ReadinessProbe.HTTPGet.Path != "/health" {
-				return fmt.Errorf("unexpected path for probe, got: %s, want: %s", container.ReadinessProbe.HTTPGet.Path, "/health")
-			}
-
-			return nil
+			assert.Equal(t, container.Name, "vmanomaly")
+			assert.Equal(t, container.LivenessProbe.TimeoutSeconds, int32(20))
+			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, "/health")
+			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, "/health")
 		},
 	})
 
@@ -261,20 +213,12 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) error {
-			if len(set.Spec.Template.Spec.Containers) != 1 {
-				return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 1)
-			}
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			container := set.Spec.Template.Spec.Containers[0]
 			expectedPath := "/custom-prefix/health"
-			if container.LivenessProbe.HTTPGet.Path != expectedPath {
-				return fmt.Errorf("unexpected liveness probe path, got: %s, want: %s", container.LivenessProbe.HTTPGet.Path, expectedPath)
-			}
-			if container.ReadinessProbe.HTTPGet.Path != expectedPath {
-				return fmt.Errorf("unexpected readiness probe path, got: %s, want: %s", container.ReadinessProbe.HTTPGet.Path, expectedPath)
-			}
-
-			return nil
+			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, expectedPath)
+			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, expectedPath)
 		},
 	})
 }
@@ -297,16 +241,17 @@ func Test_createDefaultConfig(t *testing.T) {
 		}
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
-		if _, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, ac); (err != nil) != o.wantErr {
-			t.Fatalf("createOrUpdateConfig() error = %v, wantErr %v", err, o.wantErr)
-		}
+		_, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, ac)
 		if o.wantErr {
+			assert.Error(t, err)
 			return
+		} else {
+			assert.NoError(t, err)
 		}
 		var createdSecret corev1.Secret
 		secretName := build.ResourceName(build.SecretConfigResourceKind, o.cr)
 
-		err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
+		err = fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret)
 		if err != nil {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return

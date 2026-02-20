@@ -33,9 +33,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			ObjectSelector:    o.selector,
 		}
 		matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, o.sourceCRD, o.targetCRD, opts)
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, matches, o.isMatch)
 	}
 

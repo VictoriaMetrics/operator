@@ -69,16 +69,19 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	if err != nil {
 		return err
 	}
-	return waitDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
+	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
 }
 
-// waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
-func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1.Deployment, deadline time.Duration) error {
+// waitForDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
+func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *appsv1.Deployment, deadline time.Duration) error {
+	if newObj.Spec.Replicas == nil {
+		return nil
+	}
 	var isErrDeadline bool
-	nsn := types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}
+	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
-		var actualDeploy appsv1.Deployment
-		if err := rclient.Get(ctx, nsn, &actualDeploy); err != nil {
+		var existingObj appsv1.Deployment
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -88,38 +91,28 @@ func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1
 		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
 		// this function uses the deployment readiness detection algorithm from `kubectl rollout status` command
 		// (https://github.com/kubernetes/kubectl/blob/6e4fe32a45fdcbf61e5c30ebdc511d75e7242432/pkg/polymorphichelpers/rollout_status.go#L76)
-		if actualDeploy.Generation > actualDeploy.Status.ObservedGeneration ||
+		if existingObj.Generation > existingObj.Status.ObservedGeneration ||
 			// special case to prevent possible race condition between updated object and local cache
 			// See this issue https://github.com/VictoriaMetrics/operator/issues/1579
-			dep.Generation > actualDeploy.Generation {
+			newObj.Generation > existingObj.Generation {
 			// Waiting for deployment spec update to be observed by controller...
 			return false, nil
 		}
-		cond := getDeploymentCondition(actualDeploy.Status, appsv1.DeploymentProgressing)
+		cond := getDeploymentCondition(existingObj.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
 			isErrDeadline = true
 			return true, fmt.Errorf("progress deadline exceeded for Deployment=%s", nsn)
 		}
-		if actualDeploy.Spec.Replicas != nil && actualDeploy.Status.UpdatedReplicas < *actualDeploy.Spec.Replicas {
-			// Waiting for deployment rollout to finish: part of new replicas have been updated...
-			return false, nil
-		}
-		if actualDeploy.Status.Replicas > actualDeploy.Status.UpdatedReplicas {
-			// Waiting for deployment rollout to finish: part of old replicas are pending termination...
-			return false, nil
-		}
-		if actualDeploy.Status.AvailableReplicas < actualDeploy.Status.UpdatedReplicas {
-			// Waiting for deployment rollout to finish: part of updated replicas are available
+		if *newObj.Spec.Replicas != existingObj.Status.ReadyReplicas || *newObj.Spec.Replicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil
 	})
 	if err != nil {
-		podErr := reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for Deployment=%s to become ready: %w", nsn, err), dep.Namespace, labels.SelectorFromSet(dep.Spec.Selector.MatchLabels), dep.Spec.MinReadySeconds)
 		if isErrDeadline {
 			return err
 		}
-		return podErr
+		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for Deployment=%s to become ready: %w", nsn, err), newObj.Namespace, labels.SelectorFromSet(newObj.Spec.Selector.MatchLabels), newObj.Spec.MinReadySeconds)
 	}
 	return nil
 }

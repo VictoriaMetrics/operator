@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -30,16 +29,10 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generateStaticScrapeConfig(ctx, sp, o.sc, o.sc.Spec.TargetEndpoints[0], 0, ac)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		assert.NoError(t, err)
 		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if !assert.Equal(t, o.want, string(gotBytes)) {
-			t.Errorf("generateStaticScrapeConfig(): %s", cmp.Diff(string(gotBytes), o.want))
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, string(gotBytes))
 	}
 
 	// basic cfg

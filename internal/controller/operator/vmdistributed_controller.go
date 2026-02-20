@@ -104,6 +104,5 @@ func (r *VMDistributedReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1alpha1.VMDistributed{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
 }

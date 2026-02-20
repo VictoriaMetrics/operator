@@ -656,7 +656,9 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			},
-			ParsedLastAppliedSpec: &vmv1.VLClusterSpec{},
+			Status: vmv1.VLClusterStatus{
+				LastAppliedSpec: &vmv1.VLClusterSpec{},
+			},
 		},
 		cfgMutator: func(c *config.BaseOperatorConf) {
 			c.VPAAPIEnabled = true

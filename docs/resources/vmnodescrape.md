@@ -51,4 +51,9 @@ spec:
   relabelConfigs:
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
+    - source_labels: [__metrics_path__]
+      target_label: metrics_path
+    - action: replace
+      target_label: job
+      replacement: kubelet
 ```

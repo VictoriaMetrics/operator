@@ -1492,7 +1492,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("configures vmstorage with MaxUnavailable 100% but limited by a PDB", "maxunavailable-100-percent-pdb",
+			Entry("configures vmstorage with MaxUnavailable 100% and ignored PDB limitation", "maxunavailable-100-percent-pdb",
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",

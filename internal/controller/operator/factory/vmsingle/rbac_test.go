@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -17,10 +17,10 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestCreateVMAgentRBAC(t *testing.T) {
+func TestCreateVMSingleRBAC(t *testing.T) {
 	type opts struct {
-		cr                *vmv1beta1.VMAgent
-		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent)
+		cr                *vmv1beta1.VMSingle
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle)
 		clusterWide       bool
 		predefinedObjects []runtime.Object
 	}
@@ -36,15 +36,15 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// create default cluster-wide rbac
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{},
+			Spec: vmv1beta1.VMSingleSpec{},
 		},
 		clusterWide: true,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
 				Name: cr.GetRBACName(),
@@ -56,15 +56,15 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// create namespaced rbac
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{},
+			Spec: vmv1beta1.VMSingleSpec{},
 		},
 		clusterWide: false,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
 				Name:      cr.GetRBACName(),
@@ -77,27 +77,25 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// create cluster-wide rbac for relabeling
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{
-					InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
-						{
-							Action:       "drop",
-							SourceLabels: []string{"environment"},
-						},
-					},
-				}},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{
+						Action:       "drop",
+						SourceLabels: []string{"environment"},
+					}},
+				},
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
 			},
 		},
 		clusterWide: true,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
 				Name: cr.GetRBACName(),
@@ -109,27 +107,25 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// create namespaced rbac for relabeling
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{
-					InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
-						{
-							Action:       "drop",
-							SourceLabels: []string{"environment"},
-						},
-					},
-				}},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+					InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{
+						Action:       "drop",
+						SourceLabels: []string{"environment"},
+					}},
+				},
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
 			},
 		},
 		clusterWide: false,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
 				Name:      cr.GetRBACName(),
@@ -142,19 +138,19 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// cluster-wide rbac with no rules
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{
+			Spec: vmv1beta1.VMSingleSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
 			},
 		},
 		clusterWide: true,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
 				Name: cr.GetRBACName(),
@@ -166,19 +162,19 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// no namespaced rbac
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{
+			Spec: vmv1beta1.VMSingleSpec{
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
 			},
 		},
 		clusterWide: false,
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
 				Name:      cr.GetRBACName(),
@@ -191,20 +187,20 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 
 	// ok with exist rbac
 	f(opts{
-		cr: &vmv1beta1.VMAgent{
+		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default-2",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMAgentSpec{},
+			Spec: vmv1beta1.VMSingleSpec{},
 		},
 		predefinedObjects: []runtime.Object{
 			&rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmagent-cluster-access-rbac-test",
+					Name:      "monitoring:vmsingle-cluster-access-rbac-test",
 					Namespace: "default-2",
 					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmagent",
+						"app.kubernetes.io/name":      "vmsingle",
 						"app.kubernetes.io/instance":  "rbac-test",
 						"app.kubernetes.io/component": "monitoring",
 						"managed-by":                  "vm-operator",
@@ -213,10 +209,10 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 			},
 			&rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmagent-cluster-access-rbac-test",
+					Name:      "monitoring:vmsingle-cluster-access-rbac-test",
 					Namespace: "default-2",
 					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmagent",
+						"app.kubernetes.io/name":      "vmsingle",
 						"app.kubernetes.io/instance":  "rbac-test",
 						"app.kubernetes.io/component": "monitoring",
 						"managed-by":                  "vm-operator",
@@ -225,7 +221,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 			},
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "vmagent-rbac-test",
+					Name:      "vmsingle-rbac-test",
 					Namespace: "default-2",
 				},
 			},

@@ -241,7 +241,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 
 					// assert k8s api access
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
-					vmauthPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					vmauthPod := mustGetFirstPod(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					})
 					Expect(hasVolumeMount(vmauthPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
 					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).ToNot(HaveOccurred())
 					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())
@@ -421,7 +426,12 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 									},
 								}, 1)
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
-							pod := mustGetFirstPod(k8sClient, cr.Namespace, cr.SelectorLabels())
+							pod := mustGetFirstPod(ctx, k8sClient, &appsv1.ReplicaSet{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: namespace,
+									Labels:    cr.SelectorLabels(),
+								},
+							})
 							Expect(pod.Spec.Containers).To(HaveLen(2))
 							ac := pod.Spec.Containers[0]
 							Expect(ac.Ports).To(HaveLen(2))

@@ -34,14 +34,14 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 	var existingObj corev1.Service
 	if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 		if k8serrors.IsNotFound(err) {
-			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service=%s", nsn))
+			logger.WithContext(ctx).Info(fmt.Sprintf("creating new Service=%s", nsn.String()))
 			err := rclient.Create(ctx, newObj)
 			if err != nil {
-				return fmt.Errorf("cannot create new Service=%s: %w", nsn, err)
+				return fmt.Errorf("cannot create new Service=%s: %w", nsn.String(), err)
 			}
 			return nil
 		}
-		return fmt.Errorf("cannot get service for existing Service=%s: %w", nsn, err)
+		return fmt.Errorf("cannot get service for existing Service=%s: %w", nsn.String(), err)
 	}
 	if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 		return err
@@ -63,11 +63,11 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 			return err
 		}
 		if err := finalize.SafeDelete(ctx, rclient, &existingObj); err != nil {
-			return fmt.Errorf("cannot delete Service=%s at recreate: %w", nsn, err)
+			return fmt.Errorf("cannot delete Service=%s at recreate: %w", nsn.String(), err)
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("recreating new Service=%s", nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("recreating new Service=%s", nsn.String()))
 		if err := rclient.Create(ctx, newObj); err != nil {
-			return fmt.Errorf("cannot create Service=%s at recreate: %w", nsn, err)
+			return fmt.Errorf("cannot create Service=%s at recreate: %w", nsn.String(), err)
 		}
 		return nil
 	}
@@ -114,11 +114,11 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 	}
 
 	rclient.Scheme().Default(newObj)
-	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 	if err != nil {
 		return err
 	}
-	logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+	logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 	specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 	needsUpdate := metaChanged || len(specDiff) > 0
 	logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))

@@ -16,7 +16,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -287,9 +286,6 @@ func Test_updateSTSPVC(t *testing.T) {
 						"test": "after",
 					},
 					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -398,9 +394,6 @@ func Test_updateSTSPVC(t *testing.T) {
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -421,9 +414,6 @@ func Test_updateSTSPVC(t *testing.T) {
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -528,10 +518,7 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
+					ResourceVersion: "999",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -621,9 +608,6 @@ func Test_updateSTSPVC(t *testing.T) {
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{

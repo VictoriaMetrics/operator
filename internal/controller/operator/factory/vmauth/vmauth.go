@@ -3,6 +3,7 @@ package vmauth
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 
@@ -408,9 +409,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 	creds := ac.GetOutput()
 	if secret, ok := creds[build.TLSAssetsResourceKind]; ok {
-		for name, value := range secret.Data {
-			s.Data[name] = value
-		}
+		maps.Copy(s.Data, secret.Data)
 	}
 
 	data, err := build.GzipConfig(generatedConfig)
@@ -449,9 +448,6 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
 		},
 		Namespace:       cr.Namespace,
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Finalizers: []string{
-			vmv1beta1.FinalizerName,
-		},
 	}
 }
 
@@ -532,7 +528,6 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 			Labels:          lbls,
 			Annotations:     cr.Spec.Ingress.Annotations,
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: spec,
 	}
@@ -624,37 +619,6 @@ func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
-
-	cfg := config.MustGetBaseConfig()
-	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &gwapiv1.HTTPRoute{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete httproute from prev state: %w", err)
-		}
-	}
-
-	if cr.Spec.Ingress == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &networkingv1.Ingress{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete ingress from prev state: %w", err)
-		}
-	}
-	if cr.Spec.HPA == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove HPA from prev state: %w", err)
-		}
-	}
-	if cfg.VPAAPIEnabled && cr.Spec.VPA == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove VPA from prev state: %w", err)
-		}
-	}
-
 	svcName := cr.PrefixedName()
 	keepServices := sets.New(svcName)
 	keepServiceScrapes := sets.New[string]()
@@ -665,18 +629,35 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
-	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+
+	cfg := config.MustGetBaseConfig()
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
+	if cr.Spec.PodDisruptionBudget == nil {
+		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
-	return nil
+	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute == nil {
+		objsToRemove = append(objsToRemove, &gwapiv1.HTTPRoute{ObjectMeta: objMeta})
+	}
+	if cr.Spec.Ingress == nil {
+		objsToRemove = append(objsToRemove, &networkingv1.Ingress{ObjectMeta: objMeta})
+	}
+	if cr.Spec.HPA == nil {
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
+	}
+	if cfg.VPAAPIEnabled && cr.Spec.VPA == nil {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+	}
+	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+	}
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func buildScrape(cr *vmv1beta1.VMAuth, svc *corev1.Service) *vmv1beta1.VMServiceScrape {

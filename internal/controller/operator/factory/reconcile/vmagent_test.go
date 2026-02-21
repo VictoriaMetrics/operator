@@ -25,9 +25,8 @@ func TestVMAgentReconcile(t *testing.T) {
 	getVMAgent := func(fns ...func(v *vmv1beta1.VMAgent)) *vmv1beta1.VMAgent {
 		v := &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-vmagent",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-vmagent",
+				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -129,6 +128,7 @@ func TestVMAgentReconcile(t *testing.T) {
 		new: getVMAgent(),
 		predefinedObjects: []runtime.Object{
 			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Finalizers = []string{vmv1beta1.FinalizerName}
 				v.DeletionTimestamp = ptr.To(metav1.Now())
 			}),
 		},

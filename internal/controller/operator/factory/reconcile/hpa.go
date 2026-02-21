@@ -25,19 +25,19 @@ func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.Horizon
 		var existingObj v2.HorizontalPodAutoscaler
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating HPA=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get HPA=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get HPA=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))

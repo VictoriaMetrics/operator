@@ -8,6 +8,7 @@ package allure
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
 	"runtime"
@@ -83,12 +84,7 @@ func (r *result) setStatusDetails(details statusDetails) *result {
 
 func (r *result) createFromSpecReport(specReport ginkgo.SpecReport) *result {
 	r.Start = getTimestampMsFromTime(specReport.StartTime)
-	r.Stop = getTimestampMsFromTime(specReport.EndTime)
-
-	if r.Stop < r.Start { // Workaround for incorrect skipped tests execution time
-		r.Stop = r.Start
-	}
-
+	r.Stop = max(getTimestampMsFromTime(specReport.EndTime), r.Start)
 	r.Name = specReport.LeafNodeText
 	r.Description = buildDescription(specReport)
 
@@ -183,9 +179,7 @@ func createSteps(events types.SpecEvents, entries types.ReportEntries) (steps []
 					}
 				}
 
-				for k, v := range toSkip {
-					indicesToSkip[k] = v
-				}
+				maps.Copy(indicesToSkip, toSkip)
 				currentEndIndex = endIndex
 			}
 

@@ -5,6 +5,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,98 +17,83 @@ import (
 
 // OnVMAgentDelete deletes all vmagent related resources
 func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
-	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
+	if err := RemoveOrphanedDeployments(ctx, rclient, cr, nil, false); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
+	if err := RemoveOrphanedSTSs(ctx, rclient, cr, nil, false); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.DaemonSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
+	if err := RemoveOrphanedPDBs(ctx, rclient, cr, nil, false); err != nil {
 		return err
 	}
-
-	if err := RemoveOrphanedDeployments(ctx, rclient, cr, nil); err != nil {
-		return err
+	ns := cr.GetNamespace()
+	if config.IsClusterWideAccessAllowed() {
+		objMeta := metav1.ObjectMeta{
+			Name: cr.GetRBACName(),
+		}
+		objsToRemove := []client.Object{
+			&rbacv1.ClusterRoleBinding{ObjectMeta: objMeta},
+			&rbacv1.ClusterRole{ObjectMeta: objMeta},
+		}
+		if err := SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr); err != nil {
+			return err
+		}
 	}
-	if err := RemoveOrphanedSTSs(ctx, rclient, cr, nil); err != nil {
-		return err
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
 	}
-	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
+	objsToRemove := []client.Object{
+		&corev1.Service{ObjectMeta: objMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&appsv1.DaemonSet{ObjectMeta: objMeta},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+		&corev1.Secret{ObjectMeta: objMeta},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.TLSAssetsResourceKind, cr),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.RelabelConfigResourceKind, cr),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.StreamAggrConfigResourceKind, cr),
+			Namespace: ns,
+		}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetRBACName(),
+			Namespace: ns,
+		}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetRBACName(),
+			Namespace: ns,
+		}},
 	}
 	if cr.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
-			return err
-		}
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Namespace: ns,
+		}})
 	}
-	// config secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
-	}
-
-	// check secret for tls assets
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.TLSAssetsResourceKind, cr), cr.Namespace); err != nil {
-		return err
-	}
-
-	// check relabelAsset
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, build.ResourceName(build.RelabelConfigResourceKind, cr), cr.Namespace); err != nil {
-		return err
-	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, build.ResourceName(build.StreamAggrConfigResourceKind, cr), cr.Namespace); err != nil {
-		return err
-	}
-
-	// check PDB
-	if cr.Spec.PodDisruptionBudget != nil {
-		if err := finalizePDB(ctx, rclient, cr); err != nil {
-			return err
-		}
-	}
-	// remove vmagents service discovery rbac.
-	if config.IsClusterWideAccessAllowed() {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
-			return err
-		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
-			return err
-		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.GetNamespace()}}); err != nil {
-			return err
-		}
-
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.GetNamespace()}}); err != nil {
-			return err
-		}
-	} else {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
-			return err
-		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
-			return err
-		}
-	}
-
 	if cr.Spec.AdditionalScrapeConfigs != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.Spec.AdditionalScrapeConfigs.Name, cr.Namespace); err != nil {
-			return err
-		}
+		objsToRemove = append(objsToRemove, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.AdditionalScrapeConfigs.Name,
+			Namespace: ns,
+		}})
 	}
 	for _, rw := range cr.Spec.RemoteWrite {
 		if rw.UrlRelabelConfig != nil {
-			if err := removeFinalizeObjByName(ctx, rclient, &corev1.ConfigMap{}, rw.UrlRelabelConfig.Name, cr.Namespace); err != nil {
-				return err
-			}
+			objsToRemove = append(objsToRemove, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+				Name:      rw.UrlRelabelConfig.Name,
+				Namespace: ns,
+			}})
 		}
 	}
-	// remove from self.
-	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
-		return err
-	}
-	if err := deleteSA(ctx, rclient, cr); err != nil {
-		return err
-	}
-	return nil
+	objsToRemove = append(objsToRemove, cr)
+	deleteOwnerReferences := make([]bool, len(objsToRemove))
+	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
 }

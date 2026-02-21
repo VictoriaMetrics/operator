@@ -368,9 +368,7 @@ func TestServiceReconcile(t *testing.T) {
 		new:  getService(),
 		prev: getService(),
 		predefinedObjects: []runtime.Object{
-			getService(func(s *corev1.Service) {
-				s.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getService(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Service", Resource: nn},
@@ -383,7 +381,6 @@ func TestServiceReconcile(t *testing.T) {
 		prev: getService(),
 		predefinedObjects: []runtime.Object{
 			getService(func(s *corev1.Service) {
-				s.Finalizers = []string{vmv1beta1.FinalizerName}
 				s.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
 					{
 						IP: "127.0.0.1",
@@ -417,8 +414,8 @@ func TestServiceReconcile(t *testing.T) {
 		}),
 		predefinedObjects: []runtime.Object{
 			getService(func(s *corev1.Service) {
-				s.Spec.Type = corev1.ServiceTypeClusterIP
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
+				s.Spec.Type = corev1.ServiceTypeClusterIP
 			}),
 		},
 		actions: []k8stools.ClientAction{

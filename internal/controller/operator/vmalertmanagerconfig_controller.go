@@ -22,13 +22,13 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalertmanager"
@@ -60,10 +60,6 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAlertmanager") {
-		l.Info("skipping VMAlertmanagerConfig reconcile since VMAlertmanager controller is disabled")
-		return
-	}
 	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {
 		result, resultErr = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, resultErr)
@@ -129,4 +125,9 @@ func (r *VMAlertmanagerConfigReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMAlertmanagerConfigReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.Has("VMAlertmanager")
 }

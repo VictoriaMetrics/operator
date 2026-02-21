@@ -7,6 +7,8 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,76 +20,42 @@ import (
 
 // OnVMAuthDelete deletes all vmauth related resources
 func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
-	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
+	ns := cr.GetNamespace()
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
 	}
-
-	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
+	objsToRemove := []client.Object{
+		&appsv1.Deployment{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.ConfigSecretName(),
+			Namespace: ns,
+		}},
+		&networkingv1.Ingress{ObjectMeta: objMeta},
+		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
+		&rbacv1.RoleBinding{ObjectMeta: objMeta},
+		&rbacv1.Role{ObjectMeta: objMeta},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
 	if cr.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
-			return err
-		}
-	}
-
-	// check secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, cr.ConfigSecretName(), cr.Namespace); err != nil {
-		return err
-	}
-
-	// check PDB
-	if cr.Spec.PodDisruptionBudget != nil {
-		if err := finalizePDB(ctx, rclient, cr); err != nil {
-			return err
-		}
-	}
-
-	// check ingress
-	if err := removeFinalizeObjByName(ctx, rclient, &networkingv1.Ingress{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Namespace: ns,
+		}})
 	}
 	cfg := config.MustGetBaseConfig()
-	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute != nil {
-		httpRoute := &gwapiv1.HTTPRoute{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.PrefixedName(),
-				Namespace: cr.Namespace,
-			},
-		}
-		if err := removeFinalizeObjByName(ctx, rclient, httpRoute, cr.PrefixedName(), cr.Namespace); err != nil {
-			return err
-		}
-	}
-
-	// check HPA
-	if err := removeFinalizeObjByName(ctx, rclient, &autoscalingv2.HorizontalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
-	}
 	if cfg.VPAAPIEnabled {
-		if err := removeFinalizeObjByName(ctx, rclient, &vpav1.VerticalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
-			return err
-		}
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
-
-	if cfg.VPAAPIEnabled {
-		if err := removeFinalizeObjByName(ctx, rclient, &vpav1.VerticalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
-			return err
-		}
+	if cfg.GatewayAPIEnabled {
+		objsToRemove = append(objsToRemove, &gwapiv1.HTTPRoute{ObjectMeta: objMeta})
 	}
-
-	if err := deleteSA(ctx, rclient, cr); err != nil {
-		return err
-	}
-	if err := removeConfigReloaderRole(ctx, rclient, cr); err != nil {
-		return err
-	}
-	// remove from self.
-	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
-		return err
-	}
-
-	return nil
+	objsToRemove = append(objsToRemove, cr)
+	deleteOwnerReferences := make([]bool, len(objsToRemove))
+	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
 }

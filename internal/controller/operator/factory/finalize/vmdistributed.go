@@ -78,5 +78,5 @@ func OnVMDistributedDelete(ctx context.Context, rclient client.Client, cr *vmv1a
 	}
 
 	// Remove the CR
-	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
+	return removeFinalizers(ctx, rclient, []client.Object{cr}, []bool{false}, cr)
 }

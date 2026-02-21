@@ -87,14 +87,14 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn.String()))
 				if err = rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new StatefulSet=%s: %w", nsn, err)
+					return fmt.Errorf("cannot create new StatefulSet=%s: %w", nsn.String(), err)
 				}
 				updateStrategy = appsv1.RollingUpdateStatefulSetStrategyType
 				return nil
 			}
-			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
@@ -120,11 +120,11 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return nil
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
@@ -135,7 +135,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn.String(), err)
 		}
 		// check if pvcs need to resize
 		if cr.HasClaim {
@@ -171,11 +171,11 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 		}
 		if err := performRollingUpdateOnSts(ctx, rclient, newObj, opts); err != nil {
-			return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn.String(), err)
 		}
 		return nil
 	default:
-		logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on StatefulSet=%s", updateStrategy, nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on StatefulSet=%s", updateStrategy, nsn.String()))
 		if err := waitForStatefulSetReady(ctx, rclient, newObj); err != nil {
 			return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", updateStrategy, err)
 		}
@@ -253,7 +253,13 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 	if err := rclient.List(ctx, &podList, opts); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-	if err := sortStsPodsByID(podList.Items); err != nil {
+	pods := podList.Items[:0]
+	for _, p := range podList.Items {
+		if _, ok := p.Labels[podRevisionLabel]; ok {
+			pods = append(pods, p)
+		}
+	}
+	if err := sortStsPodsByID(pods); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
 	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, o.recreate)
@@ -294,10 +300,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 		var batch []corev1.Pod
 
 		// determine batch of pods to update
-		batchClose := batchStart + o.maxUnavailable
-		if batchClose > len(podsForUpdate) {
-			batchClose = len(podsForUpdate)
-		}
+		batchClose := min(batchStart+o.maxUnavailable, len(podsForUpdate))
 		batch = podsForUpdate[batchStart:batchClose]
 
 		errG, ctx := errgroup.WithContext(ctx)
@@ -374,7 +377,7 @@ func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.Names
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			return false, fmt.Errorf("cannot get pod %s: %w", nsn, err)
+			return false, fmt.Errorf("cannot get Pod=%s: %w", nsn.String(), err)
 		}
 		if !pod.DeletionTimestamp.IsZero() {
 			return false, nil

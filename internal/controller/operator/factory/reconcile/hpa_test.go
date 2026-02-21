@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -24,9 +23,8 @@ func TestHPAReconcile(t *testing.T) {
 	getHPA := func(fns ...func(h *v2.HorizontalPodAutoscaler)) *v2.HorizontalPodAutoscaler {
 		h := &v2.HorizontalPodAutoscaler{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-hpa",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-hpa",
+				Namespace: "default",
 			},
 			Spec: v2.HorizontalPodAutoscalerSpec{
 				ScaleTargetRef: v2.CrossVersionObjectReference{

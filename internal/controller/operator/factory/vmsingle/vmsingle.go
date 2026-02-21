@@ -56,7 +56,6 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 			Namespace:       cr.Namespace,
 			Labels:          labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
 			Annotations:     cr.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: *cr.Spec.Storage,
@@ -146,7 +145,6 @@ func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment,
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -582,8 +580,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	// TODO check storage for nil
 	// TODO check for stream aggr removed
 
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	svcName := cr.PrefixedName()
 	keepServices := sets.New[string](svcName)
 	keepServiceScrapes := sets.New[string]()
@@ -594,38 +590,32 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
-	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
 
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.Namespace}
-		var objects []client.Object
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
+	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
 		if config.IsClusterWideAccessAllowed() {
-			objects = []client.Object{
+			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-			}
+			)
 		} else {
-			objects = []client.Object{
+			rbacMeta.Namespace = cr.Namespace
+			objsToRemove = append(objsToRemove,
 				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.Role{ObjectMeta: rbacMeta},
-			}
-		}
-		owner := cr.AsCRDOwner()
-		for _, o := range objects {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
-				return fmt.Errorf("cannot remove %T: %w", o, err)
-			}
+			)
 		}
 	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) *build.AssetsCache {

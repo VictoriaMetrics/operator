@@ -217,7 +217,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -282,7 +281,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -345,7 +343,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -427,7 +424,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1000",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -458,7 +454,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name:            "vtinsert-test",
 					Namespace:       "default",
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 					Labels: map[string]string{
 						"app.kubernetes.io/instance":  "test",

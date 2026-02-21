@@ -410,6 +410,11 @@ func (cr *VMDistributed) Paused() bool {
 	return cr.Spec.Paused
 }
 
+// SelectorLabels returns selector labels for distributed resources
+func (cr *VMDistributed) SelectorLabels() map[string]string {
+	return nil
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributedSpec

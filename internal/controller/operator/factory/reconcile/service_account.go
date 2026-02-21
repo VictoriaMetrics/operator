@@ -24,22 +24,22 @@ func ServiceAccount(ctx context.Context, rclient client.Client, newObj, prevObj 
 		var existingObj corev1.ServiceAccount
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ServiceAccount=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get ServiceAccount=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get ServiceAccount=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
 		if !metaChanged {
 			return nil
 		}
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount=%s", nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ServiceAccount=%s", nsn.String()))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

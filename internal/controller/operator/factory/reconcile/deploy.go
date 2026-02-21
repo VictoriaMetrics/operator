@@ -32,13 +32,13 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		var existingObj appsv1.Deployment
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Deployment=%s", nsn.String()))
 				if err := rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new Deployment=%s: %w", nsn, err)
+					return fmt.Errorf("cannot create new Deployment=%s: %w", nsn.String(), err)
 				}
 				return nil
 			}
-			return fmt.Errorf("cannot get Deployment=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get Deployment=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
@@ -47,11 +47,11 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		if hasHPA {
 			spec.Replicas = existingObj.Spec.Replicas
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
@@ -62,7 +62,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Deployment %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot update Deployment=%s: %w", nsn, err)
+			return fmt.Errorf("cannot update Deployment=%s: %w", nsn.String(), err)
 		}
 		return nil
 	})
@@ -85,7 +85,7 @@ func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			return false, fmt.Errorf("cannot fetch actual Deployment=%s state: %w", nsn, err)
+			return false, fmt.Errorf("cannot fetch actual Deployment=%s state: %w", nsn.String(), err)
 		}
 		// Based on recommendations from the kubernetes documentation
 		// (https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment)
@@ -101,7 +101,7 @@ func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *
 		cond := getDeploymentCondition(existingObj.Status, appsv1.DeploymentProgressing)
 		if cond != nil && cond.Reason == "ProgressDeadlineExceeded" {
 			isErrDeadline = true
-			return true, fmt.Errorf("progress deadline exceeded for Deployment=%s", nsn)
+			return true, fmt.Errorf("progress deadline exceeded for Deployment=%s", nsn.String())
 		}
 		if *newObj.Spec.Replicas != existingObj.Status.ReadyReplicas || *newObj.Spec.Replicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
@@ -112,7 +112,7 @@ func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *
 		if isErrDeadline {
 			return err
 		}
-		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for Deployment=%s to become ready: %w", nsn, err), newObj.Namespace, labels.SelectorFromSet(newObj.Spec.Selector.MatchLabels), newObj.Spec.MinReadySeconds)
+		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for Deployment=%s to become ready: %w", nsn.String(), err), newObj.Namespace, labels.SelectorFromSet(newObj.Spec.Selector.MatchLabels), newObj.Spec.MinReadySeconds)
 	}
 	return nil
 }

@@ -42,7 +42,6 @@ func newVLogsPVC(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 			Namespace:       r.Namespace,
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 		},
 		Spec: *r.Spec.Storage,
@@ -117,7 +116,6 @@ func newVLogsDeployment(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
 			Labels:          r.FinalLabels(),
 			Annotations:     r.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: r.Spec.ReplicaCount,
@@ -311,10 +309,10 @@ func deleteVLogsPrevStateResources(ctx context.Context, rclient client.Client, c
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 	return nil

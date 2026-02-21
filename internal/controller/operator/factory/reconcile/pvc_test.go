@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -68,9 +67,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 		new:  getPVC(),
 		prev: getPVC(),
 		predefinedObjects: []runtime.Object{
-			getPVC(func(p *corev1.PersistentVolumeClaim) {
-				p.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getPVC(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},

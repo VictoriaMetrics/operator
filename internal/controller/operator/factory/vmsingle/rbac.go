@@ -111,8 +111,7 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
@@ -120,12 +119,11 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB, owner)
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
 }
 
 func buildCRB(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRoleBinding {
-	r := &rbacv1.ClusterRoleBinding{
+	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
@@ -145,17 +143,10 @@ func buildCRB(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRoleBinding {
 			Kind:     "ClusterRole",
 		},
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return r
 }
 
 func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
-	r := &rbacv1.ClusterRole{
+	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
@@ -164,13 +155,6 @@ func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
 		},
 		Rules: getClusterWideRules(cr),
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		// Kubernetes does not allow namespace-scoped resources to own cluster-scoped resources,
-		// use crd instead
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return r
 }
 
 func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {

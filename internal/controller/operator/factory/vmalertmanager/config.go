@@ -1563,7 +1563,9 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 	if len(tokenAuth) > 0 {
 		r = append(r, yaml.MapItem{Key: "authorization", Value: tokenAuth})
 	}
-
+	if httpCfg.FollowRedirects != nil {
+		r = append(r, yaml.MapItem{Key: "follow_redirects", Value: *httpCfg.FollowRedirects})
+	}
 	if httpCfg.OAuth2 != nil {
 		cfg, err := cb.cache.OAuth2ToYAML(cb.namespace, httpCfg.OAuth2)
 		if err != nil {
@@ -1571,9 +1573,43 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		}
 		r = append(r, cfg...)
 	}
+	cfg, err := cb.buildProxyConfig(&httpCfg.ProxyConfig)
+	if err != nil {
+		return nil, err
+	}
+	if len(cfg) > 0 {
+		r = append(r, cfg...)
+	}
+	return r, nil
+}
 
-	if len(httpCfg.ProxyURL) > 0 {
-		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
+func (cb *configBuilder) buildProxyConfig(proxyCfg *vmv1beta1.ProxyConfig) (yaml.MapSlice, error) {
+	var r yaml.MapSlice
+	if len(proxyCfg.ProxyURL) > 0 {
+		r = append(r, yaml.MapItem{Key: "proxy_url", Value: proxyCfg.ProxyURL})
+	}
+	if len(proxyCfg.NoProxy) > 0 {
+		r = append(r, yaml.MapItem{Key: "no_proxy", Value: proxyCfg.NoProxy})
+	}
+	if proxyCfg.ProxyFromEnvironment {
+		r = append(r, yaml.MapItem{Key: "proxy_from_environment", Value: proxyCfg.ProxyFromEnvironment})
+	}
+	if len(proxyCfg.ProxyConnectHeader) > 0 {
+		var h yaml.MapSlice
+		for k, vs := range proxyCfg.ProxyConnectHeader {
+			var secrets []string
+			for i, v := range vs {
+				secret, err := cb.cache.LoadKeyFromSecret(cb.namespace, &v)
+				if err != nil {
+					return nil, fmt.Errorf("cannot find secret for proxy_connect_header[%q][%d]: %w", k, i, err)
+				}
+				secrets = append(secrets, secret)
+			}
+			h = append(h, yaml.MapItem{Key: k, Value: secrets})
+		}
+		if len(h) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_connect_header", Value: h})
+		}
 	}
 	return r, nil
 }

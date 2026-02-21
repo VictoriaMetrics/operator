@@ -49,8 +49,7 @@ func TestCreateVLAgentClusterAccess(t *testing.T) {
 	}, []runtime.Object{
 		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "monitoring:vlagent-cluster-access-rbac-test",
-				Namespace: "default-2",
+				Name: "monitoring:vlagent-cluster-access-rbac-test",
 				Labels: map[string]string{
 					"app.kubernetes.io/name":      "vlagent",
 					"app.kubernetes.io/instance":  "rbac-test",
@@ -61,8 +60,7 @@ func TestCreateVLAgentClusterAccess(t *testing.T) {
 		},
 		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "monitoring:vlagent-cluster-access-rbac-test",
-				Namespace: "default-2",
+				Name: "monitoring:vlagent-cluster-access-rbac-test",
 				Labels: map[string]string{
 					"app.kubernetes.io/name":      "vlagent",
 					"app.kubernetes.io/instance":  "rbac-test",

@@ -17,7 +17,7 @@ import (
 
 func TestRemoveOrphanedDeployments(t *testing.T) {
 	type opts struct {
-		cr                orphanedCRD
+		cr                crObject
 		keepDeployments   map[string]struct{}
 		wantDepCount      int
 		predefinedObjects []runtime.Object
@@ -94,9 +94,6 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 						"app.kubernetes.io/instance":  "base",
 						"app.kubernetes.io/component": "monitoring",
 						"managed-by":                  "vm-operator",
-					},
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

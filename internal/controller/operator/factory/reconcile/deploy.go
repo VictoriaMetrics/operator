@@ -47,7 +47,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		if hasHPA {
 			spec.Replicas = existingObj.Spec.Replicas
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}

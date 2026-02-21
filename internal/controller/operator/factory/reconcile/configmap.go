@@ -30,7 +30,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}

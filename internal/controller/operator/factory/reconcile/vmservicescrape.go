@@ -38,7 +38,7 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, newObj, p
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,7 @@ func VMPodScrapeForCRD(ctx context.Context, rclient client.Client, newObj, prevO
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
 		if err != nil {
 			return err
 		}

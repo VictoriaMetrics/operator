@@ -365,22 +365,25 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					}
 					roleMeta := metav1.ObjectMeta{
-						Name:       "monitoring:vmagent-cluster-access-" + cr.Name,
-						Namespace:  namespace,
-						Finalizers: []string{vmv1beta1.FinalizerName},
+						Name:      "monitoring:vmagent-cluster-access-" + cr.Name,
+						Namespace: namespace,
+						Labels:    cr.FinalLabels(),
 					}
-					crole := &rbacv1.ClusterRole{ObjectMeta: roleMeta, Rules: []rbacv1.PolicyRule{
-						{APIGroups: []string{""}, Verbs: []string{"GET"}, Resources: []string{"pods"}},
-					}}
+					crole := &rbacv1.ClusterRole{
+						ObjectMeta: roleMeta,
+						Rules: []rbacv1.PolicyRule{{
+							APIGroups: []string{""},
+							Verbs:     []string{"GET"},
+							Resources: []string{"pods"},
+						}},
+					}
 					croleb := &rbacv1.ClusterRoleBinding{
 						ObjectMeta: roleMeta,
-						Subjects: []rbacv1.Subject{
-							{
-								Kind:      rbacv1.ServiceAccountKind,
-								Name:      cr.GetServiceAccountName(),
-								Namespace: cr.GetNamespace(),
-							},
-						},
+						Subjects: []rbacv1.Subject{{
+							Kind:      rbacv1.ServiceAccountKind,
+							Name:      cr.GetServiceAccountName(),
+							Namespace: cr.GetNamespace(),
+						}},
 						RoleRef: rbacv1.RoleRef{
 							APIGroup: rbacv1.GroupName,
 							Name:     cr.GetClusterRoleName(),
@@ -542,14 +545,15 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 
 			Entry("by transition into statefulMode and back", "stateful-transition",
-				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
+				&vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
 					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{URL: "http://some-vm-single:8428"},
-					},
-				},
 				},
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.StatefulMode = true },

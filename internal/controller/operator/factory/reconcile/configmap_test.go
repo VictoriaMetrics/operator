@@ -9,8 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 func TestConfigMapReconcile(t *testing.T) {
@@ -75,9 +73,8 @@ func TestConfigMapReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test",
-					Namespace:  "default",
-					Finalizers: []string{vmv1beta1.FinalizerName},
+					Name:      "test",
+					Namespace: "default",
 				},
 				Data: map[string]string{
 					"data": "test",
@@ -187,7 +184,6 @@ func TestConfigMapReconcile(t *testing.T) {
 						"key":      "value",
 						"external": "value",
 					},
-					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
 					"data": "test",

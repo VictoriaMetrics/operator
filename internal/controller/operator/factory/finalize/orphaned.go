@@ -10,19 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
-type orphanedCRD interface {
-	AsOwner() metav1.OwnerReference
-	SelectorLabels() map[string]string
-	GetNamespace() string
-}
-
 // RemoveOrphanedDeployments removes Deployments detached from given object
-func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -31,8 +24,8 @@ func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr or
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
-// RemoveOrphanedSTSs removes StatefulSets detached from given object
-func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+// RemoveOrphanedSTSs removes Deployments detached from given object
+func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -41,8 +34,17 @@ func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedC
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
 }
 
+// RemoveOrphanedConfigMaps removes ConfigMaps detached from given object
+func RemoveOrphanedConfigMaps(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
+	gvk := schema.GroupVersionKind{
+		Version: "v1",
+		Kind:    "ConfigMap",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames)
+}
+
 // RemoveOrphanedPDBs removes PDBs detached from given object
-func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1",
@@ -52,7 +54,7 @@ func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedServices removes Services detached from given object
-func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	gvk := schema.GroupVersionKind{
 		Version: "v1",
 		Kind:    "Service",
@@ -61,7 +63,7 @@ func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orpha
 }
 
 // RemoveOrphanedHPAs removes HPAs detached from given object
-func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2",
@@ -72,7 +74,7 @@ func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedVPAs removes VPAs detached from given object
-func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	cfg := config.MustGetBaseConfig()
 	if !cfg.VPAAPIEnabled {
 		return nil
@@ -86,7 +88,7 @@ func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
-func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil
 	}
@@ -100,7 +102,7 @@ func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, 
 }
 
 // RemoveOrphanedVMPodScrapes removes VMPodScrapes detached from given object
-func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr crObject, keepNames map[string]struct{}) error {
 	if build.IsControllerDisabled("VMPodScrape") {
 		return nil
 	}
@@ -114,7 +116,7 @@ func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr o
 }
 
 // removeOrphaned removes orphaned resources
-func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
+func removeOrphaned(ctx context.Context, rclient client.Client, cr crObject, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
 	var l unstructured.UnstructuredList
 	l.SetGroupVersionKind(gvk)
 	opts := client.ListOptions{
@@ -125,9 +127,10 @@ func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, 
 		return err
 	}
 	owner := cr.AsOwner()
+	selector := cr.SelectorLabels()
 	for i := range l.Items {
 		item := &l.Items[i]
-		if _, ok := keepNames[item.GetName()]; !ok && canBeRemoved(item, &owner) {
+		if _, ok := keepNames[item.GetName()]; !ok && canBeRemoved(item, selector, &owner) {
 			if err := RemoveFinalizer(ctx, rclient, item); err != nil {
 				return err
 			}
@@ -139,9 +142,18 @@ func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, 
 	return nil
 }
 
-func canBeRemoved(o client.Object, owner *metav1.OwnerReference) bool {
+func isSubset(set map[string]string, subset map[string]string) bool {
+	for k, v := range subset {
+		if sv, ok := set[k]; !ok || sv != v {
+			return false
+		}
+	}
+	return true
+}
+
+func canBeRemoved(o client.Object, selector map[string]string, owner *metav1.OwnerReference) bool {
 	if owner == nil || len(o.GetNamespace()) == 0 {
-		return slices.Contains(o.GetFinalizers(), vmv1beta1.FinalizerName)
+		return isSubset(o.GetLabels(), selector)
 	}
 	owners := o.GetOwnerReferences()
 	return slices.ContainsFunc(owners, func(r metav1.OwnerReference) bool {

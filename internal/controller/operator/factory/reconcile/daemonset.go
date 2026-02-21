@@ -43,7 +43,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 			return err
 		}
 		spec := &newObj.Spec
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}

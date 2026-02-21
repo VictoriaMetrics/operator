@@ -90,7 +90,6 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			vmCluster.ObjectMeta = metav1.ObjectMeta{
 				Name:            z.VMClusterName(cr),
 				Namespace:       cr.Namespace,
-				Finalizers:      []string{vmv1beta1.FinalizerName},
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			}
 		}
@@ -120,7 +119,6 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			vmAgent.ObjectMeta = metav1.ObjectMeta{
 				Name:            vmAgentName,
 				Namespace:       cr.Namespace,
-				Finalizers:      []string{vmv1beta1.FinalizerName},
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			}
 		}

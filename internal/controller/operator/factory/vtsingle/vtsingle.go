@@ -45,7 +45,6 @@ func newPVC(r *vmv1.VTSingle) *corev1.PersistentVolumeClaim {
 			Namespace:       r.Namespace,
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 		},
 		Spec: *r.Spec.Storage,
@@ -120,7 +119,6 @@ func newDeployment(r *vmv1.VTSingle) (*appsv1.Deployment, error) {
 			Labels:          r.FinalLabels(),
 			Annotations:     r.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: r.Spec.ReplicaCount,
@@ -310,9 +308,6 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingle) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
@@ -331,10 +326,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
+
+	owner := cr.AsOwner()
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr.SelectorLabels(), &owner)
 }

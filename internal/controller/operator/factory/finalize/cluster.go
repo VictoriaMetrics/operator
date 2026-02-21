@@ -18,35 +18,43 @@ import (
 )
 
 func OnClusterDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
-	if err := OnClusterLoadBalancerDelete(ctx, rclient, cr); err != nil {
+	if err := OnClusterLoadBalancerDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot delete cluster loadbalancer components: %w", err)
 	}
-	if err := OnInsertDelete(ctx, rclient, cr); err != nil {
+	if err := OnInsertDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot remove insert component objects: %w", err)
 	}
 
-	if err := OnSelectDelete(ctx, rclient, cr); err != nil {
+	if err := OnSelectDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot remove select component objects: %w", err)
 	}
-	if err := OnStorageDelete(ctx, rclient, cr); err != nil {
+	if err := OnStorageDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot remove storage component objects: %w", err)
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
-	if err := deleteSA(ctx, rclient, b); err != nil {
-		return err
-	}
 	ls := b.SelectorLabels()
 	delete(ls, "app.kubernetes.io/name")
 	b.SetSelectorLabels(ls)
 	if err := RemoveOrphanedServices(ctx, rclient, b, nil); err != nil {
 		return fmt.Errorf("cannot remove orphaned services: %w", err)
 	}
-	return removeFinalizeObjByName(ctx, rclient, cr, cr.GetName(), cr.GetNamespace())
+	objsToRemove := []client.Object{
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      b.GetServiceAccountName(),
+			Namespace: b.GetNamespace(),
+		}}, cr,
+	}
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 
 }
 
 // OnInsertDelete removes all objects related to insert component
-func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
+func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
+	}
+
 	ns := cr.GetNamespace()
 	objMeta := metav1.ObjectMeta{
 		Namespace: ns,
@@ -61,21 +69,20 @@ func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 	if cfg.VPAAPIEnabled {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	owner := cr.AsOwner()
-	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
-		}
+	if shouldRemove {
+		owner := cr.AsOwner()
+		return SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b.SelectorLabels(), &owner)
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
-	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
-		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
-	}
-	return nil
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 }
 
 // OnSelectDelete removes all objects related to select component
-func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
+func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
+	}
+
 	ns := cr.GetNamespace()
 	objMeta := metav1.ObjectMeta{
 		Namespace: ns,
@@ -91,21 +98,20 @@ func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 	if cfg.VPAAPIEnabled {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	owner := cr.AsOwner()
-	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
-		}
+	if shouldRemove {
+		owner := cr.AsOwner()
+		return SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b.SelectorLabels(), &owner)
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
-	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
-		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
-	}
-	return nil
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 }
 
 // OnStorageDelete removes all objects related to storage component
-func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
+func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
+	}
+
 	ns := cr.GetNamespace()
 	objMeta := metav1.ObjectMeta{
 		Namespace: ns,
@@ -120,21 +126,20 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 	if cfg.VPAAPIEnabled {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	owner := cr.AsOwner()
-	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
-		}
+	if shouldRemove {
+		owner := cr.AsOwner()
+		return SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b.SelectorLabels(), &owner)
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
-		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
-	}
-	return nil
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 }
 
 // OnClusterLoadBalancerDelete removes vmauth loadbalancer components for cluster
-func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
+func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
+		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
+	}
+
 	ns := cr.GetNamespace()
 	objMeta := metav1.ObjectMeta{
 		Namespace: ns,
@@ -145,17 +150,11 @@ func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr 
 		&corev1.Secret{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
-	owner := cr.AsOwner()
-	for _, objToRemove := range objsToRemove {
-		if err := SafeDeleteWithFinalizer(ctx, rclient, objToRemove, &owner); err != nil {
-			return fmt.Errorf("failed to remove lb object=%s: %w", objToRemove.GetObjectKind().GroupVersionKind(), err)
-		}
+	if shouldRemove {
+		owner := cr.AsOwner()
+		return SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b.SelectorLabels(), &owner)
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
-	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil); err != nil {
-		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
-	}
-	return nil
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 }
 
 // ChildCleaner cleans dependent resources for cluster CRs excluding ones

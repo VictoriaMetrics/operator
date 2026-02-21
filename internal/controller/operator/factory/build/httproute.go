@@ -37,7 +37,6 @@ func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRou
 			Labels:          lbls,
 			Annotations:     httpRoute.Annotations,
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: spec,
 	}, nil

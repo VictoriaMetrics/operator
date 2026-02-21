@@ -1849,9 +1849,9 @@ scrape_configs: []
 					Namespace: "default",
 				},
 				Spec: vmv1beta1.VMScrapeConfigSpec{
-					ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
-						{
-							Server: "some",
+					ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{{
+						Server: "some",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CAFile:     "/some/other/path",
 								CertFile:   "/some/other/cert",
@@ -1859,7 +1859,7 @@ scrape_configs: []
 								ServerName: "my-name",
 							},
 						},
-					},
+					}},
 				},
 			},
 			&corev1.ConfigMap{
@@ -2177,15 +2177,14 @@ scrape_configs: []
 				},
 			},
 		},
-	},
-	)
+	})
 	// missing refs
 	f(&vmv1beta1.VMScrapeConfig{
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMScrapeConfigSpec{
-			ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
-				{
-					Server: "http://consul.example.com",
+			ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{{
+				Server: "http://consul.example.com",
+				HTTPSDOptions: vmv1beta1.HTTPSDOptions{
 					BasicAuth: &vmv1beta1.BasicAuth{
 						Username: corev1.SecretKeySelector{
 							Key: "username",
@@ -2195,10 +2194,9 @@ scrape_configs: []
 						},
 					},
 				},
-			},
+			}},
 		},
-	},
-	)
+	})
 	commonEndpointAuthWithMissingRef := vmv1beta1.EndpointAuth{
 		BasicAuth: &vmv1beta1.BasicAuth{
 			Username: corev1.SecretKeySelector{
@@ -2219,11 +2217,9 @@ scrape_configs: []
 	f(&vmv1beta1.VMStaticScrape{
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMStaticScrapeSpec{
-			TargetEndpoints: []*vmv1beta1.TargetEndpoint{
-				{
-					EndpointAuth: commonEndpointAuthWithMissingRef,
-				},
-			},
+			TargetEndpoints: []*vmv1beta1.TargetEndpoint{{
+				EndpointAuth: commonEndpointAuthWithMissingRef,
+			}},
 		},
 	})
 	f(&vmv1beta1.VMNodeScrape{
@@ -2236,22 +2232,18 @@ scrape_configs: []
 	f(&vmv1beta1.VMPodScrape{
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMPodScrapeSpec{
-			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-				{
-					EndpointAuth: commonEndpointAuthWithMissingRef,
-				},
-			},
+			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{{
+				EndpointAuth: commonEndpointAuthWithMissingRef,
+			}},
 		},
 	})
 
 	f(&vmv1beta1.VMServiceScrape{
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMServiceScrapeSpec{
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					EndpointAuth: commonEndpointAuthWithMissingRef,
-				},
-			},
+			Endpoints: []vmv1beta1.Endpoint{{
+				EndpointAuth: commonEndpointAuthWithMissingRef,
+			}},
 		},
 	})
 
@@ -2260,11 +2252,9 @@ scrape_configs: []
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMServiceScrapeSpec{
 			ScrapeClassName: ptr.To("non-exist"),
-			Endpoints: []vmv1beta1.Endpoint{
-				{
-					Port: "9090",
-				},
-			},
+			Endpoints: []vmv1beta1.Endpoint{{
+				Port: "9090",
+			}},
 		},
 	})
 
@@ -2273,13 +2263,9 @@ scrape_configs: []
 		ObjectMeta: commonMeta,
 		Spec: vmv1beta1.VMPodScrapeSpec{
 			ScrapeClassName: ptr.To("non-exist"),
-			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
-				{
-					Port: ptr.To("9090"),
-				},
-			},
+			PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{{
+				Port: ptr.To("9090"),
+			}},
 		},
-	},
-	)
-
+	})
 }

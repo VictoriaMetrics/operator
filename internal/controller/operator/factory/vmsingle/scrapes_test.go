@@ -1717,11 +1717,13 @@ scrape_configs: []
 					ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
 						{
 							Server: "some",
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CAFile:     "/some/other/path",
-								CertFile:   "/some/other/cert",
-								KeyFile:    "/some/other/key",
-								ServerName: "my-name",
+							HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CAFile:     "/some/other/path",
+									CertFile:   "/some/other/cert",
+									KeyFile:    "/some/other/key",
+									ServerName: "my-name",
+								},
 							},
 						},
 					},
@@ -2050,11 +2052,13 @@ scrape_configs: []
 			ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
 				{
 					Server: "http://consul.example.com",
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							Key: "username",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "auth",
+					HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "auth",
+								},
 							},
 						},
 					},

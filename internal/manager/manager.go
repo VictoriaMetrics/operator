@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -223,12 +224,20 @@ func RunManager(ctx context.Context) error {
 
 	setupLog.Info("registering Components.")
 	var watchNsCacheByName map[string]cache.Config
-	if len(baseConfig.WatchNamespaces) > 0 {
+	var excludeNsField fields.Selector
+	switch {
+	case len(baseConfig.WatchNamespaces) > 0:
 		setupLog.Info("operator configured with watching for subset of namespaces, cluster wide access is disabled", "namespaces", strings.Join(baseConfig.WatchNamespaces, ","))
 		watchNsCacheByName = make(map[string]cache.Config)
 		for _, ns := range baseConfig.WatchNamespaces {
 			watchNsCacheByName[ns] = cache.Config{}
 		}
+	case len(baseConfig.ExcludeNamespaces) > 0:
+		var nsSelectors []fields.Selector
+		for _, ns := range baseConfig.ExcludeNamespaces {
+			nsSelectors = append(nsSelectors, fields.OneTermNotEqualSelector("metadata.namespace", ns))
+		}
+		excludeNsField = fields.AndSelectors(nsSelectors...)
 	}
 
 	reconcile.InitDeadlines(baseConfig.PodWaitReadyIntervalCheck, baseConfig.AppReadyTimeout, baseConfig.PodWaitReadyTimeout)
@@ -255,7 +264,8 @@ func RunManager(ctx context.Context) error {
 		LeaseDuration:           leaderElectLeaseDuration,
 		RenewDeadline:           leaderElectRenewDeadline,
 		Cache: cache.Options{
-			DefaultNamespaces: watchNsCacheByName,
+			DefaultNamespaces:    watchNsCacheByName,
+			DefaultFieldSelector: excludeNsField,
 		},
 		Client: client.Options{
 			Cache: co,

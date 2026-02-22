@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -463,9 +462,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new:  getSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(func(s *appsv1.StatefulSet) {
-				s.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getSts(),
 		},
 		actions: []string{"Get", "Get"},
 	})
@@ -493,12 +490,16 @@ func TestStatefulsetReconcile(t *testing.T) {
 		}),
 		predefinedObjects: []runtime.Object{
 			getSts(func(s *appsv1.StatefulSet) {
-				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+				s.Spec.Template.Annotations = map[string]string{
+					"new-annotation": "value",
+					"old-annotation": "value",
+				}
 			}),
 		},
 		actions: []string{"Get", "Update", "Get"},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
+			assert.Equal(t, s.Spec.Template.Annotations["old-annotation"], "value")
 		},
 	})
 

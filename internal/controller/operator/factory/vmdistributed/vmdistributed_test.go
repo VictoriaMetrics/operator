@@ -333,7 +333,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name:            d.cr.Spec.VMAuth.Name,
 					Namespace:       d.cr.Namespace,
 					OwnerReferences: []metav1.OwnerReference{d.cr.AsOwner()},
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 				},
 				Spec: d.cr.Spec.VMAuth.Spec,
 				Status: vmv1beta1.VMAuthStatus{

@@ -77,13 +77,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 	svcName := cr.PrefixedName()
 	keepServices := map[string]struct{}{
 		svcName: {},
@@ -102,10 +95,15 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
-	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+
+	owner := cr.AsOwner()
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
+	if cr.Spec.PodDisruptionBudget == nil {
+		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
-	return nil
+	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+	}
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr.SelectorLabels(), &owner)
 }

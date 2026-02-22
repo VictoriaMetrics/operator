@@ -119,7 +119,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return nil
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
@@ -234,7 +234,13 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err := rclient.List(ctx, &podList, opts); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-	if err := sortStsPodsByID(podList.Items); err != nil {
+	pods := podList.Items[:0]
+	for _, p := range podList.Items {
+		if _, ok := p.Labels[podRevisionLabel]; ok {
+			pods = append(pods, p)
+		}
+	}
+	if err := sortStsPodsByID(pods); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
 	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, podMustRecreate)
@@ -275,10 +281,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		var batch []corev1.Pod
 
 		// determine batch of pods to update
-		batchClose := batchStart + podMaxUnavailable
-		if batchClose > len(podsForUpdate) {
-			batchClose = len(podsForUpdate)
-		}
+		batchClose := min(batchStart+podMaxUnavailable, len(podsForUpdate))
 		batch = podsForUpdate[batchStart:batchClose]
 
 		errG, ctx := errgroup.WithContext(ctx)

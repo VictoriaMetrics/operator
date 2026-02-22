@@ -10,8 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
-
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 func TestDeployReconcile(t *testing.T) {
@@ -85,9 +83,7 @@ func TestDeployReconcile(t *testing.T) {
 		new:  getDeploy(),
 		prev: getDeploy(),
 		predefinedObjects: []runtime.Object{
-			getDeploy(func(d *appsv1.Deployment) {
-				d.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getDeploy(),
 		},
 		actions: []string{"Get", "Get"},
 	})
@@ -106,11 +102,18 @@ func TestDeployReconcile(t *testing.T) {
 
 	// remove template annotations
 	f(opts{
-		new:  getDeploy(),
-		prev: getDeploy(),
+		new: getDeploy(),
+		prev: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Template.Annotations = map[string]string{
+				"new-annotation": "value",
+			}
+		}),
 		predefinedObjects: []runtime.Object{
 			getDeploy(func(d *appsv1.Deployment) {
-				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+				d.Spec.Template.Annotations = map[string]string{
+					"new-annotation":  "value",
+					"old-annotations": "value",
+				}
 			}),
 		},
 		actions: []string{"Get", "Update", "Get"},

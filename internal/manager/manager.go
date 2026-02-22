@@ -89,18 +89,18 @@ var (
 	leaderElectLeaseDuration = managerFlags.Duration("leader-elect-lease-duration", 15*time.Second, "Defines the duration that non-leader candidates will wait to force acquire leadership. This is measured against time of last observed ack.")
 	leaderElectRenewDeadline = managerFlags.Duration("leader-elect-renew-deadline", 10*time.Second, "Defines the duration that the acting controlplane will retry refreshing leadership lock before giving up.")
 
-	enableWebhook       = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	webhookPort         = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
-	disableCRDOwnership = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhookCertDir      = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName     = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookCertKey      = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	tlsEnable           = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
-	tlsCertDir          = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
-	tlsCertName         = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
-	tlsCertKey          = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
-	mtlsEnable          = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
-	mtlsCAFile          = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
+	enableWebhook   = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	webhookPort     = managerFlags.Int("webhook.port", defaultWebhookPort, "port to start webhook server on")
+	_               = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhookCertDir  = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookCertKey  = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	tlsEnable       = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
+	tlsCertDir      = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertName     = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
+	tlsCertKey      = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	mtlsEnable      = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
+	mtlsCAFile      = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
 	metricsAddr                   = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
 	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
@@ -289,18 +289,6 @@ func RunManager(ctx context.Context) error {
 		return nil
 	}); err != nil {
 		return fmt.Errorf("cannot register health endpoint: %w", err)
-	}
-
-	if !*disableCRDOwnership && len(baseConfig.WatchNamespaces) == 0 {
-		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
-		if err != nil {
-			return err
-		}
-		l.Info("starting CRD ownership controller")
-		if err := vmv1beta1.Init(ctx, initC); err != nil {
-			setupLog.Error(err, "unable to init crd data")
-			return err
-		}
 	}
 
 	if *enableWebhook {

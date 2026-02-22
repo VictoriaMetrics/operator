@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
 	"path"
@@ -621,9 +622,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				// update query params if needed.
 				if len(qs) > 0 {
 					urlQ := parsedURLPrefix.Query()
-					for k, v := range qs {
-						urlQ[k] = v
-					}
+					maps.Copy(urlQ, qs)
 					parsedURLPrefix.RawQuery = urlQ.Encode()
 				}
 				urlPrefixes[idx] = parsedURLPrefix.String()
@@ -888,7 +887,6 @@ func buildUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 			Labels:          src.FinalLabels(),
 			Annotations:     src.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{src.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{},
 	}

@@ -33,7 +33,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
@@ -73,7 +73,7 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 }
 
 // ClusterRoleBinding reconciles cluster role binding object
-func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRoleBinding, owner *metav1.OwnerReference) error {
+func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRoleBinding) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
@@ -109,7 +109,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 }
 
 // ClusterRole reconciles cluster role object
-func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRole, owner *metav1.OwnerReference) error {
+func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRole) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
@@ -149,7 +149,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
 		if err != nil {
 			return err
 		}

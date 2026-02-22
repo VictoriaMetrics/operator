@@ -37,7 +37,7 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
 		if err != nil {
 			return err
 		}

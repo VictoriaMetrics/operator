@@ -5,6 +5,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -13,25 +15,33 @@ import (
 
 // OnVMAnomalyDelete deletes all anomaly related resources
 func OnVMAnomalyDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
-	}
 	if err := RemoveOrphanedSTSs(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.SecretConfigResourceKind, cr), cr.Namespace); err != nil {
+	if err := RemoveOrphanedPDBs(ctx, rclient, cr, nil); err != nil {
 		return err
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.TLSAssetsResourceKind, cr), cr.Namespace); err != nil {
-		return err
+	ns := cr.GetNamespace()
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
 	}
-	if cr.Spec.PodDisruptionBudget != nil {
-		if err := finalizePDB(ctx, rclient, cr); err != nil {
-			return err
-		}
+	objsToRemove := []client.Object{
+		&appsv1.StatefulSet{ObjectMeta: objMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.SecretConfigResourceKind, cr),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.TLSAssetsResourceKind, cr),
+			Namespace: ns,
+		}},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+		cr,
 	}
-	if err := deleteSA(ctx, rclient, cr); err != nil {
-		return err
-	}
-	return removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace)
+	return removeFinalizers(ctx, rclient, objsToRemove, false)
 }

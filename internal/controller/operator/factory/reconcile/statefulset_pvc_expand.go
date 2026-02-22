@@ -134,7 +134,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		prevMeta = &prevObj.ObjectMeta
 	}
 	direction := newSize.Cmp(*existingSize)
-	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner)
+	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner, true)
 	if err != nil {
 		return false, err
 	}

@@ -136,7 +136,6 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -166,8 +165,6 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	keepPodScrapes := make(map[string]struct{})
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		keepPodScrapes[cr.PrefixedName()] = struct{}{}
@@ -175,12 +172,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
 		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
+
+	owner := cr.AsOwner()
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr.SelectorLabels(), &owner)
 }
 
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {

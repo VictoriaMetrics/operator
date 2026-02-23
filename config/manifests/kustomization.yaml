@@ -28,3 +28,8 @@ patches:
     apiVersion: rbac.authorization.k8s.io/v1
     metadata:
       name: vmagent
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: manager
+  newName: docker.io/victoriametrics/operator

@@ -307,6 +307,13 @@ spec:
       kind: VMCluster
       name: vmclusters.operator.victoriametrics.com
       specDescriptors:
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: requestsLoadBalancer.spec.configReloaderResources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: ReplicaCount is the expected size of the Application.
         displayName: Number of pods
         path: requestsLoadBalancer.spec.replicaCount
@@ -356,6 +363,37 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
+    - description: VMDistributed is progressively rolling out updates to multiple
+        zone components.
+      displayName: VMDistributed
+      kind: VMDistributed
+      name: vmdistributed.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: zoneCommon.vmagent.spec.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: zoneCommon.vmagent.spec.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the Application.
+        displayName: Number of pods
+        path: zones[0].vmagent.spec.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: |-
+          Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: zones[0].vmagent.spec.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1alpha1
     - description: |-
         VMNodeScrape defines discovery for targets placed on kubernetes nodes,
         usually its node-exporters and other host services.

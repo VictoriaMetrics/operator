@@ -390,6 +390,156 @@ server:
 `,
 	})
 
+	// prophet model with scale and args fields
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  prophet_model:
+    class: 'prophet'
+    queries: ['test_query']
+    scale: [0.5, 1.5]
+    args:
+      changepoint_prior_scale: 0.05
+      seasonality_mode: multiplicative
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_model:
+    class: prophet
+    queries:
+    - test_query
+    scale:
+    - 0.5
+    - 1.5
+    args:
+      changepoint_prior_scale: 0.05
+      seasonality_mode: multiplicative
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+`,
+	})
+
+	// online quantile model with scale field
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  quantile_model:
+    class: 'quantile_online'
+    queries: ['test_query']
+    scale: [0.5, 1.5]
+    min_subseason: hourly
+    decay: 0.5
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  quantile_model:
+    class: quantile_online
+    queries:
+    - test_query
+    scale:
+    - 0.5
+    - 1.5
+    decay: 0.5
+    min_subseason: hourly
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+`,
+	})
+
 	// server section validation error - maxConcurrentTasks out of range
 	f(opts{
 		cr: &vmv1.VMAnomaly{

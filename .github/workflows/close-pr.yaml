@@ -13,6 +13,7 @@ on:
         options:
           - k8s-operatorhub/community-operators
           - redhat-openshift-ecosystem/community-operators-prod
+          - redhat-openshift-ecosystem/certified-operators
       prNumber:
         description: PR number to close
         required: true

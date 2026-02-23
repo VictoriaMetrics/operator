@@ -28,3 +28,22 @@ patches:
     apiVersion: rbac.authorization.k8s.io/v1
     metadata:
       name: vmagent
+- patch: |-
+    $patch: delete
+    kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
+    metadata:
+      name: allow-metrics-traffic
+      namespace: system
+- patch: |-
+    $patch: delete
+    kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
+    metadata:
+      name: allow-webhook-traffic
+      namespace: system
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: manager
+  newName: docker.io/victoriametrics/operator

@@ -98,14 +98,15 @@ jobs:
           TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
           LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
+          sudo apt update
+          sudo apt install -y libgpgme-dev
           make lint
           make manifests
           make api-gen
           make docs
+          make olm
           # check for uncommited changes to crds, docs or API
           git diff --exit-code
-          sudo apt update
-          sudo apt install -y libgpgme-dev
           make test
           TAG=${TAG} make test-e2e
       - name: Publish Test Report

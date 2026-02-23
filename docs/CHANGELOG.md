@@ -16,6 +16,8 @@ aliases:
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026
 
+SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.7. See [the list of issues addressed in Go1.25.7](https://github.com/golang/go/issues?q=milestone%3AGo1.25.7+label%3ACherryPickApproved).)
+
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration marshalling for [Prophet model](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet). Previously, using Prophet model would lead to panic during configuration marshalling.
 
 

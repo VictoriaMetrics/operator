@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.68.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.0)
+**Release date:** 23 February 2026
+
 **Update note 1**: deprecated VMProbe's `spec.targets.ingress`. Use `spec.targets.kubernetes` slice instead. Please check [example of VMProbe with Ingress discovery](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe-k8s.yaml). This field will be removed in v0.71.0.
 
 **Update note 2**: deprecated VMProbe's `spec.targets.staticConfig`. Use `spec.targets.static` instead. Please check [example of VMProbe with static targets](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe.yaml). This field will be removed in v0.71.0.

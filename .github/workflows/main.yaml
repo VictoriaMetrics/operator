@@ -102,6 +102,7 @@ jobs:
           make manifests
           make api-gen
           make docs
+          make olm
           # check for uncommited changes to crds, docs or API
           git diff --exit-code
           sudo apt update

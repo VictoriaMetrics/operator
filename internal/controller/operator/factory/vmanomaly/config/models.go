@@ -236,9 +236,9 @@ type prophetModel struct {
 	commonModelParams     `yaml:",inline"`
 	Seasonalities         *prophetModelSeasonality `yaml:"seasonality,omitempty"`
 	TZSeasonalities       *prophetModelSeasonality `yaml:"tz_seasonality,omitempty"`
-	Scale                 float64                  `yaml:"scale"`
 	TZAware               bool                     `yaml:"tz_aware,omitempty"`
 	TZUseCyclicalEncoding bool                     `yaml:"tz_use_cyclical_encoding,omitempty"`
+	Args                  map[string]any           `yaml:"args,omitempty"`
 }
 
 func (m *prophetModel) validate() error {

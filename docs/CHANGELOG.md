@@ -13,6 +13,12 @@ aliases:
 
 ## tip
 
+## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
+**Release date:** 23 February 2026
+
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration marshalling for [Prophet model](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet). Previously, using Prophet model would lead to panic during configuration marshalling.
+
+
 ## [v0.68.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.0)
 **Release date:** 23 February 2026
 

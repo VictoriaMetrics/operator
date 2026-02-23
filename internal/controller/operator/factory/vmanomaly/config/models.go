@@ -196,7 +196,6 @@ type onlineQuantileModel struct {
 	MinSubseason      string    `yaml:"min_subseason"`
 	UseTransform      bool      `yaml:"use_transform,omitempty"`
 	GlobalSmoothing   float64   `yaml:"global_smooth,omitempty"`
-	Scale             float64   `yaml:"scale,omitempty"`
 	SeasonStartsFrom  time.Time `yaml:"season_starts_from,omitempty"`
 	MinSamplesSeen    int       `yaml:"min_n_samples_seen,omitempty"`
 	Compression       int       `yaml:"compression,omitempty"`
@@ -236,9 +235,9 @@ type prophetModel struct {
 	commonModelParams     `yaml:",inline"`
 	Seasonalities         *prophetModelSeasonality `yaml:"seasonality,omitempty"`
 	TZSeasonalities       *prophetModelSeasonality `yaml:"tz_seasonality,omitempty"`
-	Scale                 float64                  `yaml:"scale"`
 	TZAware               bool                     `yaml:"tz_aware,omitempty"`
 	TZUseCyclicalEncoding bool                     `yaml:"tz_use_cyclical_encoding,omitempty"`
+	Args                  map[string]any           `yaml:"args,omitempty"`
 }
 
 func (m *prophetModel) validate() error {

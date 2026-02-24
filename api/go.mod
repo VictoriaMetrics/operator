@@ -8,7 +8,7 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.132.0
 	github.com/onsi/ginkgo/v2 v2.28.0
 	github.com/onsi/gomega v1.39.1
-	github.com/prometheus/alertmanager v0.31.0
+	github.com/prometheus/alertmanager v0.31.1
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.34.1

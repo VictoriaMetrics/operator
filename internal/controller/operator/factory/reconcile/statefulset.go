@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -477,32 +478,32 @@ func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, re
 // VolumeMounts validation is missing:
 // https://github.com/kubernetes/kubernetes/blob/b15dfce6cbd0d5bbbcd6172cf7e2082f4d31055e/pkg/apis/apps/validation/validation.go#L66
 func validateStatefulSet(sts *appsv1.StatefulSet) error {
-	volumeNames := make(map[string]struct{}, len(sts.Spec.Template.Spec.Volumes))
+	volumeNames := sets.New[string]()
 	var joinedNames string
 	for _, vl := range sts.Spec.Template.Spec.Volumes {
-		if _, ok := volumeNames[vl.Name]; ok {
+		if volumeNames.Has(vl.Name) {
 			return fmt.Errorf("duplicate Volume.Name=%s", vl.Name)
 		}
-		volumeNames[vl.Name] = struct{}{}
+		volumeNames.Insert(vl.Name)
 		joinedNames += vl.Name + ","
 	}
 	for _, vct := range sts.Spec.VolumeClaimTemplates {
-		if _, ok := volumeNames[vct.Name]; ok {
+		if volumeNames.Has(vct.Name) {
 			return fmt.Errorf("duplicate VolumeClaimTemplate.Name=%s", vct.Name)
 		}
-		volumeNames[vct.Name] = struct{}{}
+		volumeNames.Insert(vct.Name)
 		joinedNames += vct.Name + ","
 	}
 	for _, cnt := range sts.Spec.Template.Spec.Containers {
 		for _, vm := range cnt.VolumeMounts {
-			if _, ok := volumeNames[vm.Name]; !ok {
+			if !volumeNames.Has(vm.Name) {
 				return fmt.Errorf("cannot find volumeMount.name=%s link for container=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
 			}
 		}
 	}
 	for _, cnt := range sts.Spec.Template.Spec.InitContainers {
 		for _, vm := range cnt.VolumeMounts {
-			if _, ok := volumeNames[vm.Name]; !ok {
+			if !volumeNames.Has(vm.Name) {
 				return fmt.Errorf("cannot find volumeMount.name=%s link for initContainer=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
 			}
 		}

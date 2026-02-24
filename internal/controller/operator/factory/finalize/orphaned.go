@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -22,7 +23,7 @@ type orphanedCRD interface {
 }
 
 // RemoveOrphanedDeployments removes Deployments detached from given object
-func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -32,7 +33,7 @@ func RemoveOrphanedDeployments(ctx context.Context, rclient client.Client, cr or
 }
 
 // RemoveOrphanedSTSs removes StatefulSets detached from given object
-func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -42,7 +43,7 @@ func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedPDBs removes PDBs detached from given object
-func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1",
@@ -52,7 +53,7 @@ func RemoveOrphanedPDBs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedServices removes Services detached from given object
-func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	gvk := schema.GroupVersionKind{
 		Version: "v1",
 		Kind:    "Service",
@@ -61,7 +62,7 @@ func RemoveOrphanedServices(ctx context.Context, rclient client.Client, cr orpha
 }
 
 // RemoveOrphanedHPAs removes HPAs detached from given object
-func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	gvk := schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2",
@@ -72,7 +73,7 @@ func RemoveOrphanedHPAs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedVPAs removes VPAs detached from given object
-func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	cfg := config.MustGetBaseConfig()
 	if !cfg.VPAAPIEnabled {
 		return nil
@@ -86,7 +87,7 @@ func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr orphanedC
 }
 
 // RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
-func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil
 	}
@@ -100,7 +101,7 @@ func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, 
 }
 
 // RemoveOrphanedVMPodScrapes removes VMPodScrapes detached from given object
-func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames map[string]struct{}) error {
+func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr orphanedCRD, keepNames sets.Set[string]) error {
 	if build.IsControllerDisabled("VMPodScrape") {
 		return nil
 	}
@@ -114,7 +115,7 @@ func RemoveOrphanedVMPodScrapes(ctx context.Context, rclient client.Client, cr o
 }
 
 // removeOrphaned removes orphaned resources
-func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames map[string]struct{}) error {
+func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, gvk schema.GroupVersionKind, keepNames sets.Set[string]) error {
 	var l unstructured.UnstructuredList
 	l.SetGroupVersionKind(gvk)
 	opts := client.ListOptions{
@@ -127,7 +128,7 @@ func removeOrphaned(ctx context.Context, rclient client.Client, cr orphanedCRD, 
 	owner := cr.AsOwner()
 	for i := range l.Items {
 		item := &l.Items[i]
-		if _, ok := keepNames[item.GetName()]; !ok && canBeRemoved(item, &owner) {
+		if !keepNames.Has(item.GetName()) && canBeRemoved(item, &owner) {
 			if err := RemoveFinalizer(ctx, rclient, item); err != nil {
 				return err
 			}

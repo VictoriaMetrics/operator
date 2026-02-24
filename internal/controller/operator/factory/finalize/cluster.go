@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -161,47 +162,47 @@ func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr 
 // ChildCleaner cleans dependent resources for cluster CRs excluding ones
 // which are listed in cleaner maps
 type ChildCleaner struct {
-	pdbs     map[string]struct{}
-	hpas     map[string]struct{}
-	vpas     map[string]struct{}
-	services map[string]struct{}
-	scrapes  map[string]struct{}
+	pdbs     sets.Set[string]
+	hpas     sets.Set[string]
+	vpas     sets.Set[string]
+	services sets.Set[string]
+	scrapes  sets.Set[string]
 }
 
 // NewChildCleaner initializes ChildCleaner
 func NewChildCleaner() *ChildCleaner {
 	return &ChildCleaner{
-		pdbs:     make(map[string]struct{}),
-		hpas:     make(map[string]struct{}),
-		vpas:     make(map[string]struct{}),
-		services: make(map[string]struct{}),
-		scrapes:  make(map[string]struct{}),
+		pdbs:     sets.New[string](),
+		hpas:     sets.New[string](),
+		vpas:     sets.New[string](),
+		services: sets.New[string](),
+		scrapes:  sets.New[string](),
 	}
 }
 
 // KeepPDB adds given PodDisruptionBudget's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepPDB(v string) {
-	cc.pdbs[v] = struct{}{}
+	cc.pdbs.Insert(v)
 }
 
 // KeepHPA adds given HorizontalPodAutoscaler's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepHPA(v string) {
-	cc.hpas[v] = struct{}{}
+	cc.hpas.Insert(v)
 }
 
 // KeepVPA adds given VerticalPodAutoscaler's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepVPA(v string) {
-	cc.vpas[v] = struct{}{}
+	cc.vpas.Insert(v)
 }
 
 // KeepService adds given HorizontalPodAutoscaler's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepService(v string) {
-	cc.services[v] = struct{}{}
+	cc.services.Insert(v)
 }
 
 // KeepScrape adds given VMServiceScrape's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepScrape(v string) {
-	cc.scrapes[v] = struct{}{}
+	cc.scrapes.Insert(v)
 }
 
 // RemoveOrphaned removes cr dependent resources excluding ones, which are defined in cleaner's maps

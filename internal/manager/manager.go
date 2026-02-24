@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -498,19 +499,18 @@ var controllersByName = map[string]crdController{
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {
-	var disabledControllerNames map[string]struct{}
+	disabledControllerNames := sets.New[string]()
 	if len(*disableControllerForCRD) > 0 {
-		disabledControllerNames = make(map[string]struct{})
 		names := strings.Split(*disableControllerForCRD, ",")
 		for _, cn := range names {
 			if _, ok := controllersByName[cn]; !ok {
 				return fmt.Errorf("bad value=%q for flag=controller.disableReconcileFor. Expected name of reconcile controller", cn)
 			}
-			disabledControllerNames[cn] = struct{}{}
+			disabledControllerNames.Insert(cn)
 		}
 	}
 	for name, ct := range controllersByName {
-		if _, ok := disabledControllerNames[name]; ok {
+		if disabledControllerNames.Has(name) {
 			l.Info("controller disabled by provided flag", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
 			continue
 		}

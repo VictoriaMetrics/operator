@@ -17,7 +17,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -132,7 +132,7 @@ func init() {
 	utilruntime.Must(vmv1beta1.AddToScheme(scheme))
 	utilruntime.Must(vmv1.AddToScheme(scheme))
 	utilruntime.Must(metav1.AddToScheme(scheme))
-	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(promv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(promv1.AddToScheme(scheme))
 	utilruntime.Must(gwapiv1.Install(scheme))
 	utilruntime.Must(vpav1.AddToScheme(scheme))

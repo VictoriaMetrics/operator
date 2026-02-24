@@ -37,7 +37,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 						Months: []promv1alpha1.MonthRange{"1:4"},
 					}},
 				}},
-				Route: &promv1alpha1.Route{Receiver: "webhook", GroupInterval: "1min"},
+				Route: &promv1alpha1.Route{Receiver: "webhook", GroupInterval: ptr.To(promv1.NonEmptyDuration("1min"))},
 				Receivers: []promv1alpha1.Receiver{
 					{
 						Name:           "webhook",
@@ -110,7 +110,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					Username: corev1.SecretKeySelector{Key: "username"},
 					Password: corev1.SecretKeySelector{Key: "password"},
 				},
-				ScrapeInterval: promv1.DurationPointer("5m"),
+				ScrapeInterval: ptr.To(promv1.Duration("5m")),
 				MetricsPath:    ptr.To("/test"),
 				ProxyConfig: promv1.ProxyConfig{
 					ProxyURL: ptr.To("http://proxy.com"),
@@ -383,8 +383,8 @@ func TestConvertScrapeConfig(t *testing.T) {
 	f(opts{
 		scrapeConfig: &promv1alpha1.ScrapeConfig{
 			Spec: promv1alpha1.ScrapeConfigSpec{
-				ScrapeInterval: promv1.DurationPointer("20s"),
-				ScrapeTimeout:  promv1.DurationPointer("19s"),
+				ScrapeInterval: ptr.To(promv1.Duration("20s")),
+				ScrapeTimeout:  ptr.To(promv1.Duration("19s")),
 				NomadSDConfigs: []promv1alpha1.NomadSDConfig{
 					{
 						Server:     "https://nomad.example.com:4646",

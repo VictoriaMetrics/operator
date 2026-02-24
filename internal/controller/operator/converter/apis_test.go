@@ -31,9 +31,11 @@ func TestConvertTlsConfig(t *testing.T) {
 	// replace prom secret path
 	o := opts{
 		ptc: &promv1.TLSConfig{
-			CAFile:   "/etc/prom_add/ca",
-			CertFile: "/etc/prometheus/secrets/cert.crt",
-			KeyFile:  "/etc/prometheus/configmaps/key.pem",
+			TLSFilesConfig: promv1.TLSFilesConfig{
+				CAFile:   "/etc/prom_add/ca",
+				CertFile: "/etc/prometheus/secrets/cert.crt",
+				KeyFile:  "/etc/prometheus/configmaps/key.pem",
+			},
 		},
 		want: &vmv1beta1.TLSConfig{
 			CAFile:   "/etc/prom_add/ca",
@@ -46,9 +48,11 @@ func TestConvertTlsConfig(t *testing.T) {
 	// with server name and insecure
 	o = opts{
 		ptc: &promv1.TLSConfig{
-			CAFile:        "/etc/prom_add/ca",
-			CertFile:      "/etc/prometheus/secrets/cert.crt",
-			KeyFile:       "/etc/prometheus/configmaps/key.pem",
+			TLSFilesConfig: promv1.TLSFilesConfig{
+				CAFile:   "/etc/prom_add/ca",
+				CertFile: "/etc/prometheus/secrets/cert.crt",
+				KeyFile:  "/etc/prometheus/configmaps/key.pem",
+			},
 			SafeTLSConfig: promv1.SafeTLSConfig{ServerName: ptr.To("some-hostname"), InsecureSkipVerify: ptr.To(true)},
 		},
 		want: &vmv1beta1.TLSConfig{
@@ -246,12 +250,16 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with partial tls config
 	o := opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			HTTPConfig: promv1.HTTPConfig{
-				BearerTokenSecret: &corev1.SecretKeySelector{},
-				TLSConfig: &promv1.SafeTLSConfig{
-					CA: promv1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
+				HTTPConfig: promv1.HTTPConfig{
+					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
+						BearerTokenSecret: &corev1.SecretKeySelector{},
+					},
+					TLSConfig: &promv1.SafeTLSConfig{
+						CA: promv1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -274,14 +282,18 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with tls config
 	o = opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			HTTPConfig: promv1.HTTPConfig{
-				BearerTokenSecret: &corev1.SecretKeySelector{},
-				TLSConfig: &promv1.SafeTLSConfig{
-					InsecureSkipVerify: ptr.To(true),
-					ServerName:         ptr.To("some-srv"),
-					CA: promv1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
+				HTTPConfig: promv1.HTTPConfig{
+					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
+						BearerTokenSecret: &corev1.SecretKeySelector{},
+					},
+					TLSConfig: &promv1.SafeTLSConfig{
+						InsecureSkipVerify: ptr.To(true),
+						ServerName:         ptr.To("some-srv"),
+						CA: promv1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -306,11 +318,15 @@ func TestConvertPodEndpoints(t *testing.T) {
 	// with basic auth and bearer
 	o = opts{
 		pe: []promv1.PodMetricsEndpoint{{
-			HTTPConfig: promv1.HTTPConfig{
-				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
-				BasicAuth: &promv1.BasicAuth{
-					Username: corev1.SecretKeySelector{Key: "username"},
-					Password: corev1.SecretKeySelector{Key: "password"},
+			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
+				HTTPConfig: promv1.HTTPConfig{
+					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
+						BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+						BasicAuth: &promv1.BasicAuth{
+							Username: corev1.SecretKeySelector{Key: "username"},
+							Password: corev1.SecretKeySelector{Key: "password"},
+						},
+					},
 				},
 			},
 		}},
@@ -480,12 +496,12 @@ func TestConvertPromRule(t *testing.T) {
 					Labels: map[string]string{
 						"group-name-1": "group-value-1",
 					},
-					Interval:    promv1.DurationPointer("1m"),
-					QueryOffset: promv1.DurationPointer("10m"),
+					Interval:    ptr.To(promv1.Duration("1m")),
+					QueryOffset: ptr.To(promv1.Duration("10m")),
 					Rules: []promv1.Rule{{
 						Alert:         "target_failed",
 						Expr:          intstr.FromString("valid_target > 0"),
-						For:           promv1.DurationPointer("11m"),
+						For:           ptr.To(promv1.Duration("11m")),
 						KeepFiringFor: ptr.To(promv1.NonEmptyDuration("9m")),
 						Labels: map[string]string{
 							"rule-label-name": "rule-label-value",

@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +36,7 @@ var (
 					Name:      "e2e-test-scrapeconfig",
 				},
 				Spec: promv1alpha1.ScrapeConfigSpec{
-					Scheme: ptr.To("HTTPS"),
+					Scheme: ptr.To(promv1.Scheme("HTTPS")),
 					StaticConfigs: []promv1alpha1.StaticConfig{
 						{
 
@@ -139,22 +139,22 @@ var (
 		},
 		{
 			name: "ServiceMonitor",
-			source: &monitoringv1.ServiceMonitor{
+			source: &promv1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-servicemonitor",
 				},
-				Spec: monitoringv1.ServiceMonitorSpec{
-					Endpoints: []monitoringv1.Endpoint{
+				Spec: promv1.ServiceMonitorSpec{
+					Endpoints: []promv1.Endpoint{
 						{
 							Port: "8081",
-							RelabelConfigs: []monitoringv1.RelabelConfig{
+							RelabelConfigs: []promv1.RelabelConfig{
 								{
 									Action: "keep",
 								},
 								{
 									Action:       "drop",
-									SourceLabels: []monitoringv1.LabelName{"__address__"},
+									SourceLabels: []promv1.LabelName{"__address__"},
 								},
 							},
 						},
@@ -184,13 +184,13 @@ var (
 		},
 		{
 			name: "PodMonitor",
-			source: &monitoringv1.PodMonitor{
+			source: &promv1.PodMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-podmonitor",
 				},
-				Spec: monitoringv1.PodMonitorSpec{
-					PodMetricsEndpoints: []monitoringv1.PodMetricsEndpoint{
+				Spec: promv1.PodMonitorSpec{
+					PodMetricsEndpoints: []promv1.PodMetricsEndpoint{
 						{
 							Port: ptr.To("8081"),
 						},
@@ -217,16 +217,16 @@ var (
 		},
 		{
 			name: "PrometheusRule",
-			source: &monitoringv1.PrometheusRule{
+			source: &promv1.PrometheusRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-prometheusrule",
 				},
-				Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{
+				Spec: promv1.PrometheusRuleSpec{
+					Groups: []promv1.RuleGroup{
 						{
 							Name: "groupName",
-							Rules: []monitoringv1.Rule{
+							Rules: []promv1.Rule{
 								{
 									Expr:   intstr.FromString("up{job=\"job_name\"}"),
 									Record: "job_name_up",
@@ -263,13 +263,13 @@ var (
 		},
 		{
 			name: "Probe",
-			source: &monitoringv1.Probe{
+			source: &promv1.Probe{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-probe",
 				},
-				Spec: monitoringv1.ProbeSpec{
-					ProberSpec: monitoringv1.ProberSpec{
+				Spec: promv1.ProbeSpec{
+					ProberSpec: promv1.ProberSpec{
 						URL: "http://example.com/probe",
 					},
 				},

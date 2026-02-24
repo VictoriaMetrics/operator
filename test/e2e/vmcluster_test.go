@@ -19,6 +19,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmcluster"
 )
 
 //nolint:dupl,lll
@@ -44,6 +45,76 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Name:      nsn.Name,
 				Namespace: namespace,
 			}, &vmv1beta1.VMCluster{})
+		})
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const attempts = 3
+			nsn.Name = "vmcluster-idempotent"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			var vmStorageSTS appsv1.StatefulSet
+			storageSTSName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+			Expect(k8sClient.Get(ctx, storageSTSName, &vmStorageSTS)).ToNot(HaveOccurred())
+			storageSTSRV := vmStorageSTS.ResourceVersion
+
+			var vmSelectSTS appsv1.StatefulSet
+			selectSTSName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
+			Expect(k8sClient.Get(ctx, selectSTSName, &vmSelectSTS)).ToNot(HaveOccurred())
+			selectSTSRV := vmSelectSTS.ResourceVersion
+
+			var vmInsertDep appsv1.Deployment
+			insertDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
+			Expect(k8sClient.Get(ctx, insertDepName, &vmInsertDep)).ToNot(HaveOccurred())
+			insertDepRV := vmInsertDep.ResourceVersion
+
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1beta1.VMCluster
+				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+				latestCR.Kind = "VMCluster"
+				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmcluster.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
+			}
+
+			var afterVMStorageSTS appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, storageSTSName, &afterVMStorageSTS)).ToNot(HaveOccurred())
+			Expect(afterVMStorageSTS.ResourceVersion).To(Equal(storageSTSRV), "VMStorage StatefulSet resource version should not change")
+
+			var afterVMSelectSTS appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, selectSTSName, &afterVMSelectSTS)).ToNot(HaveOccurred())
+			Expect(afterVMSelectSTS.ResourceVersion).To(Equal(selectSTSRV), "VMSelect StatefulSet resource version should not change")
+
+			var afterVMInsertDep appsv1.Deployment
+			Expect(k8sClient.Get(ctx, insertDepName, &afterVMInsertDep)).ToNot(HaveOccurred())
+			Expect(afterVMInsertDep.ResourceVersion).To(Equal(insertDepRV), "VMInsert Deployment resource version should not change")
 		})
 
 		DescribeTable("should create vmcluster", func(name string, cr *vmv1beta1.VMCluster, verify func(cr *vmv1beta1.VMCluster)) {

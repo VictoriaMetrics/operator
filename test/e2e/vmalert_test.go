@@ -15,6 +15,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalert"
 )
 
 //nolint:dupl
@@ -37,6 +38,52 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlert{})
 		})
 		tlsSecretName := "vmalert-remote-tls"
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const attempts = 3
+			nsn.Name = "vmalert-idempotent"
+			cr := &vmv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMAlertSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-datasource-url:8428",
+					},
+					Notifier: &vmv1beta1.VMAlertNotifierSpec{
+						URL: "http://alert-manager-url:9093",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			var alertDep appsv1.Deployment
+			alertDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+			Expect(k8sClient.Get(ctx, alertDepName, &alertDep)).ToNot(HaveOccurred())
+			alertDepRV := alertDep.ResourceVersion
+
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1beta1.VMAlert
+				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+				latestCR.Kind = "VMAlert"
+				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmalert.CreateOrUpdate(ctx, &latestCR, k8sClient, []string{})).ToNot(HaveOccurred())
+			}
+
+			var afterAlertDep appsv1.Deployment
+			Expect(k8sClient.Get(ctx, alertDepName, &afterAlertDep)).ToNot(HaveOccurred())
+			Expect(afterAlertDep.ResourceVersion).To(Equal(alertDepRV), "VMAlert Deployment resource version should not change")
+		})
+
 		DescribeTable("should create vmalert",
 			func(name string, cr *vmv1beta1.VMAlert, setup func(), verify func(*vmv1beta1.VMAlert)) {
 

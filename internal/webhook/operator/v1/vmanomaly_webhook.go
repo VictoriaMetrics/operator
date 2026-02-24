@@ -19,11 +19,8 @@ package v1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -31,7 +28,7 @@ import (
 
 // SetupVMAnomalyWebhookWithManager registers the webhook for VMAnomaly in the manager.
 func SetupVMAnomalyWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&vmv1.VMAnomaly{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1.VMAnomaly{}).
 		WithValidator(&VMAnomalyCustomValidator{}).
 		Complete()
 }
@@ -39,39 +36,31 @@ func SetupVMAnomalyWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vmanomaly,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmanomalies,verbs=create;update,versions=v1,name=vvmanomaly-v1.kb.io,admissionReviewVersions=v1
 type VMAnomalyCustomValidator struct{}
 
-var _ webhook.CustomValidator = &VMAnomalyCustomValidator{}
+var _ admission.Validator[*vmv1.VMAnomaly] = &VMAnomalyCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
-func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1.VMAnomaly)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1.VMAnomaly) (admission.Warnings, error) {
+	if obj.Spec.ParsingError != "" {
+		return nil, errors.New(obj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
-func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1.VMAnomaly)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *vmv1.VMAnomaly) (admission.Warnings, error) {
+	if newObj.Spec.ParsingError != "" {
+		return nil, errors.New(newObj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
-func (v *VMAnomalyCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (v *VMAnomalyCustomValidator) ValidateDelete(_ context.Context, _ *vmv1.VMAnomaly) (admission.Warnings, error) {
 	return nil, nil
 }

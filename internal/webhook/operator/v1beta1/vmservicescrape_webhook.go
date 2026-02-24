@@ -19,9 +19,7 @@ package v1beta1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -31,8 +29,7 @@ import (
 
 // SetupVMServiceScrapeWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMServiceScrapeWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1beta1.VMServiceScrape{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1beta1.VMServiceScrape{}).
 		WithValidator(&VMServiceScrapeCustomValidator{}).
 		Complete()
 }
@@ -40,45 +37,37 @@ func SetupVMServiceScrapeWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmservicescrape,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=create;update,versions=v1beta1,name=vvmservicescrape-v1beta1.kb.io,admissionReviewVersions=v1
 type VMServiceScrapeCustomValidator struct{}
 
-var _ admission.CustomValidator = &VMServiceScrapeCustomValidator{}
+var _ admission.Validator[*vmv1beta1.VMServiceScrape] = &VMServiceScrapeCustomValidator{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (*VMServiceScrapeCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1beta1.VMServiceScrape)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (*VMServiceScrapeCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1beta1.VMServiceScrape) (admission.Warnings, error) {
+	if obj.Spec.ParsingError != "" {
+		return nil, errors.New(obj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
-	if r.Spec.DiscoveryRole == "endpointslices" {
+	if obj.Spec.DiscoveryRole == "endpointslices" {
 		logger.WithContext(ctx).Info("deprecated discoverRole value `endpointslices`, use `endpointslice` instead.")
 	}
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (*VMServiceScrapeCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1beta1.VMServiceScrape)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (*VMServiceScrapeCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMServiceScrape) (admission.Warnings, error) {
+	if newObj.Spec.ParsingError != "" {
+		return nil, errors.New(newObj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
-	if r.Spec.DiscoveryRole == "endpointslices" {
+	if newObj.Spec.DiscoveryRole == "endpointslices" {
 		logger.WithContext(ctx).Info("deprecated discoverRole value `endpointslices`, use `endpointslice` instead.")
 	}
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (*VMServiceScrapeCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (*VMServiceScrapeCustomValidator) ValidateDelete(_ context.Context, _ *vmv1beta1.VMServiceScrape) (admission.Warnings, error) {
 	return nil, nil
 }

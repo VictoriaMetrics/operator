@@ -19,9 +19,7 @@ package v1beta1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -30,8 +28,7 @@ import (
 
 // SetupVMStaticScrapeWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMStaticScrapeWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1beta1.VMStaticScrape{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1beta1.VMStaticScrape{}).
 		WithValidator(&VMStaticScrapeCustomValidator{}).
 		Complete()
 }
@@ -39,39 +36,31 @@ func SetupVMStaticScrapeWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmstaticscrape,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmstaticscrapes,verbs=create;update,versions=v1beta1,name=vvmstaticscrape-v1beta1.kb.io,admissionReviewVersions=v1
 type VMStaticScrapeCustomValidator struct{}
 
-var _ admission.CustomValidator = &VMStaticScrapeCustomValidator{}
+var _ admission.Validator[*vmv1beta1.VMStaticScrape] = &VMStaticScrapeCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (*VMStaticScrapeCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1beta1.VMStaticScrape)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+func (*VMStaticScrapeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMStaticScrape) (admission.Warnings, error) {
+	if obj.Spec.ParsingError != "" {
+		return nil, errors.New(obj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (*VMStaticScrapeCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1beta1.VMStaticScrape)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+func (*VMStaticScrapeCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMStaticScrape) (admission.Warnings, error) {
+	if newObj.Spec.ParsingError != "" {
+		return nil, errors.New(newObj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (*VMStaticScrapeCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (*VMStaticScrapeCustomValidator) ValidateDelete(_ context.Context, _ *vmv1beta1.VMStaticScrape) (admission.Warnings, error) {
 	return nil, nil
 }

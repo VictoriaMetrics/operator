@@ -19,9 +19,7 @@ package v1beta1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -31,8 +29,7 @@ import (
 
 // SetupVMClusterWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMClusterWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1beta1.VMCluster{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1beta1.VMCluster{}).
 		WithValidator(&VMClusterCustomValidator{}).
 		Complete()
 }
@@ -40,51 +37,41 @@ func SetupVMClusterWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmcluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmclusters,verbs=create;update,versions=v1beta1,name=vvmcluster-v1beta1.kb.io,admissionReviewVersions=v1
 type VMClusterCustomValidator struct{}
 
-var _ admission.CustomValidator = &VMClusterCustomValidator{}
+var _ admission.Validator[*vmv1beta1.VMCluster] = &VMClusterCustomValidator{}
 
-// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
-	r, ok := obj.(*vmv1beta1.VMCluster)
-	if !ok {
-		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
+	if obj.Spec.ParsingError != "" {
+		err = errors.New(obj.Spec.ParsingError)
 		return
 	}
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
+	if err = obj.Validate(); err != nil {
 		return
 	}
-	if err = r.Validate(); err != nil {
-		return
-	}
-	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil && r.Spec.VMStorage.VMBackup.AcceptEULA {
+	if obj.Spec.VMStorage != nil && obj.Spec.VMStorage.VMBackup != nil && obj.Spec.VMStorage.VMBackup.AcceptEULA {
 		warnings = append(warnings, "deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	return
 }
 
-// ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (warnings admission.Warnings, err error) {
-	r, ok := newObj.(*vmv1beta1.VMCluster)
-	if !ok {
-		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
+	if newObj.Spec.ParsingError != "" {
+		err = errors.New(newObj.Spec.ParsingError)
 		return
 	}
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
+	if err = newObj.Validate(); err != nil {
 		return
 	}
-	if err = r.Validate(); err != nil {
-		return
-	}
-	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil && r.Spec.VMStorage.VMBackup.AcceptEULA {
+	if newObj.Spec.VMStorage != nil && newObj.Spec.VMStorage.VMBackup != nil && newObj.Spec.VMStorage.VMBackup.AcceptEULA {
 		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	return
 }
 
-// ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (*VMClusterCustomValidator) ValidateDelete(_ context.Context, _ *vmv1beta1.VMCluster) (admission.Warnings, error) {
 	return nil, nil
 }

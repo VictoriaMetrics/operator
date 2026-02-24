@@ -18,9 +18,7 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -29,8 +27,7 @@ import (
 
 // SetupVMRuleWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMRuleWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1beta1.VMRule{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1beta1.VMRule{}).
 		WithValidator(&VMRuleCustomValidator{}).
 		Complete()
 }
@@ -38,33 +35,25 @@ func SetupVMRuleWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmrule,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmrules,verbs=create;update,versions=v1beta1,name=vvmrule.kb.io,admissionReviewVersions=v1
 type VMRuleCustomValidator struct{}
 
-var _ admission.CustomValidator = &VMRuleCustomValidator{}
+var _ admission.Validator[*vmv1beta1.VMRule] = &VMRuleCustomValidator{}
 
-// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMRuleCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1beta1.VMRule)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
-	}
-	if err := r.Validate(); err != nil {
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (*VMRuleCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMRule) (admission.Warnings, error) {
+	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-// ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMRuleCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1beta1.VMRule)
-	if !ok {
-		return nil, fmt.Errorf("expected a VMRule object but got %T", newObj)
-	}
-	if err := r.Validate(); err != nil {
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (*VMRuleCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMRule) (admission.Warnings, error) {
+	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-// ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMRuleCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (*VMRuleCustomValidator) ValidateDelete(_ context.Context, _ *vmv1beta1.VMRule) (admission.Warnings, error) {
 	return nil, nil
 }

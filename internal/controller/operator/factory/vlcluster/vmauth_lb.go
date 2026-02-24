@@ -161,6 +161,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
+	args = build.AddHTTPShutdownDelayArg(args, spec.ExtraArgs, spec.EmbeddedProbes)
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{

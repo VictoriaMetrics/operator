@@ -225,6 +225,8 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
+
+	args = build.AddHTTPShutdownDelayArg(args, r.Spec.ExtraArgs, r.Spec.EmbeddedProbes)
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vtsingleContainer := corev1.Container{

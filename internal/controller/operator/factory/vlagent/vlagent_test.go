@@ -775,6 +775,7 @@ containers:
   - name: vlagent
     image: vm-repo:v1.97.1
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9425
       - -tmpDataPath=/vlagent-data
     ports:
@@ -839,6 +840,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9429
       - -tmpDataPath=/vlagent-data
     ports:
@@ -905,6 +907,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -978,6 +981,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.47.0
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9425
       - -kubernetesCollector
       - -kubernetesCollector.includePodLabels
@@ -1072,6 +1076,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -1148,6 +1153,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v0.0.1
     args:
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=35GiB
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -1186,5 +1192,64 @@ containers:
 serviceaccountname: vlagent-agent
 
     `)
+	// test custom readiness probe affects both readiness and shutdownDelay
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1.VLAgentSpec{
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "9429",
+			},
+			EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
+				ReadinessProbe: &corev1.Probe{
+					PeriodSeconds:    4,
+					FailureThreshold: 6,
+				},
+			},
+		},
+	}, []runtime.Object{}, `
+containers:
+  - name: vlagent
+    image: victoriametrics/vlagent:v1.97.1
+    args:
+      - -http.shutdownDelay=24s
+      - -httpListenAddr=:9429
+      - -tmpDataPath=/vlagent-data
+    ports:
+      - name: http
+        containerport: 9429
+        protocol: TCP
+    volumemounts:
+      - name: tmp-data
+        mountpath: /vlagent-data
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9429
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9429
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 4
+      successthreshold: 1
+      failurethreshold: 6
+    terminationmessagepolicy: FallbackToLogsOnError
+    imagepullpolicy: IfNotPresent
+serviceaccountname: vlagent-agent
+`)
 
 }

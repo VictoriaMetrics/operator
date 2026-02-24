@@ -12,26 +12,23 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // disabledControllers defines set of disabled VM operator controllers
-var disabledControllers map[string]struct{}
+var disabledControllers sets.Set[string]
 
 // SetDisabledControllers configures set of disabled controllers
-func SetDisabledControllers(controllers map[string]struct{}) {
+func SetDisabledControllers(controllers sets.Set[string]) {
 	disabledControllers = controllers
 }
 
 // IsControllerDisabled checks if controller for given kind is disabled
 func IsControllerDisabled(kind string) bool {
-	if len(disabledControllers) > 0 {
-		_, ok := disabledControllers[kind]
-		return ok
-	}
-	return false
+	return disabledControllers.Has(kind)
 }
 
 // mustSkipRuntimeValidation defines whether runtime object validation must be skipped

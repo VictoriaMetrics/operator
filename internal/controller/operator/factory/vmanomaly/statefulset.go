@@ -13,6 +13,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -168,9 +169,9 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
 	owner := cr.AsOwner()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	keepPodScrapes := make(map[string]struct{})
+	keepPodScrapes := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		keepPodScrapes[cr.PrefixedName()] = struct{}{}
+		keepPodScrapes.Insert(cr.PrefixedName())
 	}
 	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
 		return fmt.Errorf("cannot remove podScrapes: %w", err)
@@ -184,8 +185,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 }
 
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
-	stsToKeep := make(map[string]struct{})
-	pdbToKeep := make(map[string]struct{})
+	stsToKeep := sets.New[string]()
+	pdbToKeep := sets.New[string]()
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -263,9 +264,9 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			errs = append(errs, r.err)
 		}
 		if r.name != "" {
-			stsToKeep[r.name] = struct{}{}
+			stsToKeep.Insert(r.name)
 			if cr.Spec.PodDisruptionBudget != nil {
-				pdbToKeep[r.name] = struct{}{}
+				pdbToKeep.Insert(r.name)
 			}
 		}
 	}

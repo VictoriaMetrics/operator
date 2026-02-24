@@ -11,6 +11,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,19 +41,19 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duratio
 // 3-rd party kubernetes annotations and labels must be preserved
 func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string {
 	var dst map[string]string
-	var deleted map[string]struct{}
+	var deleted sets.Set[string]
 
 	for k := range prevMap {
 		if _, ok := newMap[k]; !ok {
 			if deleted == nil {
-				deleted = make(map[string]struct{})
+				deleted = sets.New[string]()
 			}
-			deleted[k] = struct{}{}
+			deleted.Insert(k)
 		}
 	}
 
 	for k, v := range existingMap {
-		if _, ok := deleted[k]; ok {
+		if deleted.Has(k) {
 			continue
 		}
 		if dst == nil {

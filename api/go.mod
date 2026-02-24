@@ -64,6 +64,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

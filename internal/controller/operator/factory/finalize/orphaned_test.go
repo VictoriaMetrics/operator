@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -18,7 +19,7 @@ import (
 func TestRemoveOrphanedDeployments(t *testing.T) {
 	type opts struct {
 		cr                orphanedCRD
-		keepDeployments   map[string]struct{}
+		keepDeployments   sets.Set[string]
 		wantDepCount      int
 		predefinedObjects []runtime.Object
 	}
@@ -41,7 +42,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		keepDeployments: map[string]struct{}{"base": {}},
+		keepDeployments: sets.New[string]("base"),
 		predefinedObjects: []runtime.Object{
 			&appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -71,7 +72,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		keepDeployments: map[string]struct{}{"base-0": {}},
+		keepDeployments: sets.New[string]("base-0"),
 		predefinedObjects: []runtime.Object{
 			&appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{

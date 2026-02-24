@@ -15,6 +15,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -702,16 +703,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 		}
 	}
 	svcName := cr.PrefixedName()
-	keepServices := map[string]struct{}{
-		svcName: {},
-	}
-	keepPodScrapes := make(map[string]struct{})
+	keepServices := sets.New(svcName)
+	keepPodScrapes := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		keepPodScrapes[svcName] = struct{}{}
+		keepPodScrapes.Insert(svcName)
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices[extraSvcName] = struct{}{}
+		keepServices.Insert(extraSvcName)
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -655,16 +656,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 
 	svcName := cr.PrefixedName()
-	keepServices := map[string]struct{}{
-		svcName: {},
-	}
-	keepServiceScrapes := make(map[string]struct{})
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
-		keepServiceScrapes[svcName] = struct{}{}
+	keepServices := sets.New(svcName)
+	keepServiceScrapes := sets.New[string]()
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
+		keepServiceScrapes.Insert(svcName)
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices[extraSvcName] = struct{}{}
+		keepServices.Insert(extraSvcName)
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

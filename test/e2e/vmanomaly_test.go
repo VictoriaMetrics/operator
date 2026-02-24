@@ -439,5 +439,83 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				},
 			),
 		)
+
+		It("should skip reconciliation when VMAnomaly is paused", func() {
+			nsn.Name = "vmanomaly-paused"
+			By("creating a VMAnomaly")
+			initialReplicas := int32(1)
+			cr := &vmv1.VMAnomaly{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1.VMAnomalySpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(initialReplicas),
+					},
+					License: &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					},
+					ConfigRawYaml: anomalyConfig,
+					Reader: &vmv1.VMAnomalyReadersSpec{
+						DatasourceURL:  anomalyDatasourceURL,
+						QueryRangePath: "/api/v1/query_range",
+						SamplingPeriod: "10s",
+					},
+					Writer: &vmv1.VMAnomalyWritersSpec{
+						DatasourceURL: anomalyDatasourceURL,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("pausing the VMAnomaly")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("attempting to scale the VMAnomaly while paused")
+			updatedReplicas := int32(2)
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.ReplicaCount = ptr.To(updatedReplicas)
+				return k8sClient.Update(ctx, cr)
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			Consistently(func() int32 {
+				var sts appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &sts)).ToNot(HaveOccurred())
+				return *sts.Spec.Replicas
+			}, "10s", "1s").Should(Equal(initialReplicas))
+
+			By("unpausing the VMAnomaly")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			Eventually(func() int32 {
+				var sts appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &sts)).ToNot(HaveOccurred())
+				return *sts.Spec.Replicas
+			}, anomalyReadyTimeout).Should(Equal(updatedReplicas))
+		})
 	})
 })

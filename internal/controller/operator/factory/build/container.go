@@ -217,8 +217,8 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 }
 
 const (
-	defaultReadinessPeriodSeconds    int32 = 10
-	defaultReadinessFailureThreshold int32 = 3
+	defaultReadinessPeriodSeconds    int32 = 5
+	defaultReadinessFailureThreshold int32 = 10
 )
 
 // AddHTTPShutdownDelayArg adds default http.shutdownDelay flag if user didn't override it in extraArgs.

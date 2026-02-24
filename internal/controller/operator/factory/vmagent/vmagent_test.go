@@ -2106,6 +2106,7 @@ containers:
     - name: vmagent
       image: vm-repo:v1.97.1
       args:
+        - -http.shutdownDelay=50s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2207,6 +2208,7 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
+        - -http.shutdownDelay=50s
         - -httpListenAddr=:8429
         - -promscrape.config=/etc/vmagent/config_out/vmagent.yaml
         - -remoteWrite.maxDiskUsagePerURL=1073741824
@@ -2338,6 +2340,7 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
+        - -http.shutdownDelay=50s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2424,6 +2427,7 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
+        - -http.shutdownDelay=50s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2517,6 +2521,7 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
+        - -http.shutdownDelay=50s
         - -httpListenAddr=:8425
         - -remoteWrite.forceVMProto=false
         - -remoteWrite.maxDiskUsagePerURL=35GiB

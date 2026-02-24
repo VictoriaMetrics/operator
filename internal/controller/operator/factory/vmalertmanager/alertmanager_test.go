@@ -251,9 +251,8 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		if o.wantErr {
 			assert.Error(t, err)
 			return
-		} else {
-			assert.NoError(t, err)
 		}
+		assert.NoError(t, err)
 		var createdSecret corev1.Secret
 		secretName := o.cr.ConfigSecretName()
 
@@ -262,7 +261,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
-			t.Fatalf("config for alertmanager not exist, err: %v", err)
+			assert.NoError(t, err, "config for alertmanager not exist")
 		}
 
 		var amcfgs vmv1beta1.VMAlertmanagerConfigList

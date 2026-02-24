@@ -1,7 +1,6 @@
 package converter
 
 import (
-	"reflect"
 	"testing"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -23,9 +22,7 @@ func TestConvertTlsConfig(t *testing.T) {
 	f := func(opts opts) {
 		t.Helper()
 		got := ConvertTLSConfig(opts.ptc)
-		if got.KeyFile != opts.want.KeyFile || got.CertFile != opts.want.CertFile || got.CAFile != opts.want.CAFile {
-			t.Errorf("ConvertTlsConfig() = \n%v, \nwant \n%v", got, opts.want)
-		}
+		assert.Equal(t, opts.want, got)
 	}
 
 	// replace prom secret path
@@ -117,9 +114,8 @@ func TestConvertEndpoint(t *testing.T) {
 	}
 	f := func(opts opts) {
 		t.Helper()
-		if got := convertEndpoint(opts.pe); !reflect.DeepEqual(got, opts.want) {
-			t.Errorf("ConvertEndpoint() \ngot:  \n%v\n, \nwant: \n%v", got, opts.want)
-		}
+		got := convertEndpoint(opts.pe)
+		assert.Equal(t, opts.want, got)
 	}
 
 	// convert endpoint with relabel config
@@ -164,9 +160,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 			FilterPrometheusConverterLabelPrefixes:      []string{"app.kubernetes", "helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"another-annotation-filter", "app.kubernetes"},
 		})
-		if !reflect.DeepEqual(*got, opts.want) {
-			t.Errorf("ConvertServiceMonitor() got = \n%v, \nwant \n%v", *got, opts.want)
-		}
+		assert.Equal(t, opts.want, *got)
 	}
 
 	// with metricsRelabelConfig
@@ -238,9 +232,8 @@ func TestConvertPodEndpoints(t *testing.T) {
 	}
 	f := func(opts opts) {
 		t.Helper()
-		if got := convertPodEndpoints(opts.pe); !reflect.DeepEqual(got, opts.want) {
-			t.Errorf("ConvertPodEndpoints() = %v, want %v", got, opts.want)
-		}
+		got := convertPodEndpoints(opts.pe)
+		assert.Equal(t, opts.want, got)
 	}
 
 	// with partial tls config
@@ -342,10 +335,7 @@ func TestConvertProbe(t *testing.T) {
 			FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 		})
-
-		if !reflect.DeepEqual(*got, opts.want) {
-			t.Errorf("ConvertProbe() got = \n%v, \nwant \n%v", *got, opts.want)
-		}
+		assert.Equal(t, opts.want, *got)
 	}
 
 	// with static config
@@ -465,10 +455,7 @@ func TestConvertPromRule(t *testing.T) {
 			FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 		})
-
-		if !reflect.DeepEqual(*got, opts.want) {
-			t.Errorf("ConvertPromRule() got = \n%v, \nwant \n%v", *got, opts.want)
-		}
+		assert.Equal(t, opts.want, *got)
 	}
 
 	// with keep firing for

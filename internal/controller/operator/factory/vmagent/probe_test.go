@@ -31,16 +31,12 @@ func Test_generateProbeConfig(t *testing.T) {
 		pos := &parsedObjects{Namespace: o.cr.Namespace}
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generateProbeConfig(ctx, sp, pos, o.sc, ac)
-		if err != nil {
-			t.Errorf("cannot generate ProbeConfig, err: %e", err)
-			return
+		if assert.NoError(t, err, "cannot generate ProbeConfig") {
+			gotBytes, err := yaml.Marshal(got)
+			if assert.NoError(t, err, "cannot decode probe config, it must be in yaml format") {
+				assert.Equal(t, o.want, string(gotBytes))
+			}
 		}
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot decode probe config, it must be in yaml format: %e", err)
-			return
-		}
-		assert.Equal(t, o.want, string(gotBytes))
 	}
 
 	// generate static config

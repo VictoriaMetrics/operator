@@ -1612,9 +1612,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, cl.Get(ctx, nsn, &got))
-		if err := o.want(&got); err != nil {
-			t.Errorf("CreateOrUpdateService() unexpected error: %v", err)
-		}
+		assert.NoError(t, o.want(&got))
 		if o.wantAdditionalService != nil {
 			var additionalSvc corev1.Service
 			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.Spec.ServiceSpec.NameOrDefault(o.cr.Name)}, &additionalSvc))

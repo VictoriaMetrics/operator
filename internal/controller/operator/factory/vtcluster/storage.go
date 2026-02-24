@@ -303,6 +303,7 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 		})
 	}
 
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.Storage.ExtraArgs, cr.Spec.Storage.EmbeddedProbes)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.Storage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{

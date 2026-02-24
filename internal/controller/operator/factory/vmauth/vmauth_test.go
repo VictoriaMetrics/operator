@@ -471,7 +471,7 @@ containers:
     imagepullpolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml
-      - -http.shutdownDelay=30s
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:8429
     ports:
       - name: http
@@ -583,7 +583,7 @@ containers:
     imagepullpolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml
-      - -http.shutdownDelay=30s
+      - -http.shutdownDelay=50s
       - -httpListenAddr=:8429
     ports:
       - name: http

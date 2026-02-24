@@ -221,9 +221,9 @@ const (
 	defaultReadinessFailureThreshold int32 = 10
 )
 
-// AddHTTPShutdownDelayArg adds default http.shutdownDelay flag if user didn't override it in extraArgs.
+// AddHTTPShutdownDelayArg adds default -http.shutdownDelay flag if user didn't override it in extraArgs.
 // If readiness probe is provided, delay is derived from readiness probe timings.
-func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes *vmv1beta1.EmbeddedProbes, dashes string) []string {
+func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes *vmv1beta1.EmbeddedProbes) []string {
 	if _, ok := extraArgs["http.shutdownDelay"]; ok {
 		return args
 	}
@@ -241,7 +241,7 @@ func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes 
 		delaySeconds = periodSeconds * failureThreshold
 	}
 
-	args = append(args, fmt.Sprintf("%shttp.shutdownDelay=%ds", dashes, delaySeconds))
+	args = append(args, fmt.Sprintf("-http.shutdownDelay=%ds", delaySeconds))
 	return args
 }
 

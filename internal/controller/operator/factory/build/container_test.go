@@ -207,13 +207,13 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 
 func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	t.Run("adds default derived from built-in readiness defaults", func(t *testing.T) {
-		got := AddHTTPShutdownDelayArg(nil, nil, nil, "-")
-		assert.Equal(t, []string{"-http.shutdownDelay=30s"}, got)
+		got := AddHTTPShutdownDelayArg(nil, nil, nil)
+		assert.Equal(t, []string{"-http.shutdownDelay=50s"}, got)
 	})
 
 	t.Run("does not override user extraArgs", func(t *testing.T) {
 		extraArgs := map[string]string{"http.shutdownDelay": "5s"}
-		got := AddHTTPShutdownDelayArg(nil, extraArgs, nil, "-")
+		got := AddHTTPShutdownDelayArg(nil, extraArgs, nil)
 		assert.Nil(t, got)
 	})
 
@@ -224,7 +224,7 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 				FailureThreshold: 4,
 			},
 		}
-		got := AddHTTPShutdownDelayArg(nil, nil, probes, "-")
+		got := AddHTTPShutdownDelayArg(nil, nil, probes)
 		assert.Equal(t, []string{"-http.shutdownDelay=12s"}, got)
 	})
 }

@@ -326,7 +326,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.ExtraArgs, cr.Spec.EmbeddedProbes, "-")
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.ExtraArgs, cr.Spec.EmbeddedProbes)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 

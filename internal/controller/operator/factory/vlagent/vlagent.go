@@ -427,6 +427,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		vmMounts = append(vmMounts, cvm)
 	}
 	volumes, vmMounts = addRemoteWriteAssetsToVolumes(volumes, vmMounts, cr)
+	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 

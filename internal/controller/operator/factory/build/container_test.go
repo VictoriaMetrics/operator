@@ -202,7 +202,7 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 
 func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	t.Run("adds default derived from built-in readiness defaults", func(t *testing.T) {
-		got := AddHTTPShutdownDelayArg(nil, &vmv1beta1.CommonAppsParams{}, "-")
+		got := AddHTTPShutdownDelayArg(nil, &vmv1beta1.CommonAppsParams{})
 		assert.Equal(t, []string{"-http.shutdownDelay=50s"}, got)
 	})
 
@@ -210,7 +210,7 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 		params := vmv1beta1.CommonAppsParams{
 			ExtraArgs: map[string]string{"http.shutdownDelay": "5s"},
 		}
-		got := AddHTTPShutdownDelayArg(nil, &params, "-")
+		got := AddHTTPShutdownDelayArg(nil, &params)
 		assert.Nil(t, got)
 	})
 
@@ -221,7 +221,7 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 				FailureThreshold: 4,
 			},
 		}
-		got := AddHTTPShutdownDelayArg(nil, &params, "-")
+		got := AddHTTPShutdownDelayArg(nil, &params)
 		assert.Equal(t, []string{"-http.shutdownDelay=12s"}, got)
 	})
 }

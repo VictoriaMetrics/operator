@@ -655,7 +655,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	args = build.StreamAggrArgsTo(args, "streamAggr", streamAggrKeys, streamAggrConfigs...)
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams, "-")
+	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 

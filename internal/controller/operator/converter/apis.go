@@ -209,7 +209,7 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 			TargetPort: endpoint.TargetPort,
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Path:            endpoint.Path,
-				Scheme:          endpoint.Scheme,
+				Scheme:          endpoint.Scheme.String(),
 				Params:          endpoint.Params,
 				Interval:        string(endpoint.Interval),
 				ScrapeTimeout:   string(endpoint.ScrapeTimeout),
@@ -355,7 +355,7 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Interval:        string(promEndPoint.Interval),
 				Path:            promEndPoint.Path,
-				Scheme:          promEndPoint.Scheme,
+				Scheme:          promEndPoint.Scheme.String(),
 				Params:          promEndPoint.Params,
 				ScrapeTimeout:   string(promEndPoint.ScrapeTimeout),
 				HonorLabels:     promEndPoint.HonorLabels,
@@ -467,7 +467,7 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 			JobName: probe.Spec.JobName,
 			VMProberSpec: vmv1beta1.VMProberSpec{
 				URL:    probe.Spec.ProberSpec.URL,
-				Scheme: probe.Spec.ProberSpec.Scheme,
+				Scheme: probe.Spec.ProberSpec.Scheme.String(),
 				Path:   probe.Spec.ProberSpec.Path,
 			},
 			Module: probe.Spec.Module,
@@ -482,7 +482,7 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 			MetricRelabelConfigs: ConvertRelabelConfig(probe.Spec.MetricRelabelConfigs),
 			EndpointAuth: vmv1beta1.EndpointAuth{
 				BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
-				BearerTokenSecret: convertBearerToken(&probe.Spec.BearerTokenSecret),
+				BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret), //nolint:staticcheck
 				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
 				OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
 				Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),

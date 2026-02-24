@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,35 +19,35 @@ var _ = Describe("VM Operator", func() {
 	processIdxSuffix := fmt.Sprintf("-%d", GinkgoParallelProcess())
 	JustBeforeEach(func() {
 		CreateObjects(
-			&monitoringv1.ServiceMonitor{
+			&promv1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-service-monitor" + processIdxSuffix,
 					Namespace: namespace,
 				},
-				Spec: monitoringv1.ServiceMonitorSpec{
-					Endpoints: []monitoringv1.Endpoint{{
+				Spec: promv1.ServiceMonitorSpec{
+					Endpoints: []promv1.Endpoint{{
 						Port: "9999",
 					}},
 				},
 			},
-			&monitoringv1.PodMonitor{
+			&promv1.PodMonitor{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-pod-monitor" + processIdxSuffix,
 					Namespace: namespace,
 				},
-				Spec: monitoringv1.PodMonitorSpec{
-					PodMetricsEndpoints: []monitoringv1.PodMetricsEndpoint{{
+				Spec: promv1.PodMonitorSpec{
+					PodMetricsEndpoints: []promv1.PodMetricsEndpoint{{
 						Port: ptr.To("9999"),
 					}},
 				},
 			},
-			&monitoringv1.Probe{
+			&promv1.Probe{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-probe" + processIdxSuffix,
 					Namespace: namespace,
 				},
 			},
-			&monitoringv1.PrometheusRule{
+			&promv1.PrometheusRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-prometheus-rule" + processIdxSuffix,
 					Namespace: namespace,
@@ -58,13 +58,13 @@ var _ = Describe("VM Operator", func() {
 
 	AfterEach(func() {
 		DeleteAllObjectsOf(namespace,
-			&monitoringv1.ServiceMonitorList{},
+			&promv1.ServiceMonitorList{},
 			&vmv1beta1.VMServiceScrapeList{},
-			&monitoringv1.PodMonitorList{},
+			&promv1.PodMonitorList{},
 			&vmv1beta1.VMPodScrapeList{},
-			&monitoringv1.ProbeList{},
+			&promv1.ProbeList{},
 			&vmv1beta1.VMProbeList{},
-			&monitoringv1.PrometheusRuleList{},
+			&promv1.PrometheusRuleList{},
 			&vmv1beta1.VMRuleList{},
 		)
 	})

@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 	"github.com/onsi/gomega/format"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -94,7 +94,7 @@ func GetClient(data []byte) client.Client {
 	Expect(vmv1alpha1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(vmv1beta1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(vmv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
-	Expect(monitoringv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
+	Expect(promv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(promv1alpha1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(gwapiv1.Install(scheme.Scheme)).NotTo(HaveOccurred())
 	Expect(apiextensionsv1.AddToScheme(scheme.Scheme)).NotTo(HaveOccurred())

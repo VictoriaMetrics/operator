@@ -34,6 +34,10 @@ linters:
     importas:
       no-unaliased: true
       alias:
+        - pkg: github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
+          alias: promv1
+        - pkg: github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1
+          alias: promv1alpha1
         - pkg: github.com/VictoriaMetrics/operator/api/operator/v1alpha1
           alias: vmv1alpha1
         - pkg: github.com/VictoriaMetrics/operator/api/operator/v1beta1

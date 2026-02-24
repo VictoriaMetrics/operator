@@ -85,8 +85,8 @@ jobs:
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
       - name: Install mirrord
         run: |
-          curl -o ./mirrord_linux_x86_64.zip -fsSL https://github.com/metalbear-co/mirrord/releases/download/3.188.1/mirrord_linux_x86_64.zip
-          curl -o ./mirrord_linux_x86_64.shasum256 -fsSL https://github.com/metalbear-co/mirrord/releases/download/3.188.1/mirrord_linux_x86_64.shasum256
+          curl -o ./mirrord_linux_x86_64.zip -fsSL https://github.com/metalbear-co/mirrord/releases/download/3.190.0/mirrord_linux_x86_64.zip
+          curl -o ./mirrord_linux_x86_64.shasum256 -fsSL https://github.com/metalbear-co/mirrord/releases/download/3.190.0/mirrord_linux_x86_64.shasum256
           sha256sum -c mirrord_linux_x86_64.shasum256
           unzip mirrord_linux_x86_64.zip
           sudo mv ./mirrord /usr/bin/mirrord

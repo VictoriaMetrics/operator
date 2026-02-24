@@ -18,6 +18,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 //nolint:dupl,lll
@@ -39,6 +40,48 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			},
 			)).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAgent{})
+		})
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const attempts = 3
+			nsn.Name = "vmagent-idempotent"
+			cr := &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{URL: "http://localhost:8429/api/v1/write"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
+			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			var agentDep appsv1.Deployment
+			agentDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+			Expect(k8sClient.Get(ctx, agentDepName, &agentDep)).ToNot(HaveOccurred())
+			agentDepRV := agentDep.ResourceVersion
+
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1beta1.VMAgent
+				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+				latestCR.Kind = "VMAgent"
+				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmagent.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
+			}
+
+			var afterAgentDep appsv1.Deployment
+			Expect(k8sClient.Get(ctx, agentDepName, &afterAgentDep)).ToNot(HaveOccurred())
+			Expect(afterAgentDep.ResourceVersion).To(Equal(agentDepRV), "VMAgent Deployment resource version should not change")
 		})
 
 		DescribeTable("should create vmagent",

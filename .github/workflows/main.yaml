@@ -53,7 +53,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Prepare binary cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ./bin
           key: binary

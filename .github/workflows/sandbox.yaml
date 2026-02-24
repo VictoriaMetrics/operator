@@ -66,7 +66,7 @@ jobs:
         working-directory: __vm-ops-repo
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: ${{ steps.update.outputs.OPERATOR_PATH }}
           commit-message: Automatic update operator version on sandbox from ${{ github.repository }}@${{ env.IMAGE_TAG }}

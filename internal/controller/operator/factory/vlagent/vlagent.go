@@ -182,8 +182,6 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
 	if cr.Spec.K8sCollector.Enabled {
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -207,8 +205,8 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.DaemonSetAddCommonParams(dsSpec, &cr.Spec.CommonAppsParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 		return dsSpec, nil
 	}
 	stsSpec := &appsv1.StatefulSet{
@@ -241,7 +239,7 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
 
 	if cr.Spec.TmpDataPath == nil {
 		cr.Spec.Storage.IntoSTSVolume(tmpDataVolumeName, &stsSpec.Spec)
@@ -444,9 +442,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vlagentContainer = build.Probe(vlagentContainer, cr)
+	build.Probe(&vlagentContainer, cr, &cr.Spec.CommonAppsParams)
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	var err error
@@ -457,9 +453,9 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	operatorContainers = append(operatorContainers, vlagentContainer)
 	if cr.Spec.K8sCollector.Enabled {
-		build.AddStrictSecuritySettingsWithRootToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+		build.AddStrictSecuritySettingsWithRootToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	} else {
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+		build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	}
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)

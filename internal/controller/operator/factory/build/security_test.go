@@ -14,10 +14,9 @@ import (
 
 func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 	type opts struct {
-		psp                  *vmv1beta1.SecurityContext
-		enableStrictSecurity bool
-		expected             *corev1.PodSecurityContext
-		kubeletVersion       version.Info
+		params         *vmv1beta1.CommonAppsParams
+		expected       *corev1.PodSecurityContext
+		kubeletVersion version.Info
 	}
 
 	f := func(o opts) {
@@ -28,13 +27,15 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 			restoreVersion := version.Info{Major: "0", Minor: "0"}
 			assert.NoError(t, k8stools.SetKubernetesVersionWithDefaults(&restoreVersion, 0, 0))
 		}()
-		res := AddStrictSecuritySettingsToPod(o.psp, o.enableStrictSecurity)
+		res := addStrictSecuritySettingsToPod(o.params)
 		assert.Equal(t, res, o.expected)
 	}
 
 	// enforce strict security
 	f(opts{
-		enableStrictSecurity: true,
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+		},
 		expected: &corev1.PodSecurityContext{
 			RunAsNonRoot:        ptr.To(true),
 			RunAsUser:           ptr.To(int64(65534)),
@@ -50,20 +51,24 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 
 	// disable enableStrictSecurity
 	f(opts{
-		enableStrictSecurity: false,
-		expected:             nil,
-		kubeletVersion:       version.Info{Major: "1", Minor: "27"},
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(false),
+		},
+		expected:       nil,
+		kubeletVersion: version.Info{Major: "1", Minor: "27"},
 	})
 
 	// use custom security
 	f(opts{
-		psp: &vmv1beta1.SecurityContext{
-			PodSecurityContext: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(false),
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+			SecurityContext: &vmv1beta1.SecurityContext{
+				PodSecurityContext: &corev1.PodSecurityContext{
+					RunAsNonRoot: ptr.To(false),
+				},
+				ContainerSecurityContext: nil,
 			},
-			ContainerSecurityContext: nil,
 		},
-		enableStrictSecurity: true,
 		expected: &corev1.PodSecurityContext{
 			RunAsNonRoot: ptr.To(false),
 		},
@@ -73,21 +78,22 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 
 func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 	type opts struct {
-		sc                *vmv1beta1.SecurityContext
-		containers        []corev1.Container
-		useStrictSecurity bool
-		expected          []corev1.Container
+		params     *vmv1beta1.CommonAppsParams
+		containers []corev1.Container
+		expected   []corev1.Container
 	}
 
 	f := func(o opts) {
 		t.Helper()
-		AddStrictSecuritySettingsToContainers(o.sc, o.containers, o.useStrictSecurity)
+		AddStrictSecuritySettingsToContainers(o.containers, o.params)
 		assert.Equal(t, o.expected, o.containers)
 	}
 
 	// default security
 	f(opts{
-		useStrictSecurity: true,
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+		},
 		containers: []corev1.Container{
 			{
 				Name: "c1",
@@ -110,14 +116,16 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// add from spec
 	f(opts{
-		useStrictSecurity: true,
-		sc: &vmv1beta1.SecurityContext{
-			PodSecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:    ptr.To[int64](1),
-				RunAsNonRoot: ptr.To(false),
-			},
-			ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
-				Privileged: ptr.To(true),
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+			SecurityContext: &vmv1beta1.SecurityContext{
+				PodSecurityContext: &corev1.PodSecurityContext{
+					RunAsUser:    ptr.To[int64](1),
+					RunAsNonRoot: ptr.To(false),
+				},
+				ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
+					Privileged: ptr.To(true),
+				},
 			},
 		},
 		containers: []corev1.Container{
@@ -150,7 +158,9 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// replace defined context
 	f(opts{
-		useStrictSecurity: true,
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+		},
 		containers: []corev1.Container{
 			{
 				Name: "c1",
@@ -181,7 +191,9 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// replace partial security context
 	f(opts{
-		useStrictSecurity: true,
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+		},
 		containers: []corev1.Container{
 			{
 				Name: "c1",
@@ -207,10 +219,12 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// replace security context if external defined
 	f(opts{
-		useStrictSecurity: true,
-		sc: &vmv1beta1.SecurityContext{
-			PodSecurityContext: &corev1.PodSecurityContext{
-				RunAsUser: ptr.To[int64](1000),
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(true),
+			SecurityContext: &vmv1beta1.SecurityContext{
+				PodSecurityContext: &corev1.PodSecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
 			},
 		},
 		containers: []corev1.Container{
@@ -242,7 +256,9 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// insecure mode
 	f(opts{
-		useStrictSecurity: false,
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(false),
+		},
 		containers: []corev1.Container{
 			{
 				Name: "c1",
@@ -263,10 +279,12 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// add external if useStrict is false
 	f(opts{
-		useStrictSecurity: false,
-		sc: &vmv1beta1.SecurityContext{
-			PodSecurityContext: &corev1.PodSecurityContext{
-				RunAsUser: ptr.To[int64](1000),
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(false),
+			SecurityContext: &vmv1beta1.SecurityContext{
+				PodSecurityContext: &corev1.PodSecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
 			},
 		},
 		containers: []corev1.Container{
@@ -295,10 +313,12 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 
 	// replace with external if useStrict is false
 	f(opts{
-		useStrictSecurity: false,
-		sc: &vmv1beta1.SecurityContext{
-			PodSecurityContext: &corev1.PodSecurityContext{
-				RunAsUser: ptr.To[int64](1000),
+		params: &vmv1beta1.CommonAppsParams{
+			UseStrictSecurity: ptr.To(false),
+			SecurityContext: &vmv1beta1.SecurityContext{
+				PodSecurityContext: &corev1.PodSecurityContext{
+					RunAsUser: ptr.To[int64](1000),
+				},
 			},
 		},
 		containers: []corev1.Container{

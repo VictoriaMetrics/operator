@@ -28,7 +28,7 @@ func newVMAgent(name, namespace string) *vmv1beta1.VMAgent {
 			CreationTimestamp: metav1.Now(),
 		},
 		Spec: vmv1beta1.VMAgentSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 			},
 		},
@@ -46,17 +46,17 @@ func newVMCluster(name, namespace, version string) *vmv1beta1.VMCluster {
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
 			VMSelect: &vmv1beta1.VMSelect{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VMInsert: &vmv1beta1.VMInsert{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VMStorage: &vmv1beta1.VMStorage{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

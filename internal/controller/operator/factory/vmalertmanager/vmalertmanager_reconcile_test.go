@@ -147,7 +147,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		cr: &vmv1beta1.VMAlertmanager{
 			ObjectMeta: objectMeta,
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -171,7 +171,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		cr: &vmv1beta1.VMAlertmanager{
 			ObjectMeta: objectMeta,
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

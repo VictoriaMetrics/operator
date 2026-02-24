@@ -91,7 +91,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ExtraArgs: map[string]string{
 									"notifier.url": "http://test",
 								},
@@ -148,7 +148,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ExtraArgs: map[string]string{
 									"notifier.url": "http://test",
 								},
@@ -252,7 +252,7 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ExtraArgs: map[string]string{
 									"notifier.url": "http://test",
 								},

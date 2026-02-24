@@ -29,7 +29,7 @@ func TestVMAuthReconcile(t *testing.T) {
 				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

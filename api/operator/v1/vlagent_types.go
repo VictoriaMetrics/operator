@@ -89,11 +89,8 @@ type VLAgentSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
-	*vmv1beta1.EmbeddedProbes                   `json:",inline"`
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 type VLAgentK8sCollector struct {
@@ -179,6 +176,11 @@ func (cr *VLAgent) Validate() error {
 		}
 	}
 	return nil
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLAgent) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -442,11 +444,6 @@ func (cr *VLAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLAgent) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface

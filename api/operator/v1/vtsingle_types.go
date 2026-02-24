@@ -43,8 +43,7 @@ type VTSingleSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaTraces to be configured with.
 	// +optional
@@ -95,9 +94,6 @@ type VTSingleSpec struct {
 	// ServiceScrapeSpec that will be added to vtsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VTSingle pod
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
-
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -186,11 +182,6 @@ func (cr *VTSingleSpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VTSingle) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface
@@ -321,6 +312,11 @@ func (cr *VTSingle) LastSpecUpdated() bool {
 	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
 	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 	return updated
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTSingle) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 func (cr *VTSingle) Paused() bool {

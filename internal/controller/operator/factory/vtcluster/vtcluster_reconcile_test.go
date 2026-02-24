@@ -79,17 +79,17 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			ObjectMeta: objectMeta,
 			Spec: vmv1.VTClusterSpec{
 				Storage: &vmv1.VTStorage{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 				Select: &vmv1.VTSelect{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 				Insert: &vmv1.VTInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
@@ -137,18 +137,18 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			ObjectMeta: objectMeta,
 			Spec: vmv1.VTClusterSpec{
 				Storage: &vmv1.VTStorage{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 					RollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
 				},
 				Select: &vmv1.VTSelect{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 				Insert: &vmv1.VTInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},

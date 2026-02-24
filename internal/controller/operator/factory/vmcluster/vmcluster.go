@@ -529,7 +529,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMSelect.CommonAppsParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
 	}
@@ -676,10 +676,10 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmselectContainer = build.Probe(vmselectContainer, cr.Spec.VMSelect)
+	build.Probe(&vmselectContainer, cr.Spec.VMSelect, &cr.Spec.VMSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMSelect.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
 		return nil, err
@@ -756,7 +756,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(stsSpec, &cr.Spec.VMInsert.CommonAppsParams)
 	return stsSpec, nil
 }
 
@@ -880,10 +880,10 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	vminsertContainer = build.Probe(vminsertContainer, cr.Spec.VMInsert)
+	build.Probe(&vminsertContainer, cr.Spec.VMInsert, &cr.Spec.VMInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMInsert.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
 		return nil, err
@@ -955,7 +955,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	if cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1100,8 +1100,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = build.Probe(vmstorageContainer, cr.Spec.VMStorage)
-
+	build.Probe(&vmstorageContainer, cr.Spec.VMStorage, &cr.Spec.VMStorage.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
@@ -1125,14 +1124,13 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			}
 		}
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.VMStorage.CommonAppsParams)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VMStorage.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage init containers: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMStorage.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage containers: %w", err)
@@ -1530,13 +1528,13 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		ImagePullPolicy: spec.Image.PullPolicy,
 		VolumeMounts:    vmounts,
 	}
-	vmauthLBCnt = build.Probe(vmauthLBCnt, &spec)
+	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(containers, &spec.CommonAppsParams)
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -1575,7 +1573,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, &spec.CommonAppsParams)
 
 	return lbDep, nil
 }

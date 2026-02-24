@@ -61,10 +61,8 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(true),
 							},
 							RetentionPeriod: "1",
@@ -93,10 +91,8 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -117,7 +113,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{
@@ -139,8 +135,6 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 										MountPath: "/opt/unused/mountpoint",
 									},
 								},
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -167,7 +161,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 				},
 				Spec: vmv1.VTSingleSpec{
 					RetentionPeriod: "10",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},

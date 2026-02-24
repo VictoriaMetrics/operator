@@ -76,7 +76,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMSingleSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RetentionPeriod: "1",
@@ -142,7 +142,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 							RetentionPeriod:      "1",
@@ -180,13 +180,11 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{Name: "backup", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 								},
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseDefaultResources: ptr.To(false),
 							},
 							VMBackup: &vmv1beta1.VMBackup{
@@ -229,10 +227,8 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(true),
 							},
 							RetentionPeriod:      "1",
@@ -262,10 +258,8 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod:      "1",
@@ -295,10 +289,8 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod:      "1",
@@ -321,7 +313,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 							Namespace: namespace,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{
@@ -349,8 +341,6 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 										MountPath: "/opt/unused/mountpoint",
 									},
 								},
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod:      "1",
@@ -388,7 +378,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 				Spec: vmv1beta1.VMSingleSpec{
 					RemovePvcAfterDelete: true,
 					RetentionPeriod:      "10",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
@@ -517,7 +507,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMSingleSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: &initialReplicas,
 					},
 					RetentionPeriod: "1",

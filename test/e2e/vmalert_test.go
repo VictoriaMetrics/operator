@@ -48,7 +48,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAlertSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 					Datasource: vmv1beta1.VMAlertDatasourceSpec{
@@ -109,7 +109,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 							ExtraEnvs: []corev1.EnvVar{
 								{
@@ -144,7 +144,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 							Secrets:      []string{tlsSecretName},
 						},
@@ -283,10 +283,8 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseStrictSecurity: ptr.To(true),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseStrictSecurity:                   ptr.To(true),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -341,7 +339,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				Namespace: nsn.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 				},
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{
@@ -421,7 +419,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAlertSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: &initialReplicas,
 					},
 					Datasource: vmv1beta1.VMAlertDatasourceSpec{

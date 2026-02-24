@@ -1,0 +1,171 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "postUpdateOptions": [
+        "gomodTidy"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "go",
+        "golang"
+      ],
+      "groupName": "golang"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "ENVTEST_K8S_VERSION = (?<currentValue>.*)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "kubernetes/kubernetes",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "KUSTOMIZE_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "sigs.k8s.io/kustomize/kustomize/v5"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "sigs.k8s.io/controller-tools"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "GOLANGCI_LINT_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/golangci/golangci-lint/v2"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "CODEGENERATOR_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "k8s.io/code-generator"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "KIND_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "sigs.k8s.io/kind"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "OPERATOR_SDK_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/operator-framework/operator-sdk"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "OPM_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/operator-framework/operator-registry"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "YQ_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/mikefarah/yq/v4"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "GINKGO_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/onsi/ginkgo/v2"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "CRUST_GATHER_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/crust-gather/crust-gather"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "OLM_VERSION \\?= (?<currentValue>.*)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "operator-framework/operator-lifecycle-manager",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "ENVTEST_VERSION \\?= release-(?<currentValue>.*)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "sigs.k8s.io/controller-runtime",
+      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+).*$"
+    }
+  ]
+}

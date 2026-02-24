@@ -7,7 +7,7 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.132.0
 	github.com/VictoriaMetrics/metrics v1.41.2
 	github.com/VictoriaMetrics/metricsql v0.85.0
-	github.com/VictoriaMetrics/operator/api v0.66.1
+	github.com/VictoriaMetrics/operator/api v0.0.0-00010101000000-000000000000
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -23,11 +23,11 @@ require (
 	go.uber.org/zap v1.27.1
 	golang.org/x/sync v0.19.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.35.1
-	k8s.io/apiextensions-apiserver v0.35.1
-	k8s.io/apimachinery v0.35.1
-	k8s.io/autoscaler/vertical-pod-autoscaler v1.6.0
-	k8s.io/client-go v0.35.1
+	k8s.io/api v0.34.4
+	k8s.io/apiextensions-apiserver v0.34.1
+	k8s.io/apimachinery v0.34.4
+	k8s.io/autoscaler/vertical-pod-autoscaler v1.5.1
+	k8s.io/client-go v0.34.4
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	sigs.k8s.io/controller-runtime v0.22.2
@@ -55,7 +55,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
-	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -74,6 +73,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect

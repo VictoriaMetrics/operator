@@ -216,6 +216,35 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	return args
 }
 
+const (
+	defaultReadinessPeriodSeconds    int32 = 10
+	defaultReadinessFailureThreshold int32 = 3
+)
+
+// AddHTTPShutdownDelayArg adds default http.shutdownDelay flag if user didn't override it in extraArgs.
+// If readiness probe is provided, delay is derived from readiness probe timings.
+func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes *vmv1beta1.EmbeddedProbes, dashes string) []string {
+	if _, ok := extraArgs["http.shutdownDelay"]; ok {
+		return args
+	}
+
+	delaySeconds := defaultReadinessPeriodSeconds * defaultReadinessFailureThreshold
+	if probes != nil && probes.ReadinessProbe != nil {
+		periodSeconds := probes.ReadinessProbe.PeriodSeconds
+		if periodSeconds == 0 {
+			periodSeconds = defaultReadinessPeriodSeconds
+		}
+		failureThreshold := probes.ReadinessProbe.FailureThreshold
+		if failureThreshold == 0 {
+			failureThreshold = defaultReadinessFailureThreshold
+		}
+		delaySeconds = periodSeconds * failureThreshold
+	}
+
+	args = append(args, fmt.Sprintf("%shttp.shutdownDelay=%ds", dashes, delaySeconds))
+	return args
+}
+
 // formatContainerImage returns container image with registry prefix if needed.
 func formatContainerImage(registry string, containerImage string) string {
 	if registry == "" {

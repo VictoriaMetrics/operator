@@ -205,6 +205,30 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 	})
 }
 
+func TestAddHTTPShutdownDelayArg(t *testing.T) {
+	t.Run("adds default derived from built-in readiness defaults", func(t *testing.T) {
+		got := AddHTTPShutdownDelayArg(nil, nil, nil, "-")
+		assert.Equal(t, []string{"-http.shutdownDelay=30s"}, got)
+	})
+
+	t.Run("does not override user extraArgs", func(t *testing.T) {
+		extraArgs := map[string]string{"http.shutdownDelay": "5s"}
+		got := AddHTTPShutdownDelayArg(nil, extraArgs, nil, "-")
+		assert.Nil(t, got)
+	})
+
+	t.Run("derives value from custom readiness probe", func(t *testing.T) {
+		probes := &vmv1beta1.EmbeddedProbes{
+			ReadinessProbe: &corev1.Probe{
+				PeriodSeconds:    3,
+				FailureThreshold: 4,
+			},
+		}
+		got := AddHTTPShutdownDelayArg(nil, nil, probes, "-")
+		assert.Equal(t, []string{"-http.shutdownDelay=12s"}, got)
+	})
+}
+
 func TestFormatContainerImage(t *testing.T) {
 	f := func(globalRepo, image, wantImage string) {
 		t.Helper()

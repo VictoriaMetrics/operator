@@ -206,26 +206,38 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 }
 
 func TestAddHTTPShutdownDelayArg(t *testing.T) {
-	t.Run("adds default derived from built-in readiness defaults", func(t *testing.T) {
-		got := AddHTTPShutdownDelayArg(nil, nil, nil)
-		assert.Equal(t, []string{"-http.shutdownDelay=50s"}, got)
+	type opts struct {
+		extraArgs map[string]string
+		probes    *vmv1beta1.EmbeddedProbes
+		wantArgs  []string
+	}
+	f := func(opts opts) {
+		t.Helper()
+		assert.Equal(
+			t,
+			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.probes),
+			opts.wantArgs,
+		)
+	}
+	f(opts{
+		extraArgs: nil,
+		probes:    nil,
+		wantArgs:  []string{"-http.shutdownDelay=50s"},
 	})
-
-	t.Run("does not override user extraArgs", func(t *testing.T) {
-		extraArgs := map[string]string{"http.shutdownDelay": "5s"}
-		got := AddHTTPShutdownDelayArg(nil, extraArgs, nil)
-		assert.Nil(t, got)
+	f(opts{
+		extraArgs: map[string]string{"http.shutdownDelay": "5s"},
+		probes:    nil,
+		wantArgs:  nil,
 	})
-
-	t.Run("derives value from custom readiness probe", func(t *testing.T) {
-		probes := &vmv1beta1.EmbeddedProbes{
+	f(opts{
+		extraArgs: nil,
+		probes: &vmv1beta1.EmbeddedProbes{
 			ReadinessProbe: &corev1.Probe{
 				PeriodSeconds:    3,
 				FailureThreshold: 4,
 			},
-		}
-		got := AddHTTPShutdownDelayArg(nil, nil, probes)
-		assert.Equal(t, []string{"-http.shutdownDelay=12s"}, got)
+		},
+		wantArgs: []string{"-http.shutdownDelay=12s"},
 	})
 }
 

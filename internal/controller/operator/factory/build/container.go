@@ -193,24 +193,27 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 }
 
 const (
-	defaultReadinessPeriodSeconds    int32 = 10
-	defaultReadinessFailureThreshold int32 = 3
+	defaultReadinessPeriodSeconds    int32 = 5
+	defaultReadinessFailureThreshold int32 = 10
 )
 
 // AddHTTPShutdownDelayArg adds default http.shutdownDelay flag if user didn't override it in extraArgs.
 // If readiness probe is provided, delay is derived from readiness probe timings.
-func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes *vmv1beta1.EmbeddedProbes, dashes string) []string {
-	if _, ok := extraArgs["http.shutdownDelay"]; ok {
+func AddHTTPShutdownDelayArg(args []string, params *vmv1beta1.CommonAppsParams, dashes string) []string {
+	if params == nil {
+		return args
+	}
+	if _, ok := params.ExtraArgs["http.shutdownDelay"]; ok {
 		return args
 	}
 
 	delaySeconds := defaultReadinessPeriodSeconds * defaultReadinessFailureThreshold
-	if probes != nil && probes.ReadinessProbe != nil {
-		periodSeconds := probes.ReadinessProbe.PeriodSeconds
+	if params.ReadinessProbe != nil {
+		periodSeconds := params.ReadinessProbe.PeriodSeconds
 		if periodSeconds == 0 {
 			periodSeconds = defaultReadinessPeriodSeconds
 		}
-		failureThreshold := probes.ReadinessProbe.FailureThreshold
+		failureThreshold := params.ReadinessProbe.FailureThreshold
 		if failureThreshold == 0 {
 			failureThreshold = defaultReadinessFailureThreshold
 		}

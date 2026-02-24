@@ -16,7 +16,7 @@ jobs:
       name: docs
     steps:
       - name: Check out operator code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: VictoriaMetrics/operator
           ref: master
@@ -24,7 +24,7 @@ jobs:
           path: __vm-operator-repo
 
       - name: Check out VM code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: VictoriaMetrics/helm-charts
           ref: master

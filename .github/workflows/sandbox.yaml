@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout operator
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: VictoriaMetrics/operator
           ref: ${{ github.event.inputs.branch }}
@@ -40,7 +40,7 @@ jobs:
           TAG=$IMAGE_TAG make docker-push
 
       - name: Checkout ops
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: VictoriaMetrics/ops
           ref: main

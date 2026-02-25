@@ -324,7 +324,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					// vmalert must not have any api access, it doesn't watch for secret changes
 					// operator changes pod annotation and triggers config reload
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
-					vmalertPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					vmalertPod := mustGetFirstPod(ctx, k8sClient, &appsv1.ReplicaSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					})
 					Expect(hasVolumeMount(vmalertPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
 					Expect(hasVolumeMount(vmalertPod.Spec.Containers[1].VolumeMounts, saTokenMount)).To(HaveOccurred())
 					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(HaveOccurred())

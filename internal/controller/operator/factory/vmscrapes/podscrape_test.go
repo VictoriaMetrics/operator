@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -25,8 +25,8 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(nil)
-		ac := getAssetsCache(ctx, fclient, o.cr)
-		pos := &parsedObjects{Namespace: o.cr.Namespace}
+		ac := getAssetsCache(ctx, fclient)
+		pos := &ParsedObjects{Namespace: o.cr.Namespace}
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generatePodScrapeConfig(ctx, sp, pos, o.sc, o.ep, 0, ac)
 		if assert.NoError(t, err, "cannot generate PodScrapeConfig") {

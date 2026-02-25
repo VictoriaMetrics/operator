@@ -69,6 +69,7 @@ const (
 	PVCExpandableLabel               = "operator.victoriametrics.com/pvc-allow-volume-expansion"
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
+	KubeNodeEnvName                  = "KUBE_NODE_NAME"
 )
 
 const (

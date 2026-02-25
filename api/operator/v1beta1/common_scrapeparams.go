@@ -14,12 +14,12 @@ import (
 
 // AttachMetadata configures metadata attachment
 type AttachMetadata struct {
-	// Node instructs vmagent to add node specific metadata from service discovery
+	// Node instructs vmagent or vmsingle to add node specific metadata from service discovery
 	// Valid for roles: pod, endpoints, endpointslice.
 	// +optional
 	Node *bool `json:"node,omitempty"`
 
-	// Namespace instructs vmagent to add namespace specific metadata from service discovery
+	// Namespace instructs vmagent or vmsingle to add namespace specific metadata from service discovery
 	// Valid for roles: pod, service, endpoints, endpointslice, ingress.
 	Namespace *bool `json:"namespace,omitempty"`
 }
@@ -52,7 +52,7 @@ type VMScrapeParams struct {
 	// must be in of semicolon separated header with it's value
 	// eg:
 	// headerName: headerValue
-	// vmagent supports since 1.79.0 version
+	// vmagent and vmsingle support since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
 }
@@ -283,7 +283,7 @@ type EndpointScrapeParams struct {
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`
-	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
+	// HonorTimestamps controls whether vmagent or vmsingle respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	// MaxScrapeSize defines a maximum size of scraped data for a job
@@ -360,7 +360,7 @@ type CommonScrapeSecurityEnforcements struct {
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// based on EndpointAuth can access arbitrary files on the file system
-	// of the VMAgent container e.g. bearer token files, basic auth, tls certs
+	// of the VMAgent or VMSingle container e.g. bearer token files, basic auth, tls certs
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 }
@@ -391,56 +391,56 @@ type CommonScrapeParams struct {
 	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
 	// ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
 	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
 	// PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
 	// ProbeSelector defines VMProbe to be selected for target probing.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ProbeSelector *metav1.LabelSelector `json:"probeSelector,omitempty"`
 	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ProbeNamespaceSelector *metav1.LabelSelector `json:"probeNamespaceSelector,omitempty"`
 	// NodeScrapeSelector defines VMNodeScrape to be selected for scraping.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	NodeScrapeSelector *metav1.LabelSelector `json:"nodeScrapeSelector,omitempty"`
 	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
@@ -448,13 +448,13 @@ type CommonScrapeParams struct {
 	// StaticScrapeSelector defines VMStaticScrape to be selected for target discovery.
 	// Works in combination with NamespaceSelector.
 	// If both nil - match everything.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	StaticScrapeSelector *metav1.LabelSelector `json:"staticScrapeSelector,omitempty"`
 	// StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery.
 	// Works in combination with NamespaceSelector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
@@ -465,16 +465,16 @@ type CommonScrapeParams struct {
 	ScrapeConfigSelector *metav1.LabelSelector `json:"scrapeConfigSelector,omitempty"`
 	// ScrapeConfigNamespaceSelector defines Namespaces to be selected for VMScrapeConfig discovery.
 	// Works in combination with Selector.
-	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// NamespaceSelector nil - only objects at VMAgent or VMSingle namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ScrapeConfigNamespaceSelector *metav1.LabelSelector `json:"scrapeConfigNamespaceSelector,omitempty"`
 	// InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of VMAgent. It is advised to review VMAgent release
+	// break upgrades of VMAgent or VMSingle. It is advised to review VMAgent or VMSingle release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// VMAgent after the upgrade.
+	// VMAgent or VMSingle after the upgrade.
 	// it should be defined as single yaml file.
 	// inlineScrapeConfig: |
 	//     - job_name: "prometheus"
@@ -484,9 +484,9 @@ type CommonScrapeParams struct {
 	InlineScrapeConfig string `json:"inlineScrapeConfig,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of VMAgent. It is advised to review VMAgent release
+	// break upgrades of VMAgent or VMSingle. It is advised to review VMAgent or VMSingle release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// VMAgent after the upgrade.
+	// VMAgent or VMSingle after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *corev1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
@@ -536,16 +536,16 @@ type CommonScrapeParams struct {
 	// _not_ be added when value is set to empty string (`""`).
 	// +optional
 	ExternalLabelName *string `json:"externalLabelName,omitempty"`
-	// ExternalLabels The labels to add to any time series scraped by vmagent.
+	// ExternalLabels The labels to add to any time series scraped by vmagent or vmsingle.
 	// it doesn't affect metrics ingested directly by push API's
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
-	// IngestOnlyMode switches vmagent into unmanaged mode
+	// IngestOnlyMode switches vmagent or vmsingle into unmanaged mode
 	// it disables any config generation for scraping
-	// Currently it prevents vmagent from managing tls and auth options for remote write
+	// Currently it prevents vmagent or vmsingle from managing tls and auth options for remote write
 	// +optional
 	IngestOnlyMode *bool `json:"ingestOnlyMode,omitempty"`
-	// EnableKubernetesAPISelectors instructs vmagent to use CRD scrape objects spec.selectors for
+	// EnableKubernetesAPISelectors instructs vmagent or vmsingle to use CRD scrape objects spec.selectors for
 	// Kubernetes API list and watch requests.
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering
 	// It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total.

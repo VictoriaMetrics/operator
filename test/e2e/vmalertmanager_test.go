@@ -127,7 +127,12 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 
 					// assert k8s api access
 					saTokenMount := "/var/run/secrets/kubernetes.io/serviceaccount"
-					alertmanagerPod := mustGetFirstPod(k8sClient, namespace, cr.SelectorLabels())
+					alertmanagerPod := mustGetFirstPod(ctx, k8sClient, &appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Labels:    cr.SelectorLabels(),
+						},
+					})
 					Expect(hasVolumeMount(alertmanagerPod.Spec.Containers[0].VolumeMounts, saTokenMount)).To(HaveOccurred())
 					Expect(hasVolume(sts.Spec.Template.Spec.Volumes, "kube-api-access")).ToNot(HaveOccurred())
 					Expect(hasVolumeMount(ps.Containers[1].VolumeMounts, saTokenMount)).ToNot(HaveOccurred())

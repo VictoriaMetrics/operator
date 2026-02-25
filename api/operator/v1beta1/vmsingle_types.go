@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMSingleSpec defines the desired state of VMSingle
@@ -79,18 +80,92 @@ type VMSingleSpec struct {
 	*EmbeddedProbes `json:",inline"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// APIServerConfig allows specifying a host and auth methods to access apiserver.
+	// If left empty, VMSingle is assumed to run inside of the cluster
+	// and will discover API servers automatically and use the pod's CA certificate
+	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
+	// +optional
+	APIServerConfig *APIServerConfig `json:"apiServerConfig,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	CommonRelabelParams               `json:",inline,omitempty"`
+	CommonScrapeParams                `json:",inline,omitempty"`
 	CommonDefaultableParams           `json:",inline"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
 	CommonApplicationDeploymentParams `json:",inline"`
 }
 
 // HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
 func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
+}
+
+// HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
+func (cr *VMSingle) HasAnyRelabellingConfigs() bool {
+	return cr.Spec.HasAnyRelabellingConfigs()
+}
+
+// ScrapeSelectors gets object and namespace sepectors
+func (cr *VMSingle) ScrapeSelectors(scrape client.Object) (*metav1.LabelSelector, *metav1.LabelSelector) {
+	return cr.Spec.ScrapeSelectors(scrape)
+}
+
+// IsUnmanaged checks if object should managed any config objects
+func (cr *VMSingle) IsUnmanaged(scrape client.Object) bool {
+	if !cr.DeletionTimestamp.IsZero() || cr.Spec.ParsingError != "" {
+		return true
+	}
+	if scrape == nil {
+		return cr.Spec.isUnmanaged()
+	}
+	switch s := scrape.(type) {
+	case *VMNodeScrape:
+		return cr.Spec.isNodeScrapeUnmanaged()
+	case *VMServiceScrape:
+		return cr.Spec.isServiceScrapeUnmanaged()
+	case *VMPodScrape:
+		return cr.Spec.isPodScrapeUnmanaged()
+	case *VMProbe:
+		return cr.Spec.isProbeUnmanaged()
+	case *VMStaticScrape:
+		return cr.Spec.isStaticScrapeUnmanaged()
+	case *VMScrapeConfig:
+		return cr.Spec.isScrapeConfigUnmanaged()
+	default:
+		panic(fmt.Sprintf("BUG: scrape kind %T is not supported", s))
+	}
+
+}
+
+// ExternalLabels returns external labels for scraping
+func (cr *VMSingle) ExternalLabels() map[string]string {
+	return cr.Spec.externalLabels(fmt.Sprintf("%s/%s", cr.Namespace, cr.Name))
+}
+
+// GetReloadURL implements reloadable interface
+func (cr *VMSingle) GetReloadURL(host string) string {
+	return BuildLocalURL(reloadAuthKeyFlag, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
+}
+
+// GetReloaderParams implements reloadable interface
+func (cr *VMSingle) GetReloaderParams() *CommonConfigReloaderParams {
+	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// UseProxyProtocol implements reloadable interface
+func (cr *VMSingle) UseProxyProtocol() bool {
+	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		return true
+	}
+	return false
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMSingle) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -131,6 +206,11 @@ type VMSingle struct {
 
 	Spec   VMSingleSpec   `json:"spec,omitempty"`
 	Status VMSingleStatus `json:"status,omitempty"`
+}
+
+// AsCRDOwner implements interface
+func (*VMSingle) AsCRDOwner() *metav1.OwnerReference {
+	return GetCRDAsOwner(VMSingleCRD)
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
@@ -260,6 +340,10 @@ func (cr *VMSingle) GetServiceAccountName() string {
 // IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
+}
+
+func (cr *VMSingle) GetRBACName() string {
+	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
 func (cr *VMSingle) AsURL() string {

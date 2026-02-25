@@ -160,7 +160,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
       - description: ConfigMap with relabeling config which is applied to metrics
-          before sending them to the corresponding -remoteWrite.url
+          before sending them to the corresponding -remoteWrite.url.
         displayName: Key at Configmap with relabelConfig for remoteWrite
         path: remoteWrite[0].urlRelabelConfig
         x-descriptors:
@@ -443,6 +443,20 @@ spec:
       kind: VMSingle
       name: vmsingles.operator.victoriametrics.com
       specDescriptors:
+      - description: |-
+          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: configReloaderResources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: |-
+          RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
+          This relabeling is applied to all the collected metrics before sending them to remote storage.
+        displayName: Key at Configmap with relabelConfig name
+        path: relabelConfig
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
       - description: ReplicaCount is the expected size of the Application.
         displayName: Number of pods
         path: replicaCount

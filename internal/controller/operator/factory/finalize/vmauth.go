@@ -72,6 +72,12 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 
+	if cfg.VPAAPIEnabled {
+		if err := removeFinalizeObjByName(ctx, rclient, &vpav1.VerticalPodAutoscaler{}, cr.PrefixedName(), cr.Namespace); err != nil {
+			return err
+		}
+	}
+
 	if err := deleteSA(ctx, rclient, cr); err != nil {
 		return err
 	}

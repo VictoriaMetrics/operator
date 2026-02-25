@@ -2,7 +2,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,9 +12,6 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 // VMStaticScrapeReconciler reconciles a VMStaticScrape object
@@ -44,8 +40,8 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAgent") {
-		l.Info("skipping VMStaticScrape reconcile since VMAgent controller is disabled")
+	if build.IsControllerDisabled("VMAgent") && build.IsControllerDisabled("VMSingle") {
+		l.Info("skipping VMStaticScrape reconcile since VMAgent and VMSingle controllers are disabled")
 		return
 	}
 	instance := &vmv1beta1.VMStaticScrape{}
@@ -59,50 +55,11 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmstaticscrape"}
 	}
-	if agentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return ctrl.Result{}, nil
+	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+		return
 	}
-	agentSync.Lock()
-	defer agentSync.Unlock()
-
-	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
-		objects.Items = append(objects.Items, dst.Items...)
-	}); err != nil {
-		return result, fmt.Errorf("cannot list vmagents for vmstaticscrape: %w", err)
-	}
-
-	for i := range objects.Items {
-		item := &objects.Items[i]
-		if item.IsUnmanaged(instance) {
-			continue
-		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
-		// only check selector when deleting object,
-		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
-		if !instance.DeletionTimestamp.IsZero() {
-			objectSelector, namespaceSelector := item.ScrapeSelectors(instance)
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: namespaceSelector,
-				ObjectSelector:    objectSelector,
-				DefaultNamespace:  instance.Namespace,
-			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
-			if err != nil {
-				l.Error(err, "cannot match vmagent and vmstaticscrape")
-				continue
-			}
-			if !match {
-				continue
-			}
-		}
-
-		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
-			continue
-		}
+	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+		return
 	}
 	return
 }

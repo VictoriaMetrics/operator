@@ -14,6 +14,10 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func init() {
+	InitDeadlines(10*time.Millisecond, 10*time.Millisecond, 10*time.Millisecond, 10*time.Millisecond)
+}
+
 func TestWaitForStatus(t *testing.T) {
 	f := func(status vmv1beta1.UpdateStatus, isErr bool) {
 		vmc := &vmv1beta1.VMCluster{

@@ -23,8 +23,9 @@ func TestVMAuthReconcile(t *testing.T) {
 	getVMAuth := func(fns ...func(v *vmv1beta1.VMAuth)) *vmv1beta1.VMAuth {
 		v := &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-vmauth",
-				Namespace: "default",
+				Name:       "test-vmauth",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: vmv1beta1.VMAuthSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -58,39 +59,38 @@ func TestVMAuthReconcile(t *testing.T) {
 		},
 	})
 
-	// // no updates
-	// f(opts{
-	// 	new:  getVMAuth(),
-	// 	prev: getVMAuth(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAuth(func(v *vmv1beta1.VMAuth) {
-	// 			v.Finalizers = []string{vmv1beta1.FinalizerName}
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Status.ObservedGeneration = v.Generation
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// no updates
+	f(opts{
+		new:  getVMAuth(),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 
-	// // update spec
-	// f(opts{
-	// 	new: getVMAuth(func(v *vmv1beta1.VMAuth) {
-	// 		v.Spec.ReplicaCount = ptr.To(int32(2))
-	// 	}),
-	// 	prev: getVMAuth(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAuth(func(v *vmv1beta1.VMAuth) {
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Status.ObservedGeneration = v.Generation
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Update", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// update spec
+	f(opts{
+		new: getVMAuth(func(v *vmv1beta1.VMAuth) {
+			v.Spec.ReplicaCount = ptr.To(int32(2))
+		}),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 }

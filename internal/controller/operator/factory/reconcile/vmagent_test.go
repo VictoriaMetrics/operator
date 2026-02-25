@@ -71,112 +71,73 @@ func TestVMAgentReconcile(t *testing.T) {
 		},
 	})
 
-	// // no updates
-	// f(opts{
-	// 	new:  getVMAgent(),
-	// 	prev: getVMAgent(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Generation = 1
-	// 			v.Status.ObservedGeneration = 1
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// no updates
+	f(opts{
+		new:  getVMAgent(),
+		prev: getVMAgent(),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 
-	// // update spec
-	// f(opts{
-	// 	new: getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 		v.Spec.ReplicaCount = ptr.To(int32(2))
-	// 	}),
-	// 	prev: getVMAgent(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Generation = 1
-	// 			v.Status.ObservedGeneration = 1
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Update", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// update spec
+	f(opts{
+		new: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ReplicaCount = ptr.To(int32(2))
+		}),
+		prev: getVMAgent(),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 
-	// // update annotations
-	// f(opts{
-	// 	new: getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 		v.Annotations = map[string]string{"new-annotation": "value"}
-	// 	}),
-	// 	prev: getVMAgent(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Generation = 1
-	// 			v.Status.ObservedGeneration = 1
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Update", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// no update on status change
+	f(opts{
+		new:  getVMAgent(),
+		prev: getVMAgent(),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Status.Replicas = 1
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 
-	// // remove annotations
-	// f(opts{
-	// 	new: getVMAgent(),
-	// 	prev: getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 		v.Annotations = map[string]string{"new-annotation": "value"}
-	// 	}),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.Annotations = map[string]string{"new-annotation": "value"}
-	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-	// 			v.Status.ObservedGeneration = v.Generation
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Update", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
-
-	// // no update on status change
-	// f(opts{
-	// 	new:  getVMAgent(),
-	// 	prev: getVMAgent(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.Status.Replicas = 1
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
-
-	// // recreate on deletion
-	// f(opts{
-	// 	new: getVMAgent(),
-	// 	predefinedObjects: []runtime.Object{
-	// 		getVMAgent(func(v *vmv1beta1.VMAgent) {
-	// 			v.DeletionTimestamp = ptr.To(metav1.Now())
-	// 		}),
-	// 	},
-	// 	actions: []k8stools.ClientAction{
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Patch", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 		{Verb: "Create", Resource: nn},
-	// 		{Verb: "Get", Resource: nn},
-	// 	},
-	// })
+	// recreate on deletion
+	f(opts{
+		new: getVMAgent(),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.DeletionTimestamp = ptr.To(metav1.Now())
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Patch", Resource: nn},
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 }

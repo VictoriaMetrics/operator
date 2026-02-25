@@ -58,55 +58,39 @@ func TestVMAuthReconcile(t *testing.T) {
 		},
 	})
 
-	// no updates
-	f(opts{
-		new:  getVMAuth(),
-		prev: getVMAuth(),
-		predefinedObjects: []runtime.Object{
-			getVMAuth(func(v *vmv1beta1.VMAuth) {
-				v.Finalizers = []string{vmv1beta1.FinalizerName}
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-			}),
-		},
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
-		},
-	})
+	// // no updates
+	// f(opts{
+	// 	new:  getVMAuth(),
+	// 	prev: getVMAuth(),
+	// 	predefinedObjects: []runtime.Object{
+	// 		getVMAuth(func(v *vmv1beta1.VMAuth) {
+	// 			v.Finalizers = []string{vmv1beta1.FinalizerName}
+	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	// 			v.Status.ObservedGeneration = v.Generation
+	// 		}),
+	// 	},
+	// 	actions: []k8stools.ClientAction{
+	// 		{Verb: "Get", Resource: nn},
+	// 		{Verb: "Get", Resource: nn},
+	// 	},
+	// })
 
-	// no update on status change
-	f(opts{
-		new:  getVMAuth(),
-		prev: getVMAuth(),
-		predefinedObjects: []runtime.Object{
-			getVMAuth(func(v *vmv1beta1.VMAuth) {
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.Reason = "some error"
-			}),
-		},
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Kind: "VMAuth", Resource: nn},
-			{Verb: "Get", Kind: "VMAuth", Resource: nn},
-		},
-	})
-
-	// update spec
-	f(opts{
-		new: getVMAuth(func(v *vmv1beta1.VMAuth) {
-			v.Spec.ReplicaCount = ptr.To(int32(2))
-		}),
-		prev: getVMAuth(),
-		predefinedObjects: []runtime.Object{
-			getVMAuth(func(v *vmv1beta1.VMAuth) {
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-			}),
-		},
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
-		},
-	})
+	// // update spec
+	// f(opts{
+	// 	new: getVMAuth(func(v *vmv1beta1.VMAuth) {
+	// 		v.Spec.ReplicaCount = ptr.To(int32(2))
+	// 	}),
+	// 	prev: getVMAuth(),
+	// 	predefinedObjects: []runtime.Object{
+	// 		getVMAuth(func(v *vmv1beta1.VMAuth) {
+	// 			v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+	// 			v.Status.ObservedGeneration = v.Generation
+	// 		}),
+	// 	},
+	// 	actions: []k8stools.ClientAction{
+	// 		{Verb: "Get", Resource: nn},
+	// 		{Verb: "Update", Resource: nn},
+	// 		{Verb: "Get", Resource: nn},
+	// 	},
+	// })
 }

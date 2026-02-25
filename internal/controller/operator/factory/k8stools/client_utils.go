@@ -164,19 +164,24 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 		result: make(chan watch.Event),
 		cancel: cancel,
 	}
-	// fast path
-	if len(namespaces) == 0 {
+
+	addWatcher := func(ns string) error {
 		dst := PT(new(T))
-		w, err := rclient.Watch(localCtx, dst)
+		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
 		if err != nil {
 			cancel()
-			return w, fmt.Errorf("cannot start watcher for cluster wide: %w", err)
+			return err
 		}
 		ownss.wg.Add(1)
-		activeWatchers.WithLabelValues("ALL_NAMESPACES").Add(1)
-		go func() {
+		labelValue := "ALL_NAMESPACES"
+		if len(ns) > 0 {
+			labelValue = ns
+		}
+		ownss.objectWatchers = append(ownss.objectWatchers, w)
+		activeWatchers.WithLabelValues(labelValue).Add(1)
+		go func(w watch.Interface, _ string) {
 			defer ownss.wg.Done()
-			defer activeWatchers.WithLabelValues("ALL_NAMESPACES").Add(-1)
+			defer activeWatchers.WithLabelValues(labelValue).Add(-1)
 			for {
 				select {
 				case <-localCtx.Done():
@@ -186,42 +191,7 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 						close(ownss.result)
 						return
 					}
-					watchEventsTotalByType.WithLabelValues(string(ev.Type), "ALL_NAMESPACES", crdTypeName).Inc()
-					select {
-					case ownss.result <- ev:
-					case <-localCtx.Done():
-						return
-					}
-				}
-			}
-		}()
-		ownss.objectWatchers = append(ownss.objectWatchers, w)
-		return &ownss, nil
-	}
-
-	for _, ns := range namespaces {
-		dst := PT(new(T))
-		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
-		if err != nil {
-			cancel()
-			return w, fmt.Errorf("cannot start watcher for ns=%q wide: %w", ns, err)
-		}
-		ownss.objectWatchers = append(ownss.objectWatchers, w)
-		ownss.wg.Add(1)
-		activeWatchers.WithLabelValues(ns).Add(1)
-		go func(w watch.Interface, ns string) {
-			defer ownss.wg.Done()
-			defer activeWatchers.WithLabelValues(ns).Add(-1)
-			for {
-				select {
-				case <-localCtx.Done():
-					return
-				case ev, ok := <-w.ResultChan():
-					if !ok {
-						cancel()
-						return
-					}
-					watchEventsTotalByType.WithLabelValues(string(ev.Type), ns, crdTypeName).Inc()
+					watchEventsTotalByType.WithLabelValues(string(ev.Type), labelValue, crdTypeName).Inc()
 					select {
 					case ownss.result <- ev:
 					case <-localCtx.Done():
@@ -230,7 +200,21 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 				}
 			}
 		}(w, ns)
+		return nil
 	}
+
+	if len(namespaces) == 0 {
+		if err := addWatcher(""); err != nil {
+			return nil, fmt.Errorf("cannot start cluster-wide watcher: %w", err)
+		}
+	}
+
+	for _, ns := range namespaces {
+		if err := addWatcher(ns); err != nil {
+			return nil, fmt.Errorf("cannot start watcher for namespace=%s: %w", ns, err)
+		}
+	}
+
 	go func() {
 		ownss.wg.Wait()
 		cancel()

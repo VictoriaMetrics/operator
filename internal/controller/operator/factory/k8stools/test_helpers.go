@@ -9,6 +9,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
@@ -171,6 +172,39 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 		builder = builder.WithInterceptorFuncs(*fns)
 	}
 	return builder.Build()
+}
+
+// ClientAction represents a client action
+type ClientAction struct {
+	Verb     string
+	Resource types.NamespacedName
+}
+
+// ClientWithActions is a client that tracks actions
+type ClientWithActions struct {
+	client.Client
+	Actions []ClientAction
+}
+
+// GetTestClientWithActions returns a client that tracks actions
+func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithActions {
+	var cwa ClientWithActions
+
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Resource: client.ObjectKeyFromObject(obj)})
+			return cl.Create(ctx, obj, opts...)
+		},
+		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Resource: key})
+			return cl.Get(ctx, key, obj, opts...)
+		},
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Resource: client.ObjectKeyFromObject(obj)})
+			return cl.Update(ctx, obj, opts...)
+		},
+	})
+	return &cwa
 }
 
 // CompareObjectMeta compares metadata objects

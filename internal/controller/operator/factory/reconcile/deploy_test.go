@@ -13,13 +13,14 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestDeployReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.Deployment
 		predefinedObjects []runtime.Object
-		actions           []clientAction
+		actions           []k8stools.ClientAction
 	}
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
@@ -70,9 +71,9 @@ func TestDeployReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		assert.NoError(t, Deployment(ctx, cl, o.new, o.prev, false, nil))
-		assert.Equal(t, o.actions, cl.actions)
+		assert.Equal(t, o.actions, cl.Actions)
 	}
 
 	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
@@ -80,7 +81,7 @@ func TestDeployReconcile(t *testing.T) {
 	// create deployment
 	f(opts{
 		new: getDeploy(),
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Create", Resource: nn},
 			{Verb: "Get", Resource: nn},
@@ -96,7 +97,7 @@ func TestDeployReconcile(t *testing.T) {
 				d.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Get", Resource: nn},
 		},
@@ -111,7 +112,7 @@ func TestDeployReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getDeploy(),
 		},
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Update", Resource: nn},
 			{Verb: "Get", Resource: nn},
@@ -127,7 +128,8 @@ func TestDeployReconcile(t *testing.T) {
 				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		actions: []clientAction{
+		hasHPA: true,
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Get", Resource: nn},
 		},

@@ -95,6 +95,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}},
 		},
 		newSTS: &appsv1.StatefulSet{
+
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "vmselect",
 				Namespace: "default",
@@ -204,11 +205,11 @@ func Test_updateSTSPVC(t *testing.T) {
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		expected          []corev1.PersistentVolumeClaim
-		actions           []clientAction
+		actions           []k8stools.ClientAction
 	}
 	f := func(o opts) {
 		t.Helper()
-		cl := getTestClient(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		ctx := context.TODO()
 		err := updateSTSPVC(ctx, cl, o.sts, nil)
 		if o.wantErr {
@@ -217,7 +218,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			assert.NoError(t, err)
 		}
 		if o.actions != nil {
-			assert.Equal(t, o.actions, cl.actions)
+			assert.Equal(t, o.actions, cl.Actions)
 		}
 		var pvcs corev1.PersistentVolumeClaimList
 		opts := &client.ListOptions{
@@ -227,6 +228,9 @@ func Test_updateSTSPVC(t *testing.T) {
 		assert.NoError(t, cl.List(ctx, &pvcs, opts))
 		assert.ElementsMatch(t, o.expected, pvcs.Items)
 	}
+
+	pvc1 := types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}
+	pvc2 := types.NamespacedName{Name: "test-vmselect-0", Namespace: "default"}
 
 	// update metadata only
 	f(opts{
@@ -267,8 +271,8 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Update", Resource: types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -378,9 +382,9 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Update", Resource: types.NamespacedName{Name: "test-vmselect-0", Namespace: "default"}},
-			{Verb: "Update", Resource: types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Resource: pvc2},
+			{Verb: "Update", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -390,10 +394,7 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "1000",
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
-					},
+					ResourceVersion: "999",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -418,7 +419,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceStorage: resource.MustParse("15Gi"),
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
 					},
 				},
@@ -558,7 +559,7 @@ func Test_updateSTSPVC(t *testing.T) {
 	f(opts{
 		sts: &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmselect-cachedir",
+				Name:      "vmselect",
 				Namespace: "default",
 				Labels: map[string]string{
 					"app": "vmselect",
@@ -573,7 +574,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "vmselect",
+							Name: "vmselect-cachedir",
 							Labels: map[string]string{
 								"app": "vmselect",
 							},
@@ -590,6 +591,9 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Resource: pvc1},
+		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -598,12 +602,15 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "999",
+					ResourceVersion: "1000",
+					Finalizers: []string{
+						vmv1beta1.FinalizerName,
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceStorage: resource.MustParse("10Gi"),
+							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
 					},
 				},

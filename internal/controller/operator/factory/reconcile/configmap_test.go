@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestConfigMapReconcile(t *testing.T) {
@@ -19,16 +20,16 @@ func TestConfigMapReconcile(t *testing.T) {
 		prevMeta          *metav1.ObjectMeta
 		owner             *metav1.OwnerReference
 		predefinedObjects []runtime.Object
-		actions           []clientAction
+		actions           []k8stools.ClientAction
 		validate          func(*corev1.ConfigMap)
 	}
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
 		assert.NoError(t, err)
-		assert.Equal(t, o.actions, cl.actions)
+		assert.Equal(t, o.actions, cl.Actions)
 		if o.validate != nil {
 			var got corev1.ConfigMap
 			nsn := types.NamespacedName{
@@ -40,20 +41,22 @@ func TestConfigMapReconcile(t *testing.T) {
 		}
 	}
 
+	nn := types.NamespacedName{Name: "test", Namespace: "default"}
+
 	// create configmap
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "test",
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
-			{Verb: "Create", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
@@ -64,22 +67,22 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "test",
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test",
-					Namespace:  "default",
+					Name:       nn.Name,
+					Namespace:  nn.Namespace,
 					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
@@ -87,8 +90,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
@@ -99,8 +102,8 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 				Annotations: map[string]string{
 					"key": "value",
 				},
@@ -110,23 +113,23 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "test",
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
-			{Verb: "Update", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "value", c.Annotations["key"])
@@ -137,31 +140,31 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "after",
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "before",
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
-			{Verb: "Update", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "after", c.Data["data"])
@@ -172,8 +175,8 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 				Annotations: map[string]string{
 					"key": "value",
 				},
@@ -183,8 +186,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 			Annotations: map[string]string{
 				"key": "value",
 			},
@@ -192,8 +195,8 @@ func TestConfigMapReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 					Annotations: map[string]string{
 						"key":      "value",
 						"external": "value",
@@ -205,8 +208,8 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []clientAction{
-			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])

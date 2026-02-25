@@ -690,7 +690,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new, prev         *appsv1.StatefulSet
 		predefinedObjects []runtime.Object
 		validate          func(*appsv1.StatefulSet)
-		actions           []clientAction
+		actions           []k8stools.ClientAction
 		wantErr           bool
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
@@ -738,7 +738,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		var emptyOpts STSOptions
 		err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
 		if o.wantErr {
@@ -751,7 +751,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 			Name:      o.new.Name,
 			Namespace: o.new.Namespace,
 		}
-		assert.Equal(t, o.actions, cl.actions)
+		assert.Equal(t, o.actions, cl.Actions)
 		if o.validate != nil {
 			var got appsv1.StatefulSet
 			assert.NoError(t, cl.Get(ctx, nsn, &got))
@@ -764,7 +764,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	// create statefulset
 	f(opts{
 		new: getSts(),
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Create", Resource: nn},
 			{Verb: "Get", Resource: nn},
@@ -780,7 +780,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Get", Resource: nn},
 		},
@@ -795,7 +795,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getSts(),
 		},
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Update", Resource: nn},
 			{Verb: "Get", Resource: nn},
@@ -816,7 +816,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		actions: []clientAction{
+		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
 			{Verb: "Update", Resource: nn},
 			{Verb: "Get", Resource: nn},

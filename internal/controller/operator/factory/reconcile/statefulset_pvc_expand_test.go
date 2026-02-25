@@ -394,7 +394,13 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "999",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
+					ResourceVersion: "1000",
+					Finalizers: []string{
+						vmv1beta1.FinalizerName,
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -411,6 +417,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
 					ResourceVersion: "1000",
 					Finalizers: []string{
 						vmv1beta1.FinalizerName,
@@ -419,7 +428,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceStorage: resource.MustParse("10Gi"),
+							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
 					},
 				},
@@ -432,6 +441,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -448,6 +460,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -602,6 +617,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
 					ResourceVersion: "1000",
 					Finalizers: []string{
 						vmv1beta1.FinalizerName,
@@ -623,6 +641,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{

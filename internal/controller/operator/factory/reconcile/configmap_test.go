@@ -171,6 +171,41 @@ func TestConfigMapReconcile(t *testing.T) {
 		},
 	})
 
+	// binary data updated
+	f(opts{
+		new: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
+			},
+			BinaryData: map[string][]byte{
+				"data": []byte("after"),
+			},
+		},
+		prevMeta: &metav1.ObjectMeta{
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
+				},
+				BinaryData: map[string][]byte{
+					"data": []byte("before"),
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+		},
+		validate: func(c *corev1.ConfigMap) {
+			assert.Equal(t, []byte("after"), c.BinaryData["data"])
+		},
+	})
+
 	// no update with 3-rd party annotations
 	f(opts{
 		new: &corev1.ConfigMap{

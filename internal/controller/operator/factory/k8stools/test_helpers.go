@@ -98,9 +98,9 @@ func GetTestClientWithObjectsAndInterceptors(predefinedObjects []runtime.Object,
 	return getTestClient(predefinedObjects, &fns)
 }
 
-// GetTestClientWithObjects returns testing client with optional predefined objects
-func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
-	fns := interceptor.Funcs{
+// GetInterceptorsWithObjects returns interceptors for objects
+func GetInterceptorsWithObjects() interceptor.Funcs {
+	return interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 			switch v := obj.(type) {
 			case *appsv1.StatefulSet:
@@ -117,7 +117,20 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
 			}
-			return cl.Create(ctx, obj, opts...)
+			if err := cl.Create(ctx, obj, opts...); err != nil {
+				return err
+			}
+			switch v := obj.(type) {
+			case *vmv1beta1.VMAgent:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
+			case *vmv1beta1.VMCluster:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
+			}
+			return nil
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
 			switch v := obj.(type) {
@@ -131,9 +144,27 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)
 			}
-			return cl.Update(ctx, obj, opts...)
+			if err := cl.Update(ctx, obj, opts...); err != nil {
+				return err
+			}
+			switch v := obj.(type) {
+			case *vmv1beta1.VMAgent:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
+			case *vmv1beta1.VMCluster:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
+			}
+			return nil
 		},
 	}
+}
+
+// GetTestClientWithObjects returns testing client with optional predefined objects
+func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
+	fns := GetInterceptorsWithObjects()
 	return getTestClient(predefinedObjects, &fns)
 }
 
@@ -209,6 +240,51 @@ func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithAct
 		},
 		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Resource: client.ObjectKeyFromObject(obj)})
+			return cl.Patch(ctx, obj, patch, opts...)
+		},
+	})
+	return &cwa
+}
+
+// GetTestClientWithActionsAndObjects returns a client that tracks actions and updates status/objects
+func GetTestClientWithActionsAndObjects(predefinedObjects []runtime.Object) *ClientWithActions {
+	var cwa ClientWithActions
+	objectInterceptors := GetInterceptorsWithObjects()
+
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Resource: client.ObjectKeyFromObject(obj)})
+			if objectInterceptors.Create != nil {
+				return objectInterceptors.Create(ctx, cl, obj, opts...)
+			}
+			return cl.Create(ctx, obj, opts...)
+		},
+		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Resource: key})
+			if objectInterceptors.Get != nil {
+				return objectInterceptors.Get(ctx, cl, key, obj, opts...)
+			}
+			return cl.Get(ctx, key, obj, opts...)
+		},
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Resource: client.ObjectKeyFromObject(obj)})
+			if objectInterceptors.Update != nil {
+				return objectInterceptors.Update(ctx, cl, obj, opts...)
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Resource: client.ObjectKeyFromObject(obj)})
+			if objectInterceptors.Delete != nil {
+				return objectInterceptors.Delete(ctx, cl, obj, opts...)
+			}
+			return cl.Delete(ctx, obj, opts...)
+		},
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Resource: client.ObjectKeyFromObject(obj)})
+			if objectInterceptors.Patch != nil {
+				return objectInterceptors.Patch(ctx, cl, obj, patch, opts...)
+			}
 			return cl.Patch(ctx, obj, patch, opts...)
 		},
 	})

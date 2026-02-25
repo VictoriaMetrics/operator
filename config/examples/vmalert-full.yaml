@@ -21,7 +21,7 @@ spec:
       key: value
   image:
     repository: victoriametrics/vmalert
-    tag: v1.46.0
+    tag: v1.136.0
     pullPolicy: IfNotPresent
   replicaCount: 1
   extraArgs:

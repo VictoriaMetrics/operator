@@ -109,4 +109,37 @@ func TestDaemonSetReconcile(t *testing.T) {
 			{Verb: "Get", Resource: nn},
 		},
 	})
+
+	// no update on status change
+	f(opts{
+		new:  getDaemonSet(),
+		prev: getDaemonSet(),
+		predefinedObjects: []runtime.Object{
+			getDaemonSet(func(d *appsv1.DaemonSet) {
+				d.Status.NumberReady = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
+
+	// object marked for deletion
+	f(opts{
+		new: getDaemonSet(),
+		predefinedObjects: []runtime.Object{
+			getDaemonSet(func(d *appsv1.DaemonSet) {
+				d.DeletionTimestamp = ptr.To(metav1.Now())
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			// TODO: this looks weird
+			{Verb: "Get", Resource: nn},
+			{Verb: "Patch", Resource: nn},
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
+	})
 }

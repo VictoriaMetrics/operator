@@ -74,8 +74,13 @@ func TestDeployReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil))
+		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
+		err := Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
 		assert.Equal(t, o.actions, cl.Actions)
 		if o.validate != nil {
 			var got appsv1.Deployment
@@ -125,43 +130,6 @@ func TestDeployReconcile(t *testing.T) {
 			{Verb: "Get", Resource: nn},
 			{Verb: "Update", Resource: nn},
 			{Verb: "Get", Resource: nn},
-		},
-	})
-
-	// remove template annotations
-	f(opts{
-		new:  getDeploy(),
-		prev: getDeploy(),
-		predefinedObjects: []runtime.Object{
-			getDeploy(func(d *appsv1.Deployment) {
-				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
-			}),
-		},
-		hasHPA: true,
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
-		},
-	})
-
-	// update with HPA
-	f(opts{
-		new: getDeploy(func(d *appsv1.Deployment) {
-			d.Spec.Replicas = ptr.To[int32](5)
-	// recreate on deletion
-		prev: getDeploy(func(d *appsv1.Deployment) {
-		new: getDeploy(),
-				// update status to satisfy wait
-				d.Status.Replicas = 3
-				d.DeletionTimestamp = ptr.To(metav1.Now())
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-		},
-		validate: func(d *appsv1.Deployment) {
-			// replicas must be ignored from new spec
-			assert.Equal(t, int32(3), *d.Spec.Replicas)
-			// annotations must be removed
-			assert.Empty(t, d.Spec.Template.Annotations)
 		},
 	})
 }

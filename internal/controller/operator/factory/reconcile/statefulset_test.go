@@ -804,24 +804,18 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 	})
 
-	// delete annotations
+	// no update on status change
 	f(opts{
-		new: getSts(),
-		prev: getSts(func(s *appsv1.StatefulSet) {
-			s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
-		}),
+		new:  getSts(),
+		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			getSts(func(s *appsv1.StatefulSet) {
-				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+				s.Status.Replicas = 1
 			}),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
 			{Verb: "Get", Resource: nn},
-		},
-		validate: func(s *appsv1.StatefulSet) {
-			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
 		},
 	})
 

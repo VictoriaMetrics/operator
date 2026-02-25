@@ -192,13 +192,7 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	return args
 }
 
-const (
-	defaultReadinessPeriodSeconds    int32 = 5
-	defaultReadinessFailureThreshold int32 = 10
-)
-
 // AddHTTPShutdownDelayArg adds default -http.shutdownDelay flag if user didn't override it in extraArgs.
-// If readiness probe is provided, delay is derived from readiness probe timings.
 func AddHTTPShutdownDelayArg(args []string, params *vmv1beta1.CommonAppsParams) []string {
 	if params == nil {
 		return args
@@ -206,20 +200,10 @@ func AddHTTPShutdownDelayArg(args []string, params *vmv1beta1.CommonAppsParams) 
 	if _, ok := params.ExtraArgs["http.shutdownDelay"]; ok {
 		return args
 	}
-
-	delaySeconds := defaultReadinessPeriodSeconds * defaultReadinessFailureThreshold
-	if params.ReadinessProbe != nil {
-		periodSeconds := params.ReadinessProbe.PeriodSeconds
-		if periodSeconds == 0 {
-			periodSeconds = defaultReadinessPeriodSeconds
-		}
-		failureThreshold := params.ReadinessProbe.FailureThreshold
-		if failureThreshold == 0 {
-			failureThreshold = defaultReadinessFailureThreshold
-		}
-		delaySeconds = periodSeconds * failureThreshold
+	delaySeconds := int64(30)
+	if params.TerminationGracePeriodSeconds != nil {
+		delaySeconds = *params.TerminationGracePeriodSeconds
 	}
-
 	args = append(args, fmt.Sprintf("-http.shutdownDelay=%ds", delaySeconds))
 	return args
 }

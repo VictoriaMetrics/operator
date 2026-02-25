@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -207,14 +208,10 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		assert.Equal(
-			t,
-			AddHTTPShutdownDelayArg(nil, &o.params),
-			o.wantArgs,
-		)
+		assert.Equal(t, AddHTTPShutdownDelayArg(nil, &o.params), o.wantArgs)
 	}
 	f(opts{
-		wantArgs: []string{"-http.shutdownDelay=50s"},
+		wantArgs: []string{"-http.shutdownDelay=30s"},
 	})
 	f(opts{
 		params: vmv1beta1.CommonAppsParams{
@@ -224,12 +221,21 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	})
 	f(opts{
 		params: vmv1beta1.CommonAppsParams{
-			ReadinessProbe: &corev1.Probe{
-				PeriodSeconds:    3,
-				FailureThreshold: 4,
-			},
+			TerminationGracePeriodSeconds: ptr.To[int64](60),
 		},
-		wantArgs: []string{"-http.shutdownDelay=12s"},
+		wantArgs: []string{"-http.shutdownDelay=60s"},
+	})
+	f(opts{
+		params: vmv1beta1.CommonAppsParams{
+			TerminationGracePeriodSeconds: ptr.To[int64](120),
+		},
+		wantArgs: []string{"-http.shutdownDelay=120s"},
+	})
+	f(opts{
+		params: vmv1beta1.CommonAppsParams{
+			ExtraArgs:                     map[string]string{"http.shutdownDelay": "20s"},
+			TerminationGracePeriodSeconds: ptr.To[int64](120),
+		},
 	})
 }
 

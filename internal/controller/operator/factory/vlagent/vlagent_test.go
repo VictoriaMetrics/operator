@@ -369,6 +369,58 @@ func TestCreateOrUpdate(t *testing.T) {
 			})
 		},
 	})
+
+	// test custom terminationGracePeriodSeconds is propagated to pod spec and shutdownDelay
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-grace",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount:                  ptr.To(int32(1)),
+					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				},
+			},
+		},
+		validate: func(got *appsv1.StatefulSet) {
+			// terminationGracePeriodSeconds should be set on the pod spec
+			assert.NotNil(t, got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			assert.Equal(t, int64(60), *got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			// http.shutdownDelay should inherit from terminationGracePeriodSeconds
+			cnt := got.Spec.Template.Spec.Containers[0]
+			assert.Contains(t, cnt.Args, "-http.shutdownDelay=60s")
+		},
+	})
+
+	// test default terminationGracePeriodSeconds when not set
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-default-grace",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+		validate: func(got *appsv1.StatefulSet) {
+			// should get default 30s
+			assert.NotNil(t, got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			assert.Equal(t, int64(30), *got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			cnt := got.Spec.Template.Spec.Containers[0]
+			assert.Contains(t, cnt.Args, "-http.shutdownDelay=30s")
+		},
+	})
 }
 
 func TestBuildRemoteWriteArgs(t *testing.T) {
@@ -850,7 +902,7 @@ containers:
   - name: vlagent
     image: vm-repo:v1.97.1
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9425
       - -tmpDataPath=/vlagent-data
     ports:
@@ -915,7 +967,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9429
       - -tmpDataPath=/vlagent-data
     ports:
@@ -982,7 +1034,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -1056,7 +1108,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.50.0
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9425
       - -kubernetesCollector
       - -kubernetesCollector.includePodLabels
@@ -1151,7 +1203,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -1226,7 +1278,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v0.0.1
     args:
-      - -http.shutdownDelay=50s
+      - -http.shutdownDelay=30s
       - -httpListenAddr=:9425
       - -remoteWrite.maxDiskUsagePerURL=35GiB
       - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
@@ -1265,7 +1317,7 @@ containers:
 serviceaccountname: vlagent-agent
 `)
 
-	// test custom readiness probe affects both readiness and shutdownDelay
+	// test custom terminationGrace probe affects both readiness and shutdownDelay
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
@@ -1273,12 +1325,9 @@ serviceaccountname: vlagent-agent
 				Image: vmv1beta1.Image{
 					Tag: "v1.97.1",
 				},
-				UseDefaultResources: ptr.To(false),
-				Port:                "9429",
-				ReadinessProbe: &corev1.Probe{
-					PeriodSeconds:    4,
-					FailureThreshold: 6,
-				},
+				UseDefaultResources:           ptr.To(false),
+				Port:                          "9429",
+				TerminationGracePeriodSeconds: ptr.To[int64](40),
 			},
 		},
 	}, []runtime.Object{}, `
@@ -1286,7 +1335,7 @@ containers:
   - name: vlagent
     image: victoriametrics/vlagent:v1.97.1
     args:
-      - -http.shutdownDelay=24s
+      - -http.shutdownDelay=40s
       - -httpListenAddr=:9429
       - -tmpDataPath=/vlagent-data
     ports:
@@ -1315,9 +1364,9 @@ containers:
             intval: 9429
           scheme: HTTP
       timeoutseconds: 5
-      periodseconds: 4
+      periodseconds: 5
       successthreshold: 1
-      failurethreshold: 6
+      failurethreshold: 10
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent

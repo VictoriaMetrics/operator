@@ -206,7 +206,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VLInsert.ExtraArgs, cr.Spec.VLInsert.TerminationGracePeriodSeconds)
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VLInsert.ExtraArgs, cr.Spec.VLInsert.TerminationGracePeriodSeconds, cr.ParsedLastAppliedSpec == nil)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLInsert.ExtraArgs, "-")
 	sort.Strings(args)
 

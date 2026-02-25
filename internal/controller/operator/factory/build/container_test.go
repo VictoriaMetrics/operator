@@ -210,40 +210,55 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	type opts struct {
 		extraArgs                     map[string]string
 		terminationGracePeriodSeconds *int64
+		isNewResource                 bool
 		wantArgs                      []string
 	}
 	f := func(opts opts) {
 		t.Helper()
 		assert.Equal(
 			t,
-			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.terminationGracePeriodSeconds),
+			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.terminationGracePeriodSeconds, opts.isNewResource),
 			opts.wantArgs,
 		)
 	}
+	// new resource, no explicit settings
 	f(opts{
 		extraArgs:                     nil,
 		terminationGracePeriodSeconds: nil,
+		isNewResource:                 true,
 		wantArgs:                      []string{"-http.shutdownDelay=30s"},
+	})
+	f(opts{
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: nil,
+		isNewResource:                 false,
+		wantArgs:                      nil,
 	})
 	//if extraArg already exists, no more args should be added, it will be added later in the process of adding extra args
 	f(opts{
 		extraArgs:                     map[string]string{"http.shutdownDelay": "5s"},
 		terminationGracePeriodSeconds: nil,
+		isNewResource:                 true,
 		wantArgs:                      nil,
 	})
+	// new resource with explicit terminationGracePeriodSeconds
 	f(opts{
 		extraArgs:                     nil,
 		terminationGracePeriodSeconds: ptr.To[int64](60),
+		isNewResource:                 true,
 		wantArgs:                      []string{"-http.shutdownDelay=60s"},
 	})
+	// existing resource with explicit terminationGracePeriodSeconds
 	f(opts{
 		extraArgs:                     nil,
 		terminationGracePeriodSeconds: ptr.To[int64](120),
-		wantArgs:                      []string{"-http.shutdownDelay=120s"},
+		isNewResource:                 false,
+		wantArgs:                      nil,
 	})
 	f(opts{
 		extraArgs:                     map[string]string{"http.shutdownDelay": "20s"},
 		terminationGracePeriodSeconds: ptr.To[int64](120),
+		isNewResource:                 true,
 		wantArgs:                      nil,
 	})
 }

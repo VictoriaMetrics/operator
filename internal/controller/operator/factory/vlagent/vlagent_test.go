@@ -322,30 +322,6 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
-	// test default terminationGracePeriodSeconds when not set
-	f(opts{
-		cr: &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "example-agent-default-grace",
-				Namespace: "default",
-			},
-			Spec: vmv1.VLAgentSpec{
-				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-					{URL: "http://remote-write"},
-				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
-				},
-			},
-		},
-		validate: func(got *appsv1.StatefulSet) {
-			// should get default 30s
-			assert.NotNil(t, got.Spec.Template.Spec.TerminationGracePeriodSeconds)
-			assert.Equal(t, int64(30), *got.Spec.Template.Spec.TerminationGracePeriodSeconds)
-			cnt := got.Spec.Template.Spec.Containers[0]
-			assert.Contains(t, cnt.Args, "-http.shutdownDelay=30s")
-		},
-	})
 }
 
 func TestBuildRemoteWriteArgs(t *testing.T) {

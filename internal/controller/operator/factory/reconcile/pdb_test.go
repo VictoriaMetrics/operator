@@ -59,8 +59,8 @@ func TestPDBReconcile(t *testing.T) {
 	f(opts{
 		new: getPDB(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: nn},
+			{Verb: "Create", Kind: "PodDisruptionBudget", Resource: nn},
 		},
 	})
 
@@ -74,7 +74,7 @@ func TestPDBReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: nn},
 		},
 	})
 
@@ -103,8 +103,8 @@ func TestPDBReconcile(t *testing.T) {
 			getPDB(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: nn},
+			{Verb: "Update", Kind: "PodDisruptionBudget", Resource: nn},
 		},
 	})
 }

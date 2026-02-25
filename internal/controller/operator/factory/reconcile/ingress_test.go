@@ -54,8 +54,8 @@ func TestIngressReconcile(t *testing.T) {
 	f(opts{
 		new: getIngress(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "Ingress", Resource: nn},
+			{Verb: "Create", Kind: "Ingress", Resource: nn},
 		},
 	})
 
@@ -69,7 +69,7 @@ func TestIngressReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Ingress", Resource: nn},
 		},
 	})
 
@@ -102,8 +102,8 @@ func TestIngressReconcile(t *testing.T) {
 			getIngress(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "Ingress", Resource: nn},
+			{Verb: "Update", Kind: "Ingress", Resource: nn},
 		},
 	})
 }

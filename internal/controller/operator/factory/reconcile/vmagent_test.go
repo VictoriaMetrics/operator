@@ -65,9 +65,9 @@ func TestVMAgentReconcile(t *testing.T) {
 	f(opts{
 		new: getVMAgent(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Create", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
 
@@ -83,8 +83,8 @@ func TestVMAgentReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
 
@@ -102,9 +102,9 @@ func TestVMAgentReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
 
@@ -119,8 +119,8 @@ func TestVMAgentReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
 
@@ -133,11 +133,11 @@ func TestVMAgentReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Patch", Resource: nn},
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Patch", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Create", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
 }

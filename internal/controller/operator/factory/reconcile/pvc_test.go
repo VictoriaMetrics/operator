@@ -58,8 +58,8 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 	f(opts{
 		new: getPVC(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Create", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 
@@ -73,7 +73,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 
@@ -87,8 +87,8 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 			getPVC(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 
@@ -104,8 +104,8 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 }

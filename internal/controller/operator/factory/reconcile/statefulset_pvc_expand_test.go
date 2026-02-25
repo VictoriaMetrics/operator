@@ -272,7 +272,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Update", Resource: pvc1},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -383,8 +383,8 @@ func Test_updateSTSPVC(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Update", Resource: pvc2},
-			{Verb: "Update", Resource: pvc1},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc2},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -607,7 +607,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Update", Resource: pvc1},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{

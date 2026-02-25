@@ -358,8 +358,8 @@ func TestServiceReconcile(t *testing.T) {
 	f(opts{
 		new: getService(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Create", Kind: "Service", Resource: nn},
 		},
 	})
 
@@ -373,7 +373,7 @@ func TestServiceReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Service", Resource: nn},
 		},
 	})
 
@@ -405,8 +405,8 @@ func TestServiceReconcile(t *testing.T) {
 			getService(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Update", Kind: "Service", Resource: nn},
 		},
 	})
 
@@ -422,10 +422,10 @@ func TestServiceReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Patch", Resource: nn},
-			{Verb: "Delete", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Patch", Kind: "Service", Resource: nn},
+			{Verb: "Delete", Kind: "Service", Resource: nn},
+			{Verb: "Create", Kind: "Service", Resource: nn},
 		},
 	})
 }

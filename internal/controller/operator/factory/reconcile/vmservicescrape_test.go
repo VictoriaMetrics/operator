@@ -58,8 +58,8 @@ func TestVMServiceScrapeForCRD(t *testing.T) {
 	f(opts{
 		new: getVMServiceScrape(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: nn},
+			{Verb: "Create", Kind: "VMServiceScrape", Resource: nn},
 		},
 	})
 
@@ -71,7 +71,7 @@ func TestVMServiceScrapeForCRD(t *testing.T) {
 			getVMServiceScrape(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: nn},
 		},
 	})
 
@@ -100,8 +100,8 @@ func TestVMServiceScrapeForCRD(t *testing.T) {
 			getVMServiceScrape(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: nn},
+			{Verb: "Update", Kind: "VMServiceScrape", Resource: nn},
 		},
 	})
 }
@@ -150,8 +150,8 @@ func TestVMPodScrapeForCRD(t *testing.T) {
 	f(opts{
 		new: getVMPodScrape(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
+			{Verb: "Create", Kind: "VMPodScrape", Resource: nn},
 		},
 	})
 
@@ -163,7 +163,7 @@ func TestVMPodScrapeForCRD(t *testing.T) {
 			getVMPodScrape(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
 		},
 	})
 
@@ -177,8 +177,8 @@ func TestVMPodScrapeForCRD(t *testing.T) {
 			getVMPodScrape(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
+			{Verb: "Update", Kind: "VMPodScrape", Resource: nn},
 		},
 	})
 }

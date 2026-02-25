@@ -96,9 +96,9 @@ func TestDeployReconcile(t *testing.T) {
 	f(opts{
 		new: getDeploy(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Create", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
 		},
 	})
 
@@ -112,8 +112,8 @@ func TestDeployReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
 		},
 	})
 
@@ -127,9 +127,9 @@ func TestDeployReconcile(t *testing.T) {
 			getDeploy(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Update", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
 		},
 	})
 }

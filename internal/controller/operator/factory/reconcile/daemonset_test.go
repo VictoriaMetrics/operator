@@ -75,9 +75,9 @@ func TestDaemonSetReconcile(t *testing.T) {
 	f(opts{
 		new: getDaemonSet(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Create", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
 		},
 	})
 
@@ -89,8 +89,8 @@ func TestDaemonSetReconcile(t *testing.T) {
 			getDaemonSet(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
 		},
 	})
 
@@ -104,9 +104,9 @@ func TestDaemonSetReconcile(t *testing.T) {
 			getDaemonSet(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Update", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
 		},
 	})
 
@@ -120,8 +120,8 @@ func TestDaemonSetReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
 		},
 	})
 
@@ -135,11 +135,11 @@ func TestDaemonSetReconcile(t *testing.T) {
 		},
 		actions: []k8stools.ClientAction{
 			// TODO: this looks weird
-			{Verb: "Get", Resource: nn},
-			{Verb: "Patch", Resource: nn},
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Patch", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Create", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
 		},
 	})
 }

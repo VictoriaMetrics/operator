@@ -59,8 +59,8 @@ func TestRoleBindingReconcile(t *testing.T) {
 	f(opts{
 		new: getRoleBinding(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "RoleBinding", Resource: nn},
+			{Verb: "Create", Kind: "RoleBinding", Resource: nn},
 		},
 	})
 
@@ -74,7 +74,7 @@ func TestRoleBindingReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "RoleBinding", Resource: nn},
 		},
 	})
 
@@ -88,8 +88,8 @@ func TestRoleBindingReconcile(t *testing.T) {
 			getRoleBinding(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "RoleBinding", Resource: nn},
+			{Verb: "Update", Kind: "RoleBinding", Resource: nn},
 		},
 	})
 }
@@ -134,8 +134,8 @@ func TestRoleReconcile(t *testing.T) {
 	f(opts{
 		new: getRole(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "Role", Resource: nn},
+			{Verb: "Create", Kind: "Role", Resource: nn},
 		},
 	})
 
@@ -149,7 +149,7 @@ func TestRoleReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Role", Resource: nn},
 		},
 	})
 
@@ -163,8 +163,8 @@ func TestRoleReconcile(t *testing.T) {
 			getRole(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "Role", Resource: nn},
+			{Verb: "Update", Kind: "Role", Resource: nn},
 		},
 	})
 }
@@ -213,8 +213,8 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 	f(opts{
 		new: getCRB(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRoleBinding", Resource: nn},
+			{Verb: "Create", Kind: "ClusterRoleBinding", Resource: nn},
 		},
 	})
 
@@ -228,7 +228,7 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRoleBinding", Resource: nn},
 		},
 	})
 
@@ -242,8 +242,8 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 			getCRB(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRoleBinding", Resource: nn},
+			{Verb: "Update", Kind: "ClusterRoleBinding", Resource: nn},
 		},
 	})
 }
@@ -287,8 +287,8 @@ func TestClusterRoleReconcile(t *testing.T) {
 	f(opts{
 		new: getClusterRole(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRole", Resource: nn},
+			{Verb: "Create", Kind: "ClusterRole", Resource: nn},
 		},
 	})
 
@@ -302,7 +302,7 @@ func TestClusterRoleReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRole", Resource: nn},
 		},
 	})
 
@@ -316,8 +316,8 @@ func TestClusterRoleReconcile(t *testing.T) {
 			getClusterRole(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "ClusterRole", Resource: nn},
+			{Verb: "Update", Kind: "ClusterRole", Resource: nn},
 		},
 	})
 }

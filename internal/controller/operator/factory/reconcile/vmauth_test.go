@@ -53,9 +53,9 @@ func TestVMAuthReconcile(t *testing.T) {
 	f(opts{
 		new: getVMAuth(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Create", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 		},
 	})
 
@@ -70,8 +70,8 @@ func TestVMAuthReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 		},
 	})
 
@@ -88,9 +88,9 @@ func TestVMAuthReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Update", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 		},
 	})
 }

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -216,6 +217,7 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 // ClientAction represents a client action
 type ClientAction struct {
 	Verb     string
+	Kind     string
 	Resource types.NamespacedName
 }
 
@@ -231,23 +233,28 @@ func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithAct
 
 	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			return cl.Create(ctx, obj, opts...)
 		},
 		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Resource: key})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Kind: gvk.Kind, Resource: key})
 			return cl.Get(ctx, key, obj, opts...)
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			return cl.Update(ctx, obj, opts...)
 		},
 		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			return cl.Delete(ctx, obj, opts...)
 		},
 		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			return cl.Patch(ctx, obj, patch, opts...)
 		},
 	})
@@ -261,35 +268,40 @@ func GetTestClientWithActionsAndObjects(predefinedObjects []runtime.Object) *Cli
 
 	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			if objectInterceptors.Create != nil {
 				return objectInterceptors.Create(ctx, cl, obj, opts...)
 			}
 			return cl.Create(ctx, obj, opts...)
 		},
 		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Resource: key})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Kind: gvk.Kind, Resource: key})
 			if objectInterceptors.Get != nil {
 				return objectInterceptors.Get(ctx, cl, key, obj, opts...)
 			}
 			return cl.Get(ctx, key, obj, opts...)
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			if objectInterceptors.Update != nil {
 				return objectInterceptors.Update(ctx, cl, obj, opts...)
 			}
 			return cl.Update(ctx, obj, opts...)
 		},
 		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			if objectInterceptors.Delete != nil {
 				return objectInterceptors.Delete(ctx, cl, obj, opts...)
 			}
 			return cl.Delete(ctx, obj, opts...)
 		},
 		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Resource: client.ObjectKeyFromObject(obj)})
+			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
 			if objectInterceptors.Patch != nil {
 				return objectInterceptors.Patch(ctx, cl, obj, patch, opts...)
 			}

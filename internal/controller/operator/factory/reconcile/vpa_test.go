@@ -60,8 +60,8 @@ func TestVPAReconcile(t *testing.T) {
 	f(opts{
 		new: getVPA(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "VerticalPodAutoscaler", Resource: nn},
+			{Verb: "Create", Kind: "VerticalPodAutoscaler", Resource: nn},
 		},
 	})
 
@@ -73,7 +73,7 @@ func TestVPAReconcile(t *testing.T) {
 			getVPA(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VerticalPodAutoscaler", Resource: nn},
 		},
 	})
 
@@ -88,8 +88,8 @@ func TestVPAReconcile(t *testing.T) {
 			getVPA(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "VerticalPodAutoscaler", Resource: nn},
+			{Verb: "Update", Kind: "VerticalPodAutoscaler", Resource: nn},
 		},
 	})
 }

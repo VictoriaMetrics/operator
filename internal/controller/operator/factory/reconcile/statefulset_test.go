@@ -766,9 +766,9 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f(opts{
 		new: getSts(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 	})
 
@@ -780,8 +780,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 			getSts(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 	})
 
@@ -795,9 +795,9 @@ func TestStatefulsetReconcile(t *testing.T) {
 			getSts(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Update", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Equal(t, "value", s.Spec.Template.Annotations["new-annotation"])
@@ -814,8 +814,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 	})
 
@@ -831,12 +831,12 @@ func TestStatefulsetReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Patch", Resource: nn},
-			{Verb: "Delete", Resource: nn},
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Patch", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Delete", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 	})
 

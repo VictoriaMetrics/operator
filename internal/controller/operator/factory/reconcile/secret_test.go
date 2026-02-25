@@ -51,8 +51,8 @@ func TestSecretReconcile(t *testing.T) {
 	f(opts{
 		new: getSecret(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "Secret", Resource: nn},
+			{Verb: "Create", Kind: "Secret", Resource: nn},
 		},
 	})
 
@@ -68,7 +68,7 @@ func TestSecretReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "Secret", Resource: nn},
 		},
 	})
 
@@ -81,8 +81,8 @@ func TestSecretReconcile(t *testing.T) {
 			getSecret(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "Secret", Resource: nn},
+			{Verb: "Update", Kind: "Secret", Resource: nn},
 		},
 	})
 }

@@ -58,8 +58,8 @@ func TestHPAReconcile(t *testing.T) {
 	f(opts{
 		new: getHPA(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: nn},
+			{Verb: "Create", Kind: "HorizontalPodAutoscaler", Resource: nn},
 		},
 	})
 
@@ -99,8 +99,8 @@ func TestHPAReconcile(t *testing.T) {
 			getHPA(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: nn},
+			{Verb: "Update", Kind: "HorizontalPodAutoscaler", Resource: nn},
 		},
 	})
 }

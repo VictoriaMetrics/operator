@@ -57,8 +57,8 @@ func TestHTTPRouteReconcile(t *testing.T) {
 	f(opts{
 		new: getHTTPRoute(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "HTTPRoute", Resource: nn},
+			{Verb: "Create", Kind: "HTTPRoute", Resource: nn},
 		},
 	})
 
@@ -111,8 +111,8 @@ func TestHTTPRouteReconcile(t *testing.T) {
 			getHTTPRoute(),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "HTTPRoute", Resource: nn},
+			{Verb: "Update", Kind: "HTTPRoute", Resource: nn},
 		},
 	})
 }

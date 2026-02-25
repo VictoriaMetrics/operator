@@ -55,8 +55,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Create", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
@@ -91,7 +91,7 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
@@ -128,8 +128,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "value", c.Annotations["key"])
@@ -163,8 +163,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "after", c.Data["data"])
@@ -198,8 +198,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, []byte("after"), c.BinaryData["data"])
@@ -244,7 +244,7 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
 		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])

@@ -49,9 +49,9 @@ func TestVMClusterReconcile(t *testing.T) {
 	f(opts{
 		new: getVMCluster(),
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Create", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Create", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
 		},
 	})
 
@@ -67,8 +67,8 @@ func TestVMClusterReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
 		},
 	})
 
@@ -85,9 +85,9 @@ func TestVMClusterReconcile(t *testing.T) {
 			}),
 		},
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Resource: nn},
-			{Verb: "Update", Resource: nn},
-			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Update", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
 		},
 	})
 }

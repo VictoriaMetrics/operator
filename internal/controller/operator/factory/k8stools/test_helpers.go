@@ -1,7 +1,6 @@
 package k8stools
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,9 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -99,78 +96,6 @@ func GetTestClientWithObjectsAndInterceptors(predefinedObjects []runtime.Object,
 	return getTestClient(predefinedObjects, &fns)
 }
 
-// GetInterceptorsWithObjects returns interceptors for objects
-func GetInterceptorsWithObjects() interceptor.Funcs {
-	return interceptor.Funcs{
-		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			case *appsv1.Deployment:
-				v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
-			if err := cl.Create(ctx, obj, opts...); err != nil {
-				return err
-			}
-			switch v := obj.(type) {
-			case *vmv1beta1.VMAgent:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMCluster:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMAuth:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			}
-			return nil
-		},
-		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			case *appsv1.Deployment:
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
-			if err := cl.Update(ctx, obj, opts...); err != nil {
-				return err
-			}
-			switch v := obj.(type) {
-			case *vmv1beta1.VMAgent:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMCluster:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMAuth:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			}
-			return nil
-		},
-	}
-}
-
 // GetTestClientWithObjects returns testing client with optional predefined objects
 func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
 	fns := GetInterceptorsWithObjects()
@@ -231,33 +156,7 @@ type ClientWithActions struct {
 func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithActions {
 	var cwa ClientWithActions
 
-	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
-		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			return cl.Create(ctx, obj, opts...)
-		},
-		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Kind: gvk.Kind, Resource: key})
-			return cl.Get(ctx, key, obj, opts...)
-		},
-		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			return cl.Update(ctx, obj, opts...)
-		},
-		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			return cl.Delete(ctx, obj, opts...)
-		},
-		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			return cl.Patch(ctx, obj, patch, opts...)
-		},
-	})
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, nil))
 	return &cwa
 }
 
@@ -266,48 +165,7 @@ func GetTestClientWithActionsAndObjects(predefinedObjects []runtime.Object) *Cli
 	var cwa ClientWithActions
 	objectInterceptors := GetInterceptorsWithObjects()
 
-	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, interceptor.Funcs{
-		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Create", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			if objectInterceptors.Create != nil {
-				return objectInterceptors.Create(ctx, cl, obj, opts...)
-			}
-			return cl.Create(ctx, obj, opts...)
-		},
-		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Get", Kind: gvk.Kind, Resource: key})
-			if objectInterceptors.Get != nil {
-				return objectInterceptors.Get(ctx, cl, key, obj, opts...)
-			}
-			return cl.Get(ctx, key, obj, opts...)
-		},
-		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			if objectInterceptors.Update != nil {
-				return objectInterceptors.Update(ctx, cl, obj, opts...)
-			}
-			return cl.Update(ctx, obj, opts...)
-		},
-		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			if objectInterceptors.Delete != nil {
-				return objectInterceptors.Delete(ctx, cl, obj, opts...)
-			}
-			return cl.Delete(ctx, obj, opts...)
-		},
-		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			gvk, _ := apiutil.GVKForObject(obj, cl.Scheme())
-			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Kind: gvk.Kind, Resource: client.ObjectKeyFromObject(obj)})
-			if objectInterceptors.Patch != nil {
-				return objectInterceptors.Patch(ctx, cl, obj, patch, opts...)
-			}
-			return cl.Patch(ctx, obj, patch, opts...)
-		},
-	})
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, &objectInterceptors))
 	return &cwa
 }
 

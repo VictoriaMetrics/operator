@@ -52,8 +52,10 @@ func TestParsingMatch(t *testing.T) {
 		t.Helper()
 		var match StringOrArray
 		err := yaml.Unmarshal([]byte(o.data), &match)
-		if (err != nil) != o.wantErr {
-			t.Errorf("Match.UnmarshalYAML() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		assert.Equal(t, match, o.match)
 	}
@@ -84,9 +86,7 @@ func TestStringOrArrayMarshal(t *testing.T) {
 	f := func(src *StringOrArray, marshalF func(any) ([]byte, error), expected string) {
 		t.Helper()
 		got, err := marshalF(src)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, expected, string(got))
 	}
 
@@ -108,9 +108,7 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 	f := func(src string, unmarshalF func([]byte, any) error, expected StringOrArray) {
 		t.Helper()
 		var got StringOrArray
-		if err := unmarshalF([]byte(src), &got); err != nil {
-			t.Fatalf("unexpected error: %s", err)
-		}
+		assert.NoError(t, unmarshalF([]byte(src), &got))
 		assert.Equal(t, expected, got)
 	}
 	f(`["1","2","3"]`, json.Unmarshal, StringOrArray{"1", "2", "3"})

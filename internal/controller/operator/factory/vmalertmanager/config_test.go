@@ -55,10 +55,11 @@ func TestBuildConfig(t *testing.T) {
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, testClient, o.cr)
 		got, data, err := buildAlertmanagerConfigWithCRDs(ctx, testClient, o.cr, o.baseCfg, ac)
-		if (err != nil) != o.wantErr {
-			t.Errorf("BuildConfig() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
 			return
 		}
+		assert.NoError(t, err)
 		broken := got.configs.Broken()
 		if len(broken) > 0 {
 			assert.Equal(t, o.parseError, broken[0].Status.CurrentSyncError)
@@ -1399,10 +1400,11 @@ func TestAddConfigTemplates(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		got, err := addConfigTemplates(o.config, o.templates)
-		if (err != nil) != o.wantErr {
-			t.Errorf("AddConfigTemplates() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
 			return
 		}
+		assert.NoError(t, err)
 		assert.Equal(t, o.want, string(got))
 	}
 
@@ -1583,15 +1585,13 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 			namespace: cr.Namespace,
 		}
 		gotYAML, err := cb.buildHTTPConfig(o.httpCfg)
-		if (err != nil) != o.wantErr {
-			t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
 			return
 		}
+		assert.NoError(t, err)
 		got, err := yaml.Marshal(gotYAML)
-		if (err != nil) != o.wantErr {
-			t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, o.wantErr)
-			return
-		}
+		assert.NoError(t, err)
 		assert.Equalf(t, o.want, string(got), "buildHTTPConfig(%v)", o.httpCfg)
 	}
 
@@ -1897,9 +1897,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 		}))
 		for _, amc := range amCfgs {
-			if amc.Status.Reason != "" {
-				t.Errorf("unexpected sync error: %s", amc.Status.Reason)
-			}
+			assert.Empty(t, amc.Status.Reason, "unexpected sync error")
 		}
 
 		var createdSecret corev1.Secret
@@ -1908,7 +1906,9 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
-			t.Fatalf("config for alertmanager not exist, err: %v", err)
+			if !assert.NoError(t, err, "secret for alertmanager not exist") {
+				return
+			}
 		}
 
 		// check secret config after creating
@@ -1937,7 +1937,9 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
-			t.Fatalf("secret for alertmanager not exist, err: %v", err)
+			if !assert.NoError(t, err, "secret for alertmanager not exist") {
+				return
+			}
 		}
 
 		// check secret config after updating
@@ -2032,9 +2034,9 @@ func TestBuildWebConfig(t *testing.T) {
 		c, err := buildWebServerConfigYAML(o.cr, ac)
 		if o.wantErr {
 			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
+			return
 		}
+		assert.NoError(t, err)
 		assert.Equal(t, o.want, string(c))
 	}
 

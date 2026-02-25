@@ -35,16 +35,12 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		}
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generateServiceScrapeConfig(ctx, sp, pos, o.sc, o.sc.Spec.Endpoints[0], 0, ac)
-		if err != nil {
-			t.Errorf("cannot generate ServiceScrapeConfig, err: %e", err)
-			return
+		if assert.NoError(t, err, "cannot generate ServiceScrapeConfig") {
+			gotBytes, err := yaml.Marshal(got)
+			if assert.NoError(t, err, "cannot marshal ServiceScrapeConfig to yaml") {
+				assert.Equal(t, o.want, string(gotBytes))
+			}
 		}
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal ServiceScrapeConfig to yaml: %e", err)
-			return
-		}
-		assert.Equal(t, o.want, string(gotBytes))
 	}
 
 	// generate simple config

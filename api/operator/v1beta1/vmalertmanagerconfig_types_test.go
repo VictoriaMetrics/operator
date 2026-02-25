@@ -4,28 +4,24 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
 	f := func(src string, expectedReason string) {
 		t.Helper()
 		var amc VMAlertmanagerConfig
-		if err := json.Unmarshal([]byte(src), &amc); err != nil {
-			t.Fatalf("unexpected json parse error: %s", err)
-		}
+		assert.NoError(t, json.Unmarshal([]byte(src), &amc))
 		if len(amc.Spec.ParsingError) > 0 {
-			errS := amc.Spec.ParsingError
-			if strings.Contains(errS, expectedReason) {
+			if strings.Contains(amc.Spec.ParsingError, expectedReason) {
 				return
 			}
 			t.Fatalf("unexpected parsing error: %s", amc.Spec.ParsingError)
 		}
 		err := amc.Validate()
-		if err == nil {
-			t.Fatalf("expect error:\n%s\n got nil", expectedReason)
-		}
-		if !strings.Contains(err.Error(), expectedReason) {
-			t.Fatalf("unexpected fail reason:\n%s\nmust contain:\n%s\n", err.Error(), expectedReason)
+		if assert.Error(t, err, "expect error:\n%s\n got nil", expectedReason) {
+			assert.Contains(t, err.Error(), expectedReason)
 		}
 	}
 
@@ -406,16 +402,9 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
 	f := func(src string) {
 		t.Helper()
 		var amc VMAlertmanagerConfig
-		if err := json.Unmarshal([]byte(src), &amc); err != nil {
-			t.Fatalf("unexpected json parse error: %s", err)
-		}
-		if len(amc.Spec.ParsingError) > 0 {
-			t.Fatalf("unexpected parsing error: %s", amc.Spec.ParsingError)
-		}
-		err := amc.Validate()
-		if err != nil {
-			t.Fatalf("expect error:\n%s", err)
-		}
+		assert.NoError(t, json.Unmarshal([]byte(src), &amc))
+		assert.Empty(t, amc.Spec.ParsingError)
+		assert.NoError(t, amc.Validate())
 	}
 	f(`{
     "apiVersion": "v1",

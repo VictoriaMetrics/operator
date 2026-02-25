@@ -790,21 +790,13 @@ func Test_selectVMUserSecrets(t *testing.T) {
 			}
 			return dst.String()
 		}
-		if len(o.wantToCreateSecrets) != len(got) {
-			t.Errorf("not expected count of want=%d and got=%d to create secrets, got=%q", len(o.wantToCreateSecrets), len(got), joinSecretNames(got))
-		}
-		if len(o.wantToUpdateSecrets) != len(got1) {
-			t.Errorf("not expected count of want=%d and got=%d to update secrets, got=%q", len(o.wantToUpdateSecrets), len(got1), joinSecretNames(got1))
-		}
+		assert.Equal(t, len(o.wantToCreateSecrets), len(got), "not expected count of want and got to create secrets, got=%q", joinSecretNames(got))
+		assert.Equal(t, len(o.wantToUpdateSecrets), len(got1), "not expected count of want and got to update secrets, got=%q", joinSecretNames(got1))
 		for _, wantCreateName := range o.wantToCreateSecrets {
-			if !secretFound(got, wantCreateName) {
-				t.Errorf("wanted secret name: %s not found at toCreateSecrets", wantCreateName)
-			}
+			assert.True(t, secretFound(got, wantCreateName), "wanted secret name: %s not found at toCreateSecrets", wantCreateName)
 		}
 		for _, wantExistName := range o.wantToUpdateSecrets {
-			if !secretFound(got1, wantExistName) {
-				t.Errorf("wanted secret name: %s not found at existSecrets", wantExistName)
-			}
+			assert.True(t, secretFound(got1, wantExistName), "wanted secret name: %s not found at existSecrets", wantExistName)
 		}
 	}
 

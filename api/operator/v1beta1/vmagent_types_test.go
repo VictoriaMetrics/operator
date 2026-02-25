@@ -2,6 +2,8 @@ package v1beta1
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVMAgent_Validate(t *testing.T) {
@@ -10,8 +12,10 @@ func TestVMAgent_Validate(t *testing.T) {
 		r := &VMAgent{
 			Spec: spec,
 		}
-		if err := r.Validate(); (err != nil) != wantErr {
-			t.Errorf("Validate() error = %v, wantErr %v", err, wantErr)
+		if wantErr {
+			assert.Error(t, r.Validate())
+		} else {
+			assert.NoError(t, r.Validate())
 		}
 	}
 

@@ -30,9 +30,10 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
 		err := CreateOrUpdate(context.TODO(), fclient, opts.cr)
-		if (err != nil) != opts.wantErr {
-			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, opts.wantErr)
-			return
+		if opts.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 
@@ -155,11 +156,13 @@ func TestCreateOrUpdateService(t *testing.T) {
 	f := func(o opts) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
-		if err := createOrUpdateService(ctx, fclient, o.cr, nil); (err != nil) != o.wantErr {
-			t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, o.wantErr)
+		err := createOrUpdateService(ctx, fclient, o.cr, nil)
+		if o.wantErr {
+			assert.Error(t, err)
 			return
 		}
+		assert.NoError(t, err)
+		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
 		var got corev1.Service
 		nsn := types.NamespacedName{
 			Name:      svc.Name,

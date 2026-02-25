@@ -32,9 +32,10 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		err := CreateOrUpdate(context.TODO(), fclient, o.cr)
-		if (err != nil) != o.wantErr {
-			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
-			return
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 
@@ -195,10 +196,11 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		err := createOrUpdateService(ctx, fclient, o.cr, nil)
-		if (err != nil) != o.wantErr {
-			t.Errorf("CreateOrUpdateService() error = %v, wantErr %v", err, o.wantErr)
+		if o.wantErr {
+			assert.Error(t, err)
 			return
 		}
+		assert.NoError(t, err)
 		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
 		var got corev1.Service
 		nsn := types.NamespacedName{

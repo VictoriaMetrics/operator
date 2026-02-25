@@ -347,7 +347,7 @@ const (
 	vmStorageDefaultDBPath = "vmstorage-data"
 )
 
-var defaultTerminationGracePeriod = int64(30)
+var defaultTerminationGracePeriod = DefaultTerminationGracePeriodSeconds
 
 func addVMClusterSpecDefaults(spec *vmv1beta1.VMClusterSpec) {
 	c := getCfg()

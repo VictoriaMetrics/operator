@@ -307,7 +307,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VLSelect.ExtraArgs, cr.Spec.VLSelect.EmbeddedProbes)
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VLSelect.ExtraArgs, cr.Spec.VLSelect.TerminationGracePeriodSeconds)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	selectContainers := corev1.Container{

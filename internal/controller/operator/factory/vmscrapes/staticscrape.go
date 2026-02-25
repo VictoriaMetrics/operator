@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"

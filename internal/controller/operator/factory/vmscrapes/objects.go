@@ -1,4 +1,4 @@
-package vmagent
+package vmscrapes
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-type parsedObjects struct {
+type ParsedObjects struct {
 	APIServerConfig          *vmv1beta1.APIServerConfig
 	Namespace                string
 	ExternalLabels           map[string]string
@@ -30,7 +30,7 @@ type parsedObjects struct {
 	scrapeConfigs            *build.ChildObjects[*vmv1beta1.VMScrapeConfig]
 }
 
-func (pos *parsedObjects) updateMetrics(ctx context.Context) {
+func (pos *ParsedObjects) updateMetrics(ctx context.Context) {
 	pos.serviceScrapes.UpdateMetrics(ctx)
 	pos.podScrapes.UpdateMetrics(ctx)
 	pos.staticScrapes.UpdateMetrics(ctx)
@@ -39,7 +39,7 @@ func (pos *parsedObjects) updateMetrics(ctx context.Context) {
 	pos.scrapeConfigs.UpdateMetrics(ctx)
 }
 
-func (pos *parsedObjects) init(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) Init(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	if err := pos.selectPodScrapes(ctx, rclient, sp); err != nil {
 		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
@@ -61,7 +61,7 @@ func (pos *parsedObjects) init(ctx context.Context, rclient client.Client, sp *v
 	return nil
 }
 
-func (pos *parsedObjects) selectScrapeConfigs(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectScrapeConfigs(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMScrapeConfig
 	var nsn []string
 	if !build.IsControllerDisabled("VMScrapeConfig") && !pos.MustUseNodeSelector {
@@ -88,7 +88,7 @@ func (pos *parsedObjects) selectScrapeConfigs(ctx context.Context, rclient clien
 	return nil
 }
 
-func (pos *parsedObjects) selectPodScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectPodScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMPodScrape
 	var nsn []string
 	if !build.IsControllerDisabled("VMPodScrape") {
@@ -115,7 +115,7 @@ func (pos *parsedObjects) selectPodScrapes(ctx context.Context, rclient client.C
 	return nil
 }
 
-func (pos *parsedObjects) selectProbes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectProbes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMProbe
 	var nsn []string
 	if !build.IsControllerDisabled("VMProbe") && !pos.MustUseNodeSelector {
@@ -142,7 +142,7 @@ func (pos *parsedObjects) selectProbes(ctx context.Context, rclient client.Clien
 	return nil
 }
 
-func (pos *parsedObjects) selectNodeScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectNodeScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMNodeScrape
 	var nsn []string
 	if !build.IsControllerDisabled("VMNodeScrape") && !pos.MustUseNodeSelector {
@@ -175,7 +175,7 @@ func (pos *parsedObjects) selectNodeScrapes(ctx context.Context, rclient client.
 	return nil
 }
 
-func (pos *parsedObjects) selectStaticScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectStaticScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMStaticScrape
 	var nsn []string
 	if !build.IsControllerDisabled("VMStaticScrape") && !pos.MustUseNodeSelector {
@@ -202,7 +202,7 @@ func (pos *parsedObjects) selectStaticScrapes(ctx context.Context, rclient clien
 	return nil
 }
 
-func (pos *parsedObjects) selectServiceScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
+func (pos *ParsedObjects) selectServiceScrapes(ctx context.Context, rclient client.Client, sp *vmv1beta1.CommonScrapeParams) error {
 	var selectedConfigs []*vmv1beta1.VMServiceScrape
 	var nsn []string
 	if !build.IsControllerDisabled("VMServiceScrape") && !pos.MustUseNodeSelector {
@@ -230,7 +230,7 @@ func (pos *parsedObjects) selectServiceScrapes(ctx context.Context, rclient clie
 	return nil
 }
 
-func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
+func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.serviceScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.Endpoints {
@@ -324,8 +324,8 @@ func (pos *parsedObjects) validateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	})
 }
 
-// updateStatusesForScrapeObjects updates status of either selected childObject or all child objects
-func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, parentName string, childObject client.Object) error {
+// UpdateStatusesForScrapeObjects updates status of either selected childObject or all child objects
+func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rclient client.Client, parentName string, childObject client.Object) error {
 	pos.updateMetrics(ctx)
 	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
 		// fast path
@@ -377,8 +377,8 @@ func (pos *parsedObjects) updateStatusesForScrapeObjects(ctx context.Context, rc
 	return nil
 }
 
-// generateConfig generates yaml scrape configuration from collected scrape objects
-func (pos *parsedObjects) generateConfig(ctx context.Context, sp *vmv1beta1.CommonScrapeParams, ac *build.AssetsCache) ([]byte, error) {
+// GenerateConfig generates yaml scrape configuration from collected scrape objects
+func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.CommonScrapeParams, ac *build.AssetsCache) ([]byte, error) {
 	var additionalScrapeConfigs []byte
 	if sp.AdditionalScrapeConfigs != nil {
 		sc, err := ac.LoadKeyFromSecret(pos.Namespace, sp.AdditionalScrapeConfigs)

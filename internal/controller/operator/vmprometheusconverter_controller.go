@@ -83,7 +83,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			kindReadyByGroup: map[string]map[string]chan struct{}{},
 		},
 	}
-
+	scrapeControllersDisabled := build.IsControllerDisabled("VMAgent") && build.IsControllerDisabled("VMSingle")
 	if !build.IsControllerDisabled("VMRule") || !build.IsControllerDisabled("VMAlert") {
 		c.ruleInf = cache.NewSharedIndexInformer(
 			&cache.ListWatch{
@@ -112,7 +112,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		}
 	}
 
-	if !build.IsControllerDisabled("VMPodScrape") || !build.IsControllerDisabled("VMAgent") {
+	if !build.IsControllerDisabled("VMPodScrape") || !scrapeControllersDisabled {
 		c.podInf = cache.NewSharedIndexInformer(
 			&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -140,7 +140,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		}
 	}
 
-	if !build.IsControllerDisabled("VMServiceScrape") || !build.IsControllerDisabled("VMAgent") {
+	if !build.IsControllerDisabled("VMServiceScrape") || !scrapeControllersDisabled {
 		c.serviceInf = cache.NewSharedIndexInformer(
 
 			&cache.ListWatch{
@@ -198,7 +198,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		c.amConfigInf = amConfigInf
 	}
 
-	if !build.IsControllerDisabled("VMProbe") || !build.IsControllerDisabled("VMAgent") {
+	if !build.IsControllerDisabled("VMProbe") || !scrapeControllersDisabled {
 		c.probeInf = cache.NewSharedIndexInformer(
 			&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -226,7 +226,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		}
 	}
 
-	if !build.IsControllerDisabled("VMScrapeConfig") || !build.IsControllerDisabled("VMAgent") {
+	if !build.IsControllerDisabled("VMScrapeConfig") || !scrapeControllersDisabled {
 		c.scrapeConfigInf = cache.NewSharedIndexInformer(
 			&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {

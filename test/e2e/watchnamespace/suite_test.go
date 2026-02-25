@@ -25,7 +25,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var (
-	k8sClient client.Client
+	k8sClient client.WithWatch
 
 	_ = SynchronizedBeforeSuite(func() []byte {
 		Expect(os.Setenv("WATCH_NAMESPACE", "default")).NotTo(HaveOccurred())

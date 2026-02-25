@@ -733,7 +733,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 		}
 	}
 	if (!cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled) && config.IsClusterWideAccessAllowed() {
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.Namespace}
 		objects := []client.Object{
 			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
 			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},

@@ -49,17 +49,17 @@ func OnVLAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLAgen
 		return err
 	}
 	if config.IsClusterWideAccessAllowed() {
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRoleBinding{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, cr.GetClusterRoleName(), cr.GetNamespace()); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.ClusterRole{}, cr.GetRBACName(), cr.GetNamespace()); err != nil {
 			return err
 		}
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 
-		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.GetNamespace()}}); err != nil {
+		if err := SafeDelete(ctx, rclient, &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.GetNamespace()}}); err != nil {
 			return err
 		}
 	}

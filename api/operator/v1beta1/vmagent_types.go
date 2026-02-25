@@ -553,7 +553,7 @@ func (cr *VMAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VMAgent) GetClusterRoleName() string {
+func (cr *VMAgent) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 

@@ -47,7 +47,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
-				Name: cr.GetClusterRoleName(),
+				Name: cr.GetRBACName(),
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
 			assert.Len(t, got.Rules, 6)
@@ -67,7 +67,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
-				Name:      cr.GetClusterRoleName(),
+				Name:      cr.GetRBACName(),
 				Namespace: cr.Namespace,
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
@@ -100,7 +100,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
-				Name: cr.GetClusterRoleName(),
+				Name: cr.GetRBACName(),
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
 			assert.Len(t, got.Rules, 1)
@@ -132,7 +132,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
-				Name:      cr.GetClusterRoleName(),
+				Name:      cr.GetRBACName(),
 				Namespace: cr.Namespace,
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
@@ -157,7 +157,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.ClusterRole
 			nsn := types.NamespacedName{
-				Name: cr.GetClusterRoleName(),
+				Name: cr.GetRBACName(),
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
 			assert.Empty(t, got.Rules)
@@ -181,7 +181,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) {
 			var got rbacv1.Role
 			nsn := types.NamespacedName{
-				Name:      cr.GetClusterRoleName(),
+				Name:      cr.GetRBACName(),
 				Namespace: cr.Namespace,
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))

@@ -469,7 +469,7 @@ func (cr *VLAgent) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VLAgent) GetClusterRoleName() string {
+func (cr *VLAgent) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:vlagent-%s", cr.Namespace, cr.Name)
 }
 

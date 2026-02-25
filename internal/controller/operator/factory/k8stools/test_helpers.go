@@ -129,6 +129,10 @@ func GetInterceptorsWithObjects() interceptor.Funcs {
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
 				return cl.Status().Update(ctx, v)
+			case *vmv1beta1.VMAuth:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
 			}
 			return nil
 		},
@@ -153,6 +157,10 @@ func GetInterceptorsWithObjects() interceptor.Funcs {
 				v.Status.ObservedGeneration = v.Generation
 				return cl.Status().Update(ctx, v)
 			case *vmv1beta1.VMCluster:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+				return cl.Status().Update(ctx, v)
+			case *vmv1beta1.VMAuth:
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
 				return cl.Status().Update(ctx, v)

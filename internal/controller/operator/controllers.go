@@ -20,9 +20,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -315,8 +313,7 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 
 type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any] interface {
 	client.Object
-	HasSpecChanges() (bool, error)
-	LastAppliedSpecAsPatch() (client.Patch, error)
+	LastSpecUpdated() bool
 	reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC]
 	Paused() bool
 }
@@ -361,12 +358,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		}
 		return
 	}
-	specChanged, err := object.HasSpecChanges()
-	if err != nil {
-		resultErr = fmt.Errorf("cannot parse exist spec changes")
-		return
-	}
-
+	specChanged := object.LastSpecUpdated()
 	resultStatus := vmv1beta1.UpdateStatusOperational
 	defer func() {
 		if err := reconcile.UpdateObjectStatus(ctx, c, object, resultStatus, resultErr); err != nil {
@@ -376,20 +368,8 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	}()
 
 	if specChanged {
-		newPatch, err := object.LastAppliedSpecAsPatch()
-		if err != nil {
-			resultErr = fmt.Errorf("cannot parse last applied spec: %w", err)
-			return
-		}
 		if err := reconcile.UpdateObjectStatus(ctx, c, object, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
-			return
-		}
-		// update lastAppliedSpec as soon as operator receives it
-		// it allows to properly build diff with previous object state
-		// and rollback bad configurations
-		if err := c.Patch(ctx, object, newPatch); err != nil {
-			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
 		if err := createGenericEventForObject(ctx, c, object, "starting object update"); err != nil {
@@ -398,6 +378,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		logger.WithContext(ctx).Info("object has changes with previous state, applying changes")
 	}
 
+	var err error
 	result, err = cb()
 	if err != nil {
 		// do not change status on conflict to failed
@@ -417,18 +398,4 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
 	return result, nil
-}
-
-var patchAnnotationPredicate = predicate.Funcs{
-	UpdateFunc: func(e event.UpdateEvent) bool {
-		if e.ObjectOld == nil || e.ObjectNew == nil {
-			return false
-		}
-		oldAnnotations := e.ObjectOld.GetAnnotations()
-		newAnnotations := e.ObjectNew.GetAnnotations()
-		if oldAnnotations[vmv1beta1.LastAppliedSpecAnnotation] != newAnnotations[vmv1beta1.LastAppliedSpecAnnotation] {
-			return false
-		}
-		return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
-	},
 }

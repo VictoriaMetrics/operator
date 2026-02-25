@@ -8,6 +8,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -153,11 +154,6 @@ type VMAlertSpec struct {
 	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAlert) SetLastSpec(prevSpec VMAlertSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
 // GetReloadURL implements reloadable interface
 func (cr *VMAlert) GetReloadURL(host string) string {
 	return BuildLocalURL(reloadAuthKeyFlag, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
@@ -177,19 +173,6 @@ func (cr *VMAlert) UseProxyProtocol() bool {
 // AutomountServiceAccountToken implements reloadable interface
 func (cr *VMAlert) AutomountServiceAccountToken() bool {
 	return !cr.Spec.DisableAutomountServiceAccountToken
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlert) UnmarshalJSON(src []byte) error {
-	type pcr VMAlert
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -279,6 +262,9 @@ type VMAlertRemoteWriteSpec struct {
 // +k8s:openapi-gen=true
 type VMAlertStatus struct {
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMAlertSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -304,10 +290,7 @@ type VMAlert struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMAlertSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
-
+	Spec   VMAlertSpec   `json:"spec,omitempty"`
 	Status VMAlertStatus `json:"status,omitempty"`
 }
 
@@ -515,14 +498,11 @@ func (cr *VMAlert) IsUnmanaged() bool {
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMAlert) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMAlert) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMAlert) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VMAlert) Paused() bool {

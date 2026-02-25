@@ -104,6 +104,5 @@ func (r *VLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
 }

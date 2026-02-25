@@ -94,6 +94,5 @@ func (r *VLogsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
-		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
 }

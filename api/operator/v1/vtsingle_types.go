@@ -22,10 +22,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -106,6 +106,9 @@ type VTSingleSpec struct {
 // VTSingleStatus defines the observed state of VTSingle
 type VTSingleStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VTSingleSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -131,10 +134,7 @@ type VTSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VTSingleSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VTSingleSpec `json:"-" yaml:"-"`
-
+	Spec   VTSingleSpec   `json:"spec,omitempty"`
 	Status VTSingleStatus `json:"status,omitempty"`
 }
 
@@ -176,24 +176,6 @@ func (r *VTSingle) AsOwner() metav1.OwnerReference {
 		Controller:         ptr.To(true),
 		BlockOwnerDeletion: ptr.To(true),
 	}
-}
-
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VTSingle) SetLastSpec(prevSpec VTSingleSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTSingle) UnmarshalJSON(src []byte) error {
-	type pcr VTSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -334,14 +316,11 @@ func (cr *VTSingle) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-// LastAppliedSpecAsPatch return last applied vtsingle spec as patch annotation
-func (cr *VTSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares vtsingle spec with last applied vtsingle spec stored in annotation
-func (cr *VTSingle) HasSpecChanges() (bool, error) {
-	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VTSingle) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VTSingle) Paused() bool {

@@ -35,9 +35,9 @@ func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 // CreateOrUpdate creates vmanomalyand and builds config for it
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Client) error {
 	var prevCR *vmv1.VMAnomaly
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete orphaned resources: %w", err)
 		}

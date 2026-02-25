@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMSingleSpec defines the desired state of VMSingle
@@ -93,24 +93,6 @@ func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMSingle) SetLastSpec(prevSpec VMSingleSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMSingle) UnmarshalJSON(src []byte) error {
-	type pcr VMSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMSingleSpec
@@ -125,6 +107,9 @@ func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMSingleSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
@@ -144,10 +129,7 @@ type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMSingleSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
-
+	Spec   VMSingleSpec   `json:"spec,omitempty"`
 	Status VMSingleStatus `json:"status,omitempty"`
 }
 
@@ -296,14 +278,11 @@ func (cr *VMSingle) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-// LastAppliedSpecAsPatch return last applied single spec as patch annotation
-func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares single spec with last applied single spec stored in annotation
-func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMSingle) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VMSingle) Paused() bool {

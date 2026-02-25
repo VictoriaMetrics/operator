@@ -23,9 +23,9 @@ const templatesDir = "/etc/vm/templates"
 // CreateOrUpdateAlertManager creates alertmanager and builds config for it
 func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	var prevCR *vmv1beta1.VMAlertmanager
-	if cr.ParsedLastAppliedSpec != nil {
+	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
-		prevCR.Spec = *cr.ParsedLastAppliedSpec
+		prevCR.Spec = *cr.Status.LastAppliedSpec
 		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete orphaned resources: %w", err)
 		}

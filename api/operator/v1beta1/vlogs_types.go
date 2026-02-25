@@ -22,10 +22,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VLogsSpec defines the desired state of VLogs
@@ -97,6 +97,9 @@ type VLogsSpec struct {
 // VLogsStatus defines the observed state of VLogs
 type VLogsStatus struct {
 	StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VLogsSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -122,10 +125,7 @@ type VLogs struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VLogsSpec `json:"spec,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VLogsSpec `json:"-" yaml:"-"`
-
+	Spec   VLogsSpec   `json:"spec,omitempty"`
 	Status VLogsStatus `json:"status,omitempty"`
 }
 
@@ -167,24 +167,6 @@ func (r *VLogs) AsOwner() metav1.OwnerReference {
 		Controller:         ptr.To(true),
 		BlockOwnerDeletion: ptr.To(true),
 	}
-}
-
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VLogs) SetLastSpec(prevSpec VLogsSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogs) UnmarshalJSON(src []byte) error {
-	type pcr VLogs
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -315,14 +297,11 @@ func (cr *VLogs) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-// LastAppliedSpecAsPatch return last applied vlogs spec as patch annotation
-func (cr *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
-func (cr *VLogs) HasSpecChanges() (bool, error) {
-	return HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VLogs) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VLogs) Paused() bool {

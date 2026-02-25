@@ -104,17 +104,19 @@ func TestCreateOrUpdate(t *testing.T) {
 					Port: "8427",
 				},
 			},
-			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Port: "8427",
-				},
-				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
-					ParentRefs: []gwapiv1.ParentReference{
-						{
-							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
-							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
-							Namespace: ptr.To(gwapiv1.Namespace("default")),
-							Name:      gwapiv1.ObjectName("test"),
+			Status: vmv1beta1.VMAuthStatus{
+				LastAppliedSpec: &vmv1beta1.VMAuthSpec{
+					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+						Port: "8427",
+					},
+					HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+						ParentRefs: []gwapiv1.ParentReference{
+							{
+								Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+								Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+								Namespace: ptr.To(gwapiv1.Namespace("default")),
+								Name:      gwapiv1.ObjectName("test"),
+							},
 						},
 					},
 				},
@@ -391,9 +393,11 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		cr: &vmv1beta1.VMAuth{
-			ObjectMeta:            metav1.ObjectMeta{Name: "test", Namespace: "default"},
-			Spec:                  vmv1beta1.VMAuthSpec{},
-			ParsedLastAppliedSpec: &vmv1beta1.VMAuthSpec{},
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec:       vmv1beta1.VMAuthSpec{},
+			Status: vmv1beta1.VMAuthStatus{
+				LastAppliedSpec: &vmv1beta1.VMAuthSpec{},
+			},
 		},
 		cfgMutator: func(c *config.BaseOperatorConf) {
 			c.VPAAPIEnabled = true

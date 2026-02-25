@@ -23,6 +23,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -301,6 +302,9 @@ type VMDistributedAuth struct {
 // VMDistributedStatus defines the observed state of VMDistributedStatus
 type VMDistributedStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VMDistributedSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributed App"
@@ -394,14 +398,11 @@ func (cr *VMDistributedStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 	return &cr.StatusMetadata
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VMDistributed) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares spec with last applied cluster spec stored in annotation
-func (cr *VMDistributed) HasSpecChanges() (bool, error) {
-	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VMDistributed) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 // Paused checks if resource reconcile should be paused

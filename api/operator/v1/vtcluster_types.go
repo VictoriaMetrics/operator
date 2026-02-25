@@ -23,10 +23,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -202,6 +202,9 @@ func (cr *VTClusterSpec) UnmarshalJSON(src []byte) error {
 // VTClusterStatus defines the observed state of VTCluster
 type VTClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	LastAppliedSpec *VTClusterSpec `json:"lastAppliedSpec,omitempty"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -565,25 +568,6 @@ type VTCluster struct {
 
 	Spec   VTClusterSpec   `json:"spec,omitempty"`
 	Status VTClusterStatus `json:"status,omitempty"`
-	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VTClusterSpec `json:"-" yaml:"-"`
-}
-
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VTCluster) SetLastSpec(prevSpec VTClusterSpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTCluster) UnmarshalJSON(src []byte) error {
-	type pcr VTCluster
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
@@ -700,14 +684,11 @@ func (cr *VTCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	return result
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
-func (cr *VTCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
-	return vmv1beta1.LastAppliedChangesAsPatch(cr.Spec)
-}
-
-// HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
-func (cr *VTCluster) HasSpecChanges() (bool, error) {
-	return vmv1beta1.HasStateChanges(cr.ObjectMeta, cr.Spec)
+// LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
+func (cr *VTCluster) LastSpecUpdated() bool {
+	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+	return updated
 }
 
 func (cr *VTCluster) Paused() bool {

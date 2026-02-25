@@ -29,8 +29,11 @@ func Test_waitForPodReady(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		nsn := types.NamespacedName{Namespace: o.ns, Name: o.podName}
-		if err := waitForPodReady(context.Background(), fclient, nsn, o.desiredVersion, 0); (err != nil) != o.wantErr {
-			t.Errorf("waitForPodReady() error = %v, wantErr %v", err, o.wantErr)
+		err := waitForPodReady(context.Background(), fclient, nsn, o.desiredVersion, 0)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 
@@ -168,9 +171,8 @@ func Test_podIsReady(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		if got := PodIsReady(&o.pod, o.minReadySeconds); got != o.want {
-			t.Errorf("PodIsReady() = %v, want %v", got, o.want)
-		}
+		got := PodIsReady(&o.pod, o.minReadySeconds)
+		assert.Equal(t, o.want, got)
 	}
 
 	// pod is ready
@@ -271,8 +273,11 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
-		if err := performRollingUpdateOnSts(context.Background(), false, fclient, o.stsName, o.ns, o.podLabels, o.podMaxUnavailable); (err != nil) != o.wantErr {
-			t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, o.wantErr)
+		err := performRollingUpdateOnSts(context.Background(), false, fclient, o.stsName, o.ns, o.podLabels, o.podMaxUnavailable)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 

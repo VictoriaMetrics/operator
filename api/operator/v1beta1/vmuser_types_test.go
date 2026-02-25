@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
@@ -10,8 +11,10 @@ import (
 func TestVMUser_Validate(t *testing.T) {
 	f := func(cr *VMUser, wantErr bool) {
 		t.Helper()
-		if err := cr.Validate(); (err != nil) != wantErr {
-			t.Errorf("Validate() error = %v, wantErr %v", err, wantErr)
+		if wantErr {
+			assert.Error(t, cr.Validate())
+		} else {
+			assert.NoError(t, cr.Validate())
 		}
 	}
 

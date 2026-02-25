@@ -45,8 +45,11 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		if err := CreateOrUpdate(ctx, o.cr, fclient); (err != nil) != o.wantErr {
-			t.Errorf("CreateOrUpdate() error = %v, wantErr %v", err, o.wantErr)
+		err := CreateOrUpdate(ctx, o.cr, fclient)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 		if o.validate != nil {
 			o.validate(ctx, fclient, o.cr)

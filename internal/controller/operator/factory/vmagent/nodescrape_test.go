@@ -30,16 +30,12 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 		pos := &parsedObjects{Namespace: o.cr.Namespace}
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generateNodeScrapeConfig(ctx, sp, pos, o.sc, ac)
-		if err != nil {
-			t.Errorf("cannot generate NodeScrapeConfig, err: %e", err)
-			return
+		if assert.NoError(t, err, "cannot generate NodeScrapeConfig") {
+			gotBytes, err := yaml.Marshal(got)
+			if assert.NoError(t, err, "cannot marshal NodeScrapeConfig to yaml") {
+				assert.Equal(t, o.want, string(gotBytes))
+			}
 		}
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal NodeScrapeConfig to yaml, err: %e", err)
-			return
-		}
-		assert.Equal(t, o.want, string(gotBytes))
 	}
 
 	// ok build node

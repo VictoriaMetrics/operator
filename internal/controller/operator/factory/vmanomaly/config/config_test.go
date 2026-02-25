@@ -42,9 +42,9 @@ func TestLoad(t *testing.T) {
 		loaded, err := Load(o.cr, ac)
 		if o.wantErr {
 			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
+			return
 		}
+		assert.NoError(t, err)
 		expected := strings.TrimSpace(o.expected)
 		got := strings.TrimSpace(string(loaded))
 		assert.Equal(t, got, expected)

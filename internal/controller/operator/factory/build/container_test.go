@@ -209,9 +209,7 @@ func TestFormatContainerImage(t *testing.T) {
 	f := func(globalRepo, image, wantImage string) {
 		t.Helper()
 		gotImage := formatContainerImage(globalRepo, image)
-		if gotImage != wantImage {
-			t.Errorf("unexpected container image, got: \n%s\nwant: \n%s", gotImage, wantImage)
-		}
+		assert.Equal(t, wantImage, gotImage)
 	}
 	f("", "victoria-metrics/storage", "victoria-metrics/storage")
 	f("docker.io", "victoria-metrics/storage", "docker.io/victoria-metrics/storage")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,9 +18,7 @@ func TestCreateVLAgentClusterAccess(t *testing.T) {
 	f := func(cr *vmv1.VLAgent, predefinedObjects []runtime.Object) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
-		if err := createK8sAPIAccess(context.TODO(), fclient, cr, nil); err != nil {
-			t.Errorf("createK8sAPIAccess() error = %v", err)
-		}
+		assert.NoError(t, createK8sAPIAccess(context.TODO(), fclient, cr, nil))
 	}
 
 	// ok create default rbac

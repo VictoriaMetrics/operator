@@ -3,14 +3,14 @@ package build
 import (
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestShardNumIter(t *testing.T) {
 	f := func(backward bool, upperBound int) {
 		output := slices.Collect(ShardNumIter(backward, upperBound))
-		if len(output) != upperBound {
-			t.Errorf("invalid ShardNumIter() items count, want: %d, got: %d", upperBound, len(output))
-		}
+		assert.Equal(t, upperBound, len(output), "invalid ShardNumIter() items count")
 		var lowerBound int
 		if backward {
 			lowerBound = upperBound - 1
@@ -18,9 +18,8 @@ func TestShardNumIter(t *testing.T) {
 		} else {
 			upperBound--
 		}
-		if output[0] != lowerBound || output[len(output)-1] != upperBound {
-			t.Errorf("invalid ShardNumIter() bounds, want: [%d, %d], got: [%d, %d]", lowerBound, upperBound, output[0], output[len(output)-1])
-		}
+		assert.Equal(t, lowerBound, output[0], "invalid ShardNumIter() lower bound")
+		assert.Equal(t, upperBound, output[len(output)-1], "invalid ShardNumIter() upper bound")
 	}
 	f(true, 9)
 	f(false, 5)

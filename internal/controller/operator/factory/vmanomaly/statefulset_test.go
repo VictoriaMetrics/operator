@@ -245,9 +245,8 @@ func Test_createDefaultConfig(t *testing.T) {
 		if o.wantErr {
 			assert.Error(t, err)
 			return
-		} else {
-			assert.NoError(t, err)
 		}
+		assert.NoError(t, err)
 		var createdSecret corev1.Secret
 		secretName := build.ResourceName(build.SecretConfigResourceKind, o.cr)
 
@@ -256,7 +255,9 @@ func Test_createDefaultConfig(t *testing.T) {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
 				return
 			}
-			t.Fatalf("config for vmanomaly not exist, err: %v", err)
+			if !assert.NoError(t, err, "config for vmanomaly not exist") {
+				return
+			}
 		}
 	}
 

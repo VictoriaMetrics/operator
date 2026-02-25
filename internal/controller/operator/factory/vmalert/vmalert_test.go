@@ -3,7 +3,6 @@ package vmalert
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -33,10 +32,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		err := CreateOrUpdate(ctx, o.cr, fclient, o.cmNames)
-		if err != nil {
-			t.Errorf("CreateOrUpdate() error = %v", err)
-			return
-		}
+		assert.NoError(t, err)
 
 		if o.validate != nil {
 			var generatedDeploment appsv1.Deployment
@@ -471,11 +467,9 @@ func TestBuildNotifiers(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		if got, err := buildNotifiersArgs(o.cr, ac); err != nil {
-			t.Errorf("buildNotifiersArgs(), unexpected error: %s", err)
-		} else if !reflect.DeepEqual(got, o.want) {
-			t.Errorf("BuildNotifiersArgs() = \ngot \n%v, \nwant \n%v", got, o.want)
-		}
+		got, err := buildNotifiersArgs(o.cr, ac)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, got)
 	}
 
 	// ok build args
@@ -630,9 +624,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, cl.Get(ctx, nsn, &got))
-		if err := o.want(&got); err != nil {
-			t.Errorf("createOrUpdateService() unexpected error: %v", err)
-		}
+		assert.NoError(t, o.want(&got))
 	}
 
 	// base test
@@ -665,15 +657,10 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
-		if err := discoverNotifiersIfNeeded(ctx, fclient, o.cr); err != nil {
-			t.Errorf("discoverNotifiersIfNeeded(): %s", err)
-		}
-		if got, err := buildArgs(o.cr, o.ruleConfigMapNames, ac); err != nil {
-			t.Errorf("buildArgs(), unexpected error: %s", err)
-		} else if !reflect.DeepEqual(got, o.want) {
-			assert.Equal(t, o.want, got)
-			t.Errorf("buildVMAlertArgs() got = \n%v\n, want \n%v\n", got, o.want)
-		}
+		assert.NoError(t, discoverNotifiersIfNeeded(ctx, fclient, o.cr))
+		got, err := buildArgs(o.cr, o.ruleConfigMapNames, ac)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, got)
 	}
 
 	// basic args

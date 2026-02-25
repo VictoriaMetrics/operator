@@ -29,16 +29,12 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 		pos := &parsedObjects{Namespace: o.cr.Namespace}
 		sp := &o.cr.Spec.CommonScrapeParams
 		got, err := generatePodScrapeConfig(ctx, sp, pos, o.sc, o.ep, 0, ac)
-		if err != nil {
-			t.Errorf("cannot generate PodScrapeConfig, err: %e", err)
-			return
+		if assert.NoError(t, err, "cannot generate PodScrapeConfig") {
+			gotBytes, err := yaml.Marshal(got)
+			if assert.NoError(t, err, "cannot marshal PodScrapeConfig to yaml") {
+				assert.Equal(t, o.want, string(gotBytes))
+			}
 		}
-		gotBytes, err := yaml.Marshal(got)
-		if err != nil {
-			t.Errorf("cannot marshal PodScrapeConfig to yaml: %e", err)
-			return
-		}
-		assert.Equal(t, o.want, string(gotBytes))
 	}
 
 	// simple test

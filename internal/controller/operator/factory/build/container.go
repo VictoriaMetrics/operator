@@ -217,28 +217,22 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 }
 
 const (
-	defaultReadinessPeriodSeconds    int32 = 5
-	defaultReadinessFailureThreshold int32 = 10
+	// DefaultTerminationGracePeriodSeconds is the default termination grace period for all components
+	DefaultTerminationGracePeriodSeconds int64 = 30
 )
 
 // AddHTTPShutdownDelayArg adds default -http.shutdownDelay flag if user didn't override it in extraArgs.
-// If readiness probe is provided, delay is derived from readiness probe timings.
-func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, probes *vmv1beta1.EmbeddedProbes) []string {
+// The delay is derived from terminationGracePeriodSeconds.
+func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, terminationGracePeriodSeconds *int64) []string {
 	if _, ok := extraArgs["http.shutdownDelay"]; ok {
 		return args
 	}
 
-	delaySeconds := defaultReadinessPeriodSeconds * defaultReadinessFailureThreshold
-	if probes != nil && probes.ReadinessProbe != nil {
-		periodSeconds := probes.ReadinessProbe.PeriodSeconds
-		if periodSeconds == 0 {
-			periodSeconds = defaultReadinessPeriodSeconds
-		}
-		failureThreshold := probes.ReadinessProbe.FailureThreshold
-		if failureThreshold == 0 {
-			failureThreshold = defaultReadinessFailureThreshold
-		}
-		delaySeconds = periodSeconds * failureThreshold
+	var delaySeconds int64
+	if terminationGracePeriodSeconds != nil {
+		delaySeconds = *terminationGracePeriodSeconds
+	} else {
+		delaySeconds = DefaultTerminationGracePeriodSeconds
 	}
 
 	args = append(args, fmt.Sprintf("-http.shutdownDelay=%ds", delaySeconds))

@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -207,37 +208,43 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 
 func TestAddHTTPShutdownDelayArg(t *testing.T) {
 	type opts struct {
-		extraArgs map[string]string
-		probes    *vmv1beta1.EmbeddedProbes
-		wantArgs  []string
+		extraArgs                     map[string]string
+		terminationGracePeriodSeconds *int64
+		wantArgs                      []string
 	}
 	f := func(opts opts) {
 		t.Helper()
 		assert.Equal(
 			t,
-			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.probes),
+			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.terminationGracePeriodSeconds),
 			opts.wantArgs,
 		)
 	}
 	f(opts{
-		extraArgs: nil,
-		probes:    nil,
-		wantArgs:  []string{"-http.shutdownDelay=50s"},
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: nil,
+		wantArgs:                      []string{"-http.shutdownDelay=30s"},
+	})
+	//if extraArg already exists, no more args should be added, it will be added later in the process of adding extra args
+	f(opts{
+		extraArgs:                     map[string]string{"http.shutdownDelay": "5s"},
+		terminationGracePeriodSeconds: nil,
+		wantArgs:                      nil,
 	})
 	f(opts{
-		extraArgs: map[string]string{"http.shutdownDelay": "5s"},
-		probes:    nil,
-		wantArgs:  nil,
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: ptr.To[int64](60),
+		wantArgs:                      []string{"-http.shutdownDelay=60s"},
 	})
 	f(opts{
-		extraArgs: nil,
-		probes: &vmv1beta1.EmbeddedProbes{
-			ReadinessProbe: &corev1.Probe{
-				PeriodSeconds:    3,
-				FailureThreshold: 4,
-			},
-		},
-		wantArgs: []string{"-http.shutdownDelay=12s"},
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: ptr.To[int64](120),
+		wantArgs:                      []string{"-http.shutdownDelay=120s"},
+	})
+	f(opts{
+		extraArgs:                     map[string]string{"http.shutdownDelay": "20s"},
+		terminationGracePeriodSeconds: ptr.To[int64](120),
+		wantArgs:                      nil,
 	})
 }
 

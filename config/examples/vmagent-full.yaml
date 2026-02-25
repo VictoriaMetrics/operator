@@ -81,7 +81,7 @@ spec:
   staticScrapeNamespaceSelector: {}
   image:
     repository: victoriametrics/vmagent
-    tag: v1.46.0
+    tag: v1.136.0
     pullPolicy: IfNotPresent
   externalLabelName: vmagent
   scrapeInterval: 30s

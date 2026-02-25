@@ -203,6 +203,14 @@ func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithAct
 			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Update", Resource: client.ObjectKeyFromObject(obj)})
 			return cl.Update(ctx, obj, opts...)
 		},
+		Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Delete", Resource: client.ObjectKeyFromObject(obj)})
+			return cl.Delete(ctx, obj, opts...)
+		},
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			cwa.Actions = append(cwa.Actions, ClientAction{Verb: "Patch", Resource: client.ObjectKeyFromObject(obj)})
+			return cl.Patch(ctx, obj, patch, opts...)
+		},
 	})
 	return &cwa
 }

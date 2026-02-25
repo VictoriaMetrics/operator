@@ -204,16 +204,20 @@ func Test_updateSTSPVC(t *testing.T) {
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		expected          []corev1.PersistentVolumeClaim
+		actions           []clientAction
 	}
 	f := func(o opts) {
 		t.Helper()
-		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		cl := getTestClient(o.predefinedObjects)
 		ctx := context.TODO()
 		err := updateSTSPVC(ctx, cl, o.sts, nil)
 		if o.wantErr {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
+		}
+		if o.actions != nil {
+			assert.Equal(t, o.actions, cl.actions)
 		}
 		var pvcs corev1.PersistentVolumeClaimList
 		opts := &client.ListOptions{
@@ -262,6 +266,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					},
 				},
 			},
+		},
+		actions: []clientAction{
+			{Verb: "Update", Resource: types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -370,6 +377,10 @@ func Test_updateSTSPVC(t *testing.T) {
 					},
 				},
 			},
+		},
+		actions: []clientAction{
+			{Verb: "Update", Resource: types.NamespacedName{Name: "test-vmselect-0", Namespace: "default"}},
+			{Verb: "Update", Resource: types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{

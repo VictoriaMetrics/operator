@@ -690,7 +690,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new, prev         *appsv1.StatefulSet
 		predefinedObjects []runtime.Object
 		validate          func(*appsv1.StatefulSet)
-		actions           []string
+		actions           []clientAction
 		wantErr           bool
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
@@ -738,7 +738,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
+		cl := getTestClient(o.predefinedObjects)
 		var emptyOpts STSOptions
 		err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
 		if o.wantErr {
@@ -759,10 +759,16 @@ func TestStatefulsetReconcile(t *testing.T) {
 		}
 	}
 
+	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
+
 	// create statefulset
 	f(opts{
-		new:     getSts(),
-		actions: []string{"Get", "Create", "Get"},
+		new: getSts(),
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 
 	// no updates
@@ -774,7 +780,10 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		actions: []string{"Get", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 
 	// add annotations
@@ -786,7 +795,11 @@ func TestStatefulsetReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getSts(),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Equal(t, "value", s.Spec.Template.Annotations["new-annotation"])
 		},
@@ -803,7 +816,11 @@ func TestStatefulsetReconcile(t *testing.T) {
 				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
 		},

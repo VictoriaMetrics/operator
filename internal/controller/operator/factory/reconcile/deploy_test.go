@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -18,7 +19,7 @@ func TestDeployReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.Deployment
 		predefinedObjects []runtime.Object
-		actions           []string
+		actions           []clientAction
 	}
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
@@ -69,15 +70,21 @@ func TestDeployReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
+		cl := getTestClient(o.predefinedObjects)
 		assert.NoError(t, Deployment(ctx, cl, o.new, o.prev, false, nil))
 		assert.Equal(t, o.actions, cl.actions)
 	}
 
+	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
+
 	// create deployment
 	f(opts{
-		new:     getDeploy(),
-		actions: []string{"Get", "Create", "Get"},
+		new: getDeploy(),
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 
 	// no updates
@@ -89,7 +96,10 @@ func TestDeployReconcile(t *testing.T) {
 				d.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		actions: []string{"Get", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 
 	// update spec
@@ -101,7 +111,11 @@ func TestDeployReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getDeploy(),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Update", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 
 	// remove template annotations
@@ -113,6 +127,9 @@ func TestDeployReconcile(t *testing.T) {
 				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
 			}),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Get", Resource: nn},
+		},
 	})
 }

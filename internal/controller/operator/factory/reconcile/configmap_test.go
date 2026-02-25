@@ -19,13 +19,13 @@ func TestConfigMapReconcile(t *testing.T) {
 		prevMeta          *metav1.ObjectMeta
 		owner             *metav1.OwnerReference
 		predefinedObjects []runtime.Object
-		actions           []string
+		actions           []clientAction
 		validate          func(*corev1.ConfigMap)
 	}
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
+		cl := getTestClient(o.predefinedObjects)
 		_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
 		assert.NoError(t, err)
 		assert.Equal(t, o.actions, cl.actions)
@@ -51,7 +51,10 @@ func TestConfigMapReconcile(t *testing.T) {
 				"data": "test",
 			},
 		},
-		actions: []string{"Get", "Create"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+			{Verb: "Create", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
@@ -84,7 +87,9 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []string{"Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
@@ -119,7 +124,10 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []string{"Get", "Update"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+			{Verb: "Update", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "value", c.Annotations["key"])
 		},
@@ -151,7 +159,10 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []string{"Get", "Update"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+			{Verb: "Update", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "after", c.Data["data"])
 		},
@@ -194,7 +205,9 @@ func TestConfigMapReconcile(t *testing.T) {
 				},
 			},
 		},
-		actions: []string{"Get"},
+		actions: []clientAction{
+			{Verb: "Get", Resource: types.NamespacedName{Name: "test", Namespace: "default"}},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},

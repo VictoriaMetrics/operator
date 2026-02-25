@@ -1185,7 +1185,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot remove serviceaccount: %w", err)
 		}
 
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetClusterRoleName(), Namespace: cr.Namespace}
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.Namespace}
 		var objects []client.Object
 		if config.IsClusterWideAccessAllowed() {
 			objects = []client.Object{

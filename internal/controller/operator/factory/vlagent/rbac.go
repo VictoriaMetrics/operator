@@ -67,7 +67,7 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 	o := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetClusterRoleName(),
+			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},
@@ -79,7 +79,7 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 		}},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
-			Name:     cr.GetClusterRoleName(),
+			Name:     cr.GetRBACName(),
 			Kind:     "ClusterRole",
 		},
 	}
@@ -93,7 +93,7 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
 	o := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetClusterRoleName(),
+			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 			Finalizers:  []string{vmv1beta1.FinalizerName},

@@ -696,8 +696,9 @@ func TestStatefulsetReconcile(t *testing.T) {
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
 		s := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-1",
-				Namespace: "default",
+				Name:       "test-1",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: ptr.To[int32](4),
@@ -776,9 +777,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new:  getSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(func(s *appsv1.StatefulSet) {
-				s.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getSts(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Resource: nn},
@@ -823,6 +822,27 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
+		},
+	})
+
+	// recreate on ServiceName change
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.ServiceName = "new-service-name"
+		}),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.ServiceName = "old-service-name"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Resource: nn},
+			{Verb: "Patch", Resource: nn},
+			{Verb: "Delete", Resource: nn},
+			{Verb: "Get", Resource: nn},
+			{Verb: "Create", Resource: nn},
+			{Verb: "Get", Resource: nn},
 		},
 	})
 

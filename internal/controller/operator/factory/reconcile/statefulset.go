@@ -156,14 +156,21 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	// perform manual update only with OnDelete policy, which is default.
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
-		podMaxUnavailable := 1
+		opts := rollingUpdateOpts{
+			recreate:       mustRecreatePod,
+			selector:       cr.SelectorLabels(),
+			maxUnavailable: 1,
+		}
 		if cr.UpdateBehavior != nil {
-			podMaxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
+			if cr.UpdateBehavior.MaxUnavailable.String() == "100%" {
+				opts.delete = true
+			}
+			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
 			if err != nil {
 				return err
 			}
 		}
-		if err := performRollingUpdateOnSts(ctx, mustRecreatePod, rclient, newObj.Name, newObj.Namespace, cr.SelectorLabels(), podMaxUnavailable); err != nil {
+		if err := performRollingUpdateOnSts(ctx, rclient, newObj, opts); err != nil {
 			return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn, err)
 		}
 		return nil
@@ -198,6 +205,13 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 	return &sts, nil
 }
 
+type rollingUpdateOpts struct {
+	recreate       bool
+	maxUnavailable int
+	selector       map[string]string
+	delete         bool
+}
+
 // we perform rolling update on sts by manually evicting pods one by one or in batches
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
@@ -205,9 +219,13 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 //
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
-func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, podMaxUnavailable int) error {
+func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
 	time.Sleep(podWaitReadyIntervalCheck)
-	sts, err := getLatestStsState(ctx, rclient, types.NamespacedName{Name: stsName, Namespace: ns})
+	nsn := types.NamespacedName{
+		Name:      obj.Name,
+		Namespace: obj.Namespace,
+	}
+	sts, err := getLatestStsState(ctx, rclient, nsn)
 	if err != nil {
 		return err
 	}
@@ -226,11 +244,11 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		l.Info("sts has 0 replicas configured, nothing to update")
 		return nil
 	}
-	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, podMustRecreate))
+	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, o.recreate))
 	var podList corev1.PodList
 	opts := &client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(podLabels),
+		Namespace:     obj.Namespace,
+		LabelSelector: labels.SelectorFromSet(o.selector),
 	}
 	if err := rclient.List(ctx, &podList, opts); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
@@ -238,7 +256,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err := sortStsPodsByID(podList.Items); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
-	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, podMustRecreate)
+	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, o.recreate)
 	totalPodsCount := len(readyPods) + len(updatedPods) + len(podsForUpdate)
 
 	switch {
@@ -265,18 +283,18 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
-		podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+		podNsn := types.NamespacedName{Namespace: obj.Namespace, Name: pod.Name}
 		if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
 	}
 
 	// perform update for not updated pods in batches according to podMaxUnavailable
-	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += podMaxUnavailable {
+	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += o.maxUnavailable {
 		var batch []corev1.Pod
 
 		// determine batch of pods to update
-		batchClose := batchStart + podMaxUnavailable
+		batchClose := batchStart + o.maxUnavailable
 		if batchClose > len(podsForUpdate) {
 			batchClose = len(podsForUpdate)
 		}
@@ -286,10 +304,19 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		for _, pod := range batch {
 			errG.Go(func() error {
 				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
-
 				// eviction may fail due to podDisruption budget and it's unexpected
 				// so retry pod eviction
 				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+					if o.delete {
+						if err := rclient.Delete(ctx, &pod); err != nil {
+							if k8serrors.IsNotFound(err) {
+								return true, nil
+							}
+							return false, fmt.Errorf("failed to delete pod %s: %w", pod.Name, err)
+						}
+						return true, nil
+					}
+
 					// evict pod to trigger re-creation
 					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
@@ -306,7 +333,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 					return fmt.Errorf("cannot perform pod eviction: %w", evictErr)
 				}
 				// wait for pod to be re-created
-				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+				podNsn := types.NamespacedName{Namespace: obj.Namespace, Name: pod.Name}
 				if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 					return fmt.Errorf("cannot wait for pod ready state during re-creation for pod %s: %w", pod.Name, err)
 				}
@@ -342,7 +369,7 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
 	var pod corev1.Pod
-	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(_ context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, nsn, &pod); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
@@ -443,7 +470,7 @@ func sortStsPodsByID(src []corev1.Pod) error {
 	return firstParseError
 }
 
-func isSTSPod(pod *corev1.Pod) bool {
+func isOwnedBySTS(pod *corev1.Pod) bool {
 	for _, ref := range pod.OwnerReferences {
 		if ref.Kind == "StatefulSet" {
 			return true
@@ -458,7 +485,7 @@ func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, re
 		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
 		isSameRevision := pod.Labels[podRevisionLabel] == revision
 		switch {
-		case !isSTSPod(&pod):
+		case !isOwnedBySTS(&pod):
 		case !pod.DeletionTimestamp.IsZero() || recreate:
 			podsForUpdate = append(podsForUpdate, pod)
 		case PodIsReady(&pod, minReadySeconds) && isSameRevision:

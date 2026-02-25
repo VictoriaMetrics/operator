@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -1638,7 +1640,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("configures vmstorage with MaxUnavailable 100% but limited by a PDB", "maxunavailable-100-percent-pdb",
+			Entry("configures vmstorage with MaxUnavailable 100% and ignored PDB limitation", "maxunavailable-100-percent-pdb",
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -1674,6 +1676,22 @@ up{baz="bar"} 123
 						cr.Spec.VMStorage.PodMetadata.Labels["version"] = "new"
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
+						watcher, err := k8sClient.Watch(ctx, &corev1.PodList{}, &client.ListOptions{
+							Namespace: cr.Namespace,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						defer watcher.Stop()
+						var deletedPods int
+						prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+						go func() {
+							for event := range watcher.ResultChan() {
+								if event.Type == watch.Deleted {
+									if pod, ok := event.Object.(*corev1.Pod); ok && strings.HasPrefix(pod.Name, prefixedName) {
+										deletedPods++
+									}
+								}
+							}
+						}()
 						By("checking that update process runs as configured")
 						Eventually(func() int {
 							var podList corev1.PodList
@@ -1697,6 +1715,7 @@ up{baz="bar"} 123
 							}, &pdb)
 							return pdb.Status.CurrentHealthy
 						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically(">=", 3))
+						Expect(deletedPods).To(Equal(4))
 					},
 				},
 			),

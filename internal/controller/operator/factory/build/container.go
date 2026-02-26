@@ -233,11 +233,9 @@ func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, termina
 		return args
 	}
 
-	var delaySeconds int64
+	delaySeconds := DefaultTerminationGracePeriodSeconds
 	if terminationGracePeriodSeconds != nil {
 		delaySeconds = *terminationGracePeriodSeconds
-	} else {
-		delaySeconds = DefaultTerminationGracePeriodSeconds
 	}
 
 	args = append(args, fmt.Sprintf("-http.shutdownDelay=%ds", delaySeconds))

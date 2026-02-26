@@ -30,10 +30,11 @@ var (
 )
 
 // InitFromConfig sets package configuration from config
-func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duration) {
+func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval time.Duration) {
 	podWaitReadyIntervalCheck = intervalCheck
 	appWaitReadyDeadline = appWaitDeadline
 	podWaitReadyTimeout = podReadyDeadline
+	vmStatusInterval = statusInterval
 }
 
 // mergeMaps performs 3-way merge for labels and annotations

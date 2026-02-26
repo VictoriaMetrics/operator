@@ -47,7 +47,7 @@ func TestVMPodScrape(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil))
+		assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil, false))
 		assert.Equal(t, o.actions, cl.Actions)
 	}
 

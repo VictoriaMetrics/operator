@@ -34,7 +34,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer, false)
 		if err != nil {
 			return err
 		}
@@ -153,7 +153,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer, false)
 		if err != nil {
 			return err
 		}

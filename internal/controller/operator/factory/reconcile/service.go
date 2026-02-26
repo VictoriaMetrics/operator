@@ -115,7 +115,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 	}
 
 	rclient.Scheme().Default(newObj)
-	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
+	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 	if err != nil {
 		return err
 	}

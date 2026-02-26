@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -21,7 +22,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		converted, err := ConvertAlertmanagerConfig(o.promCfg, &config.BaseOperatorConf{})
+		converted, err := AlertmanagerConfig(o.promCfg, &config.BaseOperatorConf{})
 		assert.NoError(t, err)
 		o.validate(converted)
 	}
@@ -93,7 +94,9 @@ func TestConvertScrapeConfig(t *testing.T) {
 	}
 	f := func(opts opts) {
 		t.Helper()
-		got := ConvertScrapeConfig(opts.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: opts.ownerRef})
+		ctx := context.TODO()
+		got, err := ScrapeConfig(ctx, opts.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: opts.ownerRef})
+		assert.NoError(t, err)
 		assert.Equal(t, *got, opts.want)
 	}
 

@@ -34,7 +34,7 @@ func VPA(ctx context.Context, rclient client.Client, newObj, prevObj *vpav1.Vert
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}

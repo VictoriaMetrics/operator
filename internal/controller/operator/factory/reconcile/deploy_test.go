@@ -28,8 +28,9 @@ func TestDeployReconcile(t *testing.T) {
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-1",
-				Namespace: "default",
+				Name:       "test-1",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
@@ -129,6 +130,22 @@ func TestDeployReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Deployment", Resource: nn},
 			{Verb: "Update", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
+	})
+
+	// no update, only status change
+	f(opts{
+		new:  getDeploy(),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Status.ReadyReplicas = 1
+				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
 			{Verb: "Get", Kind: "Deployment", Resource: nn},
 		},
 	})

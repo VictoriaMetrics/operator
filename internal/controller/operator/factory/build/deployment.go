@@ -23,6 +23,9 @@ func DeploymentAddCommonParams(dst *appsv1.Deployment, useStrictSecurity bool, p
 	dst.Spec.Template.Spec.DNSConfig = params.DNSConfig
 	dst.Spec.Template.Spec.NodeSelector = params.NodeSelector
 	dst.Spec.Template.Spec.SecurityContext = AddStrictSecuritySettingsToPod(params.SecurityContext, useStrictSecurity)
+	if params.TerminationGracePeriodSeconds == nil {
+		params.TerminationGracePeriodSeconds = ptr.To(DefaultTerminationGracePeriodSeconds)
+	}
 	dst.Spec.Template.Spec.TerminationGracePeriodSeconds = params.TerminationGracePeriodSeconds
 	dst.Spec.Template.Spec.TopologySpreadConstraints = params.TopologySpreadConstraints
 	dst.Spec.Template.Spec.ImagePullSecrets = params.ImagePullSecrets

@@ -558,7 +558,7 @@ type BaseOperatorConf struct {
 
 	EnabledPrometheusConverter struct {
 		PodMonitor         bool `default:"true" env:"PODMONITOR"`
-		ServiceScrape      bool `default:"true" env:"SERVICESCRAPE"`
+		ServiceMonitor     bool `default:"true" env:"SERVICESCRAPE"`
 		PrometheusRule     bool `default:"true" env:"PROMETHEUSRULE"`
 		Probe              bool `default:"true" env:"PROBE"`
 		AlertmanagerConfig bool `default:"true" env:"ALERTMANAGERCONFIG"`

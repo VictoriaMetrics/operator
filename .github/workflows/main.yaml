@@ -119,7 +119,7 @@ jobs:
         run: make allure-report
       - name: Archive Allure report
         if: github.event.pull_request.draft == false && failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: allure-report
           path: ./allure-report

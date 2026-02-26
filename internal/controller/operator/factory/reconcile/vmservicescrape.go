@@ -16,7 +16,7 @@ import (
 )
 
 // VMServiceScrape creates or updates given object
-func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMServiceScrape, owner *metav1.OwnerReference) error {
+func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMServiceScrape, owner *metav1.OwnerReference, isConversion bool) error {
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil
 	}
@@ -34,10 +34,14 @@ func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj
 			}
 			return err
 		}
+		if isConversion && existingObj.Annotations[vmv1beta1.IgnoreConversionLabel] == vmv1beta1.IgnoreConversion {
+			logger.WithContext(ctx).Info(fmt.Sprintf("syncing for VMServiceScrape=%s was disabled by annotation", nsn.String()))
+			return nil
+		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false, isConversion)
 		if err != nil {
 			return err
 		}

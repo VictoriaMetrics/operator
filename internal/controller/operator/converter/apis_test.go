@@ -19,14 +19,14 @@ func TestConvertTlsConfig(t *testing.T) {
 		ptc  *promv1.TLSConfig
 		want *vmv1beta1.TLSConfig
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := ConvertTLSConfig(opts.ptc)
-		assert.Equal(t, opts.want, got)
+		got := ConvertTLSConfig(o.ptc)
+		assert.Equal(t, got, o.want)
 	}
 
 	// replace prom secret path
-	o := opts{
+	f(opts{
 		ptc: &promv1.TLSConfig{
 			TLSFilesConfig: promv1.TLSFilesConfig{
 				CAFile:   "/etc/prom_add/ca",
@@ -39,11 +39,10 @@ func TestConvertTlsConfig(t *testing.T) {
 			CertFile: "/etc/vm/secrets/cert.crt",
 			KeyFile:  "/etc/vm/configs/key.pem",
 		},
-	}
-	f(o)
+	})
 
 	// with server name and insecure
-	o = opts{
+	f(opts{
 		ptc: &promv1.TLSConfig{
 			TLSFilesConfig: promv1.TLSFilesConfig{
 				CAFile:   "/etc/prom_add/ca",
@@ -59,8 +58,7 @@ func TestConvertTlsConfig(t *testing.T) {
 			ServerName:         "some-hostname",
 			InsecureSkipVerify: true,
 		},
-	}
-	f(o)
+	})
 }
 
 func TestConvertRelabelConfig(t *testing.T) {
@@ -69,18 +67,17 @@ func TestConvertRelabelConfig(t *testing.T) {
 		want []*vmv1beta1.RelabelConfig
 	}
 
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := ConvertRelabelConfig(opts.prc)
-		assert.Equal(t, got, opts.want)
+		got := ConvertRelabelConfig(o.prc)
+		assert.Equal(t, got, o.want)
 	}
 
 	// test empty cfg
-	o := opts{}
-	f(o)
+	f(opts{})
 
 	// 1 relabel cfg rule
-	o = opts{
+	f(opts{
 		prc: []promv1.RelabelConfig{{
 			Action:       "drop",
 			SourceLabels: []promv1.LabelName{"__address__"},
@@ -89,11 +86,10 @@ func TestConvertRelabelConfig(t *testing.T) {
 			Action:       "drop",
 			SourceLabels: []string{"__address__"},
 		}},
-	}
-	f(o)
+	})
 
 	// unsupported config
-	o = opts{
+	f(opts{
 		prc: []promv1.RelabelConfig{
 			{
 				Action: "drop",
@@ -107,8 +103,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 			Action:       "keep",
 			SourceLabels: []string{"__address__"},
 		}},
-	}
-	f(o)
+	})
 }
 
 func TestConvertEndpoint(t *testing.T) {
@@ -116,14 +111,13 @@ func TestConvertEndpoint(t *testing.T) {
 		pe   []promv1.Endpoint
 		want []vmv1beta1.Endpoint
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := convertEndpoint(opts.pe)
-		assert.Equal(t, opts.want, got)
+		assert.Equal(t, convertEndpoint(o.pe), o.want)
 	}
 
 	// convert endpoint with relabel config
-	o := opts{
+	f(opts{
 		pe: []promv1.Endpoint{{
 			Port: "9100",
 			Path: "/metrics",
@@ -149,26 +143,25 @@ func TestConvertEndpoint(t *testing.T) {
 				}},
 			},
 		}},
-	}
-	f(o)
+	})
 }
 
-func TestConvertServiceMonitor(t *testing.T) {
+func TestServiceMonitor(t *testing.T) {
 	type opts struct {
 		sm   *promv1.ServiceMonitor
 		want vmv1beta1.VMServiceScrape
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := ConvertServiceMonitor(opts.sm, &config.BaseOperatorConf{
+		got := ServiceMonitor(o.sm, &config.BaseOperatorConf{
 			FilterPrometheusConverterLabelPrefixes:      []string{"app.kubernetes", "helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"another-annotation-filter", "app.kubernetes"},
 		})
-		assert.Equal(t, opts.want, *got)
+		assert.Equal(t, got, &o.want)
 	}
 
 	// with metricsRelabelConfig
-	o := opts{
+	f(opts{
 		sm: &promv1.ServiceMonitor{
 			Spec: promv1.ServiceMonitorSpec{
 				Endpoints: []promv1.Endpoint{{
@@ -191,11 +184,10 @@ func TestConvertServiceMonitor(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with label and annotations filter
-	o = opts{
+	f(opts{
 		sm: &promv1.ServiceMonitor{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
@@ -225,8 +217,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
 }
 
 func TestConvertPodEndpoints(t *testing.T) {
@@ -234,14 +225,13 @@ func TestConvertPodEndpoints(t *testing.T) {
 		pe   []promv1.PodMetricsEndpoint
 		want []vmv1beta1.PodMetricsEndpoint
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := convertPodEndpoints(opts.pe)
-		assert.Equal(t, opts.want, got)
+		assert.Equal(t, convertPodEndpoints(o.pe), o.want)
 	}
 
 	// with partial tls config
-	o := opts{
+	f(opts{
 		pe: []promv1.PodMetricsEndpoint{{
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
@@ -269,11 +259,10 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			},
 		}},
-	}
-	f(o)
+	})
 
 	// with tls config
-	o = opts{
+	f(opts{
 		pe: []promv1.PodMetricsEndpoint{{
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
@@ -305,11 +294,10 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			},
 		}},
-	}
-	f(o)
+	})
 
 	// with basic auth and bearer
-	o = opts{
+	f(opts{
 		pe: []promv1.PodMetricsEndpoint{{
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
@@ -336,8 +324,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			},
 		}},
-	}
-	f(o)
+	})
 }
 
 func TestConvertProbe(t *testing.T) {
@@ -345,17 +332,17 @@ func TestConvertProbe(t *testing.T) {
 		pp   *promv1.Probe
 		want vmv1beta1.VMProbe
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := ConvertProbe(opts.pp, &config.BaseOperatorConf{
+		got := Probe(o.pp, &config.BaseOperatorConf{
 			FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 		})
-		assert.Equal(t, opts.want, *got)
+		assert.Equal(t, got, &o.want)
 	}
 
 	// with static config
-	o := opts{
+	f(opts{
 		pp: &promv1.Probe{
 			Spec: promv1.ProbeSpec{
 				ProberSpec: promv1.ProberSpec{
@@ -398,11 +385,10 @@ func TestConvertProbe(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 
 	// with ingress config
-	o = opts{
+	f(opts{
 		pp: &promv1.Probe{
 			Spec: promv1.ProbeSpec{
 				Targets: promv1.ProbeTargets{
@@ -456,26 +442,25 @@ func TestConvertProbe(t *testing.T) {
 				},
 			},
 		},
-	}
-	f(o)
+	})
 }
 
-func TestConvertPromRule(t *testing.T) {
+func TestPrometheusRule(t *testing.T) {
 	type opts struct {
 		pr   *promv1.PrometheusRule
 		want vmv1beta1.VMRule
 	}
-	f := func(opts opts) {
+	f := func(o opts) {
 		t.Helper()
-		got := ConvertPromRule(opts.pr, &config.BaseOperatorConf{
+		got := PrometheusRule(o.pr, &config.BaseOperatorConf{
 			FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
 			FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 		})
-		assert.Equal(t, opts.want, *got)
+		assert.Equal(t, got, &o.want)
 	}
 
 	// with keep firing for
-	o := opts{
+	f(opts{
 		pr: &promv1.PrometheusRule{
 			Spec: promv1.PrometheusRuleSpec{
 				Groups: []promv1.RuleGroup{{
@@ -527,6 +512,5 @@ func TestConvertPromRule(t *testing.T) {
 				}},
 			},
 		},
-	}
-	f(o)
+	})
 }

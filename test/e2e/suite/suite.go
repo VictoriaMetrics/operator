@@ -113,7 +113,6 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 
 	By("bootstrapping test environment")
 
-	os.Setenv("KUBE_FEATURE_WatchListClient", "false")
 	wd, err := os.Getwd()
 	Expect(err).ToNot(HaveOccurred())
 

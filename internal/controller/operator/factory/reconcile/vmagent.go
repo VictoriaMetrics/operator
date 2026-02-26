@@ -38,7 +38,7 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false, false)
 		if err != nil {
 			return err
 		}

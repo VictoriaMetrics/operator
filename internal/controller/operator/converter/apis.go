@@ -21,8 +21,8 @@ const (
 
 var log = logf.Log.WithName("controller.PrometheusConverter")
 
-// ConvertPromRule creates VMRule from PrometheusRule
-func ConvertPromRule(prom *promv1.PrometheusRule, conf *config.BaseOperatorConf) *vmv1beta1.VMRule {
+// PrometheusRule creates VMRule from PrometheusRule
+func PrometheusRule(prom *promv1.PrometheusRule, conf *config.BaseOperatorConf) *vmv1beta1.VMRule {
 	ruleGroups := make([]vmv1beta1.RuleGroup, 0, len(prom.Spec.Groups))
 	for _, promGroup := range prom.Spec.Groups {
 		ruleItems := make([]vmv1beta1.Rule, 0, len(promGroup.Rules))
@@ -100,8 +100,8 @@ func MaybeAddArgoCDIgnoreAnnotations(mustAdd bool, dst map[string]string) map[st
 	return dst
 }
 
-// ConvertServiceMonitor create VMServiceScrape from ServiceMonitor
-func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMServiceScrape {
+// ServiceMonitor create VMServiceScrape from ServiceMonitor
+func ServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMServiceScrape {
 	cs := &vmv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceMon.Name,
@@ -383,8 +383,8 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 	return endPoints
 }
 
-// ConvertPodMonitor create VMPodScrape from PodMonitor
-func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMPodScrape {
+// PodMonitor create VMPodScrape from PodMonitor
+func PodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMPodScrape {
 	cs := &vmv1beta1.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podMon.Name,
@@ -428,8 +428,8 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 	return cs
 }
 
-// ConvertProbe creates VMProbe from prometheus probe
-func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1.VMProbe {
+// Probe creates VMProbe from prometheus probe
+func Probe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1.VMProbe {
 	var (
 		k8sTargets    []*vmv1beta1.VMProbeTargetKubernetes
 		staticTargets *vmv1beta1.VMProbeTargetStatic

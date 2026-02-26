@@ -14,30 +14,34 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// VMCluster performs an update or create of VMCluster and till it's ready
-func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMCluster, owner *metav1.OwnerReference) error {
+// VMRule performs an update or create of VMRule
+func VMRule(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMRule, owner *metav1.OwnerReference, isConversion bool) error {
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
-	err := retryOnConflict(func() error {
-		var existingObj vmv1beta1.VMCluster
+	return retryOnConflict(func() error {
+		var existingObj vmv1beta1.VMRule
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new VMCluster=%s", nsn.String()))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new VMRule=%s", nsn.String()))
 				if err := rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new VMCluster=%s: %w", nsn.String(), err)
+					return fmt.Errorf("cannot create new VMRule=%s: %w", nsn.String(), err)
 				}
 				return nil
 			}
-			return fmt.Errorf("cannot get VMCluster=%s: %w", nsn.String(), err)
+			return fmt.Errorf("cannot get VMRule=%s: %w", nsn.String(), err)
+		}
+		if isConversion && existingObj.Annotations[vmv1beta1.IgnoreConversionLabel] == vmv1beta1.IgnoreConversion {
+			logger.WithContext(ctx).Info(fmt.Sprintf("syncing for VMRule=%s was disabled by annotation", nsn.String()))
+			return nil
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false, isConversion)
 		if err != nil {
 			return err
 		}
@@ -49,17 +53,10 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMCluster %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMRule %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot update VMCluster=%s: %w", nsn.String(), err)
+			return fmt.Errorf("cannot update VMRule=%s: %w", nsn.String(), err)
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if err := waitForStatus(ctx, rclient, newObj, vmStatusInterval, vmv1beta1.UpdateStatusOperational); err != nil {
-		return fmt.Errorf("failed to wait for VMCluster=%s to be ready: %w", nsn.String(), err)
-	}
-	return nil
 }

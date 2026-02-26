@@ -9,14 +9,11 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/converter"
 )
-
-var log = logf.Log.WithName("controller.PrometheusConverter")
 
 func convertPromMatcher(promMatcher promv1alpha1.Matcher) string {
 	if promMatcher.MatchType == "" {
@@ -101,8 +98,8 @@ func convertPromInhibitRule(promIR promv1alpha1.InhibitRule) vmv1beta1.InhibitRu
 	}
 }
 
-// ConvertAlertmanagerConfig creates VMAlertmanagerConfig from prometheus alertmanagerConfig
-func ConvertAlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf *config.BaseOperatorConf) (*vmv1beta1.VMAlertmanagerConfig, error) {
+// AlertmanagerConfig creates VMAlertmanagerConfig from prometheus alertmanagerConfig
+func AlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf *config.BaseOperatorConf) (*vmv1beta1.VMAlertmanagerConfig, error) {
 	convertedRoute, err := convertPromRoute(promAMCfg.Spec.Route)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
@@ -137,31 +134,29 @@ func ConvertAlertmanagerConfig(promAMCfg *promv1alpha1.AlertmanagerConfig, conf 
 	return vamc, nil
 }
 
-// ConvertScrapeConfig creates VMScrapeConfig from prometheus scrapeConfig
-func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) *vmv1beta1.VMScrapeConfig {
+// ScrapeConfig creates VMScrapeConfig from prometheus scrapeConfig
+func ScrapeConfig(src *promv1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) (*vmv1beta1.VMScrapeConfig, error) {
 	cs := &vmv1beta1.VMScrapeConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        promscrapeConfig.Name,
-			Namespace:   promscrapeConfig.Namespace,
-			Labels:      converter.FilterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes),
-			Annotations: converter.FilterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
+			Name:        src.Name,
+			Namespace:   src.Namespace,
+			Labels:      converter.FilterPrefixes(src.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+			Annotations: converter.FilterPrefixes(src.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
 		},
 	}
-	data, err := json.Marshal(promscrapeConfig.Spec)
+	data, err := json.Marshal(src.Spec)
 	if err != nil {
-		log.Error(err, "POSSIBLE BUG: failed to marshal prometheus scrapeconfig for converting", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
-		return cs
+		return nil, fmt.Errorf("failed to marshal prometheus scrapeconfig, name=%s, namespace=%s: %w", src.Name, src.Namespace, err)
 	}
 	err = json.Unmarshal(data, &cs.Spec)
 	if err != nil {
-		log.Error(err, "POSSIBLE BUG: failed to convert prometheus scrapeconfig to VMScrapeConfig", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
-		return cs
+		return nil, fmt.Errorf("failed to convert prometheus scrapeconfig, name=%s, namespace=%s: %w", src.Name, src.Namespace, err)
 	}
-	cs.Labels = converter.FilterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes)
-	cs.Annotations = converter.FilterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)
-	cs.Spec.RelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
-	cs.Spec.MetricRelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
-	cs.Spec.Path = ptr.Deref(promscrapeConfig.Spec.MetricsPath, "")
+	cs.Labels = converter.FilterPrefixes(src.Labels, conf.FilterPrometheusConverterLabelPrefixes)
+	cs.Annotations = converter.FilterPrefixes(src.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)
+	cs.Spec.RelabelConfigs = converter.ConvertRelabelConfig(src.Spec.RelabelConfigs)
+	cs.Spec.MetricRelabelConfigs = converter.ConvertRelabelConfig(src.Spec.MetricRelabelConfigs)
+	cs.Spec.Path = ptr.Deref(src.Spec.MetricsPath, "")
 	for i := range cs.Spec.KubernetesSDConfigs {
 		sdCfg := &cs.Spec.KubernetesSDConfigs[i]
 		sdCfg.Role = strings.ToLower(sdCfg.Role)
@@ -170,13 +165,13 @@ func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *conf
 			selector.Role = strings.ToLower(selector.Role)
 		}
 	}
-	if promscrapeConfig.Spec.ScrapeInterval != nil {
-		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
+	if src.Spec.ScrapeInterval != nil {
+		cs.Spec.ScrapeInterval = string(*src.Spec.ScrapeInterval)
 	}
 
-	if promscrapeConfig.Spec.EnableCompression != nil {
+	if src.Spec.EnableCompression != nil {
 		cs.Spec.VMScrapeParams = &vmv1beta1.VMScrapeParams{
-			DisableCompression: ptr.To(!*promscrapeConfig.Spec.EnableCompression),
+			DisableCompression: ptr.To(!*src.Spec.EnableCompression),
 		}
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
@@ -184,15 +179,15 @@ func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *conf
 			{
 				APIVersion:         promv1alpha1.SchemeGroupVersion.String(),
 				Kind:               promv1alpha1.ScrapeConfigsKind,
-				Name:               promscrapeConfig.Name,
-				UID:                promscrapeConfig.UID,
+				Name:               src.Name,
+				UID:                src.UID,
 				Controller:         ptr.To(true),
 				BlockOwnerDeletion: ptr.To(true),
 			},
 		}
 	}
 	cs.Annotations = converter.MaybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cs.Annotations)
-	return cs
+	return cs, nil
 }
 
 func convertKVToMap(src []promv1alpha1.KeyValue) map[string]string {

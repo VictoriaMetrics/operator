@@ -291,7 +291,7 @@ func createOrUpdateVLogsService(ctx context.Context, rclient client.Client, cr, 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildVLogsScrape(cr, svc)
 		prevSvs := buildVLogsScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vlsingle: %w", err)
 		}
 	}

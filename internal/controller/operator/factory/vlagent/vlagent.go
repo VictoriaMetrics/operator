@@ -115,7 +115,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr)
 		prevSvs := buildScrape(prevCR)
-		if err := reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}

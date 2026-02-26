@@ -45,6 +45,21 @@ const (
 	ClusterComponentStorage  ClusterComponent = "storage"
 )
 
+type MetadataStrategy string
+
+const (
+	// MetadataStrategyPreferVM - prefers VM object meta values, ignores prometheus
+	MetadataStrategyPreferVM MetadataStrategy = "prefer-victoriametrics"
+	// MetadataStrategyPreferProm - prefers prometheus
+	MetadataStrategyPreferProm MetadataStrategy = "prefer-prometheus"
+	// MetadataStrategyMergeVMPriority merges both label sets
+	// its not possible to remove values
+	MetadataStrategyMergeVMPriority MetadataStrategy = "merge-victoriametrics-priority"
+	// MetadataStrategyMergePromPriority merges both label sets
+	// its not possible to remove values
+	MetadataStrategyMergePromPriority MetadataStrategy = "merge-prometheus-priority"
+)
+
 const (
 	httpPathPrefixFlag  = "http.pathPrefix"
 	reloadAuthKeyFlag   = "reloadAuthKey"
@@ -70,6 +85,19 @@ const (
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 	KubeNodeEnvName                  = "KUBE_NODE_NAME"
+	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
+	// must be added to annotation of VMObject
+	// annotations:
+	// operator.victoriametrics.com/ignore-prometheus-updates: enabled
+	IgnoreConversionLabel = "operator.victoriametrics.com/ignore-prometheus-updates"
+	// IgnoreConversion - disables updates from prometheus api
+	IgnoreConversion = "enabled"
+	// MetadataStrategyLabel merge strategy by default prefer prometheus meta labels
+	// but with annotation value added to VMObject:
+	// annotations:
+	//   operator.victoriametrics.com/merge-api-strategy: prefer-victoriametrics
+	// metadata from VMObject will be preferred during merge
+	MetadataStrategyLabel = "operator.victoriametrics.com/merge-meta-strategy"
 )
 
 const (

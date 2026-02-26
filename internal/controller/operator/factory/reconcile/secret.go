@@ -30,7 +30,7 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true, false)
 		if err != nil {
 			return err
 		}

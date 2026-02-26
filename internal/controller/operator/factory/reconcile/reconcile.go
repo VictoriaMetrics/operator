@@ -37,10 +37,21 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline, statusInter
 	vmStatusInterval = statusInterval
 }
 
-// mergeMaps performs 3-way merge for labels and annotations
-// it deletes only labels and annotations managed by operator CRDs
-// 3-rd party kubernetes annotations and labels must be preserved
-func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string {
+// mergeMaps performs maps merge depending on a given strategy:
+// * prefer-vm: returns existing map
+// * prefer-prom: returns new map
+// * merge-vm-priority: performs 3-way merge by merging keys that absent in prev map from new map into existing map
+// * merge-prom-priority: performs 3-way merge by merging keys that absent in prev map from existing map into new map
+func mergeMaps(existingMap, newMap, prevMap map[string]string, strategy vmv1beta1.MetadataStrategy) map[string]string {
+	switch strategy {
+	case vmv1beta1.MetadataStrategyPreferVM:
+		return existingMap
+	case vmv1beta1.MetadataStrategyPreferProm:
+		return newMap
+	case vmv1beta1.MetadataStrategyMergeVMPriority:
+		existingMap, newMap = newMap, existingMap
+	case vmv1beta1.MetadataStrategyMergePromPriority:
+	}
 	var dst map[string]string
 	var deleted sets.Set[string]
 
@@ -71,14 +82,10 @@ func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string
 	return dst
 }
 
-func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference, shouldRemoveFinalizer bool) (bool, error) {
+func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference, shouldRemoveFinalizer, isConversion bool) (bool, error) {
 	refChanged, err := addOwnerReferenceIfAbsent(existingObj, owner)
 	if err != nil {
 		return false, err
-	}
-	var finChanged bool
-	if shouldRemoveFinalizer {
-		finChanged = controllerutil.RemoveFinalizer(existingObj, vmv1beta1.FinalizerName)
 	}
 	existingLabels := existingObj.GetLabels()
 	existingAnnotations := existingObj.GetAnnotations()
@@ -87,8 +94,24 @@ func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, o
 		prevLabels = prevMeta.Labels
 		prevAnnotations = prevMeta.Annotations
 	}
-	newLabels := mergeMaps(existingLabels, newObj.GetLabels(), prevLabels)
-	newAnnotations := mergeMaps(existingAnnotations, newObj.GetAnnotations(), prevAnnotations)
+	var finChanged bool
+	strategy := vmv1beta1.MetadataStrategyMergePromPriority
+	if isConversion {
+		switch vmv1beta1.MetadataStrategy(existingAnnotations[vmv1beta1.MetadataStrategyLabel]) {
+		case vmv1beta1.MetadataStrategyPreferVM:
+			strategy = vmv1beta1.MetadataStrategyPreferVM
+		case vmv1beta1.MetadataStrategyMergePromPriority:
+			strategy = vmv1beta1.MetadataStrategyMergePromPriority
+		case vmv1beta1.MetadataStrategyMergeVMPriority:
+			strategy = vmv1beta1.MetadataStrategyMergeVMPriority
+		default:
+			strategy = vmv1beta1.MetadataStrategyPreferProm
+		}
+	} else if shouldRemoveFinalizer {
+		finChanged = controllerutil.RemoveFinalizer(existingObj, vmv1beta1.FinalizerName)
+	}
+	newLabels := mergeMaps(existingLabels, newObj.GetLabels(), prevLabels, strategy)
+	newAnnotations := mergeMaps(existingAnnotations, newObj.GetAnnotations(), prevAnnotations, strategy)
 	changed := refChanged || finChanged || !equality.Semantic.DeepEqual(existingLabels, newLabels) ||
 		!equality.Semantic.DeepEqual(existingAnnotations, newAnnotations)
 	existingObj.SetLabels(newLabels)

@@ -33,7 +33,7 @@ func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networ
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true, false)
 		if err != nil {
 			return err
 		}

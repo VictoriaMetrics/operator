@@ -347,7 +347,7 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.VLInsert.DisableSelfServiceScrape, false) {
 		svs := buildVLInsertScrape(cr, svc)
 		prevSvs := buildVLInsertScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VLInsert: %w", err)
 		}
 	}

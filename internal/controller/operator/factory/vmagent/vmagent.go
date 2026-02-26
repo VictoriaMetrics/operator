@@ -104,7 +104,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		} else {
 			svs := buildVMAgentServiceScrape(cr, svc)
 			prevSvs := buildVMAgentServiceScrape(prevCR, prevSvc)
-			err = reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner)
+			err = reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner)
 		}
 		if err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)

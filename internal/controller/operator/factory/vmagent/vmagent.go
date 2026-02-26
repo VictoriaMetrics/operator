@@ -100,11 +100,11 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		if cr.Spec.DaemonSetMode {
 			svs := buildVMAgentPodScrape(cr)
 			prevSvs := buildVMAgentPodScrape(prevCR)
-			err = reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner)
+			err = reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner, false)
 		} else {
 			svs := buildVMAgentServiceScrape(cr, svc)
 			prevSvs := buildVMAgentServiceScrape(prevCR, prevSvc)
-			err = reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner)
+			err = reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner, false)
 		}
 		if err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)

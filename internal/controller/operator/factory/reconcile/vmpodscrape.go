@@ -15,9 +15,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// VMServiceScrape creates or updates given object
-func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMServiceScrape, owner *metav1.OwnerReference) error {
-	if build.IsControllerDisabled("VMServiceScrape") {
+// VMPodScrape creates or updates given object
+func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMPodScrape, owner *metav1.OwnerReference) error {
+	if build.IsControllerDisabled("VMPodScrape") {
 		return nil
 	}
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
@@ -26,10 +26,10 @@ func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj
 		prevMeta = &prevObj.ObjectMeta
 	}
 	return retryOnConflict(func() error {
-		var existingObj vmv1beta1.VMServiceScrape
+		var existingObj vmv1beta1.VMPodScrape
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMServiceScrape=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating VMPodScrape=%s", nsn))
 				return rclient.Create(ctx, newObj)
 			}
 			return err
@@ -49,7 +49,7 @@ func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMServiceScrape %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMPodScrape %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
 }

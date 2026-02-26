@@ -58,7 +58,7 @@ func buildVMAgentPodScrape(cr *vmv1beta1.VMAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr)
+	return build.VMPodScrape(cr, "http")
 }
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -100,11 +100,11 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		if cr.Spec.DaemonSetMode {
 			svs := buildVMAgentPodScrape(cr)
 			prevSvs := buildVMAgentPodScrape(prevCR)
-			err = reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner)
+			err = reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner)
 		} else {
 			svs := buildVMAgentServiceScrape(cr, svc)
 			prevSvs := buildVMAgentServiceScrape(prevCR, prevSvc)
-			err = reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner)
+			err = reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner)
 		}
 		if err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)

@@ -580,7 +580,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
 		svs := buildScrape(cr, svc)
 		prevSvs := buildScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return err
 		}
 	}

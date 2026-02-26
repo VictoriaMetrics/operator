@@ -22,8 +22,9 @@ func TestVMClusterReconcile(t *testing.T) {
 	getVMCluster := func(fns ...func(v *vmv1beta1.VMCluster)) *vmv1beta1.VMCluster {
 		v := &vmv1beta1.VMCluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-vmcluster",
-				Namespace: "default",
+				Name:       "test-vmcluster",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: vmv1beta1.VMClusterSpec{
 				RetentionPeriod: "1d",
@@ -64,6 +65,22 @@ func TestVMClusterReconcile(t *testing.T) {
 				v.Finalizers = []string{vmv1beta1.FinalizerName}
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+		},
+	})
+
+	// no update on status change
+	f(opts{
+		new:  getVMCluster(),
+		prev: getVMCluster(),
+		predefinedObjects: []runtime.Object{
+			getVMCluster(func(v *vmv1beta1.VMCluster) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.Reason = "some error"
 			}),
 		},
 		actions: []k8stools.ClientAction{

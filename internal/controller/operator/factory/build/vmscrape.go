@@ -132,12 +132,12 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 }
 
 // VMPodScrapeForObjectWithSpec build VMPodScrape for given podScrapeBuilder
-func VMPodScrape(b podScrapeBuilder) *vmv1beta1.VMPodScrape {
+func VMPodScrape(b podScrapeBuilder, portName string) *vmv1beta1.VMPodScrape {
 	extraArgs := b.GetExtraArgs()
 	authKey := extraArgs["metricsAuthKey"]
 
 	endpoint := vmv1beta1.PodMetricsEndpoint{
-		Port: ptr.To("monitoring-http"),
+		Port: &portName,
 		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 			Path: b.GetMetricsPath(),
 		},

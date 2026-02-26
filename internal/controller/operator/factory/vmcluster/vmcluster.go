@@ -253,7 +253,7 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 		svs := buildVMSelectScrape(cr, svc)
 		prevSvs := buildVMSelectScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmSelect: %w", err)
 		}
 	}
@@ -392,7 +392,7 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
 		svs := buildVMInsertScrape(cr, svc)
 		prevSvs := buildVMInsertScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmInsert: %w", err)
 		}
 	}
@@ -490,7 +490,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 	if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
 		svs := buildVMStorageScrape(cr, svc)
 		prevSvs := buildVMStorageScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
 		}
 	}
@@ -1602,7 +1602,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
 		svs := buildVMAuthScrape(cr, svc)
 		prevSvs := buildVMAuthScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 		}
 	}

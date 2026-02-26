@@ -18,6 +18,8 @@ aliases:
 * FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): VMSingle reuses vmagent implementation to allow scraping and relabelling. See [#1694](https://github.com/VictoriaMetrics/operator/issues/1694)
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fixed VMPodScrape port for VLAgent and VMAgent. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
+
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

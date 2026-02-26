@@ -78,7 +78,7 @@ func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr)
+	return build.VMPodScrape(cr, "http")
 }
 
 // CreateOrUpdate creates deployment for vlagent and configures it
@@ -115,7 +115,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr)
 		prevSvs := buildScrape(prevCR)
-		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create or update scrape object: %w", err)
 		}
 	}

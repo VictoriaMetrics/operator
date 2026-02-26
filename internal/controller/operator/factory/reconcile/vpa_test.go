@@ -22,7 +22,7 @@ func TestVPAReconcile(t *testing.T) {
 		actions           []k8stools.ClientAction
 	}
 	getVPA := func(fns ...func(v *vpav1.VerticalPodAutoscaler)) *vpav1.VerticalPodAutoscaler {
-		updateMode := vpav1.UpdateModeAuto
+		updateMode := vpav1.UpdateModeRecreate
 		vpa := &vpav1.VerticalPodAutoscaler{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:       "test-vpa",

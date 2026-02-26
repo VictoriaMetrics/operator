@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -100,6 +101,9 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 	if err := rclient.List(ctx, &pvcs, opts); err != nil {
 		return err
 	}
+	sort.Slice(pvcs.Items, func(i, j int) bool {
+		return pvcs.Items[i].Name < pvcs.Items[j].Name
+	})
 	if len(pvcs.Items) == 0 {
 		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
 	}

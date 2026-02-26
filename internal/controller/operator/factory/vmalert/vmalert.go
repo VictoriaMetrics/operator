@@ -531,7 +531,16 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 
 func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
 	owner := cr.AsOwner()
-	for kind, secret := range ac.GetOutput() {
+	assets := ac.GetOutput()
+	keys := make([]build.ResourceKind, 0, len(assets))
+	for k := range assets {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	for _, kind := range keys {
+		secret := assets[kind]
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {

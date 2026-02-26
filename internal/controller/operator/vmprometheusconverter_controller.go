@@ -86,7 +86,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 	scrapeControllersDisabled := build.IsControllerDisabled("VMAgent") && build.IsControllerDisabled("VMSingle")
 	if !build.IsControllerDisabled("VMRule") || !build.IsControllerDisabled("VMAlert") {
 		c.ruleInf = cache.NewSharedIndexInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1.PrometheusRuleList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PrometheusRuleList) {
@@ -99,7 +99,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1.PrometheusRuleList](ctx, rclient, "prometheus_rules", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1.PrometheusRule{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -114,7 +114,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 
 	if !build.IsControllerDisabled("VMPodScrape") || !scrapeControllersDisabled {
 		c.podInf = cache.NewSharedIndexInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1.PodMonitorList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.PodMonitorList) {
@@ -127,7 +127,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1.PodMonitorList](ctx, rclient, "pod_monitors", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1.PodMonitor{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -142,8 +142,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 
 	if !build.IsControllerDisabled("VMServiceScrape") || !scrapeControllersDisabled {
 		c.serviceInf = cache.NewSharedIndexInformer(
-
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1.ServiceMonitorList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ServiceMonitorList) {
@@ -156,7 +155,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1.ServiceMonitorList](ctx, rclient, "service_monitors", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1.ServiceMonitor{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -171,7 +170,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 
 	if !build.IsControllerDisabled("VMAlertmanagerConfig") || !build.IsControllerDisabled("VMAlertmanager") {
 		amConfigInf := cache.NewSharedIndexInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1alpha1.AlertmanagerConfigList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.AlertmanagerConfigList) {
@@ -184,7 +183,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1alpha1.AlertmanagerConfig{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -200,7 +199,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 
 	if !build.IsControllerDisabled("VMProbe") || !scrapeControllersDisabled {
 		c.probeInf = cache.NewSharedIndexInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1.ProbeList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1.ProbeList) {
@@ -213,7 +212,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1.ProbeList](ctx, rclient, "probes", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1.Probe{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -228,7 +227,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 
 	if !build.IsControllerDisabled("VMScrapeConfig") || !scrapeControllersDisabled {
 		c.scrapeConfigInf = cache.NewSharedIndexInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					var objects promv1alpha1.ScrapeConfigList
 					if err := k8stools.ListObjectsByNamespace(ctx, rclient, baseConf.WatchNamespaces, func(dst *promv1alpha1.ScrapeConfigList) {
@@ -241,7 +240,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", baseConf.WatchNamespaces)
 				},
-			},
+			}, rclient),
 			&promv1alpha1.ScrapeConfig{},
 			resyncPeriod,
 			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},

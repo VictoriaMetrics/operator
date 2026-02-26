@@ -19,9 +19,7 @@ package v1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -30,8 +28,7 @@ import (
 
 // SetupVLAgentWebhookWithManager will setup the manager to manage the webhooks
 func SetupVLAgentWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1.VLAgent{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1.VLAgent{}).
 		WithValidator(&VLAgentCustomValidator{}).
 		Complete()
 }
@@ -39,39 +36,31 @@ func SetupVLAgentWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1-vlagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vlagents,verbs=create;update,versions=v1,name=vvlagent-v1.kb.io,admissionReviewVersions=v1
 type VLAgentCustomValidator struct{}
 
-var _ admission.CustomValidator = &VLAgentCustomValidator{}
+var _ admission.Validator[*vmv1.VLAgent] = &VLAgentCustomValidator{}
 
-// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLAgentCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*vmv1.VLAgent)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (*VLAgentCustomValidator) ValidateCreate(_ context.Context, obj *vmv1.VLAgent) (admission.Warnings, error) {
+	if obj.Spec.ParsingError != "" {
+		return nil, errors.New(obj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-// ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLAgentCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	r, ok := newObj.(*vmv1.VLAgent)
-	if !ok {
-		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (*VLAgentCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1.VLAgent) (admission.Warnings, error) {
+	if newObj.Spec.ParsingError != "" {
+		return nil, errors.New(newObj.Spec.ParsingError)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
+	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-// ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VLAgentCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (*VLAgentCustomValidator) ValidateDelete(_ context.Context, _ *vmv1.VLAgent) (admission.Warnings, error) {
 	return nil, nil
 }

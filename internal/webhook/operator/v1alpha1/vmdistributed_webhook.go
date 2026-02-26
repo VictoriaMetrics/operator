@@ -19,9 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -30,8 +28,7 @@ import (
 
 // SetupVMDistributedWebhookWithManager will setup the manager to manage the webhooks
 func SetupVMDistributedWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&vmv1alpha1.VMDistributed{}).
+	return ctrl.NewWebhookManagedBy(mgr, &vmv1alpha1.VMDistributed{}).
 		WithValidator(&VMDistributedCustomValidator{}).
 		Complete()
 }
@@ -39,49 +36,37 @@ func SetupVMDistributedWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1alpha1-vmdistributed,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmdistributed,verbs=create;update,versions=v1alpha1,name=vmdistributed-v1alpha1.kb.io,admissionReviewVersions=v1
 type VMDistributedCustomValidator struct{}
 
-var _ admission.CustomValidator = &VMDistributedCustomValidator{}
+var _ admission.Validator[*vmv1alpha1.VMDistributed] = &VMDistributedCustomValidator{}
 
-// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
-	r, ok := obj.(*vmv1alpha1.VMDistributed)
-	if !ok {
-		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1alpha1.VMDistributed) (warnings admission.Warnings, err error) {
+	if obj.Spec.ParsingError != "" {
+		err = errors.New(obj.Spec.ParsingError)
 		return
 	}
 
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
-		return
-	}
-
-	if err = r.Validate(); err != nil {
+	if err = obj.Validate(); err != nil {
 		return
 	}
 
 	return
 }
 
-// ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (warnings admission.Warnings, err error) {
-	r, ok := newObj.(*vmv1alpha1.VMDistributed)
-	if !ok {
-		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1alpha1.VMDistributed) (warnings admission.Warnings, err error) {
+	if newObj.Spec.ParsingError != "" {
+		err = errors.New(newObj.Spec.ParsingError)
 		return
 	}
 
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
-		return
-	}
-
-	if err = r.Validate(); err != nil {
+	if err = newObj.Validate(); err != nil {
 		return
 	}
 
 	return
 }
 
-// ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type
-func (*VMDistributedCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (*VMDistributedCustomValidator) ValidateDelete(_ context.Context, _ *vmv1alpha1.VMDistributed) (admission.Warnings, error) {
 	return nil, nil
 }

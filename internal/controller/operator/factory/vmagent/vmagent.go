@@ -1290,7 +1290,17 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	owner := cr.AsOwner()
-	for kind, secret := range ac.GetOutput() {
+	secrets := ac.GetOutput()
+	keys := make([]build.ResourceKind, 0, len(secrets))
+	for kind := range secrets {
+		keys = append(keys, kind)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for _, kind := range keys {
+		secret := secrets[kind]
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))

@@ -9,22 +9,28 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestDeployReconcile(t *testing.T) {
 	type opts struct {
 		new, prev         *appsv1.Deployment
 		predefinedObjects []runtime.Object
-		actions           []string
+		actions           []k8stools.ClientAction
+		hasHPA            bool
+		validate          func(*appsv1.Deployment)
+		wantErr           bool
 	}
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-1",
-				Namespace: "default",
+				Name:       "test-1",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
@@ -69,15 +75,32 @@ func TestDeployReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
-		assert.NoError(t, Deployment(ctx, cl, o.new, o.prev, false, nil))
-		assert.Equal(t, o.actions, cl.actions)
+		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
+		err := Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, o.actions, cl.Actions)
+		if o.validate != nil {
+			var got appsv1.Deployment
+			nsn := types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}
+			assert.NoError(t, cl.Get(ctx, nsn, &got))
+			o.validate(&got)
+		}
 	}
+
+	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
 
 	// create deployment
 	f(opts{
-		new:     getDeploy(),
-		actions: []string{"Get", "Create", "Get"},
+		new: getDeploy(),
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Create", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
 	})
 
 	// no updates
@@ -89,7 +112,10 @@ func TestDeployReconcile(t *testing.T) {
 				d.Finalizers = []string{vmv1beta1.FinalizerName}
 			}),
 		},
-		actions: []string{"Get", "Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
 	})
 
 	// update spec
@@ -101,18 +127,26 @@ func TestDeployReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getDeploy(),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Update", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
 	})
 
-	// remove template annotations
+	// no update, only status change
 	f(opts{
 		new:  getDeploy(),
 		prev: getDeploy(),
 		predefinedObjects: []runtime.Object{
 			getDeploy(func(d *appsv1.Deployment) {
-				d.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+				d.Status.ReadyReplicas = 1
+				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
 			}),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
 	})
 }

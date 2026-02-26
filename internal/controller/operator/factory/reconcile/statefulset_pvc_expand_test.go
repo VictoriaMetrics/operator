@@ -95,6 +95,7 @@ func Test_reCreateSTS(t *testing.T) {
 			}},
 		},
 		newSTS: &appsv1.StatefulSet{
+
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "vmselect",
 				Namespace: "default",
@@ -204,16 +205,20 @@ func Test_updateSTSPVC(t *testing.T) {
 		wantErr           bool
 		predefinedObjects []runtime.Object
 		expected          []corev1.PersistentVolumeClaim
+		actions           []k8stools.ClientAction
 	}
 	f := func(o opts) {
 		t.Helper()
-		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		ctx := context.TODO()
 		err := updateSTSPVC(ctx, cl, o.sts, nil)
 		if o.wantErr {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
+		}
+		if o.actions != nil {
+			assert.Equal(t, o.actions, cl.Actions)
 		}
 		var pvcs corev1.PersistentVolumeClaimList
 		opts := &client.ListOptions{
@@ -223,6 +228,9 @@ func Test_updateSTSPVC(t *testing.T) {
 		assert.NoError(t, cl.List(ctx, &pvcs, opts))
 		assert.ElementsMatch(t, o.expected, pvcs.Items)
 	}
+
+	pvc1 := types.NamespacedName{Name: "vmselect-cachedir-vmselect-0", Namespace: "default"}
+	pvc2 := types.NamespacedName{Name: "test-vmselect-0", Namespace: "default"}
 
 	// update metadata only
 	f(opts{
@@ -262,6 +270,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					},
 				},
 			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -371,6 +382,10 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc2},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
+		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -378,6 +393,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 					ResourceVersion: "1000",
 					Finalizers: []string{
@@ -398,6 +416,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 					ResourceVersion: "1000",
 					Finalizers: []string{
@@ -421,6 +442,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -436,6 +460,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -547,7 +574,7 @@ func Test_updateSTSPVC(t *testing.T) {
 	f(opts{
 		sts: &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmselect-cachedir",
+				Name:      "vmselect",
 				Namespace: "default",
 				Labels: map[string]string{
 					"app": "vmselect",
@@ -562,7 +589,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "vmselect",
+							Name: "vmselect-cachedir",
 							Labels: map[string]string{
 								"app": "vmselect",
 							},
@@ -579,6 +606,9 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1},
+		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -587,12 +617,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Labels: map[string]string{
 						"app": "vmselect",
 					},
-					ResourceVersion: "999",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
+					ResourceVersion: "1000",
+					Finalizers: []string{
+						vmv1beta1.FinalizerName,
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
-							corev1.ResourceStorage: resource.MustParse("10Gi"),
+							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
 					},
 				},
@@ -605,6 +641,9 @@ func Test_updateSTSPVC(t *testing.T) {
 					Namespace: "default",
 					Labels: map[string]string{
 						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{

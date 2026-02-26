@@ -690,14 +690,15 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new, prev         *appsv1.StatefulSet
 		predefinedObjects []runtime.Object
 		validate          func(*appsv1.StatefulSet)
-		actions           []string
+		actions           []k8stools.ClientAction
 		wantErr           bool
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
 		s := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-1",
-				Namespace: "default",
+				Name:       "test-1",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: ptr.To[int32](4),
@@ -738,7 +739,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		var emptyOpts STSOptions
 		err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
 		if o.wantErr {
@@ -751,7 +752,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 			Name:      o.new.Name,
 			Namespace: o.new.Namespace,
 		}
-		assert.Equal(t, o.actions, cl.actions)
+		assert.Equal(t, o.actions, cl.Actions)
 		if o.validate != nil {
 			var got appsv1.StatefulSet
 			assert.NoError(t, cl.Get(ctx, nsn, &got))
@@ -759,10 +760,16 @@ func TestStatefulsetReconcile(t *testing.T) {
 		}
 	}
 
+	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
+
 	// create statefulset
 	f(opts{
-		new:     getSts(),
-		actions: []string{"Get", "Create", "Get"},
+		new: getSts(),
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
 	})
 
 	// no updates
@@ -770,11 +777,12 @@ func TestStatefulsetReconcile(t *testing.T) {
 		new:  getSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(func(s *appsv1.StatefulSet) {
-				s.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getSts(),
 		},
-		actions: []string{"Get", "Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
 	})
 
 	// add annotations
@@ -786,26 +794,49 @@ func TestStatefulsetReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			getSts(),
 		},
-		actions: []string{"Get", "Update", "Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Update", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
 		validate: func(s *appsv1.StatefulSet) {
 			assert.Equal(t, "value", s.Spec.Template.Annotations["new-annotation"])
 		},
 	})
 
-	// delete annotations
+	// no update on status change
 	f(opts{
-		new: getSts(),
-		prev: getSts(func(s *appsv1.StatefulSet) {
-			s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
-		}),
+		new:  getSts(),
+		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			getSts(func(s *appsv1.StatefulSet) {
-				s.Spec.Template.Annotations = map[string]string{"new-annotation": "value"}
+				s.Status.Replicas = 1
 			}),
 		},
-		actions: []string{"Get", "Update", "Get"},
-		validate: func(s *appsv1.StatefulSet) {
-			assert.Empty(t, s.Spec.Template.Annotations["new-annotation"])
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+	})
+
+	// recreate on ServiceName change
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.ServiceName = "new-service-name"
+		}),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.ServiceName = "old-service-name"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Patch", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Delete", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
 	})
 

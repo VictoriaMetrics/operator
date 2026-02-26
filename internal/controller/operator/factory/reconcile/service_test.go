@@ -15,7 +15,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_reconcileServiceForCRD(t *testing.T) {
+func Test_reconcileService(t *testing.T) {
 
 	type opts struct {
 		newService        *corev1.Service

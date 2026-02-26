@@ -145,7 +145,7 @@ func createOrUpdateVTSelectService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.Select.DisableSelfServiceScrape, false) {
 		svs := buildVTSelectScrape(cr, svc)
 		prevSvs := buildVTSelectScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VTSelect: %w", err)
 		}
 	}

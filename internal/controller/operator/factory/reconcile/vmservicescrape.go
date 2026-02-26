@@ -15,8 +15,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// VMServiceScrapeForCRD creates or updates given object
-func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMServiceScrape, owner *metav1.OwnerReference) error {
+// VMServiceScrape creates or updates given object
+func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMServiceScrape, owner *metav1.OwnerReference) error {
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil
 	}

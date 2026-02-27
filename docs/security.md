@@ -138,7 +138,7 @@ spec:
 
 
  By default, operator configures Kubernetes API Access for all managed components with own `ServiceAccount`.
-This behaviour can be altered with object configuration - `spec.disableAutomountServiceAccountToken: true` {{% available_from "v0.54.0" %}}. See the
+This behaviour can be altered with object configuration - `spec.disableAutomountServiceAccountToken: true` {{% available_from "v0.54.0" "operator" %}}. See the
 following [Kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting) for details.
 
  Consider the following example for VMAgent:

@@ -16808,6 +16808,9 @@ spec:
                 type: boolean
               vmauth:
                 properties:
+                  enabled:
+                    default: true
+                    type: boolean
                   name:
                     type: string
                   spec:

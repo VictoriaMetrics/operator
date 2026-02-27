@@ -1211,6 +1211,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 
 | Field | Description |
 | --- | --- |
+| enabled<a href="#vmdistributedauth-enabled" id="vmdistributedauth-enabled">#</a><br/>_boolean_ | _(Optional)_<br/>Enabled defines if vmauth should be created. |
 | name<a href="#vmdistributedauth-name" id="vmdistributedauth-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMDistributedAuth when Spec is provided. |
 | spec<a href="#vmdistributedauth-spec" id="vmdistributedauth-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
 
@@ -1228,7 +1229,7 @@ Appears in: [VMDistributed](#vmdistributed)
 | license<a href="#vmdistributedspec-license" id="vmdistributedspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters. |
 | paused<a href="#vmdistributedspec-paused" id="vmdistributedspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | retain<a href="#vmdistributedspec-retain" id="vmdistributedspec-retain">#</a><br/>_boolean_ | _(Optional)_<br/>Retain keeps resources in case of VMDistributed removal |
-| vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMDistributedAuth](#vmdistributedauth)_ | _(Required)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
+| vmauth<a href="#vmdistributedspec-vmauth" id="vmdistributedspec-vmauth">#</a><br/>_[VMDistributedAuth](#vmdistributedauth)_ | _(Optional)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
 | zoneCommon<a href="#vmdistributedspec-zonecommon" id="vmdistributedspec-zonecommon">#</a><br/>_[VMDistributedZoneCommon](#vmdistributedzonecommon)_ | _(Optional)_<br/>ZoneCommon defines common properties for all zones |
 | zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[VMDistributedZone](#vmdistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
 

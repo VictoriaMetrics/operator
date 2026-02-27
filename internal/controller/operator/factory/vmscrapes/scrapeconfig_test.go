@@ -195,34 +195,38 @@ file_sd_configs:
 			Spec: vmv1beta1.VMScrapeConfigSpec{
 				HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
 					{
-						URL:      "http://www.test1.com",
-						ProxyURL: ptr.To("http://www.proxy.com"),
+						URL: "http://www.test1.com",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							ProxyURL: ptr.To("http://www.proxy.com"),
+						},
 					},
 					{
 						URL: "http://www.test2.com",
-						Authorization: &vmv1beta1.Authorization{
-							Type: "Bearer",
-							Credentials: &corev1.SecretKeySelector{
-								Key: "cred",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "auth-secret",
-								},
-							},
-						},
-						TLSConfig: &vmv1beta1.TLSConfig{
-							CA: vmv1beta1.SecretOrConfigMap{
-								Secret: &corev1.SecretKeySelector{
-									Key: "ca",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									Key: "cred",
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls-secret",
+										Name: "auth-secret",
 									},
 								},
 							},
-							Cert: vmv1beta1.SecretOrConfigMap{
-								Secret: &corev1.SecretKeySelector{
-									Key: "cert",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls-secret",
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "ca",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
+									},
+								},
+								Cert: vmv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{
+										Key: "cert",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
 									},
 								},
 							},
@@ -294,8 +298,10 @@ http_sd_configs:
 								Field: "test",
 							},
 						},
-						TLSConfig: &vmv1beta1.TLSConfig{
-							InsecureSkipVerify: true,
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
 						},
 					},
 					{
@@ -349,40 +355,32 @@ kubernetes_sd_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMScrapeConfigSpec{
-				ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{
-					{
-						Server:     "localhost:8500",
-						TokenRef:   &corev1.SecretKeySelector{Key: "consul_token"},
-						Datacenter: ptr.To("dc1"),
-						NodeMeta:   map[string]string{"worker": "1"},
-						Filter:     `filter=NodeMeta.os == "linux"`,
-					},
-				},
-				DNSSDConfigs: []vmv1beta1.DNSSDConfig{
-					{
-						Names: []string{"vmagent-0.vmagent.default.svc.cluster.local"},
-						Port:  ptr.To(8429),
-					},
-				},
-				EC2SDConfigs: []vmv1beta1.EC2SDConfig{
-					{
-						Region: ptr.To("us-west-2"),
-						Port:   ptr.To(9404),
-						Filters: []*vmv1beta1.EC2Filter{{
-							Name:   "instance-id",
-							Values: []string{"i-98765432109876543", "i-12345678901234567"},
-						}},
-					},
-				},
-				AzureSDConfigs: []vmv1beta1.AzureSDConfig{
-					{
-						Environment:    ptr.To("AzurePublicCloud"),
-						SubscriptionID: "1",
-						TenantID:       ptr.To("u1"),
-						ResourceGroup:  ptr.To("rg1"),
-						Port:           ptr.To(80),
-					},
-				},
+				ConsulSDConfigs: []vmv1beta1.ConsulSDConfig{{
+					Server:     "localhost:8500",
+					TokenRef:   &corev1.SecretKeySelector{Key: "consul_token"},
+					Datacenter: ptr.To("dc1"),
+					NodeMeta:   map[string]string{"worker": "1"},
+					Filter:     `filter=NodeMeta.os == "linux"`,
+				}},
+				DNSSDConfigs: []vmv1beta1.DNSSDConfig{{
+					Names: []string{"vmagent-0.vmagent.default.svc.cluster.local"},
+					Port:  ptr.To[int32](8429),
+				}},
+				EC2SDConfigs: []vmv1beta1.EC2SDConfig{{
+					Region: ptr.To("us-west-2"),
+					Port:   ptr.To[int32](9404),
+					Filters: []*vmv1beta1.EC2Filter{{
+						Name:   "instance-id",
+						Values: []string{"i-98765432109876543", "i-12345678901234567"},
+					}},
+				}},
+				AzureSDConfigs: []vmv1beta1.AzureSDConfig{{
+					Environment:    ptr.To("AzurePublicCloud"),
+					SubscriptionID: "1",
+					TenantID:       ptr.To("u1"),
+					ResourceGroup:  ptr.To("rg1"),
+					Port:           ptr.To[int32](80),
+				}},
 				GCESDConfigs: []vmv1beta1.GCESDConfig{
 					{
 						Project:      "eu-project",
@@ -395,23 +393,21 @@ kubernetes_sd_configs:
 						TagSeparator: ptr.To("/"),
 					},
 				},
-				OpenStackSDConfigs: []vmv1beta1.OpenStackSDConfig{
-					{
-						Role:             "instance",
-						IdentityEndpoint: ptr.To("http://localhost:5000/v3"),
-						Username:         ptr.To("user1"),
-						UserID:           ptr.To("1"),
-						Password: &corev1.SecretKeySelector{
-							Key:                  "pass",
-							LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-						},
-						ProjectName: ptr.To("poc"),
-						AllTenants:  ptr.To(true),
-						DomainName:  ptr.To("default"),
+				OpenStackSDConfigs: []vmv1beta1.OpenStackSDConfig{{
+					Role:             "instance",
+					IdentityEndpoint: ptr.To("http://localhost:5000/v3"),
+					Username:         ptr.To("user1"),
+					UserID:           ptr.To("1"),
+					Password: &corev1.SecretKeySelector{
+						Key:                  "pass",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
 					},
-				},
-				DigitalOceanSDConfigs: []vmv1beta1.DigitalOceanSDConfig{
-					{
+					ProjectName: ptr.To("poc"),
+					AllTenants:  ptr.To(true),
+					DomainName:  ptr.To("default"),
+				}},
+				DigitalOceanSDConfigs: []vmv1beta1.DigitalOceanSDConfig{{
+					HTTPSDOptions: vmv1beta1.HTTPSDOptions{
 						OAuth2: &vmv1beta1.OAuth2{
 							Scopes:         []string{"scope-1"},
 							TokenURL:       "http://some-token-url",
@@ -424,7 +420,7 @@ kubernetes_sd_configs:
 							},
 						},
 					},
-				},
+				}},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -527,15 +523,13 @@ digitalocean_sd_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMScrapeConfigSpec{
-				NomadSDConfigs: []vmv1beta1.NomadSDConfig{
-					{
-						Server:       "localhost:4646",
-						Namespace:    ptr.To("default"),
-						Region:       ptr.To("global"),
-						TagSeparator: ptr.To(","),
-						AllowStale:   ptr.To(true),
-					},
-				},
+				NomadSDConfigs: []vmv1beta1.NomadSDConfig{{
+					Server:       "localhost:4646",
+					Namespace:    ptr.To("default"),
+					Region:       ptr.To("global"),
+					TagSeparator: ptr.To(","),
+					AllowStale:   ptr.To(true),
+				}},
 			},
 		},
 		want: `job_name: scrapeConfig/default/nomadsd-1
@@ -547,6 +541,208 @@ nomad_sd_configs:
   region: global
   tag_separator: ','
   allow_stale: true
+`,
+	})
+
+	// kumaSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "kumasd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				KumaSDConfigs: []vmv1beta1.KumaSDConfig{{
+					Server:   "localhost:8080",
+					ClientID: "kuma",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/kumasd-1
+honor_labels: false
+relabel_configs: []
+kuma_sd_configs:
+- server: localhost:8080
+  client_id: kuma
+`,
+	})
+
+	// ovhcloudSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "auth-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"cred": []byte("auth-secret"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "auth",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"cred": []byte("auth-secret"),
+				},
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ovhsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				OVHCloudSDConfigs: []vmv1beta1.OVHCloudSDConfig{{
+					ApplicationKey: "test",
+					ApplicationSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
+						Key:                  "cred",
+					},
+					ConsumerKey: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+						Key:                  "cred",
+					},
+					Service:  "vps",
+					Endpoint: "http://ovhcloud",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/ovhsd-1
+honor_labels: false
+relabel_configs: []
+ovhcloud_sd_configs:
+- application_key: test
+  service: vps
+  application_secret: auth-secret
+  consumer_key: auth-secret
+  endpoint: http://ovhcloud
+`,
+	})
+
+	// puppetDBSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "puppetdbsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				PuppetDBSDConfigs: []vmv1beta1.PuppetDBSDConfig{{
+					URL:   "http://test",
+					Query: "some query",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/puppetdbsd-1
+honor_labels: false
+relabel_configs: []
+puppetdb_sd_configs:
+- url: http://test
+  query: some query
+`,
+	})
+
+	// vultrDBSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vultrsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				VultrSDConfigs: []vmv1beta1.VultrSDConfig{{
+					Label:  "label",
+					MainIP: "ip",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/vultrsd-1
+honor_labels: false
+relabel_configs: []
+vultr_sd_configs:
+- label: label
+  main_ip: ip
+`,
+	})
+
+	// hetznerSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hetznersd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				HetznerSDConfigs: []vmv1beta1.HetznerSDConfig{{
+					Role: "hcloud",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/hetznersd-1
+honor_labels: false
+relabel_configs: []
+hetzner_sd_configs:
+- role: hcloud
+`,
+	})
+
+	// eurekaSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "eurekasd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				EurekaSDConfigs: []vmv1beta1.EurekaSDConfig{{
+					Server: "http://localhost:8080",
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/eurekasd-1
+honor_labels: false
+relabel_configs: []
+eureka_sd_configs:
+- server: http://localhost:8080
 `,
 	})
 
@@ -567,56 +763,68 @@ nomad_sd_configs:
 				HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
 					{
 						URL: "http://www.test1.com",
-						Authorization: &vmv1beta1.Authorization{
-							Type: "Bearer",
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-								Key:                  "cred",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
+								},
 							},
 						},
 					},
 					{
 						URL: "http://www.test2.com",
-						Authorization: &vmv1beta1.Authorization{
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-								Key:                  "cred",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
+								},
 							},
 						},
 					},
 					{
 						URL: "http://www.test3.com",
-						Authorization: &vmv1beta1.Authorization{
-							Type:            "Bearer",
-							CredentialsFile: "file",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type:            "Bearer",
+								CredentialsFile: "file",
+							},
 						},
 					},
 				},
 				KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
 					{
 						Role: "endpoints",
-						Authorization: &vmv1beta1.Authorization{
-							Type: "Bearer",
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
-								Key:                  "cred",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth"},
+									Key:                  "cred",
+								},
 							},
 						},
 					},
 					{
 						Role: "endpoints",
-						Authorization: &vmv1beta1.Authorization{
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
-								Key:                  "cred",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "auth-secret"},
+									Key:                  "cred",
+								},
 							},
 						},
 					},
 					{
 						Role: "endpoints",
-						Authorization: &vmv1beta1.Authorization{
-							Type:            "Bearer",
-							CredentialsFile: "file",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type:            "Bearer",
+								CredentialsFile: "file",
+							},
 						},
 					},
 				},

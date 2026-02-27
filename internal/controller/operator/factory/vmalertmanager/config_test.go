@@ -1024,6 +1024,16 @@ templates: []
 					"CLOUD_PAT":  []byte(`personal-token`),
 				},
 			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "connect-header",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"ch-value1": []byte(`value1`),
+					"ch-value2": []byte(`value2`),
+				},
+			},
 			&vmv1beta1.VMAlertmanagerConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base",
@@ -1066,6 +1076,25 @@ templates: []
 								{
 									SendResolved: ptr.To(true),
 									HTTPConfig: &vmv1beta1.HTTPConfig{
+										ProxyConfig: vmv1beta1.ProxyConfig{
+											ProxyURL: "http://localhost:8080",
+											ProxyConnectHeader: map[string][]corev1.SecretKeySelector{
+												"test": {
+													{
+														Key: "ch-value1",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "connect-header",
+														},
+													},
+													{
+														Key: "ch-value2",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "connect-header",
+														},
+													},
+												},
+											},
+										},
 										BasicAuth: &vmv1beta1.BasicAuth{
 											Username: corev1.SecretKeySelector{
 												Key: "CLOUD_USER",
@@ -1139,6 +1168,11 @@ receivers:
       basic_auth:
         username: username
         password: personal-token
+      proxy_url: http://localhost:8080
+      proxy_connect_header:
+        test:
+        - value1
+        - value2
     send_resolved: true
     project: main
     issue_type: BUG

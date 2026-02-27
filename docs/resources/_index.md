@@ -1,6 +1,6 @@
 ---
 weight: 14
-title: Custom resources
+title: Resources
 menu:
   docs:
     identifier: operator-cr

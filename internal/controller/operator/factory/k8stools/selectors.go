@@ -56,7 +56,7 @@ func VisitSelected[T any, PT listing[T]](ctx context.Context, rclient client.Cli
 	}
 	nss := dnsr.namespaces
 	// namespaces could still be empty and it's ok
-	return ListObjectsByNamespace(ctx, rclient, nss, cb, opts)
+	return listObjectsByNamespace(ctx, rclient, nss, cb, opts)
 }
 
 type discoverNamespacesResponse struct {

@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
@@ -109,8 +111,15 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 	return nil
 }
 
-// ListObjectsByNamespace performs object list for given namespaces
-func ListObjectsByNamespace[T any, PT listing[T]](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
+// ListObjects performs object list for namespaces limited by WATCH_NAMESPACE and EXCLUDE_NAMESPACE values
+func ListObjects[T any, PT listing[T]](ctx context.Context, rclient client.Client, collect func(PT), opts ...client.ListOption) error {
+	cfg := config.MustGetBaseConfig()
+	nss := cfg.WatchNamespaces
+	return listObjectsByNamespace(ctx, rclient, nss, collect, opts...)
+}
+
+// listObjectsByNamespace performs object list for given namespaces
+func listObjectsByNamespace[T any, PT listing[T]](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
 	dst := PT(new(T))
 	if len(nss) == 0 {
 		if err := rclient.List(ctx, dst, opts...); err != nil {
@@ -140,27 +149,29 @@ var (
 	initMetrics            sync.Once
 )
 
-// ObjectWatcherForNamespaces performs a watch operation for multiple namespaces
+// ObjectWatcher performs a watch operation for multiple namespaces
 // without using cluster wide permissions
 // with empty namespaces uses cluster wide mode
-type ObjectWatcherForNamespaces struct {
+type ObjectWatcher struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface
 	cancel         func()
 	wg             sync.WaitGroup
 }
 
-// NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces for given object
+// NewObjectWatcher returns a watcher for events at multiple namespaces for given object
 // in case of empty namespaces, performs cluster wide watch
-func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
+func NewObjectWatcher[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string) (watch.Interface, error) {
 	initMetrics.Do(func() {
 		metrics.Registry.MustRegister(activeWatchers, watchEventsTotalByType)
 	})
+	cfg := config.MustGetBaseConfig()
+	nss := cfg.WatchNamespaces
 	// all watchers must be gracefully stopped at any child channel close
 	// or at watch.Stop call
 	localCtx, cancel := context.WithCancel(ctx)
 
-	ownss := ObjectWatcherForNamespaces{
+	ownss := ObjectWatcher{
 		result: make(chan watch.Event),
 		cancel: cancel,
 	}
@@ -203,13 +214,13 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 		return nil
 	}
 
-	if len(namespaces) == 0 {
+	if len(nss) == 0 {
 		if err := addWatcher(""); err != nil {
 			return nil, fmt.Errorf("cannot start cluster-wide watcher: %w", err)
 		}
 	}
 
-	for _, ns := range namespaces {
+	for _, ns := range nss {
 		if err := addWatcher(ns); err != nil {
 			return nil, fmt.Errorf("cannot start watcher for namespace=%s: %w", ns, err)
 		}
@@ -224,12 +235,12 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 }
 
 // ResultChan returns a channel with events
-func (ow *ObjectWatcherForNamespaces) ResultChan() <-chan watch.Event {
+func (ow *ObjectWatcher) ResultChan() <-chan watch.Event {
 	return ow.result
 }
 
 // Stop performs a stop on all watchers and waits for it's finish
-func (ow *ObjectWatcherForNamespaces) Stop() {
+func (ow *ObjectWatcher) Stop() {
 	for _, objectWatcher := range ow.objectWatchers {
 		objectWatcher.Stop()
 	}

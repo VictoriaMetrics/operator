@@ -150,14 +150,14 @@ func (*VMAgentReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[stri
 	return false
 }
 
-func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) error {
+func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, instance client.Object) error {
 	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.MustThrottleReconcile() {
 		return nil
 	}
 	agentSync.Lock()
 	defer agentSync.Unlock()
 	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMAgentList) {
+	if err := k8stools.ListObjects(ctx, rclient, func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		return fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)

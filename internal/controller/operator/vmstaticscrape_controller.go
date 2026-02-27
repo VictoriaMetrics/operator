@@ -19,15 +19,13 @@ type VMStaticScrapeReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
-func (r *VMStaticScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMStaticScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, _ *config.BaseOperatorConf) {
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMStaticScrape")
 	r.OriginScheme = sc
-	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -51,10 +49,10 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmstaticscrape"}
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = collectVMAgentScrapes(l, ctx, r.Client, instance); err != nil {
 		return
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = collectVMSingleScrapes(l, ctx, r.Client, instance); err != nil {
 		return
 	}
 	return

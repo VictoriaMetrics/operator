@@ -88,6 +88,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
 
+	// default
 	f(args{
 		cr: &vmv1alpha1.VMDistributed{
 			ObjectMeta: objectMeta,
@@ -152,6 +153,64 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 				{Verb: "Create", Kind: "VMAuth", Resource: vmAuthLBName},
 				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			},
+		})
+
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: zoneName,
+						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+							Spec: vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "1",
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMSelect: &vmv1beta1.VMSelect{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMInsert: &vmv1beta1.VMInsert{
+									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+							},
+						},
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmv1alpha1.VMDistributedAuth{
+					Enabled: ptr.To(false),
+				},
+			},
+		},
+	},
+		want{
+			actions: []k8stools.ClientAction{
+				// getZones
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+				// reconcile VMCluster
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+				{Verb: "Create", Kind: "VMCluster", Resource: vmClusterName},
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+				// reconcile VMAgent
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+				{Verb: "Create", Kind: "VMAgent", Resource: vmAgentName},
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 			},
 		})
 }

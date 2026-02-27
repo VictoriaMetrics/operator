@@ -248,6 +248,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	// should create VMAuth with default name
 	f(opts{
 		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Enabled = ptr.To(true)
 			d.cr.Spec.VMAuth.Name = ""
 		},
 		actions: func(d *testData) []action {
@@ -562,6 +563,18 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
 			assert.Equal(t, targetRefs, got.Spec.UnauthorizedUserAccessSpec.TargetRefs)
+		},
+	})
+
+	// should not create VMAuth if it is disabled
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Enabled = ptr.To(false)
+		},
+		validate: func(ctx context.Context, rclient client.Client, d *testData) {
+			var vmAuthList vmv1beta1.VMAuthList
+			assert.NoError(t, rclient.List(ctx, &vmAuthList))
+			assert.Len(t, vmAuthList.Items, 0)
 		},
 	})
 }

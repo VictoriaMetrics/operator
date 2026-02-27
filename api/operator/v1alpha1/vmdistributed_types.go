@@ -42,6 +42,7 @@ type VMDistributedSpec struct {
 	ParsingError string `json:"-" yaml:"-"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
+	// +optional
 	VMAuth VMDistributedAuth `json:"vmauth,omitempty"`
 	// Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup.
 	Zones []VMDistributedZone `json:"zones,omitempty"`
@@ -290,6 +291,10 @@ func (s *VMDistributedZoneRemoteWriteSpec) ToVMAgentRemoteWriteSpec() (*vmv1beta
 // +k8s:openapi-gen=true
 // VMDistributedAuth defines a VMAuth by name or inline spec
 type VMDistributedAuth struct {
+	// Enabled defines if vmauth should be created.
+	// +optional
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
 	// Name specifies the static name to be used for the VMDistributedAuth when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`

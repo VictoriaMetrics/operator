@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
@@ -105,8 +107,15 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 	return nil
 }
 
-// ListObjectsByNamespace performs object list for given namespaces
-func ListObjectsByNamespace[T any, PT listing[T]](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
+// ListObjects performs object list for namespaces limited by WATCH_NAMESPACE and EXCLUDE_NAMESPACE values
+func ListObjects[T any, PT listing[T]](ctx context.Context, rclient client.Client, collect func(PT), opts ...client.ListOption) error {
+	cfg := config.MustGetBaseConfig()
+	nss := cfg.WatchNamespaces
+	return listObjectsByNamespace(ctx, rclient, nss, collect, opts...)
+}
+
+// listObjectsByNamespace performs object list for given namespaces
+func listObjectsByNamespace[T any, PT listing[T]](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
 	dst := PT(new(T))
 	if len(nss) == 0 {
 		if err := rclient.List(ctx, dst, opts...); err != nil {

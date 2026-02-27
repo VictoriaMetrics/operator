@@ -36,15 +36,13 @@ type VMProbeReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
-func (r *VMProbeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMProbeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, _ *config.BaseOperatorConf) {
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMProbe")
 	r.OriginScheme = sc
-	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -74,10 +72,10 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		err = &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
 		return
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
+	if err = collectVMAgentScrapes(l, ctx, r.Client, &instance); err != nil {
 		return
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
+	if err = collectVMSingleScrapes(l, ctx, r.Client, &instance); err != nil {
 		return
 	}
 	return

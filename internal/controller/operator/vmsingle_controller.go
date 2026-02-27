@@ -143,7 +143,7 @@ func (*VMSingleReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[str
 	return false
 }
 
-func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
+func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, instance client.Object) (err error) {
 	if build.IsControllerDisabled("VMSingle") && vmsingleReconcileLimit.Throttle() {
 		return nil
 	}
@@ -151,7 +151,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 	defer vmsingleSync.Unlock()
 
 	var objects vmv1beta1.VMSingleList
-	if err = k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMSingleList) {
+	if err = k8stools.ListObjects(ctx, rclient, func(dst *vmv1beta1.VMSingleList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		err = fmt.Errorf("cannot list VMSingles for %T: %w", instance, err)

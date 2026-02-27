@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -64,9 +63,7 @@ func TestIngressReconcile(t *testing.T) {
 		new:  getIngress(),
 		prev: getIngress(),
 		predefinedObjects: []runtime.Object{
-			getIngress(func(ing *networkingv1.Ingress) {
-				ing.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getIngress(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Ingress", Resource: nn},
@@ -79,7 +76,6 @@ func TestIngressReconcile(t *testing.T) {
 		prev: getIngress(),
 		predefinedObjects: []runtime.Object{
 			getIngress(func(ing *networkingv1.Ingress) {
-				ing.Finalizers = []string{vmv1beta1.FinalizerName}
 				ing.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{
 					{
 						IP: "127.0.0.1",

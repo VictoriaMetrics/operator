@@ -295,7 +295,6 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            zone.VMCluster.Name,
 						Namespace:       namespace,
-						Finalizers:      []string{vmv1beta1.FinalizerName},
 						OwnerReferences: []metav1.OwnerReference{owner},
 					},
 				})

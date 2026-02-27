@@ -25,19 +25,19 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		var existingObj rbacv1.RoleBinding
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new RoleBinding=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get exist RoleBinding=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get exist RoleBinding=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		subjectsDiff := diffDeepDerivative(newObj.Subjects, existingObj.Subjects)
 		needsUpdate := metaChanged || len(subjectsDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("subjects_diff=%s", subjectsDiff))
@@ -65,19 +65,19 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 		var existingObj rbacv1.Role
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Role=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get exist Role=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get exist Role=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		rulesDiff := diffDeepDerivative(newObj.Rules, existingObj.Rules)
 		needsUpdate := metaChanged || len(rulesDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("rules_diff=%s", rulesDiff))
@@ -91,7 +91,7 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 }
 
 // ClusterRoleBinding reconciles cluster role binding object
-func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRoleBinding, owner *metav1.OwnerReference) error {
+func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRoleBinding) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
@@ -101,19 +101,19 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 		var existingObj rbacv1.ClusterRoleBinding
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRoleBinding=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get ClusterRoleBinding=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get ClusterRoleBinding=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		subjectsDiff := diffDeepDerivative(newObj.Subjects, existingObj.Subjects)
 		needsUpdate := metaChanged || len(subjectsDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("subjects_diff=%s", subjectsDiff))
@@ -131,7 +131,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 }
 
 // ClusterRole reconciles cluster role object
-func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRole, owner *metav1.OwnerReference) error {
+func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.ClusterRole) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {
@@ -141,19 +141,19 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 		var existingObj rbacv1.ClusterRole
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ClusterRole=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get exist ClusterRole=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get exist ClusterRole=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		rulesDiff := diffDeepDerivative(newObj.Rules, existingObj.Rules)
 		needsUpdate := metaChanged || len(rulesDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("rules_diff=%s", rulesDiff))

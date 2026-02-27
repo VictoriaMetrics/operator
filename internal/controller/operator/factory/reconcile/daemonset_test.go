@@ -26,9 +26,8 @@ func TestDaemonSetReconcile(t *testing.T) {
 	getDaemonSet := func(fns ...func(d *appsv1.DaemonSet)) *appsv1.DaemonSet {
 		d := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-ds",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-ds",
+				Namespace: "default",
 			},
 			Spec: appsv1.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{
@@ -130,6 +129,7 @@ func TestDaemonSetReconcile(t *testing.T) {
 		new: getDaemonSet(),
 		predefinedObjects: []runtime.Object{
 			getDaemonSet(func(d *appsv1.DaemonSet) {
+				d.Finalizers = []string{vmv1beta1.FinalizerName}
 				d.DeletionTimestamp = ptr.To(metav1.Now())
 			}),
 		},

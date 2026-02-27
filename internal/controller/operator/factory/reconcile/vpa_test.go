@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -25,9 +24,8 @@ func TestVPAReconcile(t *testing.T) {
 		updateMode := vpav1.UpdateModeRecreate
 		vpa := &vpav1.VerticalPodAutoscaler{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-vpa",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-vpa",
+				Namespace: "default",
 			},
 			Spec: vpav1.VerticalPodAutoscalerSpec{
 				TargetRef: &autoscalingv1.CrossVersionObjectReference{

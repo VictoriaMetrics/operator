@@ -696,9 +696,8 @@ func TestStatefulsetReconcile(t *testing.T) {
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
 		s := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-1",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-1",
+				Namespace: "default",
 			},
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: ptr.To[int32](4),
@@ -827,6 +826,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			getSts(func(s *appsv1.StatefulSet) {
+				s.Finalizers = []string{vmv1beta1.FinalizerName}
 				s.Spec.ServiceName = "old-service-name"
 			}),
 		},

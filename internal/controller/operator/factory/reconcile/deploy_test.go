@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -28,9 +27,8 @@ func TestDeployReconcile(t *testing.T) {
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-1",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-1",
+				Namespace: "default",
 			},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
@@ -108,9 +106,7 @@ func TestDeployReconcile(t *testing.T) {
 		new:  getDeploy(),
 		prev: getDeploy(),
 		predefinedObjects: []runtime.Object{
-			getDeploy(func(d *appsv1.Deployment) {
-				d.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getDeploy(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Deployment", Resource: nn},
@@ -136,12 +132,19 @@ func TestDeployReconcile(t *testing.T) {
 
 	// no update, only status change
 	f(opts{
-		new:  getDeploy(),
-		prev: getDeploy(),
+		new: getDeploy(),
+		prev: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Template.Annotations = map[string]string{
+				"new-annotation": "value",
+			}
+		}),
 		predefinedObjects: []runtime.Object{
 			getDeploy(func(d *appsv1.Deployment) {
 				d.Status.ReadyReplicas = 1
 				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
+				d.Spec.Template.Annotations = map[string]string{
+					"new-annotation": "value",
+				}
 			}),
 		},
 		actions: []k8stools.ClientAction{

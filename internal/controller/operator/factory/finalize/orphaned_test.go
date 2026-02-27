@@ -18,7 +18,7 @@ import (
 
 func TestRemoveOrphanedDeployments(t *testing.T) {
 	type opts struct {
-		cr                orphanedCRD
+		cr                crObject
 		keepDeployments   sets.Set[string]
 		wantDepCount      int
 		predefinedObjects []runtime.Object
@@ -27,7 +27,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		assert.NoError(t, RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments))
+		assert.NoError(t, RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments, true))
 		var existDep appsv1.DeploymentList
 		lo := client.ListOptions{Namespace: o.cr.GetNamespace(), LabelSelector: labels.SelectorFromSet(o.cr.SelectorLabels())}
 		assert.NoError(t, cl.List(ctx, &existDep, &lo))
@@ -95,9 +95,6 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 						"app.kubernetes.io/instance":  "base",
 						"app.kubernetes.io/component": "monitoring",
 						"managed-by":                  "vm-operator",
-					},
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

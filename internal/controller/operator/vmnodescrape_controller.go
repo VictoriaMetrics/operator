@@ -18,20 +18,17 @@ package operator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 // VMNodeScrapeReconciler reconciles a VMNodeScrape object
@@ -61,10 +58,6 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
 func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmnodescrape", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAgent") {
-		l.Info("skipping VMNodeScrape reconcile since VMAgent controller is disabled")
-		return
-	}
 	instance := &vmv1beta1.VMNodeScrape{}
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
@@ -80,51 +73,9 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmnodescrape"}
 	}
-	if agentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
+	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
 		return
 	}
-
-	agentSync.Lock()
-	defer agentSync.Unlock()
-
-	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
-		objects.Items = append(objects.Items, dst.Items...)
-	}); err != nil {
-		return result, fmt.Errorf("cannot list vmagents for vmnodescrape: %w", err)
-	}
-
-	for i := range objects.Items {
-		item := &objects.Items[i]
-		if item.IsUnmanaged(instance) {
-			continue
-		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
-		if !instance.DeletionTimestamp.IsZero() {
-			objectSelector, namespaceSelector := item.ScrapeSelectors(instance)
-			opts := &k8stools.SelectorOpts{
-				SelectAll:         item.Spec.SelectAllByDefault,
-				NamespaceSelector: namespaceSelector,
-				ObjectSelector:    objectSelector,
-				DefaultNamespace:  instance.Namespace,
-			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
-			if err != nil {
-				l.Error(err, "cannot match vmagent and vmnodescrape")
-				continue
-			}
-			if !match {
-				continue
-			}
-		}
-
-		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, r, item, instance); err != nil {
-			continue
-		}
-	}
-
 	return
 }
 
@@ -135,4 +86,9 @@ func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMNodeScrapeReconciler) IsDisabled(cfg *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.HasAll("VMAgent")
 }

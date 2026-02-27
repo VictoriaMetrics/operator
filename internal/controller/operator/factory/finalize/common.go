@@ -4,11 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,10 +15,9 @@ import (
 )
 
 type crObject interface {
-	PrefixedName() string
-	GetServiceAccountName() string
 	AsOwner() metav1.OwnerReference
 	GetNamespace() string
+	SelectorLabels() map[string]string
 }
 
 func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance client.Object) error {
@@ -67,33 +62,40 @@ func RemoveFinalizer(ctx context.Context, rclient client.Client, instance client
 	return nil
 }
 
-func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj client.Object, name, ns string) error {
-	return removeFinalizeObjByNameWithOwnerReference(ctx, rclient, obj, name, ns, true)
-}
-
-func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient client.Client, obj client.Object, name, ns string, keepOwnerReference bool) error {
-	if err := rclient.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, obj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	needsPatching := controllerutil.RemoveFinalizer(obj, vmv1beta1.FinalizerName)
-	if !keepOwnerReference {
-		existOwnerReferences := obj.GetOwnerReferences()
-		dstOwnerReferences := existOwnerReferences[:0]
-		// filter in-place
-		for _, s := range existOwnerReferences {
-			if strings.HasPrefix(s.APIVersion, vmv1beta1.APIGroup) {
-				needsPatching = true
-				continue
+func removeFinalizers(ctx context.Context, rclient client.Client, objs []client.Object, deleteOwnerReferences []bool, cr crObject) error {
+	owner := cr.AsOwner()
+	remove := func(obj client.Object, deleteOwnerReference bool) error {
+		if err := rclient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
 			}
-			dstOwnerReferences = append(dstOwnerReferences, s)
+			return err
 		}
-		obj.SetOwnerReferences(dstOwnerReferences)
+		needsPatching := controllerutil.RemoveFinalizer(obj, vmv1beta1.FinalizerName)
+		if deleteOwnerReference {
+			existOwnerReferences := obj.GetOwnerReferences()
+			dstOwnerReferences := existOwnerReferences[:0]
+			for _, s := range existOwnerReferences {
+				if s.APIVersion == owner.APIVersion && s.Kind == owner.Kind && s.Name == owner.Name {
+					needsPatching = true
+					continue
+				}
+				dstOwnerReferences = append(dstOwnerReferences, s)
+			}
+			obj.SetOwnerReferences(dstOwnerReferences)
+		}
+		if needsPatching {
+			return patchReplaceFinalizers(ctx, rclient, obj)
+		}
+		return nil
 	}
-	if needsPatching {
-		return patchReplaceFinalizers(ctx, rclient, obj)
+	for i, o := range objs {
+		if len(o.GetName()) == 0 || len(o.GetNamespace()) == 0 {
+			return fmt.Errorf("BUG: both name and namespace are required")
+		}
+		if err := remove(o, deleteOwnerReferences[i]); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -109,54 +111,44 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 }
 
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
-func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, r client.Object, owner *metav1.OwnerReference) error {
-	nsn := types.NamespacedName{
-		Name:      r.GetName(),
-		Namespace: r.GetNamespace(),
-	}
-	if len(nsn.Name) == 0 {
-		return fmt.Errorf("BUG: object name cannot be empty")
-	}
-	// reload object from API to properly remove finalizer
-	if err := rclient.Get(ctx, nsn, r); err != nil {
-		// fast path
-		if k8serrors.IsNotFound(err) {
+func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, objs []client.Object, cr crObject) error {
+	owner := cr.AsOwner()
+	selector := cr.SelectorLabels()
+	delete := func(r client.Object) error {
+		nsn := types.NamespacedName{
+			Name:      r.GetName(),
+			Namespace: r.GetNamespace(),
+		}
+		if len(nsn.Name) == 0 {
+			return fmt.Errorf("BUG: object name cannot be empty")
+		}
+		// reload object from API to properly remove finalizer
+		if err := rclient.Get(ctx, nsn, r); err != nil {
+			// fast path
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		if !canBeRemoved(r, selector, &owner) {
 			return nil
 		}
-		return err
-	}
-	if !canBeRemoved(r, owner) {
+		if err := RemoveFinalizer(ctx, rclient, r); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return err
+			}
+		}
+		if err := rclient.Delete(ctx, r); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return err
+			}
+		}
 		return nil
 	}
-	if err := RemoveFinalizer(ctx, rclient, r); err != nil {
-		if !k8serrors.IsNotFound(err) {
+	for _, r := range objs {
+		if err := delete(r); err != nil {
 			return err
 		}
-	}
-	if err := rclient.Delete(ctx, r); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func deleteSA(ctx context.Context, rclient client.Client, cr crObject) error {
-	owner := cr.AsOwner()
-	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: cr.GetNamespace(), Name: cr.GetServiceAccountName()}}
-	return SafeDeleteWithFinalizer(ctx, rclient, sa, &owner)
-}
-
-func finalizePDB(ctx context.Context, rclient client.Client, cr crObject) error {
-	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, cr.PrefixedName(), cr.GetNamespace())
-}
-
-func removeConfigReloaderRole(ctx context.Context, rclient client.Client, cr crObject) error {
-	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.RoleBinding{}, cr.PrefixedName(), cr.GetNamespace()); err != nil {
-		return err
-	}
-	if err := removeFinalizeObjByName(ctx, rclient, &rbacv1.Role{}, cr.PrefixedName(), cr.GetNamespace()); err != nil {
-		return err
 	}
 	return nil
 }

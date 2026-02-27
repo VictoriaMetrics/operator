@@ -31,24 +31,24 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 		var existingObj appsv1.DaemonSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new DaemonSet=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new DaemonSet=%s", nsn.String()))
 				if err := rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new DaemonSet=%s: %w", nsn, err)
+					return fmt.Errorf("cannot create new DaemonSet=%s: %w", nsn.String(), err)
 				}
 				return nil
 			}
-			return fmt.Errorf("cannot get DaemonSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get DaemonSet=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
 		spec := &newObj.Spec
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
 
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
@@ -60,7 +60,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating DaemonSet %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot update DaemonSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot update DaemonSet=%s: %w", nsn.String(), err)
 		}
 		return nil
 	})
@@ -80,7 +80,7 @@ func waitDaemonSetReady(ctx context.Context, rclient client.Client, ds *appsv1.D
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			return false, fmt.Errorf("cannot fetch actual DaemonSet=%s: %w", nsn, err)
+			return false, fmt.Errorf("cannot fetch actual DaemonSet=%s: %w", nsn.String(), err)
 		}
 
 		// Based on recommendations from the kubernetes documentation
@@ -99,7 +99,7 @@ func waitDaemonSetReady(ctx context.Context, rclient client.Client, ds *appsv1.D
 		return true, nil
 	})
 	if err != nil {
-		podErr := reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for DaemonSet=%s to become ready: %w", nsn, err), ds.Namespace, labels.SelectorFromSet(ds.Spec.Selector.MatchLabels), ds.Spec.MinReadySeconds)
+		podErr := reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for DaemonSet=%s to become ready: %w", nsn.String(), err), ds.Namespace, labels.SelectorFromSet(ds.Spec.Selector.MatchLabels), ds.Spec.MinReadySeconds)
 		if isErrDealine {
 			return err
 		}

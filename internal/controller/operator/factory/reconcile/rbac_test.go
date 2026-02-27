@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -69,9 +68,7 @@ func TestRoleBindingReconcile(t *testing.T) {
 		new:  getRoleBinding(),
 		prev: getRoleBinding(),
 		predefinedObjects: []runtime.Object{
-			getRoleBinding(func(rb *rbacv1.RoleBinding) {
-				rb.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getRoleBinding(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "RoleBinding", Resource: nn},
@@ -144,9 +141,7 @@ func TestRoleReconcile(t *testing.T) {
 		new:  getRole(),
 		prev: getRole(),
 		predefinedObjects: []runtime.Object{
-			getRole(func(r *rbacv1.Role) {
-				r.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getRole(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Role", Resource: nn},
@@ -203,7 +198,7 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, ClusterRoleBinding(ctx, cl, o.new, o.prev, nil))
+		assert.NoError(t, ClusterRoleBinding(ctx, cl, o.new, o.prev))
 		assert.Equal(t, o.actions, cl.Actions)
 	}
 
@@ -223,9 +218,7 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 		new:  getCRB(),
 		prev: getCRB(),
 		predefinedObjects: []runtime.Object{
-			getCRB(func(crb *rbacv1.ClusterRoleBinding) {
-				crb.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getCRB(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "ClusterRoleBinding", Resource: nn},
@@ -277,7 +270,7 @@ func TestClusterRoleReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, ClusterRole(ctx, cl, o.new, o.prev, nil))
+		assert.NoError(t, ClusterRole(ctx, cl, o.new, o.prev))
 		assert.Equal(t, o.actions, cl.Actions)
 	}
 
@@ -297,9 +290,7 @@ func TestClusterRoleReconcile(t *testing.T) {
 		new:  getClusterRole(),
 		prev: getClusterRole(),
 		predefinedObjects: []runtime.Object{
-			getClusterRole(func(cr *rbacv1.ClusterRole) {
-				cr.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getClusterRole(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "ClusterRole", Resource: nn},

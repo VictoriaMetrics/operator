@@ -71,12 +71,15 @@ func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string
 	return dst
 }
 
-func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
+func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference, shouldRemoveFinalizer bool) (bool, error) {
 	refChanged, err := addOwnerReferenceIfAbsent(existingObj, owner)
 	if err != nil {
 		return false, err
 	}
-	finChanged := controllerutil.AddFinalizer(existingObj, vmv1beta1.FinalizerName)
+	var finChanged bool
+	if shouldRemoveFinalizer {
+		finChanged = controllerutil.RemoveFinalizer(existingObj, vmv1beta1.FinalizerName)
+	}
 	existingLabels := existingObj.GetLabels()
 	existingAnnotations := existingObj.GetAnnotations()
 	var prevLabels, prevAnnotations map[string]string

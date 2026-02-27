@@ -111,8 +111,7 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -120,17 +119,15 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB, owner)
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
 }
 
 func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
-	r := &rbacv1.ClusterRoleBinding{
+	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -145,28 +142,17 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 			Kind:     "ClusterRole",
 		},
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return r
 }
 
 func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
-	r := &rbacv1.ClusterRole{
+	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Rules: getClusterWideRules(cr),
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		r.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return r
 }
 
 func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -196,7 +182,6 @@ func buildRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {
 			Namespace:       cr.GetNamespace(),
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Rules: getSingleNamespaceRules(cr),
@@ -210,7 +195,6 @@ func buildRB(cr *vmv1beta1.VMAgent) *rbacv1.RoleBinding {
 			Namespace:       cr.GetNamespace(),
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Subjects: []rbacv1.Subject{

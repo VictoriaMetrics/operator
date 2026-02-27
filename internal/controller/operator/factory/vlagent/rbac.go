@@ -9,7 +9,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -51,8 +50,7 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole, owner)
+	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
 }
 
 func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
@@ -60,17 +58,15 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
 	}
-	owner := cr.AsCRDOwner()
-	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB, owner)
+	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
 }
 
 func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
-	o := &rbacv1.ClusterRoleBinding{
+	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{{
 			Kind:      rbacv1.ServiceAccountKind,
@@ -83,26 +79,15 @@ func buildCRB(cr *vmv1.VLAgent) *rbacv1.ClusterRoleBinding {
 			Kind:     "ClusterRole",
 		},
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		o.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return o
 }
 
 func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
-	o := &rbacv1.ClusterRole{
+	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Rules: policyRules,
 	}
-	owner := cr.AsCRDOwner()
-	if owner != nil {
-		o.OwnerReferences = []metav1.OwnerReference{*owner}
-	}
-	return o
 }

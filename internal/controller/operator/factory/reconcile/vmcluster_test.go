@@ -22,9 +22,8 @@ func TestVMClusterReconcile(t *testing.T) {
 	getVMCluster := func(fns ...func(v *vmv1beta1.VMCluster)) *vmv1beta1.VMCluster {
 		v := &vmv1beta1.VMCluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-vmcluster",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-vmcluster",
+				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMClusterSpec{
 				RetentionPeriod: "1d",
@@ -62,7 +61,6 @@ func TestVMClusterReconcile(t *testing.T) {
 		prev: getVMCluster(),
 		predefinedObjects: []runtime.Object{
 			getVMCluster(func(v *vmv1beta1.VMCluster) {
-				v.Finalizers = []string{vmv1beta1.FinalizerName}
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
 			}),

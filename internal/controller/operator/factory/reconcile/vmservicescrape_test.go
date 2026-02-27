@@ -22,9 +22,8 @@ func TestVMServiceScrape(t *testing.T) {
 	getVMServiceScrape := func(fns ...func(v *vmv1beta1.VMServiceScrape)) *vmv1beta1.VMServiceScrape {
 		v := &vmv1beta1.VMServiceScrape{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-vmservicescrape",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-vmservicescrape",
+				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMServiceScrapeSpec{
 				Endpoints: []vmv1beta1.Endpoint{

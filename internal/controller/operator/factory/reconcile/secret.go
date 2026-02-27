@@ -22,19 +22,19 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 		var existingObj corev1.Secret
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Secret=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new Secret=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get existing Secret=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get existing Secret=%s: %w", nsn.String(), err)
 		}
 		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
 		isDataEqual := equality.Semantic.DeepDerivative(newObj.Data, existingObj.Data)
 		needsUpdate := metaChanged || !isDataEqual
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_changed=%t", !isDataEqual))

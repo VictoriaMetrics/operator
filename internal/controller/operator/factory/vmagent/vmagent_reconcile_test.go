@@ -96,7 +96,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
 				{Verb: "Create", Kind: "Deployment", Resource: vmagentName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
-				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
 			},
 		})
 
@@ -195,7 +194,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
 				{Verb: "Update", Kind: "Deployment", Resource: vmagentName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
-				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
 			},
 		})
 }

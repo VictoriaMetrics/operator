@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -23,9 +22,8 @@ func TestHTTPRouteReconcile(t *testing.T) {
 	getHTTPRoute := func(fns ...func(r *gwapiv1.HTTPRoute)) *gwapiv1.HTTPRoute {
 		r := &gwapiv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-route",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-route",
+				Namespace: "default",
 			},
 			Spec: gwapiv1.HTTPRouteSpec{
 				CommonRouteSpec: gwapiv1.CommonRouteSpec{
@@ -80,7 +78,6 @@ func TestHTTPRouteReconcile(t *testing.T) {
 		prev: getHTTPRoute(),
 		predefinedObjects: []runtime.Object{
 			getHTTPRoute(func(r *gwapiv1.HTTPRoute) {
-				r.Finalizers = []string{vmv1beta1.FinalizerName}
 				r.Status.Parents = []gwapiv1.RouteParentStatus{
 					{
 						ParentRef: gwapiv1.ParentReference{

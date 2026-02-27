@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -26,9 +25,8 @@ func TestPDBReconcile(t *testing.T) {
 		minAvailable := intstr.FromInt(1)
 		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-pdb",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-pdb",
+				Namespace: "default",
 			},
 			Spec: policyv1.PodDisruptionBudgetSpec{
 				MinAvailable: &minAvailable,
@@ -69,9 +67,7 @@ func TestPDBReconcile(t *testing.T) {
 		new:  getPDB(),
 		prev: getPDB(),
 		predefinedObjects: []runtime.Object{
-			getPDB(func(p *policyv1.PodDisruptionBudget) {
-				p.Finalizers = []string{vmv1beta1.FinalizerName}
-			}),
+			getPDB(),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: nn},

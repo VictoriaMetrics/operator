@@ -31,23 +31,27 @@
 {{- if markdownShouldRenderType $type -}}
 
 #### {{ $type.Name }}
+{{- if $type.IsAlias }}
 
-{{ if $type.IsAlias }}_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_{{ end }}
+_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_
+{{- end }}
+{{- if $type.Doc }}
 
 {{ $type.Doc }}
+{{- end }}
+{{- if $type.Validation }}
 
-{{ if $type.Validation -}}
 _Validation:_
 {{- range $type.Validation }}
 - {{ . }}
 {{- end }}
 {{- end }}
+{{- if $type.References }}
 
-{{- if $type.References -}}
 Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
 {{- end }}
+{{- if $type.Members }}
 
-{{ if $type.Members -}}
 | Field | Description |
 | --- | --- |
 {{ if $type.GVK -}}

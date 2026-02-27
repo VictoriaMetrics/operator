@@ -22,7 +22,6 @@ tags:
 {{- range $groupVersions }}
 - {{ markdownRenderGVLink . }}
 {{- end }}
-
 {{ range $groupVersions }}
 {{ template "gvDetails" . }}
 {{ end }}

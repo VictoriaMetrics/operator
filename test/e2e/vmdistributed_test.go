@@ -1290,7 +1290,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAuth: vmv1alpha1.VMDistributedAuth{
-						Name: nsn.Name,
+						Name:    nsn.Name,
+						Enabled: ptr.To(false),
 					},
 					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
 						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},

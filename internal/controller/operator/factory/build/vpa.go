@@ -17,7 +17,6 @@ func VPA(opts builderOpts, targetRef autoscalingv1.CrossVersionObjectReference, 
 			Annotations:     opts.FinalAnnotations(),
 			Labels:          opts.FinalLabels(),
 			OwnerReferences: []metav1.OwnerReference{opts.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: vpav1.VerticalPodAutoscalerSpec{
 			TargetRef:      &targetRef,

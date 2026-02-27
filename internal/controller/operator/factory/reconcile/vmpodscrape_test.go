@@ -23,9 +23,8 @@ func TestVMPodScrape(t *testing.T) {
 	getVMPodScrape := func(fns ...func(v *vmv1beta1.VMPodScrape)) *vmv1beta1.VMPodScrape {
 		v := &vmv1beta1.VMPodScrape{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-vmpodscrape",
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
+				Name:      "test-vmpodscrape",
+				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMPodScrapeSpec{
 				PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{

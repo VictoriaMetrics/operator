@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -578,12 +579,8 @@ func mergeLabelsWithStrategy(old, new map[string]string, mergeStrategy string) m
 		break
 	}
 	merged := make(map[string]string)
-	for k, v := range old {
-		merged[k] = v
-	}
-	for k, v := range new {
-		merged[k] = v
-	}
+	maps.Copy(merged, old)
+	maps.Copy(merged, new)
 	return merged
 }
 

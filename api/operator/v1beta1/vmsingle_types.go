@@ -208,11 +208,6 @@ type VMSingle struct {
 	Status VMSingleStatus `json:"status,omitempty"`
 }
 
-// AsCRDOwner implements interface
-func (*VMSingle) AsCRDOwner() *metav1.OwnerReference {
-	return GetCRDAsOwner(VMSingleCRD)
-}
-
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMSingle) GetStatus() *VMSingleStatus {
 	return &cr.Status

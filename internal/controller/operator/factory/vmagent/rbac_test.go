@@ -201,8 +201,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmagent-cluster-access-rbac-test",
-					Namespace: "default-2",
+					Name: "monitoring:vmagent-cluster-access-rbac-test",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":      "vmagent",
 						"app.kubernetes.io/instance":  "rbac-test",
@@ -213,8 +212,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 			},
 			&rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmagent-cluster-access-rbac-test",
-					Namespace: "default-2",
+					Name: "monitoring:vmagent-cluster-access-rbac-test",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":      "vmagent",
 						"app.kubernetes.io/instance":  "rbac-test",

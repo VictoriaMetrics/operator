@@ -21,13 +21,13 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -57,10 +57,6 @@ func (r *VMScrapeConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmscrapeconfigs/status,verbs=get;update;patch
 func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmscrapeconfig", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAgent") && build.IsControllerDisabled("VMSingle") {
-		l.Info("skipping VMScrapeConfig reconcile since VMAgent and VMSingle controllers are disabled")
-		return
-	}
 	instance := &vmv1beta1.VMScrapeConfig{}
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
@@ -92,4 +88,9 @@ func (r *VMScrapeConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMScrapeConfigReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.HasAll("VMAgent", "VMSingle")
 }

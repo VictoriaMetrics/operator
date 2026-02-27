@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"maps"
 	"math/rand"
 	"os"
 	"regexp"
@@ -583,10 +584,7 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 		return 0
 	}
 	d := boc.ForceResyncInterval
-	dv := d / 10
-	if dv > 10*time.Second {
-		dv = 10 * time.Second
-	}
+	dv := min(d/10, 10*time.Second)
 
 	p := float64(rand.Int31()) / (1 << 32)
 
@@ -745,13 +743,9 @@ func (labels *Labels) String() string {
 func (labels *Labels) Merge(otherLabels map[string]string) map[string]string {
 	mergedLabels := map[string]string{}
 
-	for key, value := range otherLabels {
-		mergedLabels[key] = value
-	}
+	maps.Copy(mergedLabels, otherLabels)
 
-	for key, value := range labels.LabelsMap {
-		mergedLabels[key] = value
-	}
+	maps.Copy(mergedLabels, labels.LabelsMap)
 	return mergedLabels
 }
 

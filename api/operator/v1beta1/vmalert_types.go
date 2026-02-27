@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -468,13 +467,6 @@ func (cr *VMAlert) GetServiceAccountName() string {
 // IsOwnsServiceAccount checks if serviceAccount belongs to the CR
 func (cr *VMAlert) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
-}
-
-func (cr *VMAlert) RulesConfigMapSelector() client.ListOption {
-	return &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{"vmalert-name": cr.Name}),
-		Namespace:     cr.Namespace,
-	}
 }
 
 func (cr *VMAlert) AsURL() string {

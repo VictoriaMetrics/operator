@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -81,9 +80,8 @@ func TestConfigMapReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:       nn.Name,
-					Namespace:  nn.Namespace,
-					Finalizers: []string{vmv1beta1.FinalizerName},
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "test",
@@ -236,7 +234,6 @@ func TestConfigMapReconcile(t *testing.T) {
 						"key":      "value",
 						"external": "value",
 					},
-					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
 					"data": "test",

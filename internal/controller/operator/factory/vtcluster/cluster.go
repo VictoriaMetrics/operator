@@ -90,7 +90,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	cc := finalize.NewChildCleaner()
 
 	if newStorage == nil {
-		if err := finalize.OnStorageDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
 		}
 	} else {
@@ -114,7 +114,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	}
 
 	if newSelect == nil {
-		if err := finalize.OnSelectDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnSelectDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned select resources: %w", err)
 		}
 	} else {
@@ -143,7 +143,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 	}
 
 	if newInsert == nil {
-		if err := finalize.OnInsertDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnInsertDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned insert resources: %w", err)
 		}
 	} else {
@@ -183,15 +183,15 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			cc.KeepService(newLB.Spec.AdditionalServiceSpec.NameOrDefault(commonName))
 		}
 	} else {
-		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned loadbalancer components: %w", err)
 		}
 	}
 	if !cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
-		owner := cr.AsOwner()
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+		objsToRemove := []client.Object{&corev1.ServiceAccount{ObjectMeta: objMeta}}
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b); err != nil {
 			return fmt.Errorf("cannot remove serviceaccount: %w", err)
 		}
 	}

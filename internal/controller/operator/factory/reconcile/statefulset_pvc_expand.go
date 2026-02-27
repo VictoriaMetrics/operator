@@ -138,7 +138,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		prevMeta = &prevObj.ObjectMeta
 	}
 	direction := newSize.Cmp(*existingSize)
-	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner)
+	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner, true)
 	if err != nil {
 		return false, err
 	}
@@ -299,7 +299,7 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 	// removes finalizer from exist sts, it allows to delete it
 	nsn := types.NamespacedName{Name: oldStatefulSet.Name, Namespace: oldStatefulSet.Namespace}
 	if err := finalize.RemoveFinalizer(ctx, rclient, oldStatefulSet); err != nil {
-		return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn, err)
+		return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn.String(), err)
 	}
 	opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
 		p := metav1.DeletePropagationOrphan
@@ -327,9 +327,9 @@ func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, state
 		// try to restore previous one and throw error
 		oldStatefulSet.ResourceVersion = ""
 		if err2 := rclient.Create(ctx, oldStatefulSet); err2 != nil {
-			return fmt.Errorf("cannot restore previous StatefulSet=%s configuration after remove original error: %s: restore error %w", nsn, err, err2)
+			return fmt.Errorf("cannot restore previous StatefulSet=%s configuration after remove original error: %s: restore error %w", nsn.String(), err, err2)
 		}
-		return fmt.Errorf("cannot create new StatefulSet=%s instead of replaced, perform manual action to handle this error or report BUG: %w", nsn, err)
+		return fmt.Errorf("cannot create new StatefulSet=%s instead of replaced, perform manual action to handle this error or report BUG: %w", nsn.String(), err)
 	}
 	return nil
 }

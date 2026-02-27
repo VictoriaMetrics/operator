@@ -421,7 +421,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -484,7 +483,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -566,7 +564,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1000",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
@@ -597,7 +594,6 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name:            "vminsert-test",
 					Namespace:       "default",
 					ResourceVersion: "1",
-					Finalizers:      []string{vmv1beta1.FinalizerName},
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 					Labels: map[string]string{
 						"app.kubernetes.io/instance":  "test",
@@ -706,8 +702,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -774,8 +768,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: web-rpc
@@ -838,8 +830,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -880,8 +870,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -928,8 +916,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -984,8 +970,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -1071,8 +1055,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http
@@ -1162,8 +1144,6 @@ objectmeta:
           name: test
           controller: true
           blockownerdeletion: true
-    finalizers:
-        - apps.victoriametrics.com/finalizer
 spec:
     ports:
         - name: http

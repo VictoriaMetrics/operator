@@ -346,17 +346,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		}
 	}
 
-	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep); err != nil {
+	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err
 	}
-	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentToKeep); err != nil {
+	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentToKeep, true); err != nil {
 		return err
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep); err != nil {
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep, true); err != nil {
 		return err
-	}
-	if err := removeStaleDaemonSet(ctx, rclient, cr); err != nil {
-		return fmt.Errorf("cannot remove vmagent daemonSet: %w", err)
 	}
 	return nil
 }
@@ -379,7 +376,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 				Labels:          cr.FinalLabels(),
 				Annotations:     cr.FinalAnnotations(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{
@@ -409,7 +405,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 				Labels:          cr.FinalLabels(),
 				Annotations:     cr.FinalAnnotations(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.StatefulSetSpec{
 				Selector: &metav1.LabelSelector{
@@ -450,7 +445,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -1150,10 +1144,6 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
-	// TODO check for stream aggr removed
-
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	svcName := cr.PrefixedName()
 	keepServices := sets.New(svcName)
 	keepServiceScrapes := sets.New[string]()
@@ -1169,55 +1159,38 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
-	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
 
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.Namespace}
-		var objects []client.Object
+	var objsToRemove []client.Object
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if !cr.Spec.DaemonSetMode {
+		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
+	}
+	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
 		if config.IsClusterWideAccessAllowed() {
-			objects = []client.Object{
+			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-			}
+			)
 		} else {
-			objects = []client.Object{
+			rbacMeta.Namespace = cr.Namespace
+			objsToRemove = append(objsToRemove,
 				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
 				&rbacv1.Role{ObjectMeta: rbacMeta},
-			}
-		}
-		owner := cr.AsCRDOwner()
-		for _, o := range objects {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
-				return fmt.Errorf("cannot remove %T: %w", o, err)
-			}
+			)
 		}
 	}
-	return nil
-}
-
-func removeStaleDaemonSet(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
-	if cr.Spec.DaemonSetMode {
-		return nil
-	}
-	ds := appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedName(),
-			Namespace: cr.Namespace,
-		},
-	}
-	owner := cr.AsOwner()
-	return finalize.SafeDeleteWithFinalizer(ctx, rclient, &ds, &owner)
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {

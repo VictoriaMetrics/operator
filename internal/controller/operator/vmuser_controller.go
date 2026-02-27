@@ -23,6 +23,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +31,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -63,10 +63,6 @@ func (r *VMUserReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers/status,verbs=get;update;patch
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAuth") {
-		l.Info("skipping VMUser reconcile since VMAuth controller is disabled")
-		return
-	}
 	var instance vmv1beta1.VMUser
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, err)
@@ -82,10 +78,11 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
 			return result, fmt.Errorf("cannot remove finalizer for vmuser: %w", err)
 		}
-	} else {
-		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
-			return result, err
-		}
+		return
+	}
+
+	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return result, err
 	}
 
 	if authReconcileLimit.MustThrottleReconcile() {
@@ -143,4 +140,9 @@ func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMUserReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.Has("VMAuth")
 }

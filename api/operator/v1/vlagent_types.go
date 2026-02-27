@@ -355,11 +355,6 @@ func (cr *VLAgent) FinalAnnotations() map[string]string {
 	return v
 }
 
-// AsCRDOwner implements interface
-func (*VLAgent) AsCRDOwner() *metav1.OwnerReference {
-	return vmv1beta1.GetCRDAsOwner(vmv1beta1.VLAgentCRD)
-}
-
 // SelectorLabels returns selector labels for querying any vlagent related resources
 func (cr *VLAgent) SelectorLabels() map[string]string {
 	return map[string]string{

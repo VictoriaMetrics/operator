@@ -189,7 +189,6 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 				Labels:          cr.FinalLabels(),
 				Annotations:     cr.FinalAnnotations(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{
@@ -216,7 +215,6 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -695,13 +693,6 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 	svcName := cr.PrefixedName()
 	keepServices := sets.New(svcName)
 	keepPodScrapes := sets.New[string]()
@@ -712,40 +703,33 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
+	if cr.Spec.PodDisruptionBudget == nil {
+		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
+	}
 	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+		if !cr.Spec.K8sCollector.Enabled && config.IsClusterWideAccessAllowed() {
+			rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
+			objsToRemove = append(objsToRemove,
+				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+			)
 		}
 	}
 	if cr.Spec.K8sCollector.Enabled {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &appsv1.StatefulSet{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove statefulset: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &appsv1.StatefulSet{ObjectMeta: objMeta})
 	} else {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &appsv1.DaemonSet{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove daemonset: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
 	}
-	if (!cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled) && config.IsClusterWideAccessAllowed() {
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: cr.Namespace}
-		objects := []client.Object{
-			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-		}
-		owner := cr.AsCRDOwner()
-		for _, o := range objects {
-			if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, o, owner); err != nil {
-				return fmt.Errorf("cannot remove %T: %w", o, err)
-			}
-		}
-	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func formatSecretSelectorKeyPath(secretKey *corev1.SecretKeySelector) string {

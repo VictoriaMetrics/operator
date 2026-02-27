@@ -5,13 +5,13 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // VMStaticScrapeReconciler reconciles a VMStaticScrape object
@@ -40,10 +40,6 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAgent") && build.IsControllerDisabled("VMSingle") {
-		l.Info("skipping VMStaticScrape reconcile since VMAgent and VMSingle controllers are disabled")
-		return
-	}
 	instance := &vmv1beta1.VMStaticScrape{}
 	defer func() {
 		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
@@ -71,4 +67,9 @@ func (r *VMStaticScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMStaticScrapeReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.HasAll("VMAgent", "VMSingle")
 }

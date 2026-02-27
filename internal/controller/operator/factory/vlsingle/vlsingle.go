@@ -46,7 +46,6 @@ func newPVC(r *vmv1.VLSingle) *corev1.PersistentVolumeClaim {
 			Namespace:       r.Namespace,
 			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
 			Annotations:     r.Spec.StorageMetadata.Annotations,
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 		},
 		Spec: *r.Spec.Storage,
@@ -121,7 +120,6 @@ func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
 			Labels:          r.FinalLabels(),
 			Annotations:     r.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: r.Spec.ReplicaCount,
@@ -326,8 +324,6 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	svcName := cr.PrefixedName()
 	keepServices := sets.New(svcName)
 	keepServicesScrapes := sets.New[string]()
@@ -338,16 +334,17 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
 		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
+
+	var objsToRemove []client.Object
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }

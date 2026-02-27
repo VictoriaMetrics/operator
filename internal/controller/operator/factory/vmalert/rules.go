@@ -19,14 +19,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-var (
-	managedByOperatorLabel      = "managed-by"
-	managedByOperatorLabelValue = "vm-operator"
-	managedByOperatorLabels     = map[string]string{
-		managedByOperatorLabel: managedByOperatorLabelValue,
-	}
-)
-
 // CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps
 func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
 	// fast path
@@ -212,18 +204,12 @@ func bucketSize(bucket map[string]string) int {
 }
 
 func makeRulesConfigMap(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) corev1.ConfigMap {
-	ruleLabels := map[string]string{"vmalert-name": cr.Name}
-	for k, v := range managedByOperatorLabels {
-		ruleLabels[k] = v
-	}
-
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            ruleConfigMapName(cr.Name),
 			Namespace:       cr.Namespace,
-			Labels:          ruleLabels,
+			Labels:          cr.FinalLabels(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Data: ruleFiles,
 	}

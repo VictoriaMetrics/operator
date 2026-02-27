@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
 	"path"
@@ -124,7 +125,7 @@ func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) 
 		}
 
 		if !user.Spec.DisableSecretCreation {
-			if secret, err := ac.LoadSecret(user.Namespace, user.SecretName()); err != nil {
+			if secret, err := ac.LoadSecret(user.Namespace, user.PrefixedName()); err != nil {
 				if !build.IsNotFound(err) {
 					return fmt.Errorf("cannot get user secret: %w", err)
 				}
@@ -621,9 +622,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				// update query params if needed.
 				if len(qs) > 0 {
 					urlQ := parsedURLPrefix.Query()
-					for k, v := range qs {
-						urlQ[k] = v
-					}
+					maps.Copy(urlQ, qs)
 					parsedURLPrefix.RawQuery = urlQ.Encode()
 				}
 				urlPrefixes[idx] = parsedURLPrefix.String()
@@ -883,12 +882,11 @@ func selectUsers(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAut
 func buildUserSecret(src *vmv1beta1.VMUser) (*corev1.Secret, error) {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            src.SecretName(),
+			Name:            src.PrefixedName(),
 			Namespace:       src.Namespace,
 			Labels:          src.FinalLabels(),
 			Annotations:     src.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{src.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{},
 	}

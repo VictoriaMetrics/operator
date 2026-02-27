@@ -513,14 +513,15 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 
 			Entry("by transition into statefulMode and back", "stateful-transition",
-				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
+				&vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
 					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{URL: "http://some-vm-single:8428"},
-					},
-				},
 				},
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.StatefulMode = true },

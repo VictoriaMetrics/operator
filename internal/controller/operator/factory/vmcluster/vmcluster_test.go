@@ -1095,7 +1095,7 @@ spec:
 			},
 		},
 	})
-	// insert with load-balanacer
+	// insert with load-balancer
 	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
@@ -1164,7 +1164,7 @@ spec:
     selector:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
-        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: ClusterIP
     clusterip: "None"
@@ -1185,4 +1185,92 @@ spec:
 			},
 		},
 	})
+	// insert with load-balancer: internal service keeps vminsert selector;
+	// the external (LB proxy) service selector must change to vmauth.
+	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+			},
+			VMInsert: &vmv1beta1.VMInsert{},
+		},
+	}, `
+objectmeta:
+    name: vminsertinternal-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+    finalizers:
+        - apps.victoriametrics.com/finalizer
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8480
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    clusterip: "None"
+    type: ClusterIP
+`)
+	// select with RequestsLoadBalancer
+	f(vmv1beta1.ClusterComponentSelect, &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+			},
+			VMSelect: &vmv1beta1.VMSelect{},
+		},
+	}, `
+objectmeta:
+    name: vmselectinternal-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-job-name: vmselect-test
+    ownerreferences:
+        - apiversion: ""
+          name: test
+          controller: true
+          blockownerdeletion: true
+    finalizers:
+        - apps.victoriametrics.com/finalizer
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8481
+          targetport:
+            intval: 8481
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    clusterip: "None"
+    type: ClusterIP
+    publishnotreadyaddresses: true
+`)
 }

@@ -20,6 +20,7 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026
@@ -63,7 +64,6 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use global image registry unless image.repository is defined. See [#1813](https://github.com/VictoriaMetrics/operator/issues/1813).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): previously spec.route and spec.receivers were required; now both parameters are optional to align with prometheus operator. VMAlertmanager now can be used to set just the global inhibition rules. See [#1800](https://github.com/VictoriaMetrics/operator/issues/1800).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fixed RBAC, when ingestOnlyMode is enabled and relabel of stream aggregation configurations defined. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
 **Release date:** 23 January 2026

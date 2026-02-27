@@ -27,9 +27,11 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 	restmetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
@@ -445,6 +447,17 @@ type crdController interface {
 	IsDisabled(cfg *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool
 }
 
+// promCRDControllerNames lists controllers that require Prometheus CRDs (monitoring.coreos.com).
+// These controllers must be skipped if the Prometheus CRDs are not installed in the cluster.
+var promCRDControllerNames = sets.New[string](
+	"PodMonitor",
+	"ServiceMonitor",
+	"ScrapeConfig",
+	"AlertmanagerConfig",
+	"Probe",
+	"PrometheusRule",
+)
+
 var controllersByName = map[string]crdController{
 	"VMCluster":            &vmcontroller.VMClusterReconciler{},
 	"VMAgent":              &vmcontroller.VMAgentReconciler{},
@@ -477,6 +490,24 @@ var controllersByName = map[string]crdController{
 	"PrometheusRule":       &vmcontroller.PromRuleReconciler{},
 }
 
+// isPrometheusCRDAvailable checks if the monitoring.coreos.com API group is registered in the cluster.
+func isPrometheusCRDAvailable(restConfig *rest.Config) bool {
+	dc, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return false
+	}
+	apiGroups, err := dc.ServerGroups()
+	if err != nil {
+		return false
+	}
+	for _, group := range apiGroups.Groups {
+		if group.Name == "monitoring.coreos.com" {
+			return true
+		}
+	}
+	return false
+}
+
 func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {
 	disabledControllerNames := sets.New[string]()
 	if len(*disableControllerForCRD) > 0 {
@@ -488,6 +519,12 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorCon
 			disabledControllerNames.Insert(cn)
 		}
 	}
+
+	if !isPrometheusCRDAvailable(mgr.GetConfig()) {
+		l.Info("Prometheus CRDs (monitoring.coreos.com) not found in the cluster, skipping Prometheus converter controllers")
+		disabledControllerNames = disabledControllerNames.Union(promCRDControllerNames)
+	}
+
 	for name, ct := range controllersByName {
 		if disabledControllerNames.Has(name) || ct.IsDisabled(bs, disabledControllerNames) {
 			l.Info("controller disabled by provided flag", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)

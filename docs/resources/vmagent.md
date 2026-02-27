@@ -56,44 +56,42 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 - [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/)
 - [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
 
-These objects tell VMAgent from which targets and how to collect metrics and 
-generate part of [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/) scrape configuration.
+These objects specify which targets VMSingle should scrape and how to collect metrics, and generate part of [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/) scrape configuration.
 
-For filtering scrape objects `VMAgent` uses selectors. 
-Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:
+`VMAgent` uses selectors to filter scrape objects. Selectors are defined using the `NamespaceSelector` and `Selector` suffixes for each scrape object type in the VMAgent spec:
 
-- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) objects,
-- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/) objects,
-- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/) objects,
-- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape/) objects,
-- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/) objects.
-- `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for selecting [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) objects.
+- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) objects,
+- `podScrapeNamespaceSelector` and `podScrapeSelector` for [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape/) objects,
+- `probeNamespaceSelector` and `probeSelector` for [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/) objects,
+- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape/) objects,
+- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/) objects.
+- `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) objects.
 
-It allows configuring objects access control across namespaces and different environments. 
-Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta/).
+This enables access control configuration for objects across namespaces.
+See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for selector specifications.
 
-In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` of `VMAgent` spec and environment variable `WATCH_NAMESPACE` for operator.
+In addition to these selectors, object filtering in a cluster can be done by the `selectAllByDefault` VMSingle spec field and the operator's `WATCH_NAMESPACE` environment variable.
 
 Following rules are applied:
 
-- If `...NamespaceSelector` and `...Selector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all objects of given type.
-- If `...NamespaceSelector` defined, `...Selector` undefined, then all objects are matching at namespaces for given `...NamespaceSelector`.
-- If `...NamespaceSelector` undefined, `...Selector` defined, then all objects at `VMAgent`'s namespaces are matching for given `...Selector`.
-- If `...NamespaceSelector` and `...Selector` both defined, then only objects at namespaces matched `...NamespaceSelector` for given `...Selector` are matching.
+- If both `...NamespaceSelector` and `...Selector` are undefined, no objects are selected by default. Setting `spec.selectAllByDefault: true` selects all objects of the given type.
+- If `...NamespaceSelector` is defined and `...Selector` is undefined, all objects in the namespaces matched by ...NamespaceSelector are selected.
+- If `...NamespaceSelector` is undefined and `...Selector` is defined, all objects in VMSingle’s namespaces matching ...Selector are selected.
+- If `...NamespaceSelector` and `...Selector` both are defined, then only objects in the namespaces matched by...NamespaceSelector for the given ...Selector are matching.
 
-Here's a more visual and more detailed view:
+Below is a more visual and detailed view:
 
 | `...NamespaceSelector` | `...Selector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
 |------------------------|---------------|----------------------|-------------------|-------------------------------------------------------------------------------------------------------------|
 | undefined              | undefined     | false                | undefined         | nothing                                                                                                     |
 | undefined              | undefined     | **true**             | undefined         | all objects of given type (`...`) in the cluster                                                            |
 | **defined**            | undefined     | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `...NamespaceSelector`                            |
-| undefined              | **defined**   | *any*                | undefined         | all objects of given type (`...`) only at `VMAgent`'s namespace are matching for given `Selector            |
+| undefined              | **defined**   | *any*                | undefined         | all objects of given type (`...`) only at `VMAgent`'s namespace are matching for given `Selector`           |
 | **defined**            | **defined**   | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `...NamespaceSelector` for given `...Selector` |
 | *any*                  | undefined     | *any*                | **defined**       | all objects of given type (`...`) only at `VMAgent`'s namespace                                             |
 | *any*                  | **defined**   | *any*                | **defined**       | all objects of given type (`...`) only at `VMAgent`'s namespace for given `...Selector`                     |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
+For more details about the `WATCH_NAMESPACE` variable, see [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 
 Here are some examples of `VMAgent` configuration with selectors:
 
@@ -108,7 +106,6 @@ spec:
   selectAllByDefault: true
 
 ---
-
 # select all scrape objects in specific namespace (my-namespace)
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent

@@ -20,7 +20,7 @@ Command-line flags configure the operator itself, like leader election, TLS, web
 
 ## Environment variables
 
-Run this command {{% available_from "v0.57.0" %}} to see all environment variables your operator supports:
+Run this command {{% available_from "v0.57.0" "operator" %}} to see all environment variables your operator supports:
 ```sh 
 OPERATOR_POD_NAME=$(kubectl get pod -l "app.kubernetes.io/name=victoria-metrics-operator"  -n vm -o jsonpath="{.items[0].metadata.name}");
 kubectl exec -n vm "$OPERATOR_POD_NAME" -- /app --printDefaults 2>&1

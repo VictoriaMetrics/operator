@@ -62,6 +62,9 @@ func appendVMAgentTargetRefs(targetRefs []vmv1beta1.TargetRef, vmAgents []*vmv1b
 }
 
 func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) *vmv1beta1.VMAuth {
+	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
+		return nil
+	}
 	vmAuth := vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.VMAuthName(),

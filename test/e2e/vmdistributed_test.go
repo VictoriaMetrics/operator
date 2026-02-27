@@ -1258,5 +1258,60 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: vmClusters[1].Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
 			}, "10s", "1s").ShouldNot(HaveOccurred())
 		})
+
+		It("should successfully create a VMDistributed with disabled VMAuth", func() {
+			nsn.Name = "vmd-disabled-vmauth"
+			zonesCount := 1
+			zs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
+			vmClusters := make([]*vmv1beta1.VMCluster, zonesCount)
+			for i := range zs {
+				objMeta := metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      fmt.Sprintf("%s-%d", nsn.Name, i+1),
+				}
+				vmClusterSpec := genVMClusterSpec()
+				zs[i].Name = objMeta.Name
+				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Name = objMeta.Name
+				zs[i].VMAgent.Name = objMeta.Name
+				vmClusters[i] = &vmv1beta1.VMCluster{
+					ObjectMeta: objMeta,
+					Spec:       vmClusterSpec,
+				}
+			}
+			var wg sync.WaitGroup
+			createVMClusters(ctx, &wg, k8sClient, vmClusters...)
+			wg.Wait()
+
+			cr := &vmv1alpha1.VMDistributed{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedSpec{
+					VMAuth: vmv1alpha1.VMDistributedAuth{
+						Name:    nsn.Name,
+						Enabled: ptr.To(false),
+					},
+					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
+						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
+					},
+					Zones: zs,
+				},
+			}
+			By("creating the VMDistributed")
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
+			})
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, types.NamespacedName{Name: nsn.Name, Namespace: namespace})
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("ensuring VMAuth was not created")
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: nsn.Name, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
+			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
+		})
 	})
 })

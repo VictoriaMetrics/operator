@@ -231,7 +231,13 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 
 func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, excludeIds ...int) error {
 	owner := cr.AsOwner()
+	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
+		return nil
+	}
 	vmAuth := buildVMAuthLB(cr, zs.vmagents, zs.vmclusters, excludeIds...)
+	if vmAuth == nil {
+		return nil
+	}
 	return reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner)
 }
 

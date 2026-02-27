@@ -42,15 +42,13 @@ type VMUserReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
-func (r *VMUserReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMUserReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, _ *config.BaseOperatorConf) {
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMUser")
 	r.OriginScheme = sc
-	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -92,7 +90,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	authSync.Lock()
 	defer authSync.Unlock()
 	var objects vmv1beta1.VMAuthList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAuthList) {
+	if err := k8stools.ListObjects(ctx, r.Client, func(dst *vmv1beta1.VMAuthList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)

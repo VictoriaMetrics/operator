@@ -109,6 +109,9 @@ type BaseOperatorConf struct {
 	// In case of empty list it performs only clusterwide api calls.
 	WatchNamespaces []string `default:"" env:"WATCH_NAMESPACE"`
 
+	// Defines a list of namespaces to exclude from being watched by operator.
+	ExcludeNamespaces []string `default:"" env:"EXCLUDE_NAMESPACE"`
+
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry string `default:"" env:"VM_CONTAINERREGISTRY"`
 	// Deprecated: use VM_CONFIG_RELOADER_IMAGE instead
@@ -593,6 +596,14 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 
 // Validate - validates config on best effort.
 func (boc BaseOperatorConf) validate() error {
+	if len(boc.ExcludeNamespaces) > 0 && len(boc.WatchNamespaces) > 0 {
+		return fmt.Errorf("both WATCH_NAMESPACE and EXCLUDE_NAMESPACE cannot be defined simultaneously")
+	}
+	for _, ns := range boc.ExcludeNamespaces {
+		if !validNamespaceRegex.MatchString(ns) {
+			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())
+		}
+	}
 	for _, ns := range boc.WatchNamespaces {
 		if !validNamespaceRegex.MatchString(ns) {
 			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())

@@ -21,6 +21,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj gwapiv1.HTTPRoute
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -30,10 +31,10 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 			}
 			return fmt.Errorf("cannot get existing HTTPRoute=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

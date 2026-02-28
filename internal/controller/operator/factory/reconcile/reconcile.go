@@ -107,7 +107,10 @@ type errRecreate struct {
 
 func newErrRecreate(ctx context.Context, r client.Object) *errRecreate {
 	finalizers := strings.Join(r.GetFinalizers(), ",")
-	msg := fmt.Sprintf("waiting for %s=%s/%s (finalizers=[%s]) to be removed", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
+	if len(finalizers) > 0 {
+		finalizers = fmt.Sprintf("(finalizers=[%s])", finalizers)
+	}
+	msg := fmt.Sprintf("waiting for %s=%s/%s to be removed %s", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
 	logger.WithContext(ctx).Info(msg)
 	return &errRecreate{
 		msg: msg,
@@ -150,7 +153,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn, err)
+			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn.String(), err)
 			return
 		}
 		lastStatus = obj.GetStatus().GetStatusMetadata()
@@ -161,7 +164,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil {
 			updateStatus = string(lastStatus.UpdateStatus)
 		}
-		return fmt.Errorf("failed to wait for %T %s to be ready: %w, current status: %s", obj, nsn, err, updateStatus)
+		return fmt.Errorf("failed to wait for %T=%s to be ready: %w, current status: %s", obj, nsn.String(), err, updateStatus)
 	}
 	return nil
 }

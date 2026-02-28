@@ -18,6 +18,7 @@ import (
 func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	updated := true
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj corev1.ConfigMap
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -27,10 +28,10 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 			}
 			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

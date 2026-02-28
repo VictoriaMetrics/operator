@@ -187,13 +187,15 @@ func addOwnerReferenceIfAbsent(obj client.Object, owner *metav1.OwnerReference) 
 }
 
 // collectGarbage checks if resource must be freed from finalizer and prepares it for garbage collection by kubernetes
-func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object) error {
+func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object, removeFinalizer bool) error {
 	if obj.GetDeletionTimestamp().IsZero() {
 		// fast path
 		return nil
 	}
-	if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
-		return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+	if removeFinalizer {
+		if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
+			return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+		}
 	}
 	return newErrRecreate(ctx, obj)
 }

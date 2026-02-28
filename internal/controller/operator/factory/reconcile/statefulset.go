@@ -83,6 +83,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var recreateSTS func() error
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -96,7 +97,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 
@@ -120,7 +121,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return nil
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

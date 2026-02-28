@@ -22,6 +22,7 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := false
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMAgent
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -35,10 +36,10 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 			}
 			return fmt.Errorf("cannot get VMAgent=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

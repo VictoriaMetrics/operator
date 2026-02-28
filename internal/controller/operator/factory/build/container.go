@@ -224,12 +224,8 @@ const (
 // AddHTTPShutdownDelayArg adds default -http.shutdownDelay flag if user didn't override it in extraArgs.
 // The delay is derived from terminationGracePeriodSeconds.
 // It is added only for new resources
-func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, terminationGracePeriodSeconds *int64, isNewResource bool) []string {
+func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, terminationGracePeriodSeconds *int64) []string {
 	if _, ok := extraArgs["http.shutdownDelay"]; ok {
-		return args
-	}
-
-	if !isNewResource {
 		return args
 	}
 

@@ -127,14 +127,13 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn.String(), err)
 		}

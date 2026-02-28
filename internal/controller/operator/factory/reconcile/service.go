@@ -120,13 +120,12 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 		return err
 	}
 	logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-	specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+	specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
 	needsUpdate := metaChanged || len(specDiff) > 0
-	logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 	if !needsUpdate {
 		return nil
 	}
 	existingObj.Spec = newObj.Spec
-	logger.WithContext(ctx).Info(fmt.Sprintf("updating Service %s", strings.Join(logMessageMetadata, ", ")))
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating Service %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 	return rclient.Update(ctx, &existingObj)
 }

@@ -37,13 +37,11 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
-		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data)
+		dataDiff := diffDeepDerivative(existingObj.Data, newObj.Data, "data")
 		needsUpdate := metaChanged || len(dataDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_diff=%s", dataDiff))
 
-		binDataDiff := diffDeepDerivative(newObj.BinaryData, existingObj.BinaryData)
+		binDataDiff := diffDeepDerivative(existingObj.BinaryData, newObj.BinaryData, "binaryData")
 		needsUpdate = needsUpdate || len(binDataDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("bin_data_diff=%s", binDataDiff))
 
 		if !needsUpdate {
 			updated = false
@@ -51,7 +49,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		}
 		existingObj.Data = newObj.Data
 		existingObj.BinaryData = newObj.BinaryData
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")), "data_diff", dataDiff, "bin_data_diff", binDataDiff)
 		return rclient.Update(ctx, &existingObj)
 	})
 	return updated, err

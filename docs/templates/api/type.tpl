@@ -28,43 +28,46 @@
 
 {{- define "type" -}}
 {{- $type := . -}}
-{{- if markdownShouldRenderType $type -}}
+{{- if markdownShouldRenderType $type }}
 
 #### {{ $type.Name }}
+{{- if $type.IsAlias }}
 
-{{ if $type.IsAlias }}_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_{{ end }}
+_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_
+{{- end }}
+{{- if $type.Doc }}
 
 {{ $type.Doc }}
+{{- end }}
+{{- if $type.Validation }}
 
-{{ if $type.Validation -}}
 _Validation:_
 {{- range $type.Validation }}
 - {{ . }}
 {{- end }}
 {{- end }}
+{{- if $type.References }}
 
-{{- if $type.References -}}
 Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
 {{- end }}
+{{- if $type.Members }}
 
-{{ if $type.Members -}}
 | Field | Description |
 | --- | --- |
-{{ if $type.GVK -}}
+{{- if $type.GVK }}
 | apiVersion<br/>_string_ | (Required)<br/>`{{ $type.GVK.Group }}/{{ $type.GVK.Version }}` |
 | kind<br/>_string_ | (Required)<br/>`{{ $type.GVK.Kind }}` |
-{{ end -}}
-{{- $members := default dict -}}
-{{- range $member := $type.Members -}}
+{{- end }}
+{{- $members := default dict }}
+{{- range $member := $type.Members }}
 {{- $_ := set $members $member.Name $member }}
-{{- end -}}
-{{- $memberKeys := (keys $members | sortAlpha) -}}
-{{ range $memberKeys -}}
-{{- $member := index $members . -}}
-{{- $id := lower (printf "%s-%s" $type.Name $member.Name) -}}
+{{- end }}
+{{- $memberKeys := (keys $members | sortAlpha) }}
+{{- range $memberKeys }}
+{{- $member := index $members . }}
+{{- $id := lower (printf "%s-%s" $type.Name $member.Name) }}
 | {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "deprecated" (dict "member" $member "type" $type.Name) }} |
-{{ end -}}
-
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

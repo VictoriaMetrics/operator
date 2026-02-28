@@ -83,6 +83,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var recreateSTS func() error
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -96,7 +97,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 
@@ -120,12 +121,13 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return nil
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		strategy := vmv1beta1.MetadataStrategyMergePromPriority
+		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations, strategy)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))

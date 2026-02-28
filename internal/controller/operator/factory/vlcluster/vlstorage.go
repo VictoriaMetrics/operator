@@ -101,7 +101,7 @@ func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, 
 	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
 		svs := buildVLStorageScrape(cr, svc)
 		prevSvs := buildVLStorageScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VLStorage: %w", err)
 		}
 	}

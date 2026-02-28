@@ -63,11 +63,16 @@ var (
 		Name: "operator_controller_reconcile_errors_total",
 		Help: "Counts number context.Canceled errors",
 	})
+	activeConverterWatchers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "operator_prometheus_converter_active_watchers",
+	}, []string{"object_type_name"})
 )
 
 // InitMetrics adds metrics to the Registry
 func init() {
-	metrics.Registry.MustRegister(parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal, contextCancelErrorsTotal)
+	metrics.Registry.MustRegister(
+		parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal,
+		contextCancelErrorsTotal, activeConverterWatchers)
 }
 
 func getDefaultOptions() controller.Options {

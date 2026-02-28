@@ -16,7 +16,7 @@ import (
 )
 
 // VMPodScrape creates or updates given object
-func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMPodScrape, owner *metav1.OwnerReference) error {
+func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1beta1.VMPodScrape, owner *metav1.OwnerReference, isConversion bool) error {
 	if build.IsControllerDisabled("VMPodScrape") {
 		return nil
 	}
@@ -25,6 +25,7 @@ func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vm
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMPodScrape
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -34,10 +35,14 @@ func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vm
 			}
 			return err
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		if isConversion && existingObj.Annotations[vmv1beta1.IgnoreConversionLabel] == vmv1beta1.IgnoreConversion {
+			logger.WithContext(ctx).Info(fmt.Sprintf("syncing for VMPodScrape=%s was disabled by annotation", nsn.String()))
+			return nil
+		}
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, isConversion)
 		if err != nil {
 			return err
 		}

@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -110,7 +111,7 @@ var (
 	defaultKubernetesMajorVersion = managerFlags.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
 	printDefaults                 = managerFlags.Bool("printDefaults", false, "print all variables with their default values and exit")
 	printFormat                   = managerFlags.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
-	promCRDResyncPeriod           = managerFlags.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
+	_                             = managerFlags.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
 	clientQPS                     = managerFlags.Int("client.qps", 50, "defines K8s client QPS. The value should be increased for the cluster with large number of objects > 10_000.")
 	clientBurst                   = managerFlags.Int("client.burst", 100, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
@@ -301,16 +302,13 @@ func RunManager(ctx context.Context) error {
 		build.SetSkipRuntimeValidation(true)
 	}
 
-	if err := initControllers(mgr, ctrl.Log, baseConfig); err != nil {
-		return err
-	}
-
-	// +kubebuilder:scaffold:builder
-	setupLog.Info("starting vmconverter clients")
-
 	baseClient, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
+	}
+
+	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig); err != nil {
+		return err
 	}
 
 	build.SetSpaceTrim(*disableSecretKeySpaceTrim)
@@ -324,22 +322,6 @@ func RunManager(ctx context.Context) error {
 	}
 
 	setupLog.Info(fmt.Sprintf("using kubernetes server version: %s", k8sServerVersion.String()))
-	wc, err := client.NewWithWatch(mgr.GetConfig(), client.Options{Scheme: scheme})
-	if err != nil {
-		return fmt.Errorf("cannot setup watch client: %w", err)
-	}
-	converterController, err := vmcontroller.NewConverterController(ctx, baseClient, wc, *promCRDResyncPeriod, baseConfig)
-	if err != nil {
-		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
-		return err
-	}
-
-	if err := mgr.Add(converterController); err != nil {
-		setupLog.Error(err, "cannot add runnable")
-		return err
-	}
-
-	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("cannot start controller manager: %w", err)
 	}
@@ -485,9 +467,28 @@ var controllersByName = map[string]crdController{
 	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
 	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
 	"VMDistributed":        &vmcontroller.VMDistributedReconciler{},
+	"PodMonitor":           &vmcontroller.PromPodMonitorReconciler{},
+	"ServiceMonitor":       &vmcontroller.PromServiceMonitorReconciler{},
+	"ScrapeConfig":         &vmcontroller.PromScrapeConfigReconciler{},
+	"AlertmanagerConfig":   &vmcontroller.PromAlertmanagerConfigReconciler{},
+	"Probe":                &vmcontroller.PromProbeReconciler{},
+	"PrometheusRule":       &vmcontroller.PromRuleReconciler{},
 }
 
-func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf) error {
+var promCRDControllers = map[string]sets.Set[string]{
+	promv1.SchemeGroupVersion.String(): sets.New[string](
+		"PodMonitor",
+		"ServiceMonitor",
+		"Probe",
+		"PrometheusRule",
+	),
+	promv1alpha1.SchemeGroupVersion.String(): sets.New[string](
+		"ScrapeConfig",
+		"AlertmanagerConfig",
+	),
+}
+
+func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf) error {
 	disabledControllerNames := sets.New[string]()
 	if len(*disableControllerForCRD) > 0 {
 		names := strings.Split(*disableControllerForCRD, ",")
@@ -498,9 +499,25 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorCon
 			disabledControllerNames.Insert(cn)
 		}
 	}
+
+	for groupVersion, kinds := range promCRDControllers {
+		api, err := baseClient.ServerResourcesForGroupVersion(groupVersion)
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
+			}
+			continue
+		}
+		for _, r := range api.APIResources {
+			if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
+				kinds.Delete(r.Kind)
+			}
+		}
+		disabledControllerNames.Insert(kinds.UnsortedList()...)
+	}
 	for name, ct := range controllersByName {
 		if disabledControllerNames.Has(name) || ct.IsDisabled(bs, disabledControllerNames) {
-			l.Info("controller disabled by provided flag", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
+			l.Info("controller disabled either by provided flag or respective CRD is not found", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
 			continue
 		}
 		ct.Init(mgr.GetClient(), l, mgr.GetScheme(), bs)

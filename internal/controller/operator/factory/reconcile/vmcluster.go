@@ -22,6 +22,7 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := false
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMCluster
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -34,10 +35,10 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 			}
 			return fmt.Errorf("cannot get VMCluster=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}

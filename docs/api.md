@@ -2551,6 +2551,8 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSin
 | labels<a href="#managedobjectsmetadata-labels" id="managedobjectsmetadata-labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
 
 
+
+
 #### NamespaceDiscovery
 
 

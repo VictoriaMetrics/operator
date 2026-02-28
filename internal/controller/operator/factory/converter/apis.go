@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"math"
 	"strings"
 
@@ -8,10 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 const (
@@ -19,10 +20,8 @@ const (
 	prometheusConfigmapDir = "/etc/prometheus/configmaps"
 )
 
-var log = logf.Log.WithName("controller.PrometheusConverter")
-
-// ConvertPromRule creates VMRule from PrometheusRule
-func ConvertPromRule(prom *promv1.PrometheusRule, conf *config.BaseOperatorConf) *vmv1beta1.VMRule {
+// PrometheusRule creates VMRule from PrometheusRule
+func PrometheusRule(ctx context.Context, prom *promv1.PrometheusRule, conf *config.BaseOperatorConf) *vmv1beta1.VMRule {
 	ruleGroups := make([]vmv1beta1.RuleGroup, 0, len(prom.Spec.Groups))
 	for _, promGroup := range prom.Spec.Groups {
 		ruleItems := make([]vmv1beta1.Rule, 0, len(promGroup.Rules))
@@ -100,8 +99,8 @@ func MaybeAddArgoCDIgnoreAnnotations(mustAdd bool, dst map[string]string) map[st
 	return dst
 }
 
-// ConvertServiceMonitor create VMServiceScrape from ServiceMonitor
-func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMServiceScrape {
+// ServiceMonitor create VMServiceScrape from ServiceMonitor
+func ServiceMonitor(ctx context.Context, serviceMon *promv1.ServiceMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMServiceScrape {
 	cs := &vmv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceMon.Name,
@@ -114,7 +113,7 @@ func ConvertServiceMonitor(serviceMon *promv1.ServiceMonitor, conf *config.BaseO
 			TargetLabels:    serviceMon.Spec.TargetLabels,
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,
 			Selector:        serviceMon.Spec.Selector,
-			Endpoints:       convertEndpoint(serviceMon.Spec.Endpoints),
+			Endpoints:       convertEndpoint(ctx, serviceMon.Spec.Endpoints),
 			NamespaceSelector: vmv1beta1.NamespaceSelector{
 				Any:        serviceMon.Spec.NamespaceSelector.Any,
 				MatchNames: serviceMon.Spec.NamespaceSelector.MatchNames,
@@ -201,7 +200,7 @@ func convertBearerToken(src *corev1.SecretKeySelector) *corev1.SecretKeySelector
 	return src
 }
 
-func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
+func convertEndpoint(ctx context.Context, promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 	endpoints := make([]vmv1beta1.Endpoint, 0, len(promEndpoint))
 	for _, endpoint := range promEndpoint {
 		ep := vmv1beta1.Endpoint{
@@ -231,8 +230,8 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 				BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
 			},
 			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-				MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
-				RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
+				MetricRelabelConfigs: ConvertRelabelConfig(ctx, endpoint.MetricRelabelConfigs),
+				RelabelConfigs:       ConvertRelabelConfig(ctx, endpoint.RelabelConfigs),
 			},
 		}
 
@@ -303,7 +302,7 @@ func convertSecretOrConfigmap(promSCM promv1.SecretOrConfigMap) vmv1beta1.Secret
 }
 
 // ConvertRelabelConfig converts Prometheus relabel config to VM one
-func ConvertRelabelConfig(promRelabelConfig []promv1.RelabelConfig) []*vmv1beta1.RelabelConfig {
+func ConvertRelabelConfig(ctx context.Context, promRelabelConfig []promv1.RelabelConfig) []*vmv1beta1.RelabelConfig {
 	if promRelabelConfig == nil {
 		return nil
 	}
@@ -331,10 +330,10 @@ func ConvertRelabelConfig(promRelabelConfig []promv1.RelabelConfig) []*vmv1beta1
 			relabelCfg[idx].Regex = vmv1beta1.StringOrArray{relabel.Regex}
 		}
 	}
-	return filterUnsupportedRelabelCfg(relabelCfg)
+	return filterUnsupportedRelabelCfg(ctx, relabelCfg)
 }
 
-func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta1.PodMetricsEndpoint {
+func convertPodEndpoints(ctx context.Context, promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta1.PodMetricsEndpoint {
 	if promPodEnpoints == nil {
 		return nil
 	}
@@ -364,8 +363,8 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 				FollowRedirects: promEndPoint.FollowRedirects,
 			},
 			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
-				RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
-				MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
+				RelabelConfigs:       ConvertRelabelConfig(ctx, promEndPoint.RelabelConfigs),
+				MetricRelabelConfigs: ConvertRelabelConfig(ctx, promEndPoint.MetricRelabelConfigs),
 			},
 
 			EndpointAuth: vmv1beta1.EndpointAuth{
@@ -383,8 +382,8 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 	return endPoints
 }
 
-// ConvertPodMonitor create VMPodScrape from PodMonitor
-func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMPodScrape {
+// PodMonitor create VMPodScrape from PodMonitor
+func PodMonitor(ctx context.Context, podMon *promv1.PodMonitor, conf *config.BaseOperatorConf) *vmv1beta1.VMPodScrape {
 	cs := &vmv1beta1.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podMon.Name,
@@ -400,7 +399,7 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 				Any:        podMon.Spec.NamespaceSelector.Any,
 				MatchNames: podMon.Spec.NamespaceSelector.MatchNames,
 			},
-			PodMetricsEndpoints: convertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
+			PodMetricsEndpoints: convertPodEndpoints(ctx, podMon.Spec.PodMetricsEndpoints),
 			ScrapeClassName:     podMon.Spec.ScrapeClassName,
 		},
 	}
@@ -428,8 +427,8 @@ func ConvertPodMonitor(podMon *promv1.PodMonitor, conf *config.BaseOperatorConf)
 	return cs
 }
 
-// ConvertProbe creates VMProbe from prometheus probe
-func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1.VMProbe {
+// Probe creates VMProbe from prometheus probe
+func Probe(ctx context.Context, probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1.VMProbe {
 	var (
 		k8sTargets    []*vmv1beta1.VMProbeTargetKubernetes
 		staticTargets *vmv1beta1.VMProbeTargetStatic
@@ -442,14 +441,14 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 				Any:        probe.Spec.Targets.Ingress.NamespaceSelector.Any,
 				MatchNames: probe.Spec.Targets.Ingress.NamespaceSelector.MatchNames,
 			},
-			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.Ingress.RelabelConfigs),
+			RelabelConfigs: ConvertRelabelConfig(ctx, probe.Spec.Targets.Ingress.RelabelConfigs),
 		})
 	}
 	if probe.Spec.Targets.StaticConfig != nil {
 		staticTargets = &vmv1beta1.VMProbeTargetStatic{
 			Targets:        probe.Spec.Targets.StaticConfig.Targets,
 			Labels:         probe.Spec.Targets.StaticConfig.Labels,
-			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.StaticConfig.RelabelConfigs),
+			RelabelConfigs: ConvertRelabelConfig(ctx, probe.Spec.Targets.StaticConfig.RelabelConfigs),
 		}
 	}
 	var safeTLS *promv1.SafeTLSConfig
@@ -479,7 +478,7 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 				Interval:      string(probe.Spec.Interval),
 				ScrapeTimeout: string(probe.Spec.ScrapeTimeout),
 			},
-			MetricRelabelConfigs: ConvertRelabelConfig(probe.Spec.MetricRelabelConfigs),
+			MetricRelabelConfigs: ConvertRelabelConfig(ctx, probe.Spec.MetricRelabelConfigs),
 			EndpointAuth: vmv1beta1.EndpointAuth{
 				BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
 				BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret), //nolint:staticcheck
@@ -512,13 +511,13 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 	return cp
 }
 
-func filterUnsupportedRelabelCfg(relabelCfgs []*vmv1beta1.RelabelConfig) []*vmv1beta1.RelabelConfig {
+func filterUnsupportedRelabelCfg(ctx context.Context, relabelCfgs []*vmv1beta1.RelabelConfig) []*vmv1beta1.RelabelConfig {
 	newRelabelCfg := make([]*vmv1beta1.RelabelConfig, 0, len(relabelCfgs))
 	for _, r := range relabelCfgs {
 		switch r.Action {
 		case "keep", "hashmod", "drop":
 			if len(r.SourceLabels) == 0 {
-				log.Info("filtering unsupported format of relabelConfig", "action", r.Action, "reason", "source labels are empty")
+				logger.WithContext(ctx).Info("filtering unsupported format of relabelConfig", "action", r.Action, "reason", "source labels are empty")
 				continue
 			}
 		}

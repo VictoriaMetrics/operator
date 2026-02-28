@@ -54,3 +54,61 @@ func TestWaitForStatus(t *testing.T) {
 	// fail
 	f(vmv1beta1.UpdateStatusExpanding, true)
 }
+
+func TestMergeMaps(t *testing.T) {
+	type opts struct {
+		prev, new, existing map[string]string
+		strategy            vmv1beta1.MetadataStrategy
+		want                map[string]string
+	}
+	f := func(o opts) {
+		t.Helper()
+		got := mergeMaps(o.existing, o.new, o.prev, o.strategy)
+		assert.Equal(t, got, o.want)
+	}
+
+	// delete not existing label
+	f(opts{
+		existing: map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
+		new:      map[string]string{"label1": "value1", "label2": "value4"},
+		strategy: vmv1beta1.MetadataStrategyPreferProm,
+		want:     map[string]string{"label1": "value1", "label2": "value4"},
+	})
+
+	// add new label
+	f(opts{
+		existing: map[string]string{"label1": "value1", "label2": "value2", "missinglabel": "value3"},
+		new:      map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
+		strategy: vmv1beta1.MetadataStrategyPreferProm,
+		want:     map[string]string{"label1": "value1", "label2": "value4", "label5": "value10"},
+	})
+
+	// add new label with VM priority
+	f(opts{
+		existing: map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
+		new:      map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+		strategy: vmv1beta1.MetadataStrategyPreferVM,
+		want:     map[string]string{"label1": "value1", "label2": "value2", "label5": "value3"},
+	})
+
+	// remove all labels
+	f(opts{
+		new:      map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+		strategy: vmv1beta1.MetadataStrategyPreferVM,
+	})
+
+	// remove keep old labels
+	f(opts{
+		existing: map[string]string{"label1": "value1", "label2": "value4"},
+		strategy: vmv1beta1.MetadataStrategyPreferVM,
+		want:     map[string]string{"label1": "value1", "label2": "value4"},
+	})
+
+	// merge all labels with VMPriority
+	f(opts{
+		existing: map[string]string{"label1": "value1", "label2": "value4"},
+		new:      map[string]string{"label1": "value2", "label2": "value4", "missinglabel": "value10"},
+		strategy: vmv1beta1.MetadataStrategyMergeVMPriority,
+		want:     map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
+	})
+}

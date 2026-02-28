@@ -21,6 +21,7 @@ func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.P
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj policyv1.PodDisruptionBudget
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -30,10 +31,10 @@ func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.P
 			}
 			return fmt.Errorf("cannot get existing PDB=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer, false)
 		if err != nil {
 			return err
 		}

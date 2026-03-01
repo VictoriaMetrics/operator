@@ -216,6 +216,28 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	return args
 }
 
+const (
+	// DefaultTerminationGracePeriodSeconds is the default termination grace period for all components
+	DefaultTerminationGracePeriodSeconds int64 = 30
+)
+
+// AddHTTPShutdownDelayArg adds default -http.shutdownDelay flag if user didn't override it in extraArgs.
+// The delay is derived from terminationGracePeriodSeconds.
+// It is added only for new resources
+func AddHTTPShutdownDelayArg(args []string, extraArgs map[string]string, terminationGracePeriodSeconds *int64) []string {
+	if _, ok := extraArgs["http.shutdownDelay"]; ok {
+		return args
+	}
+
+	delaySeconds := DefaultTerminationGracePeriodSeconds
+	if terminationGracePeriodSeconds != nil {
+		delaySeconds = *terminationGracePeriodSeconds
+	}
+
+	args = append(args, fmt.Sprintf("-http.shutdownDelay=%ds", delaySeconds))
+	return args
+}
+
 // formatContainerImage returns container image with registry prefix if needed.
 func formatContainerImage(registry string, containerImage string) string {
 	if registry == "" {

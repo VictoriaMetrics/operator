@@ -226,7 +226,7 @@ func TestAddHTTPShutdownDelayArg(t *testing.T) {
 		terminationGracePeriodSeconds: nil,
 		wantArgs:                      []string{"-http.shutdownDelay=30s"},
 	})
-	//if extraArg already exists, no more args should be added, it will be added later in the process of adding extra args
+	// if extraArg already exists, no more args should be added, it will be added later in the process of adding extra args
 	f(opts{
 		extraArgs:                     map[string]string{"http.shutdownDelay": "5s"},
 		terminationGracePeriodSeconds: nil,

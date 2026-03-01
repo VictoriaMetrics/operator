@@ -22,6 +22,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := false
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMAuth
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -34,22 +35,21 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 			}
 			return fmt.Errorf("cannot get VMAuth=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMAuth %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMAuth %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot update VMAuth=%s: %w", nsn.String(), err)
 		}

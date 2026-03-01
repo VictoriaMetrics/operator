@@ -27,6 +27,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.DaemonSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -39,26 +40,24 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 			}
 			return fmt.Errorf("cannot get DaemonSet=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 		spec := &newObj.Spec
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
-
 		if !needsUpdate {
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating DaemonSet %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating DaemonSet %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot update DaemonSet=%s: %w", nsn.String(), err)
 		}

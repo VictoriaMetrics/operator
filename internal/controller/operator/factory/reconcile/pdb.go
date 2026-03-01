@@ -21,6 +21,7 @@ func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.P
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj policyv1.PodDisruptionBudget
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -30,22 +31,21 @@ func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.P
 			}
 			return fmt.Errorf("cannot get existing PDB=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating PDB %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		return rclient.Update(ctx, &existingObj)
 	})
 }

@@ -18,6 +18,7 @@ import (
 func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	updated := true
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj corev1.ConfigMap
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -27,22 +28,20 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 			}
 			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
-		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data)
+		dataDiff := diffDeepDerivative(existingObj.Data, newObj.Data, "data")
 		needsUpdate := metaChanged || len(dataDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_diff=%s", dataDiff))
 
-		binDataDiff := diffDeepDerivative(newObj.BinaryData, existingObj.BinaryData)
+		binDataDiff := diffDeepDerivative(existingObj.BinaryData, newObj.BinaryData, "binaryData")
 		needsUpdate = needsUpdate || len(binDataDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("bin_data_diff=%s", binDataDiff))
 
 		if !needsUpdate {
 			updated = false
@@ -50,7 +49,7 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		}
 		existingObj.Data = newObj.Data
 		existingObj.BinaryData = newObj.BinaryData
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating ConfigMap %s", strings.Join(logMessageMetadata, ", ")), "data_diff", dataDiff, "bin_data_diff", binDataDiff)
 		return rclient.Update(ctx, &existingObj)
 	})
 	return updated, err

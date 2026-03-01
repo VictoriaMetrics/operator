@@ -10,7 +10,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,12 +51,12 @@ func isSTSRecreateRequired(ctx context.Context, newSTS, oldStatefulSet *appsv1.S
 
 	var vctChanged bool
 	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
-		actualPVC := getPVCFromSTS(newVCT.Name, oldStatefulSet)
-		if actualPVC == nil {
+		existingObj := getPVCFromSTS(newVCT.Name, oldStatefulSet)
+		if existingObj == nil {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s was not found at VolumeClaimTemplates, recreating statefulset", newVCT.Name))
 			return true, true
 		}
-		if shouldRecreateSTSOnStorageChange(ctx, actualPVC, &newVCT) {
+		if shouldRecreateSTSOnStorageChange(ctx, existingObj, &newVCT) {
 			l.Info(fmt.Sprintf("VolumeClaimTemplate=%s have some changes, recreating StatefulSet", newVCT.Name))
 			vctChanged = true
 		}
@@ -236,33 +235,29 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	return false, nil
 }
 
-func shouldRecreateSTSOnStorageChange(ctx context.Context, actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
+func shouldRecreateSTSOnStorageChange(ctx context.Context, existingObj, newObj *corev1.PersistentVolumeClaim) bool {
 	// fast path
-	if actualPVC == nil && newPVC == nil {
+	if existingObj == nil && newObj == nil {
 		return false
 	}
 	// one of pvcs are not nil
-	hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
+	hasNotNilPVC := (existingObj == nil && newObj != nil) || (existingObj != nil && newObj == nil)
 	if hasNotNilPVC {
 		return true
 	}
 
-	if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {
+	if i := newObj.Spec.Resources.Requests.Storage().Cmp(*existingObj.Spec.Resources.Requests.Storage()); i != 0 {
 		sizeDiff := resource.NewQuantity(0, resource.BinarySI)
-		sizeDiff.Add(*newPVC.Spec.Resources.Requests.Storage())
-		sizeDiff.Sub(*actualPVC.Spec.Resources.Requests.Storage())
+		sizeDiff.Add(*newObj.Spec.Resources.Requests.Storage())
+		sizeDiff.Sub(*existingObj.Spec.Resources.Requests.Storage())
 		logger.WithContext(ctx).Info(fmt.Sprintf("must re-recreate sts, its pvc claim size=%s was changed", sizeDiff.String()))
 		return true
 	}
 
 	// compare meta and spec for pvc
-	if !equality.Semantic.DeepEqual(newPVC.Labels, actualPVC.Labels) ||
-		!equality.Semantic.DeepEqual(newPVC.Annotations, actualPVC.Annotations) ||
-		!equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
-		metaD := diffDeep(actualPVC.ObjectMeta, newPVC.ObjectMeta)
-		specD := diffDeep(actualPVC.Spec, newPVC.Spec)
-		logMsg := fmt.Sprintf("changes detected for PVC=%s metaDiff=%v, specDiff=%v", newPVC.Name, metaD, specD)
-		logger.WithContext(ctx).Info(logMsg)
+	specDiff := diffDeepDerivative(existingObj.Spec, newObj.Spec, "spec")
+	if len(specDiff) > 0 {
+		logger.WithContext(ctx).Info(fmt.Sprintf("changes detected for PVC=%s", newObj.Name), "spec_diff", specDiff)
 		return true
 	}
 
@@ -286,13 +281,13 @@ func shouldRecreateSTSOnImmutableFieldChange(ctx context.Context, statefulSet, o
 	newStatefulSetClone.Spec.UpdateStrategy = oldStatefulSet.Spec.UpdateStrategy
 	newStatefulSetClone.Spec.MinReadySeconds = oldStatefulSet.Spec.MinReadySeconds
 	newStatefulSetClone.Spec.PersistentVolumeClaimRetentionPolicy = oldStatefulSet.Spec.PersistentVolumeClaimRetentionPolicy
+	newStatefulSetClone.Spec.RevisionHistoryLimit = oldStatefulSet.Spec.RevisionHistoryLimit
 
-	isEqual := equality.Semantic.DeepEqual(newStatefulSetClone.Spec, oldStatefulSet.Spec)
-	if !isEqual {
-		d := diffDeep(oldStatefulSet.Spec, newStatefulSetClone.Spec)
-		logger.WithContext(ctx).Info(fmt.Sprintf("immutable StatefulSet field changed: %s", d))
+	specDiff := diffDeep(oldStatefulSet.Spec, newStatefulSetClone.Spec, "spec")
+	if len(specDiff) > 0 {
+		logger.WithContext(ctx).Info("immutable StatefulSet field changed", "spec_diff", specDiff)
 	}
-	return !isEqual
+	return len(specDiff) > 0
 }
 
 func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, statefulSet, oldStatefulSet *appsv1.StatefulSet) error {

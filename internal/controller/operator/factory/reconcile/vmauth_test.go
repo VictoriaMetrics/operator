@@ -95,4 +95,19 @@ func TestVMAuthReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 		},
 	})
+
+	// no update on status change
+	f(opts{
+		new:  getVMAuth(),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+		},
+	})
 }

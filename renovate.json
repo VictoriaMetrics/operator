@@ -23,8 +23,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "ENVTEST_K8S_VERSION = (?<currentValue>.*)"
@@ -35,8 +35,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "KUSTOMIZE_VERSION \\?= (?<currentValue>v.*)"
@@ -46,8 +46,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>v.*)"
@@ -57,8 +57,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "GOLANGCI_LINT_VERSION \\?= (?<currentValue>v.*)"
@@ -68,8 +68,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "CODEGENERATOR_VERSION \\?= (?<currentValue>v.*)"
@@ -79,8 +79,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "KIND_VERSION \\?= (?<currentValue>v.*)"
@@ -90,8 +90,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "OPERATOR_SDK_VERSION \\?= (?<currentValue>v.*)"
@@ -101,8 +101,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "OPM_VERSION \\?= (?<currentValue>v.*)"
@@ -112,8 +112,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "YQ_VERSION \\?= (?<currentValue>v.*)"
@@ -123,8 +123,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "GINKGO_VERSION \\?= (?<currentValue>v.*)"
@@ -134,8 +134,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "CRUST_GATHER_VERSION \\?= (?<currentValue>v.*)"
@@ -145,8 +145,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "OLM_VERSION \\?= (?<currentValue>.*)"
@@ -157,8 +157,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^Makefile$"
+      "managerFilePatterns": [
+        "/^Makefile$/"
       ],
       "matchStrings": [
         "ENVTEST_VERSION \\?= release-(?<currentValue>.*)"

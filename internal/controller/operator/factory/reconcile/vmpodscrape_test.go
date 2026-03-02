@@ -77,6 +77,20 @@ func TestVMPodScrape(t *testing.T) {
 		},
 	})
 
+	// no update on status change
+	f(opts{
+		new:  getVMPodScrape(),
+		prev: getVMPodScrape(),
+		predefinedObjects: []runtime.Object{
+			getVMPodScrape(func(v *vmv1beta1.VMPodScrape) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
+		},
+	})
+
 	// update spec
 	f(opts{
 		new: getVMPodScrape(func(v *vmv1beta1.VMPodScrape) {

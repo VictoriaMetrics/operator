@@ -11,9 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -21,9 +19,11 @@ import (
 )
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
+
 	type args struct {
 		cr                *vmv1beta1.VMAlert
 		predefinedObjects []runtime.Object
+		preRun            func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,25 +33,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(&vmv1beta1.VMAlert{}).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(args.predefinedObjects)
 		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, args.cr, fclient, nil)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -59,36 +49,37 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
+		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+			for i, action := range fclient.Actions {
 				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
 			}
 		}
 
 		for i, action := range want.actions {
-			if i >= len(actions) {
+			if i >= len(fclient.Actions) {
 				break
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
 
 	vmalertName := types.NamespacedName{Namespace: "default", Name: "vmalert-vmalert"}
-	vmalertMeta := metav1.ObjectMeta{Name: "vmalert-vmalert", Namespace: "default"}
 	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmalert-vmalert"}
 	objectMeta := metav1.ObjectMeta{Name: "vmalert", Namespace: "default"}
 
+	defaultCR := &vmv1beta1.VMAlert{
+		ObjectMeta: objectMeta,
+		Spec: vmv1beta1.VMAlertSpec{
+			Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
+			Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
+		},
+	}
+
 	// create vmalert with default config
 	f(args{
-		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: objectMeta,
-			Spec: vmv1beta1.VMAlertSpec{
-				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
-				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-			},
-		},
+		cr: defaultCR.DeepCopy(),
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -109,6 +100,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			},
 		})
+
+	vmalertMeta := metav1.ObjectMeta{Name: "vmalert-vmalert", Namespace: "default"}
 
 	// update vmalert
 	f(args{
@@ -199,4 +192,35 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			},
 		})
+
+	// no update on status change
+	f(args{
+		cr: defaultCR.DeepCopy(),
+		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
+			ctx := context.TODO()
+			// First reconcile to create objects
+			initialCR := cr.DeepCopy()
+			initialCR.Status.LastAppliedSpec = nil
+			_ = CreateOrUpdate(ctx, initialCR, c, nil)
+
+			// clear actions
+			c.Actions = nil
+
+			// Set status to current spec so it thinks it is up to date
+			cr.Status.LastAppliedSpec = &cr.Spec
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
+			{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
+			{Verb: "Get", Kind: "Service", Resource: vmalertName},
+			// TODO: bug?
+			{Verb: "Update", Kind: "Service", Resource: vmalertName},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},
+			{Verb: "Get", Kind: "Secret", Resource: vmalertName},
+			{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
+		},
+	})
 }

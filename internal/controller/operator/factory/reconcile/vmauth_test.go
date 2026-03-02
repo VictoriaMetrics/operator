@@ -24,8 +24,9 @@ func TestVMAuthReconcile(t *testing.T) {
 	getVMAuth := func(fns ...func(v *vmv1beta1.VMAuth)) *vmv1beta1.VMAuth {
 		v := &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-vmauth",
-				Namespace: "default",
+				Name:       "test-vmauth",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: vmv1beta1.VMAuthSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{

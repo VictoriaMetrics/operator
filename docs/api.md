@@ -3427,7 +3427,7 @@ Appears in: [VMStaticScrapeSpec](#vmstaticscrapespec)
 
 TargetRef describes target for user traffic forwarding.
 one of target types can be chosen:
-crd or static per targetRef.
+crds or static per targetRef.
 user can define multiple targetRefs with different ref Types.
 
 Appears in: [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserSpec](#vmuserspec)
@@ -3436,6 +3436,7 @@ Appears in: [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec
 | --- | --- |
 | URLMapCommon<a href="#targetref-urlmapcommon" id="targetref-urlmapcommon">#</a><br/>_[URLMapCommon](#urlmapcommon)_ | _(Required)_<br/> |
 | crd<a href="#targetref-crd" id="targetref-crd">#</a><br/>_[CRDRef](#crdref)_ | _(Optional)_<br/>CRD describes exist operator's CRD object,<br />operator generates access url based on CRD params. |
+| crds<a href="#targetref-crds" id="targetref-crds">#</a><br/>_[CRDRef](#crdref) array_ | _(Optional)_<br/>CRD describes existing operator's CRD objects,<br />operator generates access url based on CRD params. |
 | hosts<a href="#targetref-hosts" id="targetref-hosts">#</a><br/>_string array_ | _(Required)_<br/> |
 | paths<a href="#targetref-paths" id="targetref-paths">#</a><br/>_string array_ | _(Optional)_<br/>Paths - matched path to route. |
 | query_args<a href="#targetref-query_args" id="targetref-query_args">#</a><br/>_[QueryArg](#queryarg) array_ | _(Optional)_<br/>QueryArgs appends list of query arguments to generated URL |

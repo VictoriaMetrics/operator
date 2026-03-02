@@ -305,28 +305,39 @@ func (c *clusterWithURL) AsURL() string {
 }
 
 func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta1.TargetRef, crdURLCache map[string]string) error {
-	for j := range refs {
-		ref := &refs[j]
-		if ref.CRD == nil {
-			continue
+	updateCache := func(crd *vmv1beta1.CRDRef) error {
+		if crd == nil {
+			return nil
 		}
-		key := ref.CRD.AsKey()
+		key := crd.AsKey()
 		if _, ok := crdURLCache[key]; ok {
-			continue
+			return nil
 		}
-		crdObj, ok := crdNameToObject[ref.CRD.Kind]
+		crdObj, ok := crdNameToObject[crd.Kind]
 		if !ok {
-			return fmt.Errorf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
+			return fmt.Errorf("unsupported kind=%q", crd.Kind)
 		}
-		ref.CRD.AddRefToObj(crdObj.(client.Object))
+		crd.AddRefToObj(crdObj.(client.Object))
 		url, err := getAsURLObject(ctx, rclient, crdObj)
 		if err != nil {
 			if !build.IsNotFound(err) {
 				return fmt.Errorf("cannot get object as url: %w", err)
 			}
-			return fmt.Errorf("cannot find CRD link for kind=%q at ref idx=%d: %w", ref.CRD.Kind, j, err)
+			return fmt.Errorf("cannot find CRD link for kind=%q: %w", crd.Kind, err)
 		}
 		crdURLCache[key] = url
+		return nil
+	}
+	for j := range refs {
+		ref := &refs[j]
+		if err := updateCache(ref.CRD); err != nil {
+			return fmt.Errorf("targetRefs[%d].crd: %w", j, err)
+		}
+		for i, crd := range ref.CRDs {
+			if err := updateCache(&crd); err != nil {
+				return fmt.Errorf("targetRefs[%d].crds[%d]: %w", j, i, err)
+			}
+		}
 	}
 	return nil
 }
@@ -588,6 +599,14 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
 			}
 			urlPrefixes = append(urlPrefixes, urlPrefix)
+		case len(ref.CRDs) > 0:
+			for i, crd := range ref.CRDs {
+				urlPrefix := crdURLCache[crd.AsKey()]
+				if urlPrefix == "" {
+					return nil, fmt.Errorf("cannot find crdRef[%d] target: %q, for user: %s", i, crd.AsKey(), userName)
+				}
+				urlPrefixes = append(urlPrefixes, urlPrefix)
+			}
 		case len(ref.Static.URL) > 0:
 			urlPrefixes = append(urlPrefixes, ref.Static.URL)
 		case len(ref.Static.URLs) > 0:
@@ -685,7 +704,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
-		if ref.Static == nil && ref.CRD == nil {
+		if ref.Static == nil && ref.CRD == nil && len(ref.CRDs) == 0 {
 			continue
 		}
 		urlPrefix, err := handleRef(ref)

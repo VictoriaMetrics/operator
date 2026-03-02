@@ -3766,6 +3766,11 @@ func (in *TargetRef) DeepCopyInto(out *TargetRef) {
 		*out = new(CRDRef)
 		**out = **in
 	}
+	if in.CRDs != nil {
+		in, out := &in.CRDs, &out.CRDs
+		*out = make([]CRDRef, len(*in))
+		copy(*out, *in)
+	}
 	if in.Static != nil {
 		in, out := &in.Static, &out.Static
 		*out = new(StaticRef)

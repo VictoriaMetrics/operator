@@ -55,13 +55,17 @@ type VMUserSpec struct {
 
 // TargetRef describes target for user traffic forwarding.
 // one of target types can be chosen:
-// crd or static per targetRef.
+// crds or static per targetRef.
 // user can define multiple targetRefs with different ref Types.
 type TargetRef struct {
 	// CRD describes exist operator's CRD object,
 	// operator generates access url based on CRD params.
 	// +optional
 	CRD *CRDRef `json:"crd,omitempty"`
+	// CRD describes existing operator's CRD objects,
+	// operator generates access url based on CRD params.
+	// +optional
+	CRDs []CRDRef `json:"crds,omitempty"`
 	// Static - user defined url for traffic forward,
 	// for instance http://vmsingle:8428
 	// +optional
@@ -87,11 +91,18 @@ type TargetRef struct {
 }
 
 func (r *TargetRef) validate(isRetryCodesSet bool) error {
-	if r.CRD != nil && r.Static != nil {
-		return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
+	var refs []string
+	if r.CRD != nil {
+		refs = append(refs, "crd")
 	}
-	if r.CRD == nil && r.Static == nil {
-		return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+	if len(r.CRDs) > 0 {
+		refs = append(refs, "crds")
+	}
+	if r.Static != nil {
+		refs = append(refs, "static")
+	}
+	if len(refs) != 1 {
+		return fmt.Errorf("targetRef validation failed, exactly one of `crd`, `crds` or `static` must be configured, found: [%s]", strings.Join(refs, ","))
 	}
 	if r.Static != nil {
 		if r.Static.URL == "" && len(r.Static.URLs) == 0 {
@@ -111,6 +122,11 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 	if r.CRD != nil {
 		if r.CRD.Namespace == "" || r.CRD.Name == "" {
 			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
+		}
+	}
+	for i, crd := range r.CRDs {
+		if crd.Namespace == "" || crd.Name == "" {
+			return fmt.Errorf("crds[%d].name and crds[%d].namespace cannot be empty", i, i)
 		}
 	}
 	if err := validateHTTPHeaders(r.ResponseHeaders); err != nil {

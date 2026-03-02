@@ -8,6 +8,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -76,7 +77,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VMAnomaly{},
 		&vmv1.VLAgent{},
 	)
-	s.AddKnownTypes(gwapiv1.SchemeGroupVersion,
+	s.AddKnownTypes(schema.GroupVersion(gwapiv1.GroupVersion),
 		&gwapiv1.HTTPRouteList{},
 		&gwapiv1.HTTPRoute{},
 	)

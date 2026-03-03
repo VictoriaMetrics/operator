@@ -22,8 +22,8 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend
-
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
+* BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): do not ignore ExtraStorageNodes for select, when default storage is disabled. See [#1910](https://github.com/VictoriaMetrics/operator/issues/1910).
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

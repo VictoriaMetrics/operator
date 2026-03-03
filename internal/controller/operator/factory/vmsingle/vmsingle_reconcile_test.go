@@ -12,9 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -25,6 +23,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr                *vmv1beta1.VMSingle
 		predefinedObjects []runtime.Object
+		preRun            func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -34,25 +33,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(&vmv1beta1.VMSingle{}).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(args.predefinedObjects)
 		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, args.cr, fclient)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -60,19 +49,19 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
+		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+			for i, action := range fclient.Actions {
 				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
 			}
 		}
 
 		for i, action := range want.actions {
-			if i >= len(actions) {
+			if i >= len(fclient.Actions) {
 				break
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
 
@@ -186,6 +175,39 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				// Deployment
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 				{Verb: "Update", Kind: "Deployment", Resource: vmsingleName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
+			},
+		})
+
+	// no update on status change
+	f(args{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: objectMeta,
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
+			ctx := context.TODO()
+			// Create objects first
+			_ = CreateOrUpdate(ctx, cr, c)
+
+			// clear actions
+			c.Actions = nil
+
+			// Update status to simulate consistency
+			cr.Status.LastAppliedSpec = &cr.Spec
+		},
+	},
+		want{
+			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
+				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
+				{Verb: "Update", Kind: "Service", Resource: vmsingleName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 			},
 		})

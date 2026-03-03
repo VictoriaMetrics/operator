@@ -18,14 +18,14 @@ func GetInterceptorsWithObjects() interceptor.Funcs {
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 			switch v := obj.(type) {
 			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
+				v.Status.ObservedGeneration = v.Generation + 1
 				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.UpdateRevision = "v1"
 				v.Status.CurrentRevision = "v1"
 			case *appsv1.Deployment:
-				v.Status.ObservedGeneration = v.Generation
+				v.Status.ObservedGeneration = v.Generation + 1
 				v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
 					Type:   appsv1.DeploymentProgressing,
 					Reason: "NewReplicaSetAvailable",
@@ -56,14 +56,14 @@ func GetInterceptorsWithObjects() interceptor.Funcs {
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
 			switch v := obj.(type) {
 			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
+				v.Status.ObservedGeneration = v.Generation + 1
 				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.UpdateRevision = "v1"
 				v.Status.CurrentRevision = "v1"
 			case *appsv1.Deployment:
-				v.Status.ObservedGeneration = v.Generation
+				v.Status.ObservedGeneration = v.Generation + 1
 				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
 				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)

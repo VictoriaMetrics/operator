@@ -210,7 +210,7 @@ func Test_updateSTSPVC(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		ctx := context.TODO()
-		err := updateSTSPVC(ctx, cl, o.sts, nil)
+		err := updateSTSPVC(ctx, cl, o.sts)
 		if o.wantErr {
 			assert.Error(t, err)
 		} else {

@@ -82,7 +82,7 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	return nil
 }
 
-func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, owner *metav1.OwnerReference) error {
+func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -120,7 +120,7 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 			continue
 		}
 		// update PVC size and metadata if it's needed
-		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil, owner); err != nil {
+		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, nil, nil); err != nil {
 			return err
 		}
 	}

@@ -139,7 +139,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		}
 		// check if pvcs need to resize
 		if cr.HasClaim {
-			return updateSTSPVC(ctx, rclient, &existingObj, owner)
+			return updateSTSPVC(ctx, rclient, &existingObj)
 		}
 		return nil
 	})

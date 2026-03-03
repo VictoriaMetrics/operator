@@ -119,8 +119,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Role", Resource: vmauthName},
 				{Verb: "Get", Kind: "RoleBinding", Resource: vmauthName},
 				{Verb: "Get", Kind: "Service", Resource: vmauthName},
-				// TODO: bug
-				{Verb: "Update", Kind: "Service", Resource: vmauthName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmauthName},
 				{Verb: "Get", Kind: "Secret", Resource: configSecretName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
@@ -155,8 +153,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "Role", Resource: vmauthName},
 			{Verb: "Get", Kind: "RoleBinding", Resource: vmauthName},
 			{Verb: "Get", Kind: "Service", Resource: vmauthName},
-			// TODO: bug
-			{Verb: "Update", Kind: "Service", Resource: vmauthName},
 			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmauthName},
 			{Verb: "Get", Kind: "Secret", Resource: configSecretName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmauthName},

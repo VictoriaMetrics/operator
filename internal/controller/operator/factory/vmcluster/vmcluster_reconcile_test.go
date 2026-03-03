@@ -197,21 +197,18 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // wait for ready
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
-				{Verb: "Update", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // wait for ready
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
-				{Verb: "Update", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
 
 				// VMInsert
 				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
 				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
 				{Verb: "Get", Kind: "Service", Resource: vminsertName},
-				{Verb: "Update", Kind: "Service", Resource: vminsertName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
 			},
 		})
@@ -286,21 +283,18 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // wait for ready
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
-				{Verb: "Update", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // wait for ready
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
-				{Verb: "Update", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
 
 				// VMInsert
 				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
 				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
 				{Verb: "Get", Kind: "Service", Resource: vminsertName},
-				{Verb: "Update", Kind: "Service", Resource: vminsertName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
 			},
 		})

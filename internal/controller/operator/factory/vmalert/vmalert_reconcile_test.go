@@ -110,8 +110,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
 			ctx := context.TODO()
-			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c, nil)
+			// Create objects first using a deep copy to avoid mutating the CR
+			_ = CreateOrUpdate(ctx, cr.DeepCopy(), c, nil)
 
 			// clear actions
 			c.Actions = nil
@@ -145,8 +145,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
 			ctx := context.TODO()
-			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c, nil)
+			// Create objects first using a deep copy to avoid mutating the CR
+			_ = CreateOrUpdate(ctx, cr.DeepCopy(), c, nil)
 
 			// clear actions
 			c.Actions = nil
@@ -156,18 +156,14 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 	}, want{
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
 			{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
 			{Verb: "Get", Kind: "Service", Resource: vmalertName},
-			// TODO: bug?
-			{Verb: "Update", Kind: "Service", Resource: vmalertName},
 			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},
 			{Verb: "Get", Kind: "Secret", Resource: vmalertName},
 			{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
-			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
-			{Verb: "Get", Kind: "Ingress", Resource: vmalertName},
-			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmalertName},
 		},
 	})
 }

@@ -109,7 +109,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
-				{Verb: "Update", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},
 				// Deployment
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
@@ -143,7 +142,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
-				{Verb: "Update", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},

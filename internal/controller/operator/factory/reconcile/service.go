@@ -114,7 +114,11 @@ func reconcileService(ctx context.Context, rclient client.Client, newObj, prevOb
 		}
 	}
 
+	// Normalize both old and new objects with scheme defaults
+	// this ensures fields set on admission (e.g. sessionAffinity,
+	// internalTrafficPolicy) are defaulted and no extra Update is triggered
 	rclient.Scheme().Default(newObj)
+	rclient.Scheme().Default(&existingObj)
 	metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 	if err != nil {
 		return err

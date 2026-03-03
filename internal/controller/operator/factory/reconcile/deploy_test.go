@@ -142,9 +142,6 @@ func TestDeployReconcile(t *testing.T) {
 			getDeploy(func(d *appsv1.Deployment) {
 				d.Status.ReadyReplicas = 1
 				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
-				d.Spec.Template.Annotations = map[string]string{
-					"new-annotation": "value",
-				}
 			}),
 		},
 		actions: []k8stools.ClientAction{

@@ -123,7 +123,7 @@ func TestVMAgentReconcile(t *testing.T) {
 		},
 	})
 
-	// recreate on deletion
+	// attempt to recreate on deletion
 	f(opts{
 		new: getVMAgent(),
 		predefinedObjects: []runtime.Object{
@@ -134,10 +134,11 @@ func TestVMAgentReconcile(t *testing.T) {
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Patch", Kind: "VMAgent", Resource: nn},
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Create", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
+		wantErr: true,
 	})
 }

@@ -28,6 +28,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.Deployment
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -40,14 +41,14 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 			}
 			return fmt.Errorf("cannot get Deployment=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 		spec := &newObj.Spec
 		if hasHPA {
 			spec.Replicas = existingObj.Spec.Replicas
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

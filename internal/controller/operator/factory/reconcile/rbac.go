@@ -21,6 +21,7 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj rbacv1.RoleBinding
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -30,10 +31,10 @@ func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 			}
 			return fmt.Errorf("cannot get exist RoleBinding=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
@@ -61,6 +62,7 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj rbacv1.Role
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -70,10 +72,10 @@ func Role(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.Ro
 			}
 			return fmt.Errorf("cannot get exist Role=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
@@ -97,6 +99,7 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj rbacv1.ClusterRoleBinding
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -106,10 +109,10 @@ func ClusterRoleBinding(ctx context.Context, rclient client.Client, newObj, prev
 			}
 			return fmt.Errorf("cannot get ClusterRoleBinding=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer)
 		if err != nil {
 			return err
 		}
@@ -137,6 +140,7 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj rbacv1.ClusterRole
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -146,10 +150,10 @@ func ClusterRole(ctx context.Context, rclient client.Client, newObj, prevObj *rb
 			}
 			return fmt.Errorf("cannot get exist ClusterRole=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, nil, removeFinalizer)
 		if err != nil {
 			return err
 		}

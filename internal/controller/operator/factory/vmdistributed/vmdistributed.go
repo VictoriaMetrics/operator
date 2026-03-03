@@ -38,12 +38,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		Namespace: cr.Namespace,
 	}
 
-	logger.WithContext(ctx).Info("starting reconciliation", "name", nsn)
+	logger.WithContext(ctx).Info("starting reconciliation", "name", nsn.String())
 
 	// build VMDistributed desired zones state
 	zs, err := getZones(ctx, rclient, cr)
 	if err != nil {
-		return fmt.Errorf("failed to build distributed zones VMDistributed=%s: %w", nsn, err)
+		return fmt.Errorf("failed to build distributed zones VMDistributed=%s: %w", nsn.String(), err)
 	}
 
 	// Apply changes to VMClusters one by one if new spec needs to be applied
@@ -56,15 +56,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
 		if i != lastZoneIdx && zs.hasChanges[i] {
 			item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
-			logger.WithContext(ctx).Info("pausing between zone updates", "name", nsn, "zone", item, "updatePause", cr.Spec.ZoneCommon.UpdatePause.Duration)
+			logger.WithContext(ctx).Info("pausing between zone updates", "name", nsn.String(), "zone", item, "updatePause", cr.Spec.ZoneCommon.UpdatePause.Duration)
 			select {
 			case <-time.After(cr.Spec.ZoneCommon.UpdatePause.Duration):
 			case <-ctx.Done():
-				return fmt.Errorf("update of VMDistributed=%s was canceled by controller", nsn)
+				return fmt.Errorf("update of VMDistributed=%s was canceled by controller", nsn.String())
 			}
 		}
 	}
 
-	logger.WithContext(ctx).Info("reconciliation completed", "name", nsn)
+	logger.WithContext(ctx).Info("reconciliation completed", "name", nsn.String())
 	return nil
 }

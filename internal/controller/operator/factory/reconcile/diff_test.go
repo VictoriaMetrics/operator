@@ -14,11 +14,11 @@ func TestDiffDeepOk(t *testing.T) {
 	}
 	var a1Slice []string
 	a2SliceNonNil := make([]string, 0)
-	f(a1Slice, a2SliceNonNil, `{[]string}:-"[]" +"nil"`)
+	f(a1Slice, a2SliceNonNil, ``)
 	a1MapNonNil := make(map[int]int, 0)
 	var a2MapNil map[int]int
-	f(a1MapNonNil, a2MapNil, `{map[int]int}:-"nil" +"map[]"`)
-	f(5, 5, "")
+	f(a1MapNonNil, a2MapNil, ``)
+	f(5, 5, ``)
 	f(5, 6, `{int}:-"6" +"5"`)
 	f("new", "line", `{string}:-"line" +"new"`)
 
@@ -32,7 +32,7 @@ func TestDiffDeepOk(t *testing.T) {
 		Field1: make([]string, 0),
 		Field3: 5,
 	}
-	f(a1StructEmpty, a2StructFilled, `{reconcile.cmpStruct}.Field1:-"[]" +"nil",{reconcile.cmpStruct}.Field3:-"5" +"0"`)
+	f(a1StructEmpty, a2StructFilled, `{reconcile.cmpStruct}.Field3:-"5" +"0"`)
 
 	var a2StructEmptyPtr *cmpStruct
 	a1StructFilledPtr := &cmpStruct{
@@ -54,7 +54,7 @@ func TestDiffDeepDerivativeOk(t *testing.T) {
 	var newM map[int]int
 	oldM := make(map[int]int, 0)
 	f(oldM, newM, ``)
-	f(5, 5, "")
+	f(5, 5, ``)
 	f(5, 6, `{int}:-"6" +"5"`)
 	f("new", "line", `{string}:-"line" +"new"`)
 

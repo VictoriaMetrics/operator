@@ -22,6 +22,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := false
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMAuth
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -34,10 +35,10 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 			}
 			return fmt.Errorf("cannot get VMAuth=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, false)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

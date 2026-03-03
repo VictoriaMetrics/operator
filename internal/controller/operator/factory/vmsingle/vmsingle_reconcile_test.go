@@ -5,13 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -21,9 +16,8 @@ import (
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
-		cr                *vmv1beta1.VMSingle
-		predefinedObjects []runtime.Object
-		preRun            func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle)
+		cr     *vmv1beta1.VMSingle
+		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,7 +27,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		fclient := k8stools.GetTestClientWithActionsAndObjects(args.predefinedObjects)
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(args.cr)
@@ -68,9 +62,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	name := "example-single"
 	namespace := "default"
 	vmsingleName := types.NamespacedName{Namespace: namespace, Name: "vmsingle-" + name}
-	tlsAssetName := types.NamespacedName{Namespace: namespace, Name: "tls-assets-vmsingle-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
-	childObjectMeta := metav1.ObjectMeta{Name: vmsingleName.Name, Namespace: namespace}
 
 	// create vmsingle with default config
 	f(args{
@@ -94,7 +86,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
-	// update vmsingle
+	// update vmsingle with no changes
 	f(args{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: objectMeta,
@@ -104,77 +96,23 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: childObjectMeta},
-			&rbacv1.Role{ObjectMeta: childObjectMeta},
-			&rbacv1.RoleBinding{ObjectMeta: childObjectMeta},
-			&corev1.Service{
-				ObjectMeta: childObjectMeta,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "10.0.0.1",
-					Selector: map[string]string{
-						"app.kubernetes.io/name":      "vmsingle",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-					},
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   "TCP",
-							Port:       8428,
-							TargetPort: intstr.Parse("8428"),
-						},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: childObjectMeta},
-			&corev1.Secret{ObjectMeta: childObjectMeta},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: tlsAssetName.Name, Namespace: namespace}},
-			&appsv1.Deployment{
-				ObjectMeta: childObjectMeta,
-				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app.kubernetes.io/name":      "vmsingle",
-							"app.kubernetes.io/instance":  name,
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/name":      "vmsingle",
-								"app.kubernetes.io/instance":  name,
-								"app.kubernetes.io/component": "monitoring",
-								"managed-by":                  "vm-operator",
-							},
-						},
-					},
-				},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
+		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
+			ctx := context.TODO()
+			// Create objects first
+			_ = CreateOrUpdate(ctx, cr, c)
+
+			// clear actions
+			c.Actions = nil
 		},
 	},
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Update", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vmsingleName},
 				// Deployment
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
-				{Verb: "Update", Kind: "Deployment", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 			},
 		})

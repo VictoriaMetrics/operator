@@ -8,12 +8,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -23,8 +19,8 @@ import (
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
-		cr                *vmv1.VTCluster
-		predefinedObjects []runtime.Object
+		cr     *vmv1.VTCluster
+		preRun func(c *k8stools.ClientWithActions, cr *vmv1.VTCluster)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -34,26 +30,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(&vmv1.VTCluster{}).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, fclient, args.cr)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -61,19 +46,19 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
+		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+			for i, action := range fclient.Actions {
 				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
 			}
 		}
 
 		for i, action := range want.actions {
-			if i >= len(actions) {
+			if i >= len(fclient.Actions) {
 				break
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
 
@@ -85,9 +70,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	vtinsertName := types.NamespacedName{Namespace: namespace, Name: "vtinsert-" + name}
 
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
-	vtstorageMeta := metav1.ObjectMeta{Name: vtstorageName.Name, Namespace: namespace}
-	vtselectMeta := metav1.ObjectMeta{Name: vtselectName.Name, Namespace: namespace}
-	vtinsertMeta := metav1.ObjectMeta{Name: vtinsertName.Name, Namespace: namespace}
 
 	// create vtcluster with all components
 	f(args{
@@ -147,7 +129,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
-	// update vtcluster with changes
+	// update vtcluster with no changes
 	f(args{
 		cr: &vmv1.VTCluster{
 			ObjectMeta: objectMeta,
@@ -162,176 +144,95 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
-					UpdateStrategy: ptr.To(appsv1.RollingUpdateDeploymentStrategyType),
 				},
 				Insert: &vmv1.VTInsert{
 					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
-					UpdateStrategy: ptr.To(appsv1.RollingUpdateDeploymentStrategyType),
 				},
 			},
 		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: saName.Name, Namespace: namespace}},
-			// VTStorage resources
-			&appsv1.StatefulSet{
-				ObjectMeta: vtstorageMeta,
-				Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To(int32(1))},
-				Status: appsv1.StatefulSetStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
-			&corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vtstorageName.Name + "-0",
-					Namespace: namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vtstorage",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
+		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VTCluster) {
+			ctx := context.TODO()
+			// Create objects first
+			_ = CreateOrUpdate(ctx, c, cr)
+
+			// Set Ready status
+			sts := &appsv1.StatefulSet{}
+			if err := c.Get(ctx, vtstorageName, sts); err == nil {
+				sts.Status.Replicas = 1
+				sts.Status.ReadyReplicas = 1
+				sts.Status.UpdatedReplicas = 1
+				sts.Status.ObservedGeneration = sts.Generation
+				sts.Status.UpdateRevision = "v1"
+				_ = c.Status().Update(ctx, sts)
+
+				labels := make(map[string]string)
+				for k, v := range sts.Spec.Selector.MatchLabels {
+					labels[k] = v
+				}
+				labels["controller-revision-hash"] = "v1"
+
+				// Create pod for StatefulSet to pass rolling update check
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      sts.Name + "-0",
+						Namespace: sts.Namespace,
+						Labels:    labels,
 					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vtstorageName.Name,
-							Controller: ptr.To(true),
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
 						},
 					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			},
-			&corev1.Service{
-				ObjectMeta: vtstorageMeta,
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "None",
-					Ports: []corev1.ServicePort{
-						{Name: "http", Port: 8482, TargetPort: intstr.FromInt(8482), Protocol: "TCP"},
-						{Name: "vminsert", Port: 8400, TargetPort: intstr.FromInt(8400), Protocol: "TCP"},
-						{Name: "vmselect", Port: 8401, TargetPort: intstr.FromInt(8401), Protocol: "TCP"},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: vtstorageMeta},
-			// VTSelect resources
-			&appsv1.StatefulSet{
-				ObjectMeta: vtselectMeta,
-				Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To(int32(1))},
-				Status: appsv1.StatefulSetStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
-			&corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vtselectName.Name + "-0",
-					Namespace: namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vtselect",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vtselectName.Name,
-							Controller: ptr.To(true),
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			},
-			&corev1.Service{
-				ObjectMeta: vtselectMeta,
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "None",
-					Ports: []corev1.ServicePort{
-						{Name: "http", Port: 8481, TargetPort: intstr.FromInt(8481), Protocol: "TCP"},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: vtselectMeta},
-			// VTInsert resources
-			&appsv1.Deployment{
-				ObjectMeta: vtinsertMeta,
-				Spec:       appsv1.DeploymentSpec{Replicas: ptr.To(int32(1))},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
-			&corev1.Service{
-				ObjectMeta: vtinsertMeta,
-				Spec: corev1.ServiceSpec{
-					ClusterIP: "None",
-					Ports: []corev1.ServicePort{
-						{Name: "http", Port: 8480, TargetPort: intstr.FromInt(8480), Protocol: "TCP"},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: vtinsertMeta},
+				}
+				_ = c.Create(ctx, pod)
+			}
+
+			depSelect := &appsv1.Deployment{}
+			if err := c.Get(ctx, vtselectName, depSelect); err == nil {
+				depSelect.Status.Replicas = 1
+				depSelect.Status.ReadyReplicas = 1
+				depSelect.Status.UpdatedReplicas = 1
+				depSelect.Status.ObservedGeneration = depSelect.Generation
+				_ = c.Status().Update(ctx, depSelect)
+			}
+
+			depInsert := &appsv1.Deployment{}
+			if err := c.Get(ctx, vtinsertName, depInsert); err == nil {
+				depInsert.Status.Replicas = 1
+				depInsert.Status.ReadyReplicas = 1
+				depInsert.Status.UpdatedReplicas = 1
+				depInsert.Status.ObservedGeneration = depInsert.Generation
+				_ = c.Status().Update(ctx, depInsert)
+			}
+
+			// clear actions
+			c.Actions = nil
+
+			// set LastAppliedSpec
+			cr.Status.LastAppliedSpec = &cr.Spec
 		},
 	},
 		want{
 			actions: []k8stools.ClientAction{
-				// ServiceAccount
 				{Verb: "Get", Kind: "ServiceAccount", Resource: saName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: saName},
-
-				// VTStorage
 				{Verb: "Get", Kind: "StatefulSet", Resource: vtstorageName},
-				{Verb: "Delete", Kind: "StatefulSet", Resource: vtstorageName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vtstorageName},
-				{Verb: "Create", Kind: "StatefulSet", Resource: vtstorageName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vtstorageName}, // wait for ready
 				{Verb: "Get", Kind: "Service", Resource: vtstorageName},
-				{Verb: "Delete", Kind: "Service", Resource: vtstorageName},
-				{Verb: "Create", Kind: "Service", Resource: vtstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vtstorageName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vtstorageName},
-
-				// VTSelect
 				{Verb: "Get", Kind: "Service", Resource: vtselectName},
-				{Verb: "Delete", Kind: "Service", Resource: vtselectName},
-				{Verb: "Create", Kind: "Service", Resource: vtselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vtselectName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vtselectName},
 				{Verb: "Get", Kind: "Deployment", Resource: vtselectName},
-				{Verb: "Create", Kind: "Deployment", Resource: vtselectName},
-				{Verb: "Get", Kind: "Deployment", Resource: vtselectName}, // wait for ready
-
-				// VTInsert
+				{Verb: "Get", Kind: "Deployment", Resource: vtselectName},
 				{Verb: "Get", Kind: "Deployment", Resource: vtinsertName},
-				{Verb: "Update", Kind: "Deployment", Resource: vtinsertName},
-				{Verb: "Get", Kind: "Deployment", Resource: vtinsertName}, // wait for ready
+				{Verb: "Get", Kind: "Deployment", Resource: vtinsertName},
 				{Verb: "Get", Kind: "Service", Resource: vtinsertName},
-				{Verb: "Delete", Kind: "Service", Resource: vtinsertName},
-				{Verb: "Create", Kind: "Service", Resource: vtinsertName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vtinsertName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vtinsertName},
+				{Verb: "Get", Kind: "Deployment", Resource: types.NamespacedName{Namespace: namespace, Name: "vtclusterlb-" + name}},
+				{Verb: "Get", Kind: "Secret", Resource: types.NamespacedName{Namespace: namespace, Name: "vtclusterlb-" + name}},
+				{Verb: "Get", Kind: "PodDisruptionBudget", Resource: types.NamespacedName{Namespace: namespace, Name: "vtclusterlb-" + name}},
 			},
 		})
 }

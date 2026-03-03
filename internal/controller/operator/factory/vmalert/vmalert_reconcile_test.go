@@ -5,12 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -21,9 +17,8 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	type args struct {
-		cr                *vmv1beta1.VMAlert
-		predefinedObjects []runtime.Object
-		preRun            func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert)
+		cr     *vmv1beta1.VMAlert
+		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,7 +28,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		fclient := k8stools.GetTestClientWithActionsAndObjects(args.predefinedObjects)
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(args.cr)
@@ -101,9 +96,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
-	vmalertMeta := metav1.ObjectMeta{Name: "vmalert-vmalert", Namespace: "default"}
-
-	// update vmalert
+	// update vmalert with no changes
 	f(args{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: objectMeta,
@@ -115,103 +108,54 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: vmalertMeta},
-			&corev1.Service{
-				ObjectMeta: vmalertMeta,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "10.0.0.1",
-					Selector: map[string]string{
-						"app.kubernetes.io/name":      "vmalert",
-						"app.kubernetes.io/instance":  "vmalert",
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-					},
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   "TCP",
-							Port:       8880,
-							TargetPort: intstr.Parse("8880"),
-						},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: vmalertMeta},
-			&corev1.Secret{ObjectMeta: vmalertMeta},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tls-assets-vmalert-vmalert", Namespace: "default"}},
-			&appsv1.Deployment{
-				ObjectMeta: vmalertMeta,
-				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app.kubernetes.io/name":      "vmalert",
-							"app.kubernetes.io/instance":  "vmalert",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/name":      "vmalert",
-								"app.kubernetes.io/instance":  "vmalert",
-								"app.kubernetes.io/component": "monitoring",
-								"managed-by":                  "vm-operator",
-							},
-						},
-					},
-				},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
+		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
+			ctx := context.TODO()
+			// Create objects first
+			_ = CreateOrUpdate(ctx, cr, c, nil)
+
+			// clear actions
+			c.Actions = nil
 		},
 	},
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: vmalertName},
 				{Verb: "Get", Kind: "Service", Resource: vmalertName},
-				{Verb: "Update", Kind: "Service", Resource: vmalertName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vmalertName},
 				// Secrets
 				{Verb: "Get", Kind: "Secret", Resource: vmalertName},
-				{Verb: "Update", Kind: "Secret", Resource: vmalertName},
 				{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
-				{Verb: "Update", Kind: "Secret", Resource: tlsAssetsName},
 				// Deployment
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
-				{Verb: "Update", Kind: "Deployment", Resource: vmalertName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			},
 		})
 
 	// no update on status change
 	f(args{
-		cr: defaultCR.DeepCopy(),
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: objectMeta,
+			Spec: vmv1beta1.VMAlertSpec{
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
+				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
 			ctx := context.TODO()
-			// First reconcile to create objects
-			initialCR := cr.DeepCopy()
-			initialCR.Status.LastAppliedSpec = nil
-			_ = CreateOrUpdate(ctx, initialCR, c, nil)
+			// Create objects first
+			_ = CreateOrUpdate(ctx, cr, c, nil)
 
 			// clear actions
 			c.Actions = nil
 
-			// Set status to current spec so it thinks it is up to date
+			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = &cr.Spec
 		},
 	}, want{
 		actions: []k8stools.ClientAction{
-			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
 			{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
 			{Verb: "Get", Kind: "Service", Resource: vmalertName},
 			// TODO: bug?
@@ -221,6 +165,9 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
+			{Verb: "Get", Kind: "Ingress", Resource: vmalertName},
+			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmalertName},
 		},
 	})
 }

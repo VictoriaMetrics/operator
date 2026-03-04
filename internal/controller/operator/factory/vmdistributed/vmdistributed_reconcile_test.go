@@ -6,7 +6,9 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -273,4 +275,69 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 			},
 		})
+}
+
+func Test_CreateOrUpdate_Paused(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-dist-paused",
+			Namespace: "default",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			Paused: true,
+			Zones: []vmv1alpha1.VMDistributedZone{
+				{
+					Name: "zone-1",
+					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+						Spec: vmv1beta1.VMClusterSpec{
+							RetentionPeriod: "1",
+							VMStorage: &vmv1beta1.VMStorage{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+							VMSelect: &vmv1beta1.VMSelect{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+							VMInsert: &vmv1beta1.VMInsert{
+								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that child objects are not created
+	var vmCluster vmv1beta1.VMCluster
+	err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.NoError(t, err)
+
+	// pause and update retention
+	cr.Spec.Paused = true
+	cr.Spec.Zones[0].VMCluster.Spec.RetentionPeriod = "2"
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that retention is not updated
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.NoError(t, err)
+	assert.Equal(t, "1", vmCluster.Spec.RetentionPeriod)
 }

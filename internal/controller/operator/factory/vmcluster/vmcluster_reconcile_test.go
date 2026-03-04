@@ -261,7 +261,7 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1beta1.VMClusterSpec{
 			RetentionPeriod: "1",
 			VMStorage: &vmv1beta1.VMStorage{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

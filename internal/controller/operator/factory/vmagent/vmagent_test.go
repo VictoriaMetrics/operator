@@ -2163,7 +2163,7 @@ serviceaccountname: vmagent-agent`,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "vm-repo",
 						Tag:        "v1.97.1",

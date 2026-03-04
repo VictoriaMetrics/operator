@@ -155,7 +155,7 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VTSingleSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 				Paused:       true,
 			},

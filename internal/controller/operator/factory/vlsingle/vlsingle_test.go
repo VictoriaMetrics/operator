@@ -186,7 +186,7 @@ func TestCreateOrUpdateVLSingle_Paused(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLSingleSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Paused: true,
 			},
 		},

@@ -176,7 +176,7 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1beta1.VMAlertSpec{
 			Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
 			Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 				Paused:       true,
 			},

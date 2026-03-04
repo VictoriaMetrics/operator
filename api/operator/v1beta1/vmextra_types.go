@@ -46,11 +46,11 @@ const (
 )
 
 const (
-	httpPathPrefixFlag   = "http.pathPrefix"
-	httpUseProxyProtocol = "httpListenAddr.useProxyProtocol"
-	reloadAuthKeyFlag    = "reloadAuthKey"
-	tlsFlag              = "tls"
-	snapshotAuthKeyFlag  = "snapshotAuthKey"
+	httpPathPrefixFlag       = "http.pathPrefix"
+	httpUseProxyProtocolFlag = "httpListenAddr.useProxyProtocol"
+	reloadAuthKeyFlag        = "reloadAuthKey"
+	tlsFlag                  = "tls"
+	snapshotAuthKeyFlag      = "snapshotAuthKey"
 
 	healthPath     = "/health"
 	metricsPath    = "/metrics"
@@ -131,9 +131,9 @@ func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bo
 	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
 }
 
-// UseProxyProtocol implements build.probeCRD interface
+// UseProxyProtocol is a helper for build.probeCRD interface implementations
 func UseProxyProtocol(extraArgs map[string]string) bool {
-	if v, ok := extraArgs[httpUseProxyProtocol]; ok {
+	if v, ok := extraArgs[httpUseProxyProtocolFlag]; ok {
 		if idx := strings.Index(v, ","); idx != -1 {
 			v = v[:idx]
 		}

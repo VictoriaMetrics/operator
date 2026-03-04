@@ -247,17 +247,17 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1.VTClusterSpec{
 			Paused: true,
 			Storage: &vmv1.VTStorage{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			Select: &vmv1.VTSelect{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			Insert: &vmv1.VTInsert{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

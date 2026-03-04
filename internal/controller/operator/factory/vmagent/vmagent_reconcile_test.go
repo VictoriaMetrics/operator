@@ -228,7 +228,7 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 				{URL: "http://remote-write"},
 			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 				Paused:       true,
 			},

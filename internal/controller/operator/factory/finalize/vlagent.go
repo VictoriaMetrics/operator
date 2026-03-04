@@ -41,7 +41,6 @@ func OnVLAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLAgen
 		}},
 		&appsv1.DaemonSet{ObjectMeta: objMeta},
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
-		&corev1.PersistentVolumeClaim{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
 	if cr.Spec.ServiceSpec != nil {

@@ -84,6 +84,9 @@ func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
 // CreateOrUpdate creates deployment for vlagent and configures it
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1.VLAgent
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

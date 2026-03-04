@@ -553,4 +553,29 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+
+	// paused
+	f(opts{
+		cr: &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "paused",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLClusterSpec{
+				Paused: true,
+				VLInsert: &vmv1.VLInsert{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+			var dep appsv1.Deployment
+			// should not exist
+			err := rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &dep)
+			assert.Error(t, err)
+			assert.True(t, k8serrors.IsNotFound(err))
+		},
+	})
 }

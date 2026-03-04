@@ -19,6 +19,9 @@ import (
 
 // CreateOrUpdate syncs VTCluster object to the desired state
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTCluster) error {
+	if cr.Paused() {
+		return nil
+	}
 	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err

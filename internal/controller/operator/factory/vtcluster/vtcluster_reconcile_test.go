@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -234,4 +236,60 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "PodDisruptionBudget", Resource: types.NamespacedName{Namespace: namespace, Name: "vtclusterlb-" + name}},
 			},
 		})
+}
+
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	cr := &vmv1.VTCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-cluster",
+			Namespace: "default",
+		},
+		Spec: vmv1.VTClusterSpec{
+			Paused: true,
+			Storage: &vmv1.VTStorage{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			Select: &vmv1.VTSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			Insert: &vmv1.VTInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+	}
+	nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+
+	var sts appsv1.StatefulSet
+	err := fclient.Get(ctx, nsn, &sts)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+	err = fclient.Get(ctx, nsn, &sts)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.Storage.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, nsn, &sts)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *sts.Spec.Replicas)
 }

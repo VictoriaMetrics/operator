@@ -12,7 +12,7 @@ aliases:
 ---
 
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
-**Release date:** 03 March 2026
+**Release date:** 04 March 2026
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0).
 

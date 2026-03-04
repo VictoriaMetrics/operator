@@ -553,29 +553,78 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+}
 
-	// paused
-	f(opts{
-		cr: &vmv1.VLCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "paused",
-				Namespace: "default",
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	// Create a paused VLCluster CR and test that it is not reconciled
+	cr := &vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-cluster",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLClusterSpec{
+			Paused: true,
+			VLInsert: &vmv1.VLInsert{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
 			},
-			Spec: vmv1.VLClusterSpec{
-				Paused: true,
-				VLInsert: &vmv1.VLInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To(int32(1)),
-					},
+			VLStorage: &vmv1.VLStorage{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+			VLSelect: &vmv1.VLSelect{
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 		},
-		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
-			var dep appsv1.Deployment
-			// should not exist
-			err := rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &dep)
-			assert.Error(t, err)
-			assert.True(t, k8serrors.IsNotFound(err))
-		},
-	})
+	}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+
+	// Verify that resources are NOT created
+	var insertDep appsv1.Deployment
+	err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &insertDep)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	var selectDep appsv1.Deployment
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &selectDep)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	var storageSts appsv1.StatefulSet
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &storageSts)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &insertDep)
+	assert.NoError(t, err)
+
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &selectDep)
+	assert.NoError(t, err)
+
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &storageSts)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.VLInsert.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &insertDep)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *insertDep.Spec.Replicas)
 }

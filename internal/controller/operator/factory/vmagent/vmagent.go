@@ -685,18 +685,19 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		ss := &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: cr.PrefixedName(),
-			},
-			Key: configFilename,
-		}
-		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
-		operatorContainers = append(operatorContainers, configReloader)
+		var ss *corev1.SecretKeySelector
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+			ss = &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: cr.PrefixedName(),
+				},
+				Key: configFilename,
+			}
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
 			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 		}
+		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+		operatorContainers = append(operatorContainers, configReloader)
 	}
 	var err error
 	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)

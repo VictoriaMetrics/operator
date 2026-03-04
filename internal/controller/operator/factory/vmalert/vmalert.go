@@ -94,6 +94,9 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 // CreateOrUpdate creates vmalert deployment for given CRD
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1beta1.VMAlert
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

@@ -18,7 +18,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1.VTSingle
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1.VTSingle)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VTSingle)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -34,7 +34,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, fclient, args.cr)
@@ -64,6 +64,14 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	namespace := "default"
 	vtsingleName := types.NamespacedName{Namespace: namespace, Name: "vtsingle-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
+	setupReadyVTSingle := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VTSingle) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, c, cr.DeepCopy()))
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vtsingle with default config
 	f(args{
@@ -96,14 +104,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VTSingle) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, c, cr.DeepCopy()))
-
-			// clear actions
-			c.Actions = nil
-		},
+		preRun: setupReadyVTSingle,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -125,13 +126,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VTSingle) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, c, cr.DeepCopy()))
-
-			// clear actions
-			c.Actions = nil
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VTSingle) {
+			setupReadyVTSingle(ctx, c, cr)
 
 			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()

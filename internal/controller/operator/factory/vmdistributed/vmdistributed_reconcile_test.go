@@ -19,7 +19,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1alpha1.VMDistributed
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -36,7 +36,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 		synctest.Test(t, func(t *testing.T) {
 			if args.preRun != nil {
-				args.preRun(fclient, args.cr)
+				args.preRun(ctx, fclient, args.cr)
 			}
 
 			err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -243,8 +243,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
-			ctx := context.TODO()
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
 			// Create objects first
 			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
 

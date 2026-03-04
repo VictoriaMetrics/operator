@@ -18,7 +18,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1.VMAnomaly
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -34,7 +34,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -65,6 +65,43 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	vmanomalyName := types.NamespacedName{Namespace: namespace, Name: "vmanomaly-" + name}
 	tlsAssetName := types.NamespacedName{Namespace: namespace, Name: "tls-assets-vmanomaly-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
+	setupReadyVMAnomaly := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmanomalyName.Name + "-0",
+				Namespace: vmanomalyName.Namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/name":      "vmanomaly",
+					"app.kubernetes.io/instance":  name,
+					"app.kubernetes.io/component": "monitoring",
+					"managed-by":                  "vm-operator",
+					"controller-revision-hash":    "v1",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "apps/v1",
+						Kind:       "StatefulSet",
+						Name:       vmanomalyName.Name,
+						Controller: ptr.To(true),
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{
+					{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+				},
+			},
+		}
+		assert.NoError(t, c.Create(ctx, pod))
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vmanomaly with default config
 	f(args{
@@ -145,43 +182,8 @@ schedulers:
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmanomalyName.Name + "-0",
-					Namespace: vmanomalyName.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmanomaly",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vmanomalyName.Name,
-							Controller: ptr.To(true),
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			}
-			assert.NoError(t, c.Create(ctx, pod))
-
-			// clear actions
-			c.Actions = nil
-
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
+			setupReadyVMAnomaly(ctx, c, cr)
 			// change spec
 			cr.Spec.Image.Tag = "v1.1.1"
 		},
@@ -230,43 +232,8 @@ schedulers:
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmanomalyName.Name + "-0",
-					Namespace: vmanomalyName.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmanomaly",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vmanomalyName.Name,
-							Controller: ptr.To(true),
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			}
-			assert.NoError(t, c.Create(ctx, pod))
-
-			// clear actions
-			c.Actions = nil
-
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
+			setupReadyVMAnomaly(ctx, c, cr)
 			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		},

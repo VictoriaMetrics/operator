@@ -19,7 +19,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMCluster
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -35,7 +35,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -92,6 +92,60 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 	}
 
+	setupReadyComponents := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+		// Create pods for StatefulSets to simulate readiness
+		for _, stsName := range []types.NamespacedName{vmstorageName, vmselectName} {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      stsName.Name + "-0",
+					Namespace: stsName.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmstorage",
+						"app.kubernetes.io/instance":  name,
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+						"controller-revision-hash":    "v1",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "apps/v1",
+							Kind:       "StatefulSet",
+							Name:       stsName.Name,
+							Controller: ptr.To(true),
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			if stsName == vmselectName {
+				pod.Labels["app.kubernetes.io/name"] = "vmselect"
+			}
+			assert.NoError(t, c.Create(ctx, pod))
+
+			// Update STS status
+			sts := &appsv1.StatefulSet{}
+			if err := c.Get(ctx, stsName, sts); err == nil {
+				sts.Status.CurrentRevision = "v1"
+				sts.Status.UpdateRevision = "v1"
+				sts.Status.ObservedGeneration = sts.Generation
+				sts.Status.Replicas = 1
+				sts.Status.ReadyReplicas = 1
+				_ = c.Status().Update(ctx, sts)
+			}
+		}
+
+		// clear actions
+		c.Actions = nil
+	}
+
 	// create vmcluster with all components
 	f(args{
 		cr: defaultCR.DeepCopy(),
@@ -133,61 +187,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	// update vmcluster with no changes
 	f(args{
-		cr: defaultCR.DeepCopy(),
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// Create pods for StatefulSets to simulate readiness
-			for _, stsName := range []types.NamespacedName{vmstorageName, vmselectName} {
-				pod := &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      stsName.Name + "-0",
-						Namespace: stsName.Namespace,
-						Labels: map[string]string{
-							"app.kubernetes.io/name":      "vmstorage",
-							"app.kubernetes.io/instance":  name,
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-							"controller-revision-hash":    "v1",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion: "apps/v1",
-								Kind:       "StatefulSet",
-								Name:       stsName.Name,
-								Controller: ptr.To(true),
-							},
-						},
-					},
-					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
-						Conditions: []corev1.PodCondition{
-							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-						},
-					},
-				}
-				if stsName == vmselectName {
-					pod.Labels["app.kubernetes.io/name"] = "vmselect"
-				}
-				assert.NoError(t, c.Create(ctx, pod))
-
-				// Update STS status
-				sts := &appsv1.StatefulSet{}
-				if err := c.Get(ctx, stsName, sts); err == nil {
-					sts.Status.CurrentRevision = "v1"
-					sts.Status.UpdateRevision = "v1"
-					sts.Status.ObservedGeneration = sts.Generation
-					sts.Status.Replicas = 1
-					sts.Status.ReadyReplicas = 1
-					_ = c.Status().Update(ctx, sts)
-				}
-			}
-
-			// clear actions
-			c.Actions = nil
-		},
+		cr:     defaultCR.DeepCopy(),
+		preRun: setupReadyComponents,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -216,60 +217,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	// no update on status change
 	f(args{
 		cr: defaultCR.DeepCopy(),
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// Create pods for StatefulSets to simulate readiness
-			for _, stsName := range []types.NamespacedName{vmstorageName, vmselectName} {
-				pod := &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      stsName.Name + "-0",
-						Namespace: stsName.Namespace,
-						Labels: map[string]string{
-							"app.kubernetes.io/name":      "vmstorage",
-							"app.kubernetes.io/instance":  name,
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-							"controller-revision-hash":    "v1",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion: "apps/v1",
-								Kind:       "StatefulSet",
-								Name:       stsName.Name,
-								Controller: ptr.To(true),
-							},
-						},
-					},
-					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
-						Conditions: []corev1.PodCondition{
-							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-						},
-					},
-				}
-				if stsName == vmselectName {
-					pod.Labels["app.kubernetes.io/name"] = "vmselect"
-				}
-				assert.NoError(t, c.Create(ctx, pod))
-
-				// Update STS status
-				sts := &appsv1.StatefulSet{}
-				if err := c.Get(ctx, stsName, sts); err == nil {
-					sts.Status.CurrentRevision = "v1"
-					sts.Status.UpdateRevision = "v1"
-					sts.Status.ObservedGeneration = sts.Generation
-					sts.Status.Replicas = 1
-					sts.Status.ReadyReplicas = 1
-					_ = c.Status().Update(ctx, sts)
-				}
-			}
-
-			// clear actions
-			c.Actions = nil
-
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
+			setupReadyComponents(ctx, c, cr)
 			// Update status to simulate consistency
 			cr.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 		},

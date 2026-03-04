@@ -19,7 +19,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMAlertmanager
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -35,7 +35,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdateAlertManager(ctx, args.cr, fclient)
@@ -65,6 +65,55 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	namespace := "default"
 	vmalertmanagerName := types.NamespacedName{Namespace: namespace, Name: "vmalertmanager-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
+	setupReadyVMAlertmanager := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager) {
+		// Create objects first
+		_ = CreateOrUpdateAlertManager(ctx, cr, c)
+
+		// Create pod for StatefulSet to simulate readiness
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmalertmanagerName.Name + "-0",
+				Namespace: vmalertmanagerName.Namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/name":      "vmalertmanager",
+					"app.kubernetes.io/instance":  name,
+					"app.kubernetes.io/component": "monitoring",
+					"managed-by":                  "vm-operator",
+					"controller-revision-hash":    "v1",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "apps/v1",
+						Kind:       "StatefulSet",
+						Name:       vmalertmanagerName.Name,
+						Controller: ptr.To(true),
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{
+					{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+				},
+			},
+		}
+		assert.NoError(t, c.Create(ctx, pod))
+
+		// Update STS status
+		sts := &appsv1.StatefulSet{}
+		if err := c.Get(ctx, vmalertmanagerName, sts); err == nil {
+			sts.Status.CurrentRevision = "v1"
+			sts.Status.UpdateRevision = "v1"
+			sts.Status.ObservedGeneration = sts.Generation
+			sts.Status.Replicas = 1
+			sts.Status.ReadyReplicas = 1
+			_ = c.Status().Update(ctx, sts)
+		}
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vmalertmanager with default config
 	f(args{
@@ -101,55 +150,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager) {
-			ctx := context.TODO()
-			// Create objects first
-			_ = CreateOrUpdateAlertManager(ctx, cr, c)
-
-			// Create pod for StatefulSet to simulate readiness
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmalertmanagerName.Name + "-0",
-					Namespace: vmalertmanagerName.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmalertmanager",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vmalertmanagerName.Name,
-							Controller: ptr.To(true),
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			}
-			assert.NoError(t, c.Create(ctx, pod))
-
-			// Update STS status
-			sts := &appsv1.StatefulSet{}
-			if err := c.Get(ctx, vmalertmanagerName, sts); err == nil {
-				sts.Status.CurrentRevision = "v1"
-				sts.Status.UpdateRevision = "v1"
-				sts.Status.ObservedGeneration = sts.Generation
-				sts.Status.Replicas = 1
-				sts.Status.ReadyReplicas = 1
-				_ = c.Status().Update(ctx, sts)
-			}
-
-			// clear actions
-			c.Actions = nil
-		},
+		preRun: setupReadyVMAlertmanager,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -173,54 +174,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager) {
-			ctx := context.TODO()
-			// Create objects first
-			_ = CreateOrUpdateAlertManager(ctx, cr, c)
-
-			// Create pod for StatefulSet to simulate readiness
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmalertmanagerName.Name + "-0",
-					Namespace: vmalertmanagerName.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/name":      "vmalertmanager",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-						"controller-revision-hash":    "v1",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "StatefulSet",
-							Name:       vmalertmanagerName.Name,
-							Controller: ptr.To(true),
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					Phase: corev1.PodRunning,
-					Conditions: []corev1.PodCondition{
-						{Type: corev1.PodReady, Status: corev1.ConditionTrue},
-					},
-				},
-			}
-			assert.NoError(t, c.Create(ctx, pod))
-
-			// Update STS status
-			sts := &appsv1.StatefulSet{}
-			if err := c.Get(ctx, vmalertmanagerName, sts); err == nil {
-				sts.Status.CurrentRevision = "v1"
-				sts.Status.UpdateRevision = "v1"
-				sts.Status.ObservedGeneration = sts.Generation
-				sts.Status.Replicas = 1
-				sts.Status.ReadyReplicas = 1
-				_ = c.Status().Update(ctx, sts)
-			}
-
-			// clear actions
-			c.Actions = nil
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlertmanager) {
+			setupReadyVMAlertmanager(ctx, c, cr)
 
 			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()

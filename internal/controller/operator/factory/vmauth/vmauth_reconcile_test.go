@@ -17,7 +17,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMAuth
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,7 +33,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -64,6 +64,14 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	vmauthName := types.NamespacedName{Namespace: namespace, Name: "vmauth-" + name}
 	configSecretName := types.NamespacedName{Namespace: namespace, Name: "vmauth-config-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
+	setupReadyVMAuth := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vmauth with default config
 	f(args{
@@ -104,14 +112,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// clear actions
-			c.Actions = nil
-		},
+		preRun: setupReadyVMAuth,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -136,14 +137,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// clear actions
-			c.Actions = nil
-
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
+			setupReadyVMAuth(ctx, c, cr)
 			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		},

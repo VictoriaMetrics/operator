@@ -17,7 +17,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMAgent
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -57,6 +57,13 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	crWithoutStatus := defaultCR.DeepCopy()
 	crWithoutStatus.Status = vmv1beta1.VMAgentStatus{}
 
+	setupReadyVMAgent := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr, c))
+		// clear actions
+		c.Actions = nil
+	}
+
 	f := func(args args, want want) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
@@ -65,7 +72,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -129,14 +136,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	// update vmagent (Deployment mode)
 	f(args{
-		cr: crWithoutStatus,
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr, c))
-			// clear actions
-			c.Actions = nil
-		},
+		cr:     crWithoutStatus,
+		preRun: setupReadyVMAgent,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -155,12 +156,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	// no update on status change
 	f(args{
 		cr: defaultCR.DeepCopy(),
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
-			ctx := context.TODO()
-			// Create the object first
-			assert.NoError(t, CreateOrUpdate(ctx, cr, c))
-			// Clear actions
-			c.Actions = nil
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
+			setupReadyVMAgent(ctx, c, cr)
 			// Change status
 			cr.Status.Replicas = 1
 		},

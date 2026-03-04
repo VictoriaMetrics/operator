@@ -17,7 +17,7 @@ import (
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMSingle
-		preRun func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle)
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,7 +33,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		fclient.Scheme().Default(args.cr)
 
 		if args.preRun != nil {
-			args.preRun(fclient, args.cr)
+			args.preRun(ctx, fclient, args.cr)
 		}
 
 		err := CreateOrUpdate(ctx, args.cr, fclient)
@@ -63,6 +63,14 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	namespace := "default"
 	vmsingleName := types.NamespacedName{Namespace: namespace, Name: "vmsingle-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
+	setupReadyVMSingle := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vmsingle with default config
 	f(args{
@@ -96,14 +104,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// clear actions
-			c.Actions = nil
-		},
+		preRun: setupReadyVMSingle,
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -126,13 +127,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
-
-			// clear actions
-			c.Actions = nil
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
+			setupReadyVMSingle(ctx, c, cr)
 
 			// Update status to simulate consistency
 			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()

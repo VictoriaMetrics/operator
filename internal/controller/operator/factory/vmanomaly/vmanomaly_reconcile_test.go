@@ -5,12 +5,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -250,4 +254,70 @@ schedulers:
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName},
 			},
 		})
+}
+
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	cr := &vmv1.VMAnomaly{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-anomaly",
+			Namespace: "default",
+		},
+		Spec: vmv1.VMAnomalySpec{
+			ConfigRawYaml: `
+models:
+  M1:
+    class: "zscore"
+    z_threshold: 2.5
+    queries: ["q1"]
+    schedulers: ["S1"]
+reader:
+  queries:
+    q1:
+      expr: "sum(up)"
+schedulers:
+  S1:
+    class: "periodic"
+    infer_every: "1m"
+`,
+			Reader: &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://reader-url",
+				SamplingPeriod: "1m",
+			},
+			Writer: &vmv1.VMAnomalyWritersSpec{
+				DatasourceURL: "http://writer-url",
+			},
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+				Paused:       true,
+			},
+		},
+	}
+	nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var sts appsv1.StatefulSet
+	err := fclient.Get(ctx, nsn, &sts)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, nsn, &sts)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, nsn, &sts)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *sts.Spec.Replicas)
 }

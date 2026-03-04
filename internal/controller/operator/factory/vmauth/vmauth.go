@@ -42,6 +42,9 @@ const (
 
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 
 	var prevCR *vmv1beta1.VMAuth
 	if cr.Status.LastAppliedSpec != nil {

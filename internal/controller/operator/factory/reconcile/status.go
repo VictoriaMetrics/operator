@@ -24,13 +24,6 @@ var (
 	statusExpireTTL = 3 * statusUpdateTTL
 )
 
-// SetStatusUpdateTTL configures TTL for LastUpdateTime field
-//
-// Higher value decreases load on Kubernetes API server
-func SetStatusUpdateTTL(v time.Duration) {
-	statusExpireTTL = v
-}
-
 type objectWithStatus interface {
 	client.Object
 	GetStatusMetadata() *vmv1beta1.StatusMetadata

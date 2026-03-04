@@ -740,23 +740,25 @@ func TestStatefulsetReconcile(t *testing.T) {
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		var emptyOpts STSOptions
-		err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		} else {
-			assert.NoError(t, err)
-		}
-		nsn := types.NamespacedName{
-			Name:      o.new.Name,
-			Namespace: o.new.Namespace,
-		}
-		assert.Equal(t, o.actions, cl.Actions)
-		if o.validate != nil {
-			var got appsv1.StatefulSet
-			assert.NoError(t, cl.Get(ctx, nsn, &got))
-			o.validate(&got)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
+			if o.wantErr {
+				assert.Error(t, err)
+				return
+			} else {
+				assert.NoError(t, err)
+			}
+			nsn := types.NamespacedName{
+				Name:      o.new.Name,
+				Namespace: o.new.Namespace,
+			}
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got appsv1.StatefulSet
+				assert.NoError(t, cl.Get(ctx, nsn, &got))
+				o.validate(&got)
+			}
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}

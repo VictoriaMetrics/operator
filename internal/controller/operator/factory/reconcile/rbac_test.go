@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -48,8 +49,10 @@ func TestRoleBindingReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, RoleBinding(ctx, cl, o.new, o.prev, nil))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, RoleBinding(ctx, cl, o.new, o.prev, nil))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-rb", Namespace: "default"}
@@ -121,8 +124,10 @@ func TestRoleReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, Role(ctx, cl, o.new, o.prev, nil))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, Role(ctx, cl, o.new, o.prev, nil))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-role", Namespace: "default"}
@@ -198,8 +203,10 @@ func TestClusterRoleBindingReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, ClusterRoleBinding(ctx, cl, o.new, o.prev))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, ClusterRoleBinding(ctx, cl, o.new, o.prev))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-crb"}
@@ -270,8 +277,10 @@ func TestClusterRoleReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, ClusterRole(ctx, cl, o.new, o.prev))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, ClusterRole(ctx, cl, o.new, o.prev))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-cr"}

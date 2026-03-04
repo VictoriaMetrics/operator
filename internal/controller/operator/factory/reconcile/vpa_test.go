@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -48,8 +49,10 @@ func TestVPAReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		assert.NoError(t, VPA(ctx, cl, o.new, o.prev, nil))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, VPA(ctx, cl, o.new, o.prev, nil))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-vpa", Namespace: "default"}

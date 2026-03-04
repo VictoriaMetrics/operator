@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -143,4 +146,48 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 			},
 		})
+}
+
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	// Create a paused VMSingle CR and test that it is not reconciled
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-single",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				ReplicaCount: ptr.To(int32(1)),
+				Paused:       true,
+			},
+		},
+	}
+	nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var dep appsv1.Deployment
+	err := fclient.Get(ctx, nsn, &dep)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, nsn, &dep)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, nsn, &dep)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *dep.Spec.Replicas)
 }

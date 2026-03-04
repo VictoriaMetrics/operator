@@ -70,6 +70,9 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for single node resource
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 
 	var prevCR *vmv1beta1.VMSingle
 	if cr.Status.LastAppliedSpec != nil {

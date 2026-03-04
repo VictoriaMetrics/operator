@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -74,19 +75,21 @@ func TestDeployReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		err := Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		assert.Equal(t, o.actions, cl.Actions)
-		if o.validate != nil {
-			var got appsv1.Deployment
-			nsn := types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}
-			assert.NoError(t, cl.Get(ctx, nsn, &got))
-			o.validate(&got)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got appsv1.Deployment
+				nsn := types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}
+				assert.NoError(t, cl.Get(ctx, nsn, &got))
+				o.validate(&got)
+			}
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}

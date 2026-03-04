@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,18 +45,20 @@ func TestVMAgentReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		err := VMAgent(ctx, cl, o.new, o.prev, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		assert.Equal(t, o.actions, cl.Actions)
-		if o.validate != nil {
-			var got vmv1beta1.VMAgent
-			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}, &got))
-			o.validate(&got)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := VMAgent(ctx, cl, o.new, o.prev, nil)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got vmv1beta1.VMAgent
+				assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}, &got))
+				o.validate(&got)
+			}
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-vmagent", Namespace: "default"}

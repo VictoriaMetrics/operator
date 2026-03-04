@@ -3,6 +3,7 @@ package vmdistributed
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,27 +57,29 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			Build()
 
 		ctx := context.TODO()
-		err := CreateOrUpdate(ctx, args.cr, fclient)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, args.cr, fclient)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(actions) {
-				break
+			if !assert.Equal(t, len(want.actions), len(actions)) {
+				for i, action := range actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
-		}
+
+			for i, action := range want.actions {
+				if i >= len(actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	name := "test-dist"

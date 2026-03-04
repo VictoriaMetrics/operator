@@ -74,9 +74,11 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	var mustRecreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
+	var prevVCTs []corev1.PersistentVolumeClaim
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
+		prevVCTs = prevObj.Spec.VolumeClaimTemplates
 	}
 
 	rclient.Scheme().Default(newObj)
@@ -114,10 +116,10 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		}
 
 		var mustRecreateSTS bool
-		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, newObj, &existingObj)
+		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {
 			recreateSTS = func() error {
-				return removeStatefulSetKeepPods(ctx, rclient, newObj, &existingObj)
+				return removeStatefulSetKeepPods(ctx, rclient, &existingObj, newObj)
 			}
 			return nil
 		}

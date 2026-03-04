@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -28,10 +29,12 @@ func Test_reconcileService(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
 		ctx := context.Background()
-		assert.NoError(t, Service(ctx, cl, opts.newService, opts.prevService, nil))
-		var gotSvc corev1.Service
-		assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc))
-		opts.validate(&gotSvc)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, Service(ctx, cl, opts.newService, opts.prevService, nil))
+			var gotSvc corev1.Service
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc))
+			opts.validate(&gotSvc)
+		})
 	}
 
 	f(opts{

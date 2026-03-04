@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,8 +47,10 @@ func TestVMServiceScrape(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		assert.NoError(t, VMServiceScrape(ctx, cl, o.new, o.prev, nil))
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, VMServiceScrape(ctx, cl, o.new, o.prev, nil))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-vmservicescrape", Namespace: "default"}

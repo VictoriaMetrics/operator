@@ -29,12 +29,13 @@ var (
 	vmStatusInterval          = 5 * time.Second
 )
 
-// InitFromConfig sets package configuration from config
-func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval time.Duration) {
+// Init sets package defaults
+func Init(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval, statusUpdate time.Duration) {
 	podWaitReadyIntervalCheck = intervalCheck
 	appWaitReadyDeadline = appWaitDeadline
 	podWaitReadyTimeout = podReadyDeadline
 	vmStatusInterval = statusInterval
+	statusUpdateTTL = statusUpdate
 }
 
 // mergeMaps performs 3-way merge for labels and annotations

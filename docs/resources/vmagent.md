@@ -56,7 +56,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 - [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/)
 - [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
 
-These objects specify which targets VMSingle should scrape and how to collect metrics, and generate part of [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/) scrape configuration.
+These objects specify which targets VMAgent should scrape and how to collect metrics, and generate part of [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/) scrape configuration.
 
 `VMAgent` uses selectors to filter scrape objects. Selectors are defined using the `NamespaceSelector` and `Selector` suffixes for each scrape object type in the VMAgent spec:
 
@@ -70,13 +70,13 @@ These objects specify which targets VMSingle should scrape and how to collect me
 This enables access control configuration for objects across namespaces.
 See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for selector specifications.
 
-In addition to these selectors, object filtering in a cluster can be done by the `selectAllByDefault` VMSingle spec field and the operator's `WATCH_NAMESPACE` environment variable.
+In addition to these selectors, object filtering in a cluster can be done by the `selectAllByDefault` VMAgent spec field and the operator's `WATCH_NAMESPACE` environment variable.
 
 Following rules are applied:
 
 - If both `...NamespaceSelector` and `...Selector` are undefined, no objects are selected by default. Setting `spec.selectAllByDefault: true` selects all objects of the given type.
 - If `...NamespaceSelector` is defined and `...Selector` is undefined, all objects in the namespaces matched by ...NamespaceSelector are selected.
-- If `...NamespaceSelector` is undefined and `...Selector` is defined, all objects in VMSingle’s namespaces matching ...Selector are selected.
+- If `...NamespaceSelector` is undefined and `...Selector` is defined, all objects in VMAgent’s namespaces matching ...Selector are selected.
 - If `...NamespaceSelector` and `...Selector` both are defined, then only objects in the namespaces matched by...NamespaceSelector for the given ...Selector are matching.
 
 Below is a more visual and detailed view:

@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -26,18 +27,20 @@ func TestConfigMapReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
-		assert.NoError(t, err)
-		assert.Equal(t, o.actions, cl.Actions)
-		if o.validate != nil {
-			var got corev1.ConfigMap
-			nsn := types.NamespacedName{
-				Name:      o.new.Name,
-				Namespace: o.new.Namespace,
+		synctest.Test(t, func(t *testing.T) {
+			_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
+			assert.NoError(t, err)
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got corev1.ConfigMap
+				nsn := types.NamespacedName{
+					Name:      o.new.Name,
+					Namespace: o.new.Namespace,
+				}
+				assert.NoError(t, cl.Get(ctx, nsn, &got))
+				o.validate(&got)
 			}
-			assert.NoError(t, cl.Get(ctx, nsn, &got))
-			o.validate(&got)
-		}
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test", Namespace: "default"}

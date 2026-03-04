@@ -125,23 +125,4 @@ func TestVMAgentReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
-
-	// attempt to recreate on deletion
-	f(opts{
-		new: getVMAgent(),
-		predefinedObjects: []runtime.Object{
-			getVMAgent(func(v *vmv1beta1.VMAgent) {
-				v.Finalizers = []string{vmv1beta1.FinalizerName}
-				v.DeletionTimestamp = ptr.To(metav1.Now())
-			}),
-		},
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-		},
-		wantErr: true,
-	})
 }

@@ -78,6 +78,25 @@ func TestVPAReconcile(t *testing.T) {
 		},
 	})
 
+	// no update on status change
+	f(opts{
+		new:  getVPA(),
+		prev: getVPA(),
+		predefinedObjects: []runtime.Object{
+			getVPA(func(v *vpav1.VerticalPodAutoscaler) {
+				v.Status.Conditions = []vpav1.VerticalPodAutoscalerCondition{
+					{
+						Type:   vpav1.RecommendationProvided,
+						Status: "True",
+					},
+				}
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VerticalPodAutoscaler", Resource: nn},
+		},
+	})
+
 	// update spec
 	f(opts{
 		new: getVPA(func(v *vpav1.VerticalPodAutoscaler) {

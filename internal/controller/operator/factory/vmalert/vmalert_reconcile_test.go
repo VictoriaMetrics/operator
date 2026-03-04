@@ -5,15 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -21,9 +15,10 @@ import (
 )
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
+
 	type args struct {
-		cr                *vmv1beta1.VMAlert
-		predefinedObjects []runtime.Object
+		cr     *vmv1beta1.VMAlert
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -33,25 +28,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(&vmv1beta1.VMAlert{}).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(ctx, fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, args.cr, fclient, nil)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -59,36 +44,45 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
+		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+			for i, action := range fclient.Actions {
 				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
 			}
 		}
 
 		for i, action := range want.actions {
-			if i >= len(actions) {
+			if i >= len(fclient.Actions) {
 				break
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
 
 	vmalertName := types.NamespacedName{Namespace: "default", Name: "vmalert-vmalert"}
-	vmalertMeta := metav1.ObjectMeta{Name: "vmalert-vmalert", Namespace: "default"}
 	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmalert-vmalert"}
 	objectMeta := metav1.ObjectMeta{Name: "vmalert", Namespace: "default"}
 
+	defaultCR := &vmv1beta1.VMAlert{
+		ObjectMeta: objectMeta,
+		Spec: vmv1beta1.VMAlertSpec{
+			Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
+			Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
+		},
+	}
+
+	setupReadyVMAlert := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
+		// Create the object first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c, nil))
+
+		// clear actions
+		c.Actions = nil
+	}
+
 	// create vmalert with default config
 	f(args{
-		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: objectMeta,
-			Spec: vmv1beta1.VMAlertSpec{
-				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
-				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-			},
-		},
+		cr: defaultCR.DeepCopy(),
 	},
 		want{
 			actions: []k8stools.ClientAction{
@@ -110,7 +104,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
-	// update vmalert
+	// update vmalert with no changes
 	f(args{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: objectMeta,
@@ -122,81 +116,50 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: vmalertMeta},
-			&corev1.Service{
-				ObjectMeta: vmalertMeta,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "10.0.0.1",
-					Selector: map[string]string{
-						"app.kubernetes.io/name":      "vmalert",
-						"app.kubernetes.io/instance":  "vmalert",
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-					},
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   "TCP",
-							Port:       8880,
-							TargetPort: intstr.Parse("8880"),
-						},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: vmalertMeta},
-			&corev1.Secret{ObjectMeta: vmalertMeta},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tls-assets-vmalert-vmalert", Namespace: "default"}},
-			&appsv1.Deployment{
-				ObjectMeta: vmalertMeta,
-				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app.kubernetes.io/name":      "vmalert",
-							"app.kubernetes.io/instance":  "vmalert",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/name":      "vmalert",
-								"app.kubernetes.io/instance":  "vmalert",
-								"app.kubernetes.io/component": "monitoring",
-								"managed-by":                  "vm-operator",
-							},
-						},
-					},
-				},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
-		},
+		preRun: setupReadyVMAlert,
 	},
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: vmalertName},
 				{Verb: "Get", Kind: "Service", Resource: vmalertName},
-				{Verb: "Update", Kind: "Service", Resource: vmalertName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vmalertName},
 				// Secrets
 				{Verb: "Get", Kind: "Secret", Resource: vmalertName},
-				{Verb: "Update", Kind: "Secret", Resource: vmalertName},
 				{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
-				{Verb: "Update", Kind: "Secret", Resource: tlsAssetsName},
 				// Deployment
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
-				{Verb: "Update", Kind: "Deployment", Resource: vmalertName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			},
 		})
+
+	// no update on status change
+	f(args{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: objectMeta,
+			Spec: vmv1beta1.VMAlertSpec{
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
+				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
+				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
+			setupReadyVMAlert(ctx, c, cr)
+
+			// Update status to simulate consistency
+			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
+			{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
+			{Verb: "Get", Kind: "Service", Resource: vmalertName},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},
+			{Verb: "Get", Kind: "Secret", Resource: vmalertName},
+			{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
+		},
+	})
 }

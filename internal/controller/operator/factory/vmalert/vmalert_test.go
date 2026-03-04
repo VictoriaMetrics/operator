@@ -61,21 +61,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		predefinedObjects: []runtime.Object{
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 	})
 
@@ -107,21 +93,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		predefinedObjects: []runtime.Object{
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
 			var foundOk bool
@@ -225,21 +197,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
 			},
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
 			assert.NotEmpty(t, s.Data["default_configmap_datasource-tls_ca"])
@@ -314,21 +272,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
 			},
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 	})
 
@@ -392,21 +336,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
 			},
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 	})
 
@@ -437,21 +367,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Data: map[string][]byte{"cfg.yaml": []byte("static: []")},
 			},
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "vmalert-basic-vmalert",
-				},
-				Status: appsv1.DeploymentStatus{
-					Conditions: []appsv1.DeploymentCondition{
-						{
-							Reason: "NewReplicaSetAvailable",
-							Type:   appsv1.DeploymentProgressing,
-							Status: "True",
-						},
-					},
-				},
-			},
+			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 	})
 }

@@ -65,9 +65,10 @@ func newVMCluster(name, namespace, version string) *vmv1beta1.VMCluster {
 }
 
 type opts struct {
-	prepare  func(*testData)
-	validate func(context.Context, client.Client, *testData)
-	actions  func(*testData) []action
+	prepare  func(d *testData)
+	preRun   func(c client.Client, d *testData)
+	validate func(ctx context.Context, rclient client.Client, d *testData)
+	actions  func(d *testData) []action
 }
 
 type testData struct {
@@ -173,6 +174,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				return cl.Update(ctx, obj, opts...)
 			},
 		})
+		if o.preRun != nil {
+			o.preRun(rclient, d)
+			actions = nil
+		}
 		ctx := context.Background()
 		synctest.Test(t, func(t *testing.T) {
 			o.validate(ctx, rclient, d)
@@ -279,20 +284,13 @@ func TestCreateOrUpdate(t *testing.T) {
 		prepare: func(d *testData) {
 			d.zones.vmclusters[0].Spec.VMSelect.Port = "8481"
 			d.cr.Spec.VMAuth.Name = "vmauth-lb"
-			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "vmauth-lb",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAuthSpec{
-					LogLevel: "ERROR",
-				},
-				Status: vmv1beta1.VMAuthStatus{
-					StatusMetadata: vmv1beta1.StatusMetadata{
-						UpdateStatus: vmv1beta1.UpdateStatusOperational,
-					},
-				},
-			})
+			d.cr.Spec.VMAuth.Spec.LogLevel = "ERROR"
+		},
+		preRun: func(c client.Client, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			c.Scheme().Default(lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{
@@ -329,26 +327,12 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
-			lb := &vmv1beta1.VMAuth{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            d.cr.Spec.VMAuth.Name,
-					Namespace:       d.cr.Namespace,
-					OwnerReferences: []metav1.OwnerReference{d.cr.AsOwner()},
-				},
-				Spec: d.cr.Spec.VMAuth.Spec,
-				Status: vmv1beta1.VMAuthStatus{
-					StatusMetadata: vmv1beta1.StatusMetadata{
-						UpdateStatus: vmv1beta1.UpdateStatusOperational,
-					},
-				},
-			}
-			var targetRefs []vmv1beta1.TargetRef
-			targetRefs = append(targetRefs, vmAgentTargetRef(d.zones.vmagents))
-			targetRefs = append(targetRefs, vmClusterTargetRef([]*vmv1beta1.VMCluster{d.zones.vmclusters[0]}))
-			lb.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-				TargetRefs: targetRefs,
-			}
-			d.predefinedObjects = append(d.predefinedObjects, lb)
+		},
+		preRun: func(c client.Client, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			c.Scheme().Default(lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{
@@ -447,23 +431,13 @@ func TestCreateOrUpdate(t *testing.T) {
 			d.cr.Spec.VMAuth.Spec = vmv1beta1.VMAuthSpec{
 				LogLevel: "INFO",
 			}
-			d.predefinedObjects = append(d.predefinedObjects, &vmv1beta1.VMAuth{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "vmauth-lb",
-					Namespace: "default",
-				},
-				Spec: vmv1beta1.VMAuthSpec{
-					// We intentionally don't set a full spec here,
-					// so the update will populate the missing fields (like Port)
-					// AND set the owner ref.
-					LogLevel: "INFO",
-				},
-				Status: vmv1beta1.VMAuthStatus{
-					StatusMetadata: vmv1beta1.StatusMetadata{
-						UpdateStatus: vmv1beta1.UpdateStatusOperational,
-					},
-				},
-			})
+		},
+		preRun: func(c client.Client, d *testData) {
+			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
+			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
+			c.Scheme().Default(lb)
+			lb.OwnerReferences = nil
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{

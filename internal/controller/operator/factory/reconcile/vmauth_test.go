@@ -24,8 +24,9 @@ func TestVMAuthReconcile(t *testing.T) {
 	getVMAuth := func(fns ...func(v *vmv1beta1.VMAuth)) *vmv1beta1.VMAuth {
 		v := &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-vmauth",
-				Namespace: "default",
+				Name:       "test-vmauth",
+				Namespace:  "default",
+				Finalizers: []string{vmv1beta1.FinalizerName},
 			},
 			Spec: vmv1beta1.VMAuthSpec{
 				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
@@ -92,6 +93,21 @@ func TestVMAuthReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 			{Verb: "Update", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+		},
+	})
+
+	// no update on status change
+	f(opts{
+		new:  getVMAuth(),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 			{Verb: "Get", Kind: "VMAuth", Resource: nn},
 		},
 	})

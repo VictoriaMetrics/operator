@@ -25,6 +25,8 @@ aliases:
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): fix PVC being owned by StatefulSet and top-level object simultaenously. See [#1845](https://github.com/VictoriaMetrics/operator/issues/1845).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): remove finalizers from VMServiceScrape and VMPodScrape objects, and keep finalizers on VMAgent, VMCluster, and VMAuth when DeletionTimestamp is not empty.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not recreate STS if VCT size was increased and recreate in other cases.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

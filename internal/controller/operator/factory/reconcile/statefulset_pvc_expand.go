@@ -131,7 +131,7 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) (bool, error) {
 	existingSize := existingObj.Spec.Resources.Requests.Storage()
 	newSize := newObj.Spec.Resources.Requests.Storage()
-	if existingSize.IsZero() || newSize.IsZero() {
+	if existingSize == nil || newSize == nil {
 		return false, nil
 	}
 	var prevMeta *metav1.ObjectMeta

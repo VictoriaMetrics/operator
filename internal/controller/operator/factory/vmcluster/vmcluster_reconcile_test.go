@@ -137,7 +137,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
 
 			// Create pods for StatefulSets to simulate readiness
 			for _, stsName := range []types.NamespacedName{vmstorageName, vmselectName} {
@@ -171,7 +171,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				if stsName == vmselectName {
 					pod.Labels["app.kubernetes.io/name"] = "vmselect"
 				}
-				_ = c.Create(ctx, pod)
+				assert.NoError(t, c.Create(ctx, pod))
 
 				// Update STS status
 				sts := &appsv1.StatefulSet{}
@@ -219,7 +219,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMCluster) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
 
 			// Create pods for StatefulSets to simulate readiness
 			for _, stsName := range []types.NamespacedName{vmstorageName, vmselectName} {
@@ -253,7 +253,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				if stsName == vmselectName {
 					pod.Labels["app.kubernetes.io/name"] = "vmselect"
 				}
-				_ = c.Create(ctx, pod)
+				assert.NoError(t, c.Create(ctx, pod))
 
 				// Update STS status
 				sts := &appsv1.StatefulSet{}

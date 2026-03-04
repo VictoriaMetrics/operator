@@ -110,8 +110,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
 			ctx := context.TODO()
-			// Create objects first using a deep copy to avoid mutating the CR
-			_ = CreateOrUpdate(ctx, cr.DeepCopy(), c, nil)
+			// Create the object first
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c, nil))
 
 			// clear actions
 			c.Actions = nil
@@ -145,8 +145,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAlert) {
 			ctx := context.TODO()
-			// Create objects first using a deep copy to avoid mutating the CR
-			_ = CreateOrUpdate(ctx, cr.DeepCopy(), c, nil)
+			// Create the object first
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c, nil))
 
 			// clear actions
 			c.Actions = nil

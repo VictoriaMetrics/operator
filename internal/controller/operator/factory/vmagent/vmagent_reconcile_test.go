@@ -133,7 +133,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr, c))
 			// clear actions
 			c.Actions = nil
 		},
@@ -158,7 +158,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
 			ctx := context.TODO()
 			// Create the object first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr, c))
 			// Clear actions
 			c.Actions = nil
 			// Change status

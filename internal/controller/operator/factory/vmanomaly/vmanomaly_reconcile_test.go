@@ -148,7 +148,7 @@ schedulers:
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
 
 			pod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -177,7 +177,7 @@ schedulers:
 					},
 				},
 			}
-			_ = c.Create(ctx, pod)
+			assert.NoError(t, c.Create(ctx, pod))
 
 			// clear actions
 			c.Actions = nil
@@ -233,7 +233,7 @@ schedulers:
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VMAnomaly) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, cr, c)
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
 
 			pod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +262,7 @@ schedulers:
 					},
 				},
 			}
-			_ = c.Create(ctx, pod)
+			assert.NoError(t, c.Create(ctx, pod))
 
 			// clear actions
 			c.Actions = nil

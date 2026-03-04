@@ -155,7 +155,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VTCluster) {
 			ctx := context.TODO()
 			// Create objects first
-			_ = CreateOrUpdate(ctx, c, cr)
+			assert.NoError(t, CreateOrUpdate(ctx, c, cr.DeepCopy()))
 
 			// Set Ready status
 			sts := &appsv1.StatefulSet{}
@@ -187,7 +187,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 						},
 					},
 				}
-				_ = c.Create(ctx, pod)
+				assert.NoError(t, c.Create(ctx, pod))
 			}
 
 			depSelect := &appsv1.Deployment{}

@@ -290,7 +290,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
 			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
 			c.Scheme().Default(lb)
-			_ = c.Create(context.TODO(), lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{
@@ -332,7 +332,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
 			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
 			c.Scheme().Default(lb)
-			_ = c.Create(context.TODO(), lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{
@@ -437,7 +437,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters)
 			c.Scheme().Default(lb)
 			lb.OwnerReferences = nil
-			_ = c.Create(context.TODO(), lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
 		actions: func(d *testData) []action {
 			return []action{

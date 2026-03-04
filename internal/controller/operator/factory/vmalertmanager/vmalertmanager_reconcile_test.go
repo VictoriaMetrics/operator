@@ -134,7 +134,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					},
 				},
 			}
-			_ = c.Create(ctx, pod)
+			assert.NoError(t, c.Create(ctx, pod))
 
 			// Update STS status
 			sts := &appsv1.StatefulSet{}
@@ -206,7 +206,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					},
 				},
 			}
-			_ = c.Create(ctx, pod)
+			assert.NoError(t, c.Create(ctx, pod))
 
 			// Update STS status
 			sts := &appsv1.StatefulSet{}

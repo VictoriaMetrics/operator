@@ -73,7 +73,7 @@ func TestVMPodScrape(t *testing.T) {
 		new:  getVMPodScrape(),
 		prev: getVMPodScrape(),
 		preRun: func(c *k8stools.ClientWithActions) {
-			_ = c.Create(context.Background(), getVMPodScrape())
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape()))
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
@@ -85,9 +85,9 @@ func TestVMPodScrape(t *testing.T) {
 		new:  getVMPodScrape(),
 		prev: getVMPodScrape(),
 		preRun: func(c *k8stools.ClientWithActions) {
-			_ = c.Create(context.Background(), getVMPodScrape(func(v *vmv1beta1.VMPodScrape) {
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape(func(v *vmv1beta1.VMPodScrape) {
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-			}))
+			})))
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
@@ -101,7 +101,7 @@ func TestVMPodScrape(t *testing.T) {
 		}),
 		prev: getVMPodScrape(),
 		preRun: func(c *k8stools.ClientWithActions) {
-			_ = c.Create(context.Background(), getVMPodScrape())
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape()))
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},

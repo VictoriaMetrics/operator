@@ -32,7 +32,7 @@ func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 	return build.VMPodScrape(cr, "monitoring-http")
 }
 
-// CreateOrUpdate creates vmanomaly and and builds config for it
+// CreateOrUpdate creates vmanomaly and builds config for it
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Client) error {
 	if cr.Paused() {
 		return nil

@@ -61,6 +61,9 @@ func newPVC(r *vmv1.VLSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for vlsingle resource
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1.VLSingle
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

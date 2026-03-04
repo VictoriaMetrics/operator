@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -180,6 +181,29 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 
 		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
 	})
+}
+
+func TestCreateOrUpdateVLSingle_Paused(t *testing.T) {
+	cr := &vmv1.VLSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "base",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLSingleSpec{
+			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				Paused: true,
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	err := CreateOrUpdate(context.TODO(), fclient, cr)
+	assert.NoError(t, err)
+
+	// check that no deployment was created
+	var deploy appsv1.Deployment
+	err = fclient.Get(context.TODO(), types.NamespacedName{Name: "vlsingle-base", Namespace: "default"}, &deploy)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
 }
 
 func TestCreateOrUpdateVLSingleService(t *testing.T) {

@@ -19,7 +19,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: VictoriaMetrics/operator
-          ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator-repo
 

@@ -35,6 +35,9 @@ import (
 // needed in update checked by revision status
 // its controlled by k8s controller-manager
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err

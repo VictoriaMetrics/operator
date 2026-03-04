@@ -22,6 +22,9 @@ const templatesDir = "/etc/vm/templates"
 
 // CreateOrUpdateAlertManager creates alertmanager and builds config for it
 func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

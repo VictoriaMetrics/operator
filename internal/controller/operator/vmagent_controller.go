@@ -18,18 +18,22 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
@@ -140,4 +144,56 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(getDefaultOptions()).
 		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMAgentReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[string]) bool {
+	return false
+}
+
+func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) error {
+	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.MustThrottleReconcile() {
+		return nil
+	}
+	agentSync.Lock()
+	defer agentSync.Unlock()
+	var objects vmv1beta1.VMAgentList
+	if err := k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMAgentList) {
+		objects.Items = append(objects.Items, dst.Items...)
+	}); err != nil {
+		return fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
+	}
+	for i := range objects.Items {
+		item := &objects.Items[i]
+		if item.IsUnmanaged(instance) {
+			continue
+		}
+		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+		ctx := logger.AddToContext(ctx, l)
+
+		// only check selector when deleting object,
+		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
+		if !instance.GetDeletionTimestamp().IsZero() {
+			objectSelector, namespaceSelector := item.ScrapeSelectors(instance)
+			opts := &k8stools.SelectorOpts{
+				SelectAll:         item.Spec.SelectAllByDefault,
+				NamespaceSelector: namespaceSelector,
+				ObjectSelector:    objectSelector,
+				DefaultNamespace:  instance.GetNamespace(),
+			}
+			match, err := isSelectorsMatchesTargetCRD(ctx, rclient, instance, item, opts)
+			if err != nil {
+				l.Error(err, fmt.Sprintf("cannot match VMAgent and %T", instance))
+				continue
+			}
+			if !match {
+				continue
+			}
+		}
+
+		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); err != nil {
+			continue
+		}
+	}
+	return nil
 }

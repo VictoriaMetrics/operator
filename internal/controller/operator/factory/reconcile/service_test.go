@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -11,10 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func Test_reconcileServiceForCRD(t *testing.T) {
+func Test_reconcileService(t *testing.T) {
 
 	type opts struct {
 		newService        *corev1.Service
@@ -27,10 +29,12 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(opts.predefinedObjects)
 		ctx := context.Background()
-		assert.NoError(t, Service(ctx, cl, opts.newService, opts.prevService, nil))
-		var gotSvc corev1.Service
-		assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc))
-		opts.validate(&gotSvc)
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, Service(ctx, cl, opts.newService, opts.prevService, nil))
+			var gotSvc corev1.Service
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: opts.newService.Namespace, Name: opts.newService.Name}, &gotSvc))
+			opts.validate(&gotSvc)
+		})
 	}
 
 	f(opts{
@@ -312,6 +316,116 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 			l, ok := svc.Labels["custom"]
 			assert.True(t, ok)
 			assert.Equal(t, l, "label")
+		},
+	})
+}
+
+func TestServiceReconcile(t *testing.T) {
+	type opts struct {
+		new, prev         *corev1.Service
+		predefinedObjects []runtime.Object
+		actions           []k8stools.ClientAction
+	}
+	getService := func(fns ...func(s *corev1.Service)) *corev1.Service {
+		s := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-service",
+				Namespace: "default",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Name: "web",
+						Port: 80,
+					},
+				},
+			},
+		}
+		for _, fn := range fns {
+			fn(s)
+		}
+		return s
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
+		assert.NoError(t, Service(ctx, cl, o.new, o.prev, nil))
+		assert.Equal(t, o.actions, cl.Actions)
+	}
+
+	nn := types.NamespacedName{Name: "test-service", Namespace: "default"}
+
+	// create
+	f(opts{
+		new: getService(),
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Create", Kind: "Service", Resource: nn},
+		},
+	})
+
+	// no updates
+	f(opts{
+		new:  getService(),
+		prev: getService(),
+		predefinedObjects: []runtime.Object{
+			getService(),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Service", Resource: nn},
+		},
+	})
+
+	// no update on status change
+	f(opts{
+		new:  getService(),
+		prev: getService(),
+		predefinedObjects: []runtime.Object{
+			getService(func(s *corev1.Service) {
+				s.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+					{
+						IP: "127.0.0.1",
+					},
+				}
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Service", Resource: nn},
+		},
+	})
+
+	// update spec
+	f(opts{
+		new: getService(func(s *corev1.Service) {
+			s.Spec.Ports[0].Port = 8080
+		}),
+		predefinedObjects: []runtime.Object{
+			getService(),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Update", Kind: "Service", Resource: nn},
+		},
+	})
+
+	// recreate on type change
+	f(opts{
+		new: getService(func(s *corev1.Service) {
+			s.Spec.Type = corev1.ServiceTypeNodePort
+		}),
+		predefinedObjects: []runtime.Object{
+			getService(func(s *corev1.Service) {
+				s.Finalizers = []string{vmv1beta1.FinalizerName}
+				s.Spec.Type = corev1.ServiceTypeClusterIP
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Service", Resource: nn},
+			{Verb: "Patch", Kind: "Service", Resource: nn},
+			{Verb: "Delete", Kind: "Service", Resource: nn},
+			{Verb: "Create", Kind: "Service", Resource: nn},
 		},
 	})
 }

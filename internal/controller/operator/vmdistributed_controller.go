@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -106,4 +107,9 @@ func (r *VMDistributedReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(getDefaultOptions()).
 		WithEventFilter(patchAnnotationPredicate).
 		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VMDistributedReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.HasAny("VMAgent", "VMAuth", "VMCluster")
 }

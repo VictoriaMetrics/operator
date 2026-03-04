@@ -50,7 +50,6 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,

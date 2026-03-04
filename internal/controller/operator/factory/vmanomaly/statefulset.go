@@ -13,6 +13,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -28,7 +29,7 @@ func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr)
+	return build.VMPodScrape(cr, "monitoring-http")
 }
 
 // CreateOrUpdate creates vmanomalyand and builds config for it
@@ -55,7 +56,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr)
 		prevSvs := buildScrape(prevCR)
-		if err := reconcile.VMPodScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return err
 		}
 	}
@@ -136,7 +137,6 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -166,26 +166,25 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	keepPodScrapes := make(map[string]struct{})
+	keepPodScrapes := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		keepPodScrapes[cr.PrefixedName()] = struct{}{}
+		keepPodScrapes.Insert(cr.PrefixedName())
 	}
-	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMPodScrapes(ctx, rclient, cr, keepPodScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove podScrapes: %w", err)
 	}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	return nil
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
-	stsToKeep := make(map[string]struct{})
-	pdbToKeep := make(map[string]struct{})
+	stsToKeep := sets.New[string]()
+	pdbToKeep := sets.New[string]()
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -263,19 +262,19 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			errs = append(errs, r.err)
 		}
 		if r.name != "" {
-			stsToKeep[r.name] = struct{}{}
+			stsToKeep.Insert(r.name)
 			if cr.Spec.PodDisruptionBudget != nil {
-				pdbToKeep[r.name] = struct{}{}
+				pdbToKeep.Insert(r.name)
 			}
 		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep); err != nil {
+	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err
 	}
-	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep); err != nil {
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep, true); err != nil {
 		return err
 	}
 	return nil

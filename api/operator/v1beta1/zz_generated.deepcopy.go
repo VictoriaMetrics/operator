@@ -6700,12 +6700,12 @@ func (in *VMSingle) DeepCopyInto(out *VMSingle) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	in.Spec.DeepCopyInto(&out.Spec)
 	if in.ParsedLastAppliedSpec != nil {
 		in, out := &in.ParsedLastAppliedSpec, &out.ParsedLastAppliedSpec
 		*out = new(VMSingleSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	in.Spec.DeepCopyInto(&out.Spec)
 	in.Status.DeepCopyInto(&out.Status)
 }
 

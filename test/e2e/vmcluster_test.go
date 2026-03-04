@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,11 +15,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmcluster"
 )
 
 //nolint:dupl,lll
@@ -44,6 +47,76 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Name:      nsn.Name,
 				Namespace: namespace,
 			}, &vmv1beta1.VMCluster{})
+		})
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const attempts = 3
+			nsn.Name = "vmcluster-idempotent"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			var vmStorageSTS appsv1.StatefulSet
+			storageSTSName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+			Expect(k8sClient.Get(ctx, storageSTSName, &vmStorageSTS)).ToNot(HaveOccurred())
+			storageSTSRV := vmStorageSTS.ResourceVersion
+
+			var vmSelectSTS appsv1.StatefulSet
+			selectSTSName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
+			Expect(k8sClient.Get(ctx, selectSTSName, &vmSelectSTS)).ToNot(HaveOccurred())
+			selectSTSRV := vmSelectSTS.ResourceVersion
+
+			var vmInsertDep appsv1.Deployment
+			insertDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
+			Expect(k8sClient.Get(ctx, insertDepName, &vmInsertDep)).ToNot(HaveOccurred())
+			insertDepRV := vmInsertDep.ResourceVersion
+
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1beta1.VMCluster
+				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+				latestCR.Kind = "VMCluster"
+				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmcluster.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
+			}
+
+			var afterVMStorageSTS appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, storageSTSName, &afterVMStorageSTS)).ToNot(HaveOccurred())
+			Expect(afterVMStorageSTS.ResourceVersion).To(Equal(storageSTSRV), "VMStorage StatefulSet resource version should not change")
+
+			var afterVMSelectSTS appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, selectSTSName, &afterVMSelectSTS)).ToNot(HaveOccurred())
+			Expect(afterVMSelectSTS.ResourceVersion).To(Equal(selectSTSRV), "VMSelect StatefulSet resource version should not change")
+
+			var afterVMInsertDep appsv1.Deployment
+			Expect(k8sClient.Get(ctx, insertDepName, &afterVMInsertDep)).ToNot(HaveOccurred())
+			Expect(afterVMInsertDep.ResourceVersion).To(Equal(insertDepRV), "VMInsert Deployment resource version should not change")
 		})
 
 		DescribeTable("should create vmcluster", func(name string, cr *vmv1beta1.VMCluster, verify func(cr *vmv1beta1.VMCluster)) {
@@ -301,6 +374,81 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				)).ToNot(HaveOccurred())
 			}
 		})
+
+		It("should skip reconciliation when VMCluster is paused", func() {
+			nsn.Name = "vmcluster-paused"
+			initialReplicas := int32(1)
+			updatedReplicas := int32(2)
+			By("creating a VMCluster")
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(initialReplicas),
+						},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(initialReplicas),
+						},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(initialReplicas),
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("pausing the VMCluster")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("attempting to scale the VMCluster while paused")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.VMStorage.ReplicaCount = ptr.To(updatedReplicas)
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Consistently(func() int32 {
+				var sts appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: namespace}, &sts)).ToNot(HaveOccurred())
+				return *sts.Spec.Replicas
+			}, "10s", "1s").Should(Equal(initialReplicas))
+
+			By("unpausing the VMCluster")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Eventually(func() int32 {
+				var sts appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: namespace}, &sts)).ToNot(HaveOccurred())
+				return *sts.Spec.Replicas
+			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
+		})
+
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1492,7 +1640,7 @@ up{baz="bar"} 123
 					},
 				},
 			),
-			Entry("configures vmstorage with MaxUnavailable 100% but limited by a PDB", "maxunavailable-100-percent-pdb",
+			Entry("configures vmstorage with MaxUnavailable 100% and ignored PDB limitation", "maxunavailable-100-percent-pdb",
 				&vmv1beta1.VMCluster{
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
@@ -1528,6 +1676,22 @@ up{baz="bar"} 123
 						cr.Spec.VMStorage.PodMetadata.Labels["version"] = "new"
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
+						watcher, err := k8sClient.Watch(ctx, &corev1.PodList{}, &client.ListOptions{
+							Namespace: cr.Namespace,
+						})
+						Expect(err).NotTo(HaveOccurred())
+						defer watcher.Stop()
+						var deletedPods int
+						prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+						go func() {
+							for event := range watcher.ResultChan() {
+								if event.Type == watch.Deleted {
+									if pod, ok := event.Object.(*corev1.Pod); ok && strings.HasPrefix(pod.Name, prefixedName) {
+										deletedPods++
+									}
+								}
+							}
+						}()
 						By("checking that update process runs as configured")
 						Eventually(func() int {
 							var podList corev1.PodList
@@ -1551,6 +1715,7 @@ up{baz="bar"} 123
 							}, &pdb)
 							return pdb.Status.CurrentHealthy
 						}, eventualStatefulsetAppReadyTimeout).Should(BeNumerically(">=", 3))
+						Expect(deletedPods).To(Equal(4))
 					},
 				},
 			),

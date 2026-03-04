@@ -1,5 +1,5 @@
 {{- define "gvDetails" -}}
-{{- $gv := . -}}
+{{- $gv := . }}
 
 ## {{ $gv.GroupVersionString }}
 
@@ -10,10 +10,8 @@
 {{- range $gv.SortedKinds }}
 - {{ $gv.TypeForKind . | markdownRenderTypeLink }}
 {{- end }}
-{{ end }}
-
-{{ range $gv.SortedTypes }}
-{{ template "type" . }}
-{{ end }}
-
+{{- end }}
+{{- range $gv.SortedTypes }}
+{{- template "type" . }}
+{{- end }}
 {{- end -}}

@@ -215,7 +215,7 @@ type VMUserList struct {
 }
 
 // SecretName builds secret name for VMUser.
-func (cr *VMUser) SecretName() string {
+func (cr *VMUser) PrefixedName() string {
 	return fmt.Sprintf("vmuser-%s", cr.Name)
 }
 

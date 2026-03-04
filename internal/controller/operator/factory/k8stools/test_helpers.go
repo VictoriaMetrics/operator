@@ -1,7 +1,6 @@
 package k8stools
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,9 +8,9 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -99,40 +98,7 @@ func GetTestClientWithObjectsAndInterceptors(predefinedObjects []runtime.Object,
 
 // GetTestClientWithObjects returns testing client with optional predefined objects
 func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
-	fns := interceptor.Funcs{
-		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			case *appsv1.Deployment:
-				v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
-			return cl.Create(ctx, obj, opts...)
-		},
-		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			case *appsv1.Deployment:
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
-			return cl.Update(ctx, obj, opts...)
-		},
-	}
+	fns := GetInterceptorsWithObjects()
 	return getTestClient(predefinedObjects, &fns)
 }
 
@@ -171,6 +137,36 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 		builder = builder.WithInterceptorFuncs(*fns)
 	}
 	return builder.Build()
+}
+
+// ClientAction represents a client action
+type ClientAction struct {
+	Verb     string
+	Kind     string
+	Resource types.NamespacedName
+}
+
+// ClientWithActions is a client that tracks actions
+type ClientWithActions struct {
+	client.Client
+	Actions []ClientAction
+}
+
+// GetTestClientWithActions returns a client that tracks actions
+func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithActions {
+	var cwa ClientWithActions
+
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, nil))
+	return &cwa
+}
+
+// GetTestClientWithActionsAndObjects returns a client that tracks actions and updates status/objects
+func GetTestClientWithActionsAndObjects(predefinedObjects []runtime.Object) *ClientWithActions {
+	var cwa ClientWithActions
+	objectInterceptors := GetInterceptorsWithObjects()
+
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, &objectInterceptors))
+	return &cwa
 }
 
 // CompareObjectMeta compares metadata objects

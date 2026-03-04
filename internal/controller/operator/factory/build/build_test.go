@@ -90,17 +90,11 @@ func TestGzipGunzipConfig(t *testing.T) {
 		default:
 			err = binary.Write(&b, binary.BigEndian, data)
 		}
-		if err != nil {
-			t.Errorf("failed to write data to buffer: %v", err)
-		}
+		assert.NoError(t, err, "failed to write data to buffer")
 		compressed, err := GzipConfig(b.Bytes())
-		if err != nil {
-			t.Errorf("failed to compress data: %v", err)
-		}
+		assert.NoError(t, err, "failed to compress data")
 		uncompressed, err := GunzipConfig(compressed)
-		if err != nil {
-			t.Errorf("failed to uncompress data: %v", err)
-		}
+		assert.NoError(t, err, "failed to uncompress data")
 		assert.True(t, bytes.Equal(b.Bytes(), uncompressed))
 	}
 
@@ -188,8 +182,8 @@ func TestDeepMerge(t *testing.T) {
 			assert.Equal(t, "zone-sa", merged.ServiceAccountName)
 
 			// nested merge
-			if merged.VMSelect == nil || merged.VMSelect.ReplicaCount == nil {
-				t.Fatalf("merged.VMSelect or ReplicaCount is nil")
+			if !assert.NotNil(t, merged.VMSelect) || !assert.NotNil(t, merged.VMSelect.ReplicaCount) {
+				return
 			}
 			assert.Equal(t, int32(3), *merged.VMSelect.ReplicaCount)
 			assert.Equal(t, "x", merged.VMSelect.ExtraArgs["keep"])
@@ -197,8 +191,8 @@ func TestDeepMerge(t *testing.T) {
 			assert.Equal(t, "y", merged.VMSelect.ExtraArgs["add"])
 
 			// untouched subtree
-			if merged.VMInsert == nil || merged.VMInsert.ReplicaCount == nil {
-				t.Fatalf("merged.VMInsert or ReplicaCount is nil")
+			if !assert.NotNil(t, merged.VMInsert) || !assert.NotNil(t, merged.VMInsert.ReplicaCount) {
+				return
 			}
 			assert.Equal(t, int32(1), *merged.VMInsert.ReplicaCount)
 			assert.Equal(t, "1", merged.VMInsert.ExtraArgs["insert-arg"])

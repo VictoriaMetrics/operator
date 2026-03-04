@@ -16,9 +16,8 @@ func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		cr := VMBackup{}
-		if got := cr.SnapshotDeletePathWithFlags(o.host, o.port, o.extraArgs); got != o.want {
-			t.Errorf("SnapshotDeletePathWithFlags() = %v, want %v", got, o.want)
-		}
+		got := cr.SnapshotDeletePathWithFlags(o.host, o.port, o.extraArgs)
+		assert.Equal(t, o.want, got)
 	}
 
 	// default delete path

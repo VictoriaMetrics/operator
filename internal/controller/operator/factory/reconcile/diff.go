@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type fieldDiffRecorder struct {
@@ -26,30 +27,23 @@ func (r *fieldDiffRecorder) PopStep() {
 
 // Report implements cmp.Reporter interface
 func (r *fieldDiffRecorder) Report(rs cmp.Result) {
-	if !rs.Equal() {
-		a1, a2 := r.path.Last().Values()
-		if r.useDerivativeDiff {
-			switch a1.Kind() {
-			case reflect.String:
-				if a1.Len() == 0 {
-					return
-				}
-			case reflect.Slice:
-				if a1.IsNil() || a1.Len() == 0 {
-					return
-				}
-			case reflect.Pointer:
-				if a1.IsNil() {
-					return
-				}
-			case reflect.Map:
-				if a1.IsNil() || a1.Len() == 0 {
-					return
-				}
+	if rs.Equal() {
+		return
+	}
+	desired, current := r.path.Last().Values()
+	if r.useDerivativeDiff {
+		switch desired.Kind() {
+		case reflect.String, reflect.Slice:
+			if desired.Len() == 0 {
+				return
+			}
+		case reflect.Pointer:
+			if desired.IsNil() {
+				return
 			}
 		}
-		r.diffs = append(r.diffs, fmt.Sprintf("%#v:-%q +%q", r.path, formatDiffValue(a2), formatDiffValue(a1)))
 	}
+	r.diffs = append(r.diffs, fmt.Sprintf("%#v:-%q +%q", r.path, formatDiffValue(current), formatDiffValue(desired)))
 }
 
 // String implements Stringer interface
@@ -57,27 +51,26 @@ func (r *fieldDiffRecorder) String() string {
 	return strings.Join(r.diffs, ",")
 }
 
-func diffDeep(a1, a2 any) string {
-	return diffDeepInternal(a1, a2, false)
-
+func diffDeep(desired, current any) string {
+	return diffDeepInternal(desired, current, false)
 }
 
-func diffDeepDerivative(a1, a2 any) string {
-	return diffDeepInternal(a1, a2, true)
+func diffDeepDerivative(desired, current any) string {
+	return diffDeepInternal(desired, current, true)
 }
 
-// diffDeepInternal is similar to diffDeep except that unset fields in a1 are
+// diffDeepInternal is similar to diffDeep except that unset fields in desired are
 // ignored (not compared). This allows us to focus on the fields that matter to
 // the semantic comparison.
 //
 // The unset fields include a nil pointer and an empty string.
 //
 // Helper function for equality.Semantic.DeepDerivative
-func diffDeepInternal(a1, a2 any, useDerivative bool) string {
+func diffDeepInternal(desired, current any, useDerivative bool) string {
 	r := fieldDiffRecorder{
 		useDerivativeDiff: useDerivative,
 	}
-	cmp.Diff(a1, a2, cmp.Reporter(&r))
+	cmp.Diff(desired, current, cmp.Reporter(&r), cmpopts.EquateEmpty())
 	return r.String()
 
 }

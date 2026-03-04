@@ -101,7 +101,7 @@ func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, 
 	if !ptr.Deref(cr.Spec.VLStorage.DisableSelfServiceScrape, false) {
 		svs := buildVLStorageScrape(cr, svc)
 		prevSvs := buildVLStorageScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VLStorage: %w", err)
 		}
 	}
@@ -191,7 +191,6 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{

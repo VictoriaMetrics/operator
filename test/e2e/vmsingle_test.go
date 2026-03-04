@@ -18,6 +18,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmsingle"
 )
 
 //nolint:dupl,lll
@@ -66,6 +67,46 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 			}
 		})
 		Context("crud", func() {
+			It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+				const attempts = 3
+				nsn.Name = "vmsingle-idempotent"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				var singleDep appsv1.Deployment
+				singleDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+				Expect(k8sClient.Get(ctx, singleDepName, &singleDep)).ToNot(HaveOccurred())
+				singleDepRV := singleDep.ResourceVersion
+
+				for i := 0; i < attempts; i++ {
+					var latestCR vmv1beta1.VMSingle
+					Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+					latestCR.Kind = "VMSingle"
+					latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+					k8sClient.Scheme().Default(&latestCR)
+					Expect(vmsingle.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
+				}
+
+				var afterSingleDep appsv1.Deployment
+				Expect(k8sClient.Get(ctx, singleDepName, &afterSingleDep)).ToNot(HaveOccurred())
+				Expect(afterSingleDep.ResourceVersion).To(Equal(singleDepRV), "VMSingle Deployment resource version should not change")
+			})
+
 			DescribeTable("should create vmsingle",
 				func(name string, isEnterprise bool, cr *vmv1beta1.VMSingle, verify func(*vmv1beta1.VMSingle)) {
 					if isEnterprise {
@@ -465,5 +506,67 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 			)
 		},
 		)
+
+		It("should skip reconciliation when VMSingle is paused", func() {
+			nsn.Name = "vmsingle-paused"
+			By("creating a VMSingle")
+			initialReplicas := int32(1)
+			cr := &vmv1beta1.VMSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMSingleSpec{
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: &initialReplicas,
+					},
+					RetentionPeriod: "1",
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("pausing the VMSingle")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("attempting to scale the VMSingle while paused")
+			updatedReplicas := int32(2)
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.ReplicaCount = &updatedReplicas
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Consistently(func() int32 {
+				var dep appsv1.Deployment
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
+				return *dep.Spec.Replicas
+			}, "10s", "1s").Should(Equal(initialReplicas))
+
+			By("unpausing the VMSingle")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Eventually(func() int32 {
+				var dep appsv1.Deployment
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
+				return *dep.Spec.Replicas
+			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
+		})
 	})
 })

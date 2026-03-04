@@ -297,8 +297,8 @@ func getObject(ctx context.Context, obj client.Object) (client.Object, error) {
 	return obj, err
 }
 
-var _ = Describe("test prometheusConverter Controller", Label("converter"), func() {
-	Context("e2e prome converter", func() {
+var _ = Describe("test prometheusConverter Controller", func() {
+	Context("e2e prom converter", func() {
 		for _, testCaseIt := range testCases {
 			testCase := testCaseIt
 			// adapt test for parallel execution
@@ -318,11 +318,8 @@ var _ = Describe("test prometheusConverter Controller", Label("converter"), func
 					k8sClient.Delete(ctx, testCase.targetTpl) // nolint:errcheck
 					Eventually(func() error {
 						_, err := getObject(ctx, testCase.targetTpl)
-						if err == nil {
-							return fmt.Errorf("Should be deleted")
-						}
-						return nil
-					}, 60, 1).ShouldNot(HaveOccurred())
+						return err
+					}, 60, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 				})
 
 				It("Should convert the object", func() {

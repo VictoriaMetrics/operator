@@ -18,24 +18,25 @@ import (
 func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.ConfigMap, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	updated := true
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj corev1.ConfigMap
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new ConfigMap=%s", nsn.String()))
 				return rclient.Create(ctx, newObj)
 			}
-			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get existing ConfigMap=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 
-		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
 		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data)
 		needsUpdate := metaChanged || len(dataDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_diff=%s", dataDiff))

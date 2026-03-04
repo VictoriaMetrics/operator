@@ -253,7 +253,7 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.VMSelect.DisableSelfServiceScrape, false) {
 		svs := buildVMSelectScrape(cr, svc)
 		prevSvs := buildVMSelectScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmSelect: %w", err)
 		}
 	}
@@ -392,7 +392,7 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.VMInsert.DisableSelfServiceScrape, false) {
 		svs := buildVMInsertScrape(cr, svc)
 		prevSvs := buildVMInsertScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmInsert: %w", err)
 		}
 	}
@@ -490,7 +490,7 @@ func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, 
 	if !ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
 		svs := buildVMStorageScrape(cr, svc)
 		prevSvs := buildVMStorageScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for vmStorage: %w", err)
 		}
 	}
@@ -511,7 +511,6 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentSelect),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -739,7 +738,6 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas:             cr.Spec.VMInsert.ReplicaCount,
@@ -939,7 +937,6 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -1304,7 +1301,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 	cc := finalize.NewChildCleaner()
 	if newStorage == nil {
-		if err := finalize.OnStorageDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
 		}
 	} else {
@@ -1328,7 +1325,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 
 	if newSelect == nil {
-		if err := finalize.OnSelectDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnSelectDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned select resources: %w", err)
 		}
 	} else {
@@ -1357,7 +1354,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 
 	if newInsert == nil {
-		if err := finalize.OnInsertDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnInsertDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned insert resources: %w", err)
 		}
 	} else {
@@ -1397,15 +1394,15 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			cc.KeepService(newLB.Spec.AdditionalServiceSpec.NameOrDefault(commonName))
 		}
 	} else {
-		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.OnClusterLoadBalancerDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned loadbalancer components: %w", err)
 		}
 	}
 	if !cr.IsOwnsServiceAccount() {
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
-		owner := cr.AsOwner()
 		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
+		objsToRemove := []client.Object{&corev1.ServiceAccount{ObjectMeta: objMeta}}
+		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b); err != nil {
 			return fmt.Errorf("cannot remove serviceaccount: %w", err)
 		}
 	}
@@ -1602,7 +1599,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
 		svs := buildVMAuthScrape(cr, svc)
 		prevSvs := buildVMAuthScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 		}
 	}

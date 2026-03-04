@@ -3,6 +3,7 @@ package build
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -27,9 +28,7 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 			}
 		}
 		addDefaultsToCommonParams(cdp, license, appDefaults)
-		if cdp.Image.Tag != wantVersion {
-			t.Fatalf("unexpected spec version: (+%s,-%s)", cdp.Image.Tag, wantVersion)
-		}
+		assert.Equal(t, wantVersion, cdp.Image.Tag, "unexpected spec version")
 	}
 
 	// preserve spec version

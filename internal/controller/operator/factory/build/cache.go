@@ -67,7 +67,6 @@ func ResourceMeta(kind ResourceKind, cr builderOpts) metav1.ObjectMeta {
 		Labels:          cr.FinalLabels(),
 		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Finalizers:      []string{vmv1beta1.FinalizerName},
 	}
 }
 

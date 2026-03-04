@@ -48,7 +48,6 @@ func buildRole(cr *vmv1beta1.VMAuth) *rbacv1.Role {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -68,7 +67,6 @@ func buildRoleBinding(cr *vmv1beta1.VMAuth) *rbacv1.RoleBinding {
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		RoleRef: rbacv1.RoleRef{

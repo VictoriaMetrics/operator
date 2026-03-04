@@ -149,13 +149,10 @@ Note that VMDistributed will create a single VMAuth, which encapsulates rules fo
 
 ### Ownership and references
 
-VMDistributed owns VMAgents, and VMAuths created or referenced by the distributed chart with the same namespace as the VMDistributed. Only created ones are deleted when the VMDistributed is deleted.
-
-When VMCluster is referenced via `ref`, these objects will have `ownerRef` set to the VMDistributed, but they will not be deleted when the VMDistributed is deleted. Instead, only `ownerRef` will be removed from them.
+VMDistributed creates or becomes an owner of existing VMAuth, VMAgent and VMCluster resources and by default it removes all resources it owns on CR deletion. To remove VMDistributed but keep all owned resources set `spec.retain: true` before VMDistributed removal.
 
 ### Current shortcomings
 - Only `VMCluster` objects are supported for distributed management.
-- Only one `VMAgent` and one `VMAuth` can be managed per `VMDistributed`.
+- Only one `VMAuth` can be managed per `VMDistributed`.
 - All objects must belong to the same namespace as the `VMDistributed`.
-- Referenced `VMCluster` objects (using `ref`) are not actively watched for external changes; they are reconciled periodically or when the `VMDistributed` itself changes.
 - Objects must be referred to by name; label selectors are not supported for cluster selection.

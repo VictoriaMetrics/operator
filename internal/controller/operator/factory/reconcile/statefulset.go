@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -73,29 +74,32 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	var mustRecreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
+	var prevVCTs []corev1.PersistentVolumeClaim
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
+		prevVCTs = prevObj.Spec.VolumeClaimTemplates
 	}
 
 	rclient.Scheme().Default(newObj)
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var recreateSTS func() error
+	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn.String()))
 				if err = rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new StatefulSet=%s: %w", nsn, err)
+					return fmt.Errorf("cannot create new StatefulSet=%s: %w", nsn.String(), err)
 				}
 				updateStrategy = appsv1.RollingUpdateStatefulSetStrategyType
 				return nil
 			}
-			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 
@@ -112,18 +116,18 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		}
 
 		var mustRecreateSTS bool
-		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, newObj, &existingObj)
+		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {
 			recreateSTS = func() error {
-				return removeStatefulSetKeepPods(ctx, rclient, newObj, &existingObj)
+				return removeStatefulSetKeepPods(ctx, rclient, &existingObj, newObj)
 			}
 			return nil
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
@@ -134,7 +138,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn, err)
+			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn.String(), err)
 		}
 		// check if pvcs need to resize
 		if cr.HasClaim {
@@ -155,19 +159,26 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	// perform manual update only with OnDelete policy, which is default.
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
-		podMaxUnavailable := 1
+		opts := rollingUpdateOpts{
+			recreate:       mustRecreatePod,
+			selector:       cr.SelectorLabels(),
+			maxUnavailable: 1,
+		}
 		if cr.UpdateBehavior != nil {
-			podMaxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
+			if cr.UpdateBehavior.MaxUnavailable.String() == "100%" {
+				opts.delete = true
+			}
+			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
 			if err != nil {
 				return err
 			}
 		}
-		if err := performRollingUpdateOnSts(ctx, mustRecreatePod, rclient, newObj.Name, newObj.Namespace, cr.SelectorLabels(), podMaxUnavailable); err != nil {
-			return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn, err)
+		if err := performRollingUpdateOnSts(ctx, rclient, newObj, opts); err != nil {
+			return fmt.Errorf("cannot handle rolling-update on StatefulSet=%s: %w", nsn.String(), err)
 		}
 		return nil
 	default:
-		logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on StatefulSet=%s", updateStrategy, nsn))
+		logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on StatefulSet=%s", updateStrategy, nsn.String()))
 		if err := waitForStatefulSetReady(ctx, rclient, newObj); err != nil {
 			return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", updateStrategy, err)
 		}
@@ -197,6 +208,13 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 	return &sts, nil
 }
 
+type rollingUpdateOpts struct {
+	recreate       bool
+	maxUnavailable int
+	selector       map[string]string
+	delete         bool
+}
+
 // we perform rolling update on sts by manually evicting pods one by one or in batches
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
@@ -204,9 +222,13 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 //
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
-func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, podMaxUnavailable int) error {
+func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
 	time.Sleep(podWaitReadyIntervalCheck)
-	sts, err := getLatestStsState(ctx, rclient, types.NamespacedName{Name: stsName, Namespace: ns})
+	nsn := types.NamespacedName{
+		Name:      obj.Name,
+		Namespace: obj.Namespace,
+	}
+	sts, err := getLatestStsState(ctx, rclient, nsn)
 	if err != nil {
 		return err
 	}
@@ -225,19 +247,25 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		l.Info("sts has 0 replicas configured, nothing to update")
 		return nil
 	}
-	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, podMustRecreate))
+	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, o.recreate))
 	var podList corev1.PodList
 	opts := &client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(podLabels),
+		Namespace:     obj.Namespace,
+		LabelSelector: labels.SelectorFromSet(o.selector),
 	}
 	if err := rclient.List(ctx, &podList, opts); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-	if err := sortStsPodsByID(podList.Items); err != nil {
+	pods := podList.Items[:0]
+	for _, p := range podList.Items {
+		if _, ok := p.Labels[podRevisionLabel]; ok {
+			pods = append(pods, p)
+		}
+	}
+	if err := sortStsPodsByID(pods); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
-	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, podMustRecreate)
+	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, o.recreate)
 	totalPodsCount := len(readyPods) + len(updatedPods) + len(podsForUpdate)
 
 	switch {
@@ -264,31 +292,37 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
-		podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+		podNsn := types.NamespacedName{Namespace: obj.Namespace, Name: pod.Name}
 		if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
 	}
 
 	// perform update for not updated pods in batches according to podMaxUnavailable
-	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += podMaxUnavailable {
+	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += o.maxUnavailable {
 		var batch []corev1.Pod
 
 		// determine batch of pods to update
-		batchClose := batchStart + podMaxUnavailable
-		if batchClose > len(podsForUpdate) {
-			batchClose = len(podsForUpdate)
-		}
+		batchClose := min(batchStart+o.maxUnavailable, len(podsForUpdate))
 		batch = podsForUpdate[batchStart:batchClose]
 
 		errG, ctx := errgroup.WithContext(ctx)
 		for _, pod := range batch {
 			errG.Go(func() error {
 				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
-
 				// eviction may fail due to podDisruption budget and it's unexpected
 				// so retry pod eviction
 				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+					if o.delete {
+						if err := rclient.Delete(ctx, &pod); err != nil {
+							if k8serrors.IsNotFound(err) {
+								return true, nil
+							}
+							return false, fmt.Errorf("failed to delete pod %s: %w", pod.Name, err)
+						}
+						return true, nil
+					}
+
 					// evict pod to trigger re-creation
 					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
@@ -305,7 +339,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 					return fmt.Errorf("cannot perform pod eviction: %w", evictErr)
 				}
 				// wait for pod to be re-created
-				podNsn := types.NamespacedName{Namespace: ns, Name: pod.Name}
+				podNsn := types.NamespacedName{Namespace: obj.Namespace, Name: pod.Name}
 				if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
 					return fmt.Errorf("cannot wait for pod ready state during re-creation for pod %s: %w", pod.Name, err)
 				}
@@ -341,12 +375,12 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
 	var pod corev1.Pod
-	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(_ context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, nsn, &pod); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			return false, fmt.Errorf("cannot get pod %s: %w", nsn, err)
+			return false, fmt.Errorf("cannot get Pod=%s: %w", nsn.String(), err)
 		}
 		if !pod.DeletionTimestamp.IsZero() {
 			return false, nil
@@ -442,7 +476,7 @@ func sortStsPodsByID(src []corev1.Pod) error {
 	return firstParseError
 }
 
-func isSTSPod(pod *corev1.Pod) bool {
+func isOwnedBySTS(pod *corev1.Pod) bool {
 	for _, ref := range pod.OwnerReferences {
 		if ref.Kind == "StatefulSet" {
 			return true
@@ -457,7 +491,7 @@ func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, re
 		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
 		isSameRevision := pod.Labels[podRevisionLabel] == revision
 		switch {
-		case !isSTSPod(&pod):
+		case !isOwnedBySTS(&pod):
 		case !pod.DeletionTimestamp.IsZero() || recreate:
 			podsForUpdate = append(podsForUpdate, pod)
 		case PodIsReady(&pod, minReadySeconds) && isSameRevision:
@@ -477,32 +511,32 @@ func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, re
 // VolumeMounts validation is missing:
 // https://github.com/kubernetes/kubernetes/blob/b15dfce6cbd0d5bbbcd6172cf7e2082f4d31055e/pkg/apis/apps/validation/validation.go#L66
 func validateStatefulSet(sts *appsv1.StatefulSet) error {
-	volumeNames := make(map[string]struct{}, len(sts.Spec.Template.Spec.Volumes))
+	volumeNames := sets.New[string]()
 	var joinedNames string
 	for _, vl := range sts.Spec.Template.Spec.Volumes {
-		if _, ok := volumeNames[vl.Name]; ok {
+		if volumeNames.Has(vl.Name) {
 			return fmt.Errorf("duplicate Volume.Name=%s", vl.Name)
 		}
-		volumeNames[vl.Name] = struct{}{}
+		volumeNames.Insert(vl.Name)
 		joinedNames += vl.Name + ","
 	}
 	for _, vct := range sts.Spec.VolumeClaimTemplates {
-		if _, ok := volumeNames[vct.Name]; ok {
+		if volumeNames.Has(vct.Name) {
 			return fmt.Errorf("duplicate VolumeClaimTemplate.Name=%s", vct.Name)
 		}
-		volumeNames[vct.Name] = struct{}{}
+		volumeNames.Insert(vct.Name)
 		joinedNames += vct.Name + ","
 	}
 	for _, cnt := range sts.Spec.Template.Spec.Containers {
 		for _, vm := range cnt.VolumeMounts {
-			if _, ok := volumeNames[vm.Name]; !ok {
+			if !volumeNames.Has(vm.Name) {
 				return fmt.Errorf("cannot find volumeMount.name=%s link for container=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
 			}
 		}
 	}
 	for _, cnt := range sts.Spec.Template.Spec.InitContainers {
 		for _, vm := range cnt.VolumeMounts {
-			if _, ok := volumeNames[vm.Name]; !ok {
+			if !volumeNames.Has(vm.Name) {
 				return fmt.Errorf("cannot find volumeMount.name=%s link for initContainer=%s at volumes and claimTemplates names=%s", vm.Name, cnt.Name, joinedNames)
 			}
 		}

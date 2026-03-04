@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +17,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmagent"
 )
 
 //nolint:dupl,lll
@@ -39,6 +39,48 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			},
 			)).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAgent{})
+		})
+
+		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
+			const attempts = 3
+			nsn.Name = "vmagent-idempotent"
+			cr := &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{URL: "http://localhost:8429/api/v1/write"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
+			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			var agentDep appsv1.Deployment
+			agentDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+			Expect(k8sClient.Get(ctx, agentDepName, &agentDep)).ToNot(HaveOccurred())
+			agentDepRV := agentDep.ResourceVersion
+
+			for i := 0; i < attempts; i++ {
+				var latestCR vmv1beta1.VMAgent
+				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
+				latestCR.Kind = "VMAgent"
+				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				k8sClient.Scheme().Default(&latestCR)
+				Expect(vmagent.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
+			}
+
+			var afterAgentDep appsv1.Deployment
+			Expect(k8sClient.Get(ctx, agentDepName, &afterAgentDep)).ToNot(HaveOccurred())
+			Expect(afterAgentDep.ResourceVersion).To(Equal(agentDepRV), "VMAgent Deployment resource version should not change")
 		})
 
 		DescribeTable("should create vmagent",
@@ -344,82 +386,6 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(vmc.VolumeMounts).To(HaveLen(5))
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).ToNot(HaveOccurred())
 				}),
-			Entry("by migrating RBAC access", "rbac-migrate",
-				&vmv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      nsn.Name,
-					},
-					Spec: vmv1beta1.VMAgentSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
-						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-							{URL: "http://some-vm-single:8428"},
-						},
-					},
-				},
-				func() {
-					cr := vmv1beta1.VMAgent{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "rbac-migrate",
-							Namespace: namespace,
-						},
-					}
-					roleMeta := metav1.ObjectMeta{
-						Name:       "monitoring:vmagent-cluster-access-" + cr.Name,
-						Namespace:  namespace,
-						Finalizers: []string{vmv1beta1.FinalizerName},
-					}
-					crole := &rbacv1.ClusterRole{ObjectMeta: roleMeta, Rules: []rbacv1.PolicyRule{
-						{APIGroups: []string{""}, Verbs: []string{"GET"}, Resources: []string{"pods"}},
-					}}
-					croleb := &rbacv1.ClusterRoleBinding{
-						ObjectMeta: roleMeta,
-						Subjects: []rbacv1.Subject{
-							{
-								Kind:      rbacv1.ServiceAccountKind,
-								Name:      cr.GetServiceAccountName(),
-								Namespace: cr.GetNamespace(),
-							},
-						},
-						RoleRef: rbacv1.RoleRef{
-							APIGroup: rbacv1.GroupName,
-							Name:     cr.GetClusterRoleName(),
-							Kind:     "ClusterRole",
-						},
-					}
-					Expect(k8sClient.Create(ctx, crole)).ToNot(HaveOccurred())
-					Expect(k8sClient.Create(ctx, croleb)).ToNot(HaveOccurred())
-					// check that access not exist with new version naming
-					newFormatNss := types.NamespacedName{
-						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
-						Namespace: namespace,
-					}
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRole{})
-					waitResourceDeleted(ctx, k8sClient, newFormatNss, &rbacv1.ClusterRoleBinding{})
-				},
-				func(cr *vmv1beta1.VMAgent) {
-					prevFormatName := types.NamespacedName{
-						Name:      "monitoring:vmagent-cluster-access-" + cr.Name,
-						Namespace: namespace,
-					}
-
-					newFormatName := types.NamespacedName{
-						Name:      "monitoring:" + namespace + ":vmagent-" + cr.Name,
-						Namespace: namespace,
-					}
-					waitResourceDeleted(ctx, k8sClient, prevFormatName, &rbacv1.ClusterRole{})
-					waitResourceDeleted(ctx, k8sClient, prevFormatName, &rbacv1.ClusterRoleBinding{})
-					Expect(
-						k8sClient.Get(ctx,
-							newFormatName,
-							&rbacv1.ClusterRole{})).ToNot(HaveOccurred())
-					Expect(
-						k8sClient.Get(ctx,
-							newFormatName,
-							&rbacv1.ClusterRoleBinding{})).ToNot(HaveOccurred())
-
-				},
-			),
 		)
 		type testStep struct {
 			setup  func(*vmv1beta1.VMAgent)
@@ -542,14 +508,15 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 
 			Entry("by transition into statefulMode and back", "stateful-transition",
-				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](1),
+				&vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://some-vm-single:8428"},
+						},
 					},
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{URL: "http://some-vm-single:8428"},
-					},
-				},
 				},
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) { cr.Spec.StatefulMode = true },
@@ -649,5 +616,71 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 			),
 		)
+
+		It("should skip reconciliation when VMAgent is paused", func() {
+			ctx := context.Background()
+			nsn.Name = "vmagent-paused"
+			By("creating a VMAgent")
+			initialReplicas := int32(1)
+			cr := &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{URL: "http://localhost:8428/api/v1/write"},
+					},
+					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						ReplicaCount: &initialReplicas,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			deploymentName := types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("pausing the VMAgent")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			By("attempting to scale the VMAgent while paused")
+			updatedReplicas := int32(2)
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.ReplicaCount = &updatedReplicas
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Consistently(func() int32 {
+				var dep appsv1.Deployment
+				Expect(k8sClient.Get(ctx, deploymentName, &dep)).ToNot(HaveOccurred())
+				return *dep.Spec.Replicas
+			}, "10s", "1s").Should(Equal(initialReplicas))
+
+			By("unpausing the VMAgent")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+
+			Eventually(func() int32 {
+				var dep appsv1.Deployment
+				Expect(k8sClient.Get(ctx, deploymentName, &dep)).ToNot(HaveOccurred())
+				return *dep.Spec.Replicas
+			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
+		})
 	})
 })

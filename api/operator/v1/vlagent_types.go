@@ -372,11 +372,6 @@ func (cr *VLAgent) FinalAnnotations() map[string]string {
 	return v
 }
 
-// AsCRDOwner implements interface
-func (*VLAgent) AsCRDOwner() *metav1.OwnerReference {
-	return vmv1beta1.GetCRDAsOwner(vmv1beta1.VLAgentCRD)
-}
-
 // SelectorLabels returns selector labels for querying any vlagent related resources
 func (cr *VLAgent) SelectorLabels() map[string]string {
 	return map[string]string{
@@ -486,7 +481,7 @@ func (cr *VLAgent) ProbePort() string {
 	return cr.Spec.Port
 }
 
-func (cr *VLAgent) GetClusterRoleName() string {
+func (cr *VLAgent) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:vlagent-%s", cr.Namespace, cr.Name)
 }
 

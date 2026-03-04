@@ -2,10 +2,11 @@ package finalize
 
 import (
 	"context"
-	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -14,48 +15,38 @@ import (
 
 // OnVMAlertDelete deletes all vmalert related resources
 func OnVMAlertDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
-	// check deployment
-	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, cr.PrefixedName(), cr.Namespace); err != nil {
+	if err := RemoveOrphanedConfigMaps(ctx, rclient, cr, nil, false); err != nil {
 		return err
 	}
-	// check service
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.PrefixedName(), cr.Namespace); err != nil {
-		return err
+	ns := cr.GetNamespace()
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.SecretConfigResourceKind, cr), cr.Namespace); err != nil {
-		return err
+	objsToRemove := []client.Object{
+		&appsv1.Deployment{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.SecretConfigResourceKind, cr),
+			Namespace: ns,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name:      build.ResourceName(build.TLSAssetsResourceKind, cr),
+			Namespace: ns,
+		}},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
-	var cmList corev1.ConfigMapList
-	if err := rclient.List(ctx, &cmList, cr.RulesConfigMapSelector()); err != nil {
-		return err
-	}
-	for _, cm := range cmList.Items {
-		if err := RemoveFinalizer(ctx, rclient, &cm); err != nil {
-			return fmt.Errorf("failed to remove finalizer from vmalert cm=%q: %w", cm.Name, err)
-		}
-	}
-	// check secret
-	if err := removeFinalizeObjByName(ctx, rclient, &corev1.Secret{}, build.ResourceName(build.TLSAssetsResourceKind, cr), cr.Namespace); err != nil {
-		return err
-	}
-
-	// check PDB
-	if cr.Spec.PodDisruptionBudget != nil {
-		if err := finalizePDB(ctx, rclient, cr); err != nil {
-			return err
-		}
-	}
-	if err := deleteSA(ctx, rclient, cr); err != nil {
-		return err
-	}
-
 	if cr.Spec.ServiceSpec != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &corev1.Service{}, cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()), cr.Namespace); err != nil {
-			return err
-		}
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Namespace: ns,
+		}})
 	}
-	if err := removeFinalizeObjByName(ctx, rclient, cr, cr.Name, cr.Namespace); err != nil {
-		return err
-	}
-	return nil
+	objsToRemove = append(objsToRemove, cr)
+	deleteOwnerReferences := make([]bool, len(objsToRemove))
+	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
 }

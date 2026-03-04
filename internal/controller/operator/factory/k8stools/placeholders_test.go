@@ -3,6 +3,7 @@ package k8stools_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -20,9 +21,10 @@ func TestRenderPlaceholders(t *testing.T) {
 		t.Helper()
 		resource := o.resource.(*corev1.ConfigMap)
 		_, err := k8stools.RenderPlaceholders(resource, o.placeholders)
-		if (err != nil) != o.wantErr {
-			t.Errorf("RenderPlaceholders() error = %v, wantErr = %v", err, o.wantErr)
-			return
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 

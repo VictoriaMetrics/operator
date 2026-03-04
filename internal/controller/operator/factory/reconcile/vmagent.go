@@ -22,27 +22,28 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 	}
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := false
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMAgent
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 
-				logger.WithContext(ctx).Info(fmt.Sprintf("creating new VMAgent=%s", nsn))
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new VMAgent=%s", nsn.String()))
 				if err := rclient.Create(ctx, newObj); err != nil {
-					return fmt.Errorf("cannot create new VMAgent=%s: %w", nsn, err)
+					return fmt.Errorf("cannot create new VMAgent=%s: %w", nsn.String(), err)
 				}
 				return nil
 			}
-			return fmt.Errorf("cannot get VMAgent=%s: %w", nsn, err)
+			return fmt.Errorf("cannot get VMAgent=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
-		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn, prevObj == nil)}
+		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
 		needsUpdate := metaChanged || len(specDiff) > 0
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
@@ -52,7 +53,7 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 		existingObj.Spec = newObj.Spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating VMAgent %s", strings.Join(logMessageMetadata, ", ")))
 		if err := rclient.Update(ctx, &existingObj); err != nil {
-			return fmt.Errorf("cannot update VMAgent=%s: %w", nsn, err)
+			return fmt.Errorf("cannot update VMAgent=%s: %w", nsn.String(), err)
 		}
 		return nil
 	})
@@ -60,7 +61,7 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 		return err
 	}
 	if err := waitForStatus(ctx, rclient, newObj, vmStatusInterval, vmv1beta1.UpdateStatusOperational); err != nil {
-		return fmt.Errorf("failed to wait for VMAgent=%s to be ready: %w", nsn, err)
+		return fmt.Errorf("failed to wait for VMAgent=%s to be ready: %w", nsn.String(), err)
 	}
 	return nil
 }

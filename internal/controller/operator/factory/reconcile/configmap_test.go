@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -10,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestConfigMapReconcile(t *testing.T) {
@@ -19,39 +20,46 @@ func TestConfigMapReconcile(t *testing.T) {
 		prevMeta          *metav1.ObjectMeta
 		owner             *metav1.OwnerReference
 		predefinedObjects []runtime.Object
-		actions           []string
+		actions           []k8stools.ClientAction
 		validate          func(*corev1.ConfigMap)
 	}
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := getTestClient(o.new, o.predefinedObjects)
-		_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
-		assert.NoError(t, err)
-		assert.Equal(t, o.actions, cl.actions)
-		if o.validate != nil {
-			var got corev1.ConfigMap
-			nsn := types.NamespacedName{
-				Name:      o.new.Name,
-				Namespace: o.new.Namespace,
+		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
+		synctest.Test(t, func(t *testing.T) {
+			_, err := ConfigMap(ctx, cl, o.new, o.prevMeta, o.owner)
+			assert.NoError(t, err)
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got corev1.ConfigMap
+				nsn := types.NamespacedName{
+					Name:      o.new.Name,
+					Namespace: o.new.Namespace,
+				}
+				assert.NoError(t, cl.Get(ctx, nsn, &got))
+				o.validate(&got)
 			}
-			assert.NoError(t, cl.Get(ctx, nsn, &got))
-			o.validate(&got)
-		}
+		})
 	}
+
+	nn := types.NamespacedName{Name: "test", Namespace: "default"}
 
 	// create configmap
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "test",
 			},
 		},
-		actions: []string{"Get", "Create"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Create", Kind: "ConfigMap", Resource: nn},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
@@ -61,30 +69,31 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "test",
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test",
-					Namespace:  "default",
-					Finalizers: []string{vmv1beta1.FinalizerName},
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "test",
 				},
 			},
 		},
-		actions: []string{"Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},
@@ -94,8 +103,8 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 				Annotations: map[string]string{
 					"key": "value",
 				},
@@ -105,21 +114,24 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "test",
 				},
 			},
 		},
-		actions: []string{"Get", "Update"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "value", c.Annotations["key"])
 		},
@@ -129,31 +141,69 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 			},
 			Data: map[string]string{
 				"data": "after",
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 				},
 				Data: map[string]string{
 					"data": "before",
 				},
 			},
 		},
-		actions: []string{"Get", "Update"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "after", c.Data["data"])
+		},
+	})
+
+	// binary data updated
+	f(opts{
+		new: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
+			},
+			BinaryData: map[string][]byte{
+				"data": []byte("after"),
+			},
+		},
+		prevMeta: &metav1.ObjectMeta{
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
+				},
+				BinaryData: map[string][]byte{
+					"data": []byte("before"),
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
+		validate: func(c *corev1.ConfigMap) {
+			assert.Equal(t, []byte("after"), c.BinaryData["data"])
 		},
 	})
 
@@ -161,8 +211,8 @@ func TestConfigMapReconcile(t *testing.T) {
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
 				Annotations: map[string]string{
 					"key": "value",
 				},
@@ -172,8 +222,8 @@ func TestConfigMapReconcile(t *testing.T) {
 			},
 		},
 		prevMeta: &metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
 			Annotations: map[string]string{
 				"key": "value",
 			},
@@ -181,20 +231,21 @@ func TestConfigMapReconcile(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "default",
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
 					Annotations: map[string]string{
 						"key":      "value",
 						"external": "value",
 					},
-					Finalizers: []string{vmv1beta1.FinalizerName},
 				},
 				Data: map[string]string{
 					"data": "test",
 				},
 			},
 		},
-		actions: []string{"Get"},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+		},
 		validate: func(c *corev1.ConfigMap) {
 			assert.Equal(t, "test", c.Data["data"])
 		},

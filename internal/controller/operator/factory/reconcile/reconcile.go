@@ -11,6 +11,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,11 +29,13 @@ var (
 	vmStatusInterval          = 5 * time.Second
 )
 
-// InitFromConfig sets package configuration from config
-func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duration) {
+// Init sets package defaults
+func Init(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval, statusUpdate time.Duration) {
 	podWaitReadyIntervalCheck = intervalCheck
 	appWaitReadyDeadline = appWaitDeadline
 	podWaitReadyTimeout = podReadyDeadline
+	vmStatusInterval = statusInterval
+	statusUpdateTTL = statusUpdate
 }
 
 // mergeMaps performs 3-way merge for labels and annotations
@@ -40,19 +43,19 @@ func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline time.Duratio
 // 3-rd party kubernetes annotations and labels must be preserved
 func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string {
 	var dst map[string]string
-	var deleted map[string]struct{}
+	var deleted sets.Set[string]
 
 	for k := range prevMap {
 		if _, ok := newMap[k]; !ok {
 			if deleted == nil {
-				deleted = make(map[string]struct{})
+				deleted = sets.New[string]()
 			}
-			deleted[k] = struct{}{}
+			deleted.Insert(k)
 		}
 	}
 
 	for k, v := range existingMap {
-		if _, ok := deleted[k]; ok {
+		if deleted.Has(k) {
 			continue
 		}
 		if dst == nil {
@@ -69,12 +72,15 @@ func mergeMaps(existingMap, newMap, prevMap map[string]string) map[string]string
 	return dst
 }
 
-func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
+func mergeMeta(existingObj, newObj client.Object, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference, shouldRemoveFinalizer bool) (bool, error) {
 	refChanged, err := addOwnerReferenceIfAbsent(existingObj, owner)
 	if err != nil {
 		return false, err
 	}
-	finChanged := controllerutil.AddFinalizer(existingObj, vmv1beta1.FinalizerName)
+	var finChanged bool
+	if shouldRemoveFinalizer {
+		finChanged = controllerutil.RemoveFinalizer(existingObj, vmv1beta1.FinalizerName)
+	}
 	existingLabels := existingObj.GetLabels()
 	existingAnnotations := existingObj.GetAnnotations()
 	var prevLabels, prevAnnotations map[string]string
@@ -102,7 +108,10 @@ type errRecreate struct {
 
 func newErrRecreate(ctx context.Context, r client.Object) *errRecreate {
 	finalizers := strings.Join(r.GetFinalizers(), ",")
-	msg := fmt.Sprintf("waiting for %s=%s/%s (finalizers=[%s]) to be removed", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
+	if len(finalizers) > 0 {
+		finalizers = fmt.Sprintf("(finalizers=[%s])", finalizers)
+	}
+	msg := fmt.Sprintf("waiting for %s=%s/%s to be removed %s", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
 	logger.WithContext(ctx).Info(msg)
 	return &errRecreate{
 		msg: msg,
@@ -145,7 +154,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn, err)
+			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn.String(), err)
 			return
 		}
 		lastStatus = obj.GetStatus().GetStatusMetadata()
@@ -156,7 +165,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil {
 			updateStatus = string(lastStatus.UpdateStatus)
 		}
-		return fmt.Errorf("failed to wait for %T %s to be ready: %w, current status: %s", obj, nsn, err, updateStatus)
+		return fmt.Errorf("failed to wait for %T=%s to be ready: %w, current status: %s", obj, nsn.String(), err, updateStatus)
 	}
 	return nil
 }
@@ -182,13 +191,15 @@ func addOwnerReferenceIfAbsent(obj client.Object, owner *metav1.OwnerReference) 
 }
 
 // collectGarbage checks if resource must be freed from finalizer and prepares it for garbage collection by kubernetes
-func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object) error {
+func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object, removeFinalizer bool) error {
 	if obj.GetDeletionTimestamp().IsZero() {
 		// fast path
 		return nil
 	}
-	if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
-		return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+	if removeFinalizer {
+		if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
+			return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+		}
 	}
 	return newErrRecreate(ctx, obj)
 }

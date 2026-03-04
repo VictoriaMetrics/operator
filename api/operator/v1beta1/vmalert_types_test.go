@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -17,9 +18,7 @@ func TestVMAlert_ValidateOk(t *testing.T) {
 			},
 			Spec: spec,
 		}
-		if err := cr.Validate(); err != nil {
-			t.Fatalf("unexpected validation error: %s", err)
-		}
+		assert.NoError(t, cr.Validate())
 	}
 	f(VMAlertSpec{
 		Datasource: VMAlertDatasourceSpec{URL: "http://some-url"},
@@ -65,9 +64,7 @@ func TestVMAlert_ValidateFail(t *testing.T) {
 			},
 			Spec: spec,
 		}
-		if err := cr.Validate(); err == nil {
-			t.Fatalf("expected configuration to fail")
-		}
+		assert.Error(t, cr.Validate())
 	}
 	// no notifier config
 	f(VMAlertSpec{Notifier: &VMAlertNotifierSpec{

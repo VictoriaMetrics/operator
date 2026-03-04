@@ -26,10 +26,7 @@ func TestSelectRules(t *testing.T) {
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		_, got, err := selectRules(ctx, fclient, o.cr)
-		if err != nil {
-			t.Errorf("SelectRules() error = %v", err)
-			return
-		}
+		assert.NoError(t, err)
 		for ruleName, content := range got {
 			assert.Equal(t, o.want[ruleName], content)
 		}
@@ -234,11 +231,8 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), fclient, o.cr, nil)
-		if err != nil {
-			t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v", err)
-			return
-		}
-		assert.Equal(t, got, o.want)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, got)
 	}
 
 	// base-rules-empty

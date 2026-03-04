@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -17,8 +18,8 @@ import (
 
 func TestRemoveOrphanedDeployments(t *testing.T) {
 	type opts struct {
-		cr                orphanedCRD
-		keepDeployments   map[string]struct{}
+		cr                crObject
+		keepDeployments   sets.Set[string]
 		wantDepCount      int
 		predefinedObjects []runtime.Object
 	}
@@ -26,7 +27,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		assert.NoError(t, RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments))
+		assert.NoError(t, RemoveOrphanedDeployments(ctx, cl, o.cr, o.keepDeployments, true))
 		var existDep appsv1.DeploymentList
 		lo := client.ListOptions{Namespace: o.cr.GetNamespace(), LabelSelector: labels.SelectorFromSet(o.cr.SelectorLabels())}
 		assert.NoError(t, cl.List(ctx, &existDep, &lo))
@@ -41,7 +42,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		keepDeployments: map[string]struct{}{"base": {}},
+		keepDeployments: sets.New[string]("base"),
 		predefinedObjects: []runtime.Object{
 			&appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -71,7 +72,7 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		keepDeployments: map[string]struct{}{"base-0": {}},
+		keepDeployments: sets.New[string]("base-0"),
 		predefinedObjects: []runtime.Object{
 			&appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -94,9 +95,6 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 						"app.kubernetes.io/instance":  "base",
 						"app.kubernetes.io/component": "monitoring",
 						"managed-by":                  "vm-operator",
-					},
-					Finalizers: []string{
-						vmv1beta1.FinalizerName,
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

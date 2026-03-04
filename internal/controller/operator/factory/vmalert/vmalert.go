@@ -13,6 +13,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -70,7 +71,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr, svc)
 		prevSvs := buildScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create vmservicescrape: %w", err)
 		}
 	}
@@ -171,7 +172,6 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 			Labels:          cr.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: *generatedSpec,
 	}
@@ -530,7 +530,16 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 
 func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert, ac *build.AssetsCache) error {
 	owner := cr.AsOwner()
-	for kind, secret := range ac.GetOutput() {
+	assets := ac.GetOutput()
+	keys := make([]build.ResourceKind, 0, len(assets))
+	for k := range assets {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	for _, kind := range keys {
+		secret := assets[kind]
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
@@ -716,35 +725,30 @@ func discoverNotifiersIfNeeded(ctx context.Context, rclient client.Client, cr *v
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
-	owner := cr.AsOwner()
-	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
-	if cr.Spec.PodDisruptionBudget == nil {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot delete PDB from prev state: %w", err)
-		}
-	}
 	svcName := cr.PrefixedName()
-	keepServices := map[string]struct{}{
-		svcName: {},
-	}
-	keepServicesScrapes := make(map[string]struct{})
+	keepServices := sets.New(svcName)
+	keepServicesScrapes := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
-		keepServicesScrapes[svcName] = struct{}{}
+		keepServicesScrapes.Insert(svcName)
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices[extraSvcName] = struct{}{}
+		keepServices.Insert(extraSvcName)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)
 	}
-	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes); err != nil {
+	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServicesScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
-	if !cr.IsOwnsServiceAccount() {
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, &corev1.ServiceAccount{ObjectMeta: objMeta}, &owner); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
+
+	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	var objsToRemove []client.Object
+	if cr.Spec.PodDisruptionBudget == nil {
+		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
-	return nil
+	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+	}
+	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }

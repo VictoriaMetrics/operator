@@ -3,6 +3,7 @@ package vmalertmanager
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strconv"
@@ -65,7 +66,6 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 			Annotations:     cr.FinalAnnotations(),
 			Namespace:       cr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: *spec,
 	}
@@ -146,7 +146,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr, svc)
 		prevSvs := buildScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return err
 		}
 	}
@@ -540,9 +540,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 	creds := ac.GetOutput()
 	if secret, ok := creds[build.TLSAssetsResourceKind]; ok {
-		for name, value := range secret.Data {
-			newAMSecretConfig.Data[name] = value
-		}
+		maps.Copy(newAMSecretConfig.Data, secret.Data)
 	}
 	if cr.Spec.WebConfig != nil {
 		newAMSecretConfig.Data[webserverConfigKey] = webCfg
@@ -582,7 +580,6 @@ func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 		Labels:          cr.FinalLabels(),
 		Annotations:     cr.FinalAnnotations(),
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Finalizers:      []string{vmv1beta1.FinalizerName},
 	}
 
 }

@@ -569,7 +569,7 @@ func (cr *VMAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VMAgent) GetClusterRoleName() string {
+func (cr *VMAgent) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
@@ -588,11 +588,6 @@ func (cr *VMAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-// AsCRDOwner implements interface
-func (*VMAgent) AsCRDOwner() *metav1.OwnerReference {
-	return GetCRDAsOwner(VMAgentCRD)
 }
 
 func (cr *VMAgent) Probe() *EmbeddedProbes {

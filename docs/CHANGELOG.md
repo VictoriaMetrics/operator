@@ -11,15 +11,27 @@ aliases:
   - /operator/changelog/index.html
 ---
 
-## tip
+## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
+**Release date:** 04 March 2026
+
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0).
+
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): fix PVC being owned by StatefulSet and top-level object simultaenously. See [#1845](https://github.com/VictoriaMetrics/operator/issues/1845).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): remove finalizers from VMServiceScrape and VMPodScrape objects, and keep finalizers on VMAgent, VMCluster, and VMAuth when DeletionTimestamp is not empty.
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously, ingest-only mode could still mount scrape configuration secrets when relabeling or stream aggregation was configured, which caused unexpected secret mounts and RBAC-related failures; now these secrets are not mounted in ingest-only mode, so deployments start with the expected minimal permissions and avoid related runtime errors. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not recreate STS if VCT size was increased and recreate in other cases.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026
 
-SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.7. See [the list of issues addressed in Go1.25.7](https://github.com/golang/go/issues?q=milestone%3AGo1.25.7+label%3ACherryPickApproved).)
+* SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.7. See [the list of issues addressed in Go1.25.7](https://github.com/golang/go/issues?q=milestone%3AGo1.25.7+label%3ACherryPickApproved).
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration marshalling for [Prophet model](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet). Previously, using Prophet model would lead to panic during configuration marshalling.
-
 
 ## [v0.68.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.0)
 **Release date:** 23 February 2026
@@ -54,7 +66,6 @@ SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.7. See [the list of issues 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): previously, recreating a resource after deletion could hang and block updates; now resource recreation completes normally. See [#1707](https://github.com/VictoriaMetrics/operator/issues/1707).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use global image registry unless image.repository is defined. See [#1813](https://github.com/VictoriaMetrics/operator/issues/1813).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): previously spec.route and spec.receivers were required; now both parameters are optional to align with prometheus operator. VMAlertmanager now can be used to set just the global inhibition rules. See [#1800](https://github.com/VictoriaMetrics/operator/issues/1800).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): use global image registry unless image.repository is defined. See [#1813](https://github.com/VictoriaMetrics/operator/issues/1813).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fixed RBAC, when ingestOnlyMode is enabled and relabel of stream aggregation configurations defined. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)

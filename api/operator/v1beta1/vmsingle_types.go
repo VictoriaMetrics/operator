@@ -144,11 +144,10 @@ type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMSingleSpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
-
-	Status VMSingleStatus `json:"status,omitempty"`
+	ParsedLastAppliedSpec *VMSingleSpec  `json:"-" yaml:"-"`
+	Spec                  VMSingleSpec   `json:"spec,omitempty"`
+	Status                VMSingleStatus `json:"status,omitempty"`
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface

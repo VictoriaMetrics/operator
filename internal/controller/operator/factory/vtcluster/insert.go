@@ -94,7 +94,6 @@ func buildVTInsertDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas:             cr.Spec.Insert.ReplicaCount,
@@ -335,7 +334,7 @@ func createOrUpdateVTInsertService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.Insert.DisableSelfServiceScrape, false) {
 		svs := buildVTInsertScrape(cr, svc)
 		prevSvs := buildVTInsertScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrapeForCRD(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
 			return fmt.Errorf("cannot create VMServiceScrape for VTInsert: %w", err)
 		}
 	}

@@ -85,8 +85,10 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.descriptionless.yaml
 	$(KUSTOMIZE) build config/crd-specless > config/crd/overlay/crd.specless.yaml
 
 .PHONY: generate
@@ -281,6 +283,8 @@ olm: operator-sdk opm yq docs
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.spec.install.spec.deployments[0].spec.template.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	$(YQ) -i '.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.spec.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.21"' \
@@ -394,9 +398,9 @@ KUSTOMIZE_VERSION ?= v5.8.0
 CONTROLLER_TOOLS_VERSION ?= v0.20.0
 ENVTEST_VERSION ?= release-0.23
 GOLANGCI_LINT_VERSION ?= v2.10.1
-CODEGENERATOR_VERSION ?= v0.35.0
+CODEGENERATOR_VERSION ?= v0.35.1
 KIND_VERSION ?= v0.31.0
-OLM_VERSION ?= 0.39.0
+OLM_VERSION ?= 0.40.0
 OPERATOR_SDK_VERSION ?= v1.42.0
 OPM_VERSION ?= v1.62.0
 YQ_VERSION ?= v4.50.1

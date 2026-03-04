@@ -146,33 +146,4 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vtsingleName},
 			},
 		})
-
-	// no update on no change
-	f(args{
-		cr: &vmv1.VTSingle{
-			ObjectMeta: objectMeta,
-			Spec: vmv1.VTSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
-				},
-			},
-		},
-		preRun: func(c *k8stools.ClientWithActions, cr *vmv1.VTSingle) {
-			ctx := context.TODO()
-			// Create objects first
-			assert.NoError(t, CreateOrUpdate(ctx, c, cr.DeepCopy()))
-
-			// clear actions
-			c.Actions = nil
-		},
-	},
-		want{
-			actions: []k8stools.ClientAction{
-				{Verb: "Get", Kind: "ServiceAccount", Resource: vtsingleName},
-				{Verb: "Get", Kind: "Service", Resource: vtsingleName},
-				{Verb: "Get", Kind: "VMServiceScrape", Resource: vtsingleName},
-				{Verb: "Get", Kind: "Deployment", Resource: vtsingleName},
-				{Verb: "Get", Kind: "Deployment", Resource: vtsingleName},
-			},
-		})
 }

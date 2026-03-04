@@ -212,7 +212,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			c.Actions = nil
 
 			// set LastAppliedSpec
-			cr.Status.LastAppliedSpec = &cr.Spec
+			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		},
 	},
 		want{

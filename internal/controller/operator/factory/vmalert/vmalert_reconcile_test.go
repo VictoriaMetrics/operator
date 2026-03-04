@@ -152,7 +152,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			c.Actions = nil
 
 			// Update status to simulate consistency
-			cr.Status.LastAppliedSpec = &cr.Spec
+			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		},
 	}, want{
 		actions: []k8stools.ClientAction{

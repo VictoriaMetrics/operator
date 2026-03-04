@@ -116,6 +116,9 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 // CreateOrUpdate creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1beta1.VMAgent
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

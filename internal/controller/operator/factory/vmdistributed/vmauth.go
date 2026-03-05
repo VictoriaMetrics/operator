@@ -9,6 +9,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vmv1beta1.TargetRef {
@@ -64,7 +65,7 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, excludeIds ...int) vmv1beta
 }
 
 func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) *vmv1beta1.VMAuth {
-	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
+	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) || build.IsControllerDisabled("VMAuth") {
 		return nil
 	}
 	vmAuth := vmv1beta1.VMAuth{

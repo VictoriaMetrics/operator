@@ -110,5 +110,5 @@ func (r *VMDistributedReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // IsDisabled returns true if controller should be disabled
 func (*VMDistributedReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
-	return disabledControllers.HasAny("VMAgent", "VMAuth", "VMCluster")
+	return disabledControllers.HasAny("VMAgent", "VMCluster")
 }

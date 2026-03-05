@@ -28,6 +28,7 @@ aliases:
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously, ingest-only mode could still mount scrape configuration secrets when relabeling or stream aggregation was configured, which caused unexpected secret mounts and RBAC-related failures; now these secrets are not mounted in ingest-only mode, so deployments start with the expected minimal permissions and avoid related runtime errors. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not recreate STS if VCT size was increased and recreate in other cases.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): ignore VMAuth update/delete operations if controller is disabled.
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

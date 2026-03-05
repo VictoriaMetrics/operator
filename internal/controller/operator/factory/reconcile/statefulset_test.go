@@ -610,6 +610,145 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		},
 	})
 
+	// maxUnavailable=0 with 1 pod
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev2",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 0,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(1))},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+		},
+		actions: map[string][]string{
+			"vmselect-sts-0": {"Evict", "Get"},
+		},
+	})
+
+	// maxUnavailable=0 with 3 pods
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev2",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 0,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(3))},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-1",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-2",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+		},
+		actions: map[string][]string{
+			"vmselect-sts-0": {"Evict", "Get"},
+			"vmselect-sts-1": {"Evict", "Get"},
+			"vmselect-sts-2": {"Evict", "Get"},
+		},
+	})
+
 	// rolling update is timeout
 	f(opts{
 		sts: &appsv1.StatefulSet{

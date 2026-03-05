@@ -56,11 +56,11 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 			Name:      build.ResourceName(build.TLSAssetsResourceKind, cr),
 			Namespace: ns,
 		}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 			Name:      build.ResourceName(build.RelabelConfigResourceKind, cr),
 			Namespace: ns,
 		}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 			Name:      build.ResourceName(build.StreamAggrConfigResourceKind, cr),
 			Namespace: ns,
 		}},

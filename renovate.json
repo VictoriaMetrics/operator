@@ -166,6 +166,17 @@
       "datasourceTemplate": "go",
       "depNameTemplate": "sigs.k8s.io/controller-runtime",
       "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+).*$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "MIRRORD_VERSION \\?= (?<currentValue>.*)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "metalbear-co/mirrord"
     }
   ]
 }

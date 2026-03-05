@@ -535,6 +535,7 @@ elif echo "$(4)" | grep -q ".zip$$"; then \
 curl -sL $${url} -o $(LOCALBIN)/$(4); \
 unzip -o $(LOCALBIN)/$(4) $(5) -d $(LOCALBIN); \
 mv $(LOCALBIN)/$(5) $(1); \
+chmod +x $(1); \
 rm $(LOCALBIN)/$(4); \
 else \
 curl -sL $${url} -o $(1); \

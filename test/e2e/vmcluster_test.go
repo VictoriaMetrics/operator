@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -1391,6 +1392,60 @@ up{baz="bar"} 123
 						Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8427")))
 						waitResourceDeleted(ctx, k8sClient, nss, &policyv1.PodDisruptionBudget{})
+					},
+				},
+			),
+			Entry("by changing vmstorage PVC metadata", "vmstorage-pvc-meta", false,
+				&vmv1beta1.VMCluster{
+					Spec: vmv1beta1.VMClusterSpec{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{Enabled: true},
+						RetentionPeriod:      "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							Storage: &vmv1beta1.StorageSpec{
+								VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+									EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+										Labels: map[string]string{
+											"label-name": "before",
+										},
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.VolumeResourceRequirements{
+											Requests: map[corev1.ResourceName]resource.Quantity{
+												corev1.ResourceStorage: resource.MustParse("10Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+				testStep{
+					modify: func(cr *vmv1beta1.VMCluster) {
+						cr.Spec.VMStorage.Storage.VolumeClaimTemplate.Labels["label-name"] = "after"
+					},
+					verify: func(cr *vmv1beta1.VMCluster) {
+						expectedLabels := map[string]string{"label-name": "after"}
+						Expect(cr.Spec.VMStorage.Storage.VolumeClaimTemplate.Labels).To(Equal(expectedLabels))
+						var pvc corev1.PersistentVolumeClaim
+						nsn := types.NamespacedName{
+							Namespace: namespace,
+							Name:      fmt.Sprintf("%s-%s-0", cr.Spec.VMStorage.GetStorageVolumeName(), cr.PrefixedName(vmv1beta1.ClusterComponentStorage)),
+						}
+						Expect(k8sClient.Get(ctx, nsn, &pvc)).ToNot(HaveOccurred())
 					},
 				},
 			),

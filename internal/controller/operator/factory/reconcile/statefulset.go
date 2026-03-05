@@ -303,6 +303,10 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 	}
 
 	// perform update for not updated pods in batches according to podMaxUnavailable
+	// clamp to 1 to avoid an infinite loop when percentage-based maxUnavailable rounds to 0
+	if o.maxUnavailable == 0 {
+		o.maxUnavailable = 1
+	}
 	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += o.maxUnavailable {
 		var batch []corev1.Pod
 

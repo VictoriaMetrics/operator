@@ -13931,45 +13931,23 @@ spec:
                               type: string
                             namespace:
                               type: string
+                            objects:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                required:
+                                - name
+                                - namespace
+                                type: object
+                              type: array
                           required:
                           - kind
                           - name
                           - namespace
                           type: object
-                        crds:
-                          items:
-                            properties:
-                              kind:
-                                enum:
-                                - VMAgent
-                                - VMAlert
-                                - VMSingle
-                                - VLogs
-                                - VMAlertManager
-                                - VMAlertmanager
-                                - VMCluster/vmselect
-                                - VMCluster/vmstorage
-                                - VMCluster/vminsert
-                                - VLSingle
-                                - VLCluster/vlinsert
-                                - VLCluster/vlselect
-                                - VLCluster/vlstorage
-                                - VLAgent
-                                - VTCluster/vtinsert
-                                - VTCluster/vtselect
-                                - VTCluster/vtstorage
-                                - VTSingle
-                                type: string
-                              name:
-                                type: string
-                              namespace:
-                                type: string
-                            required:
-                            - kind
-                            - name
-                            - namespace
-                            type: object
-                          type: array
                         discover_backend_ips:
                           type: boolean
                         drop_src_path_prefix_parts:
@@ -20864,45 +20842,23 @@ spec:
                                       type: string
                                     namespace:
                                       type: string
+                                    objects:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                          namespace:
+                                            type: string
+                                        required:
+                                        - name
+                                        - namespace
+                                        type: object
+                                      type: array
                                   required:
                                   - kind
                                   - name
                                   - namespace
                                   type: object
-                                crds:
-                                  items:
-                                    properties:
-                                      kind:
-                                        enum:
-                                        - VMAgent
-                                        - VMAlert
-                                        - VMSingle
-                                        - VLogs
-                                        - VMAlertManager
-                                        - VMAlertmanager
-                                        - VMCluster/vmselect
-                                        - VMCluster/vmstorage
-                                        - VMCluster/vminsert
-                                        - VLSingle
-                                        - VLCluster/vlinsert
-                                        - VLCluster/vlselect
-                                        - VLCluster/vlstorage
-                                        - VLAgent
-                                        - VTCluster/vtinsert
-                                        - VTCluster/vtselect
-                                        - VTCluster/vtstorage
-                                        - VTSingle
-                                        type: string
-                                      name:
-                                        type: string
-                                      namespace:
-                                        type: string
-                                    required:
-                                    - kind
-                                    - name
-                                    - namespace
-                                    type: object
-                                  type: array
                                 discover_backend_ips:
                                   type: boolean
                                 drop_src_path_prefix_parts:
@@ -37546,45 +37502,23 @@ spec:
                           type: string
                         namespace:
                           type: string
+                        objects:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                            required:
+                            - name
+                            - namespace
+                            type: object
+                          type: array
                       required:
                       - kind
                       - name
                       - namespace
                       type: object
-                    crds:
-                      items:
-                        properties:
-                          kind:
-                            enum:
-                            - VMAgent
-                            - VMAlert
-                            - VMSingle
-                            - VLogs
-                            - VMAlertManager
-                            - VMAlertmanager
-                            - VMCluster/vmselect
-                            - VMCluster/vmstorage
-                            - VMCluster/vminsert
-                            - VLSingle
-                            - VLCluster/vlinsert
-                            - VLCluster/vlselect
-                            - VLCluster/vlstorage
-                            - VLAgent
-                            - VTCluster/vtinsert
-                            - VTCluster/vtselect
-                            - VTCluster/vtstorage
-                            - VTSingle
-                            type: string
-                          name:
-                            type: string
-                          namespace:
-                            type: string
-                        required:
-                        - kind
-                        - name
-                        - namespace
-                        type: object
-                      type: array
                     discover_backend_ips:
                       type: boolean
                     drop_src_path_prefix_parts:

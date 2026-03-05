@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMUserSpec defines the desired state of VMUser
@@ -55,17 +54,13 @@ type VMUserSpec struct {
 
 // TargetRef describes target for user traffic forwarding.
 // one of target types can be chosen:
-// crds or static per targetRef.
+// crd or static per targetRef.
 // user can define multiple targetRefs with different ref Types.
 type TargetRef struct {
 	// CRD describes exist operator's CRD object,
 	// operator generates access url based on CRD params.
 	// +optional
 	CRD *CRDRef `json:"crd,omitempty"`
-	// CRD describes existing operator's CRD objects,
-	// operator generates access url based on CRD params.
-	// +optional
-	CRDs []CRDRef `json:"crds,omitempty"`
 	// Static - user defined url for traffic forward,
 	// for instance http://vmsingle:8428
 	// +optional
@@ -95,14 +90,11 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 	if r.CRD != nil {
 		refs = append(refs, "crd")
 	}
-	if len(r.CRDs) > 0 {
-		refs = append(refs, "crds")
-	}
 	if r.Static != nil {
 		refs = append(refs, "static")
 	}
 	if len(refs) != 1 {
-		return fmt.Errorf("targetRef validation failed, exactly one of `crd`, `crds` or `static` must be configured, found: [%s]", strings.Join(refs, ","))
+		return fmt.Errorf("targetRef validation failed, exactly one of `crd` or `static` must be configured, found: [%s]", strings.Join(refs, ","))
 	}
 	if r.Static != nil {
 		if r.Static.URL == "" && len(r.Static.URLs) == 0 {
@@ -120,13 +112,13 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 		}
 	}
 	if r.CRD != nil {
-		if r.CRD.Namespace == "" || r.CRD.Name == "" {
+		if len(r.CRD.Objects) == 0 && (r.CRD.Namespace == "" || r.CRD.Name == "") {
 			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 		}
-	}
-	for i, crd := range r.CRDs {
-		if crd.Namespace == "" || crd.Name == "" {
-			return fmt.Errorf("crds[%d].name and crds[%d].namespace cannot be empty", i, i)
+		for i, crd := range r.CRD.Objects {
+			if crd.Namespace == "" || crd.Name == "" {
+				return fmt.Errorf("crd.objects[%d].name and crd.objects[%d].namespace cannot be empty", i, i)
+			}
 		}
 	}
 	if err := validateHTTPHeaders(r.ResponseHeaders); err != nil {
@@ -156,28 +148,29 @@ type QueryArg struct {
 	Values []string `json:"values"`
 }
 
+// NamespacedName defines name and namespace pairs to reference k8s object
+type NamespacedName struct {
+	// Name of the target Kubernetes object
+	Name string `json:"name"`
+	// Namespace of the target Kubernetes object
+	Namespace string `json:"namespace"`
+}
+
 // CRDRef describe CRD target reference.
 type CRDRef struct {
 	// Kind one of:
 	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent
 	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle
-	Kind string `json:"kind"`
-	// Name target CRD object name
-	Name string `json:"name"`
-	// Namespace target CRD object namespace.
-	Namespace string `json:"namespace"`
-}
-
-// AddRefToObj adds reference to given object and return it.
-func (cr *CRDRef) AddRefToObj(obj client.Object) client.Object {
-	obj.SetName(cr.Name)
-	obj.SetNamespace(cr.Namespace)
-	return obj
+	Kind           string `json:"kind"`
+	NamespacedName `json:",inline"`
+	// Objects defines list of name/namespace pairs that define existing k8s object
+	// +optional
+	Objects []NamespacedName `json:"objects,omitempty"`
 }
 
 // AsKey returns unique key for object
-func (cr *CRDRef) AsKey() string {
-	return fmt.Sprintf("%s/%s/%s", cr.Kind, cr.Namespace, cr.Name)
+func (cr *CRDRef) AsKey(nsn NamespacedName) string {
+	return fmt.Sprintf("%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name)
 }
 
 // StaticRef - user-defined routing host address.

@@ -54,17 +54,21 @@ func Test_genUserCfg(t *testing.T) {
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vminsert",
-							Name:      "vminsert",
-							Namespace: "monitoring",
+							Kind: "VMCluster/vminsert",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "vminsert",
+								Namespace: "monitoring",
+							},
 						},
 						TargetPathSuffix: "/insert/1",
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vmselect",
-							Namespace: "monitoring",
-							Name:      "vmselect",
+							Kind: "VMCluster/vmselect",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "vmselect",
+							},
 						},
 						TargetPathSuffix: "/select/1",
 					},
@@ -125,16 +129,20 @@ bearer_token: secret-token
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vminsert",
-							Name:      "vminsert",
-							Namespace: "monitoring",
+							Kind: "VMCluster/vminsert",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "vminsert",
+								Namespace: "monitoring",
+							},
 						},
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vmselect",
-							Namespace: "monitoring",
-							Name:      "vmselect",
+							Kind: "VMCluster/vmselect",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "vmselect",
+							},
 						},
 						QueryArgs: []vmv1beta1.QueryArg{
 							{
@@ -173,18 +181,22 @@ bearer_token: secret-token
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vminsert",
-							Name:      "vminsert",
-							Namespace: "monitoring",
+							Kind: "VMCluster/vminsert",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "vminsert",
+								Namespace: "monitoring",
+							},
 						},
 						Paths:            []string{"/"},
 						TargetPathSuffix: "/insert/1",
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMCluster/vmselect",
-							Namespace: "monitoring",
-							Name:      "vmselect",
+							Kind: "VMCluster/vmselect",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "vmselect",
+							},
 						},
 					},
 				},
@@ -250,9 +262,11 @@ password: pass
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMAgent",
-							Name:      "base",
-							Namespace: "monitoring",
+							Kind: "VMAgent",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "base",
+								Namespace: "monitoring",
+							},
 						},
 						Paths: []string{
 							"/api/v1/write",
@@ -262,9 +276,11 @@ password: pass
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMSingle",
-							Namespace: "monitoring",
-							Name:      "db",
+							Kind: "VMSingle",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "db",
+							},
 						},
 					},
 				},
@@ -298,9 +314,11 @@ bearer_token: secret-token
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMAgent",
-							Name:      "base",
-							Namespace: "monitoring",
+							Kind: "VMAgent",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "base",
+								Namespace: "monitoring",
+							},
 						},
 						TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
 						Paths: []string{
@@ -321,17 +339,21 @@ bearer_token: secret-token
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VLogs",
-							Namespace: "monitoring",
-							Name:      "db",
+							Kind: "VLogs",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "db",
+							},
 						},
 						Paths: []string{"/logs/v1.*"},
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMSingle",
-							Namespace: "monitoring",
-							Name:      "db",
+							Kind: "VMSingle",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "db",
+							},
 						},
 					},
 				},
@@ -376,9 +398,11 @@ bearer_token: secret-token
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMAgent",
-							Name:      "base",
-							Namespace: "monitoring",
+							Kind: "VMAgent",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "base",
+								Namespace: "monitoring",
+							},
 						},
 					},
 				},
@@ -404,9 +428,11 @@ bearer_token: secret-token
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VMAgent",
-							Name:      "base",
-							Namespace: "monitoring",
+							Kind: "VMAgent",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "base",
+								Namespace: "monitoring",
+							},
 						},
 						URLMapCommon: vmv1beta1.URLMapCommon{
 							RequestHeaders: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
@@ -667,9 +693,11 @@ password: pass
 				TargetRefs: []vmv1beta1.TargetRef{
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VLAgent",
-							Name:      "collector",
-							Namespace: "monitoring",
+							Kind: "VLAgent",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "collector",
+								Namespace: "monitoring",
+							},
 						},
 						Paths: []string{
 							"/insert/jsonline",
@@ -677,16 +705,20 @@ password: pass
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VLSingle",
-							Namespace: "monitoring",
-							Name:      "db",
+							Kind: "VLSingle",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Namespace: "monitoring",
+								Name:      "db",
+							},
 						},
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VLCluster/vlinsert",
-							Name:      "main-cluster",
-							Namespace: "monitoring",
+							Kind: "VLCluster/vlinsert",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "main-cluster",
+								Namespace: "monitoring",
+							},
 						},
 						Paths: []string{
 							"/insert/logstash",
@@ -694,9 +726,11 @@ password: pass
 					},
 					{
 						CRD: &vmv1beta1.CRDRef{
-							Kind:      "VLCluster/vlselect",
-							Name:      "main-cluster",
-							Namespace: "monitoring",
+							Kind: "VLCluster/vlselect",
+							NamespacedName: vmv1beta1.NamespacedName{
+								Name:      "main-cluster",
+								Namespace: "monitoring",
+							},
 						},
 						Paths: []string{
 							"/select/.*",
@@ -994,9 +1028,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1013,9 +1049,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLSingle",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLSingle",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1032,9 +1070,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VTCluster/vtselect",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VTCluster/vtselect",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1136,9 +1176,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1224,9 +1266,11 @@ func Test_buildConfig(t *testing.T) {
 						{
 							Static: nil,
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1307,9 +1351,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1333,9 +1379,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1358,9 +1406,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1438,9 +1488,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1502,9 +1554,11 @@ func Test_buildConfig(t *testing.T) {
 						{
 							Static: nil,
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 							Hosts: []string{"host.com"},
@@ -1687,9 +1741,11 @@ func Test_buildConfig(t *testing.T) {
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1816,9 +1872,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -1887,9 +1945,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Name:      "main-cluster",
-								Kind:      "VMCluster/vmselect",
-								Namespace: "default",
+								Kind: "VMCluster/vmselect",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "main-cluster",
+									Namespace: "default",
+								},
 							},
 							TargetRefBasicAuth: &vmv1beta1.TargetRefBasicAuth{
 								Password: corev1.SecretKeySelector{
@@ -1908,9 +1968,11 @@ unauthorized_user:
 						},
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Name:      "main-cluster",
-								Kind:      "VMCluster/vminsert",
-								Namespace: "default",
+								Kind: "VMCluster/vminsert",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "main-cluster",
+									Namespace: "default",
+								},
 							},
 							TargetRefBasicAuth: &vmv1beta1.TargetRefBasicAuth{
 								Password: corev1.SecretKeySelector{
@@ -1989,9 +2051,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2163,9 +2227,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2188,9 +2254,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test-not-found",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test-not-found",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2321,9 +2389,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VMAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VMAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							QueryArgs: []vmv1beta1.QueryArg{
 								{
@@ -2508,9 +2578,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLSingle",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLSingle",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2530,9 +2602,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLSingle",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLSingle",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2549,9 +2623,11 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLAgent",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/"},
 						},
@@ -2608,25 +2684,31 @@ unauthorized_user:
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLCluster/vlinsert",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLCluster/vlinsert",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/insert.*"},
 						},
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLCluster/vlselect",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLCluster/vlselect",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/select.*"},
 						},
 						{
 							CRD: &vmv1beta1.CRDRef{
-								Kind:      "VLCluster/vlstorage",
-								Name:      "test",
-								Namespace: "default",
+								Kind: "VLCluster/vlstorage",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
 							},
 							Paths: []string{"/internal.*"},
 						},

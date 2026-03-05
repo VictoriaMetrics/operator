@@ -389,24 +389,34 @@ func TestCreateOrUpdate(t *testing.T) {
 			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
-			var vmClusterCRDs, vmAgentCRDs []vmv1beta1.CRDRef
+			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
 			for i := range d.zones.vmagents {
-				vmAgentCRDs = append(vmAgentCRDs, vmv1beta1.CRDRef{
+				vmAgentObjs = append(vmAgentObjs, vmv1beta1.NamespacedName{
 					Name:      d.zones.vmagents[i].Name,
 					Namespace: d.zones.vmagents[i].Namespace,
-					Kind:      "VMAgent",
 				})
 			}
 			for i := range d.zones.vmclusters {
-				vmClusterCRDs = append(vmClusterCRDs, vmv1beta1.CRDRef{
+				vmClusterObjs = append(vmClusterObjs, vmv1beta1.NamespacedName{
 					Name:      d.zones.vmclusters[i].Name,
 					Namespace: d.zones.vmclusters[i].Namespace,
-					Kind:      "VMCluster/vmselect",
 				})
 			}
 			targetRefs := []vmv1beta1.TargetRef{
-				{Paths: []string{"/insert/.+", "/api/v1/write"}, CRDs: vmAgentCRDs},
-				{Paths: []string{"/select/.+", "/admin/tenants"}, CRDs: vmClusterCRDs},
+				{
+					Paths: []string{"/insert/.+", "/api/v1/write"},
+					CRD: &vmv1beta1.CRDRef{
+						Kind:    "VMAgent",
+						Objects: vmAgentObjs,
+					},
+				},
+				{
+					Paths: []string{"/select/.+", "/admin/tenants"},
+					CRD: &vmv1beta1.CRDRef{
+						Kind:    "VMCluster/vmselect",
+						Objects: vmClusterObjs,
+					},
+				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
@@ -510,24 +520,34 @@ func TestCreateOrUpdate(t *testing.T) {
 			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
-			var vmClusterCRDs, vmAgentCRDs []vmv1beta1.CRDRef
+			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
 			for i := range d.zones.vmagents {
-				vmAgentCRDs = append(vmAgentCRDs, vmv1beta1.CRDRef{
+				vmAgentObjs = append(vmAgentObjs, vmv1beta1.NamespacedName{
 					Name:      d.zones.vmagents[i].Name,
 					Namespace: d.zones.vmagents[i].Namespace,
-					Kind:      "VMAgent",
 				})
 			}
 			for i := range d.zones.vmclusters {
-				vmClusterCRDs = append(vmClusterCRDs, vmv1beta1.CRDRef{
+				vmClusterObjs = append(vmClusterObjs, vmv1beta1.NamespacedName{
 					Name:      d.zones.vmclusters[i].Name,
 					Namespace: d.zones.vmclusters[i].Namespace,
-					Kind:      "VMCluster/vmselect",
 				})
 			}
 			targetRefs := []vmv1beta1.TargetRef{
-				{Paths: []string{"/insert/.+", "/api/v1/write"}, CRDs: vmAgentCRDs},
-				{Paths: []string{"/select/.+", "/admin/tenants"}, CRDs: vmClusterCRDs},
+				{
+					Paths: []string{"/insert/.+", "/api/v1/write"},
+					CRD: &vmv1beta1.CRDRef{
+						Kind:    "VMAgent",
+						Objects: vmAgentObjs,
+					},
+				},
+				{
+					Paths: []string{"/select/.+", "/admin/tenants"},
+					CRD: &vmv1beta1.CRDRef{
+						Kind:    "VMCluster/vmselect",
+						Objects: vmClusterObjs,
+					},
+				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]

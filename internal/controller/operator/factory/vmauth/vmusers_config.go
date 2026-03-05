@@ -309,34 +309,37 @@ func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta
 		if crd == nil {
 			return nil
 		}
-		key := crd.AsKey()
-		if _, ok := crdURLCache[key]; ok {
-			return nil
+		var nsns []vmv1beta1.NamespacedName
+		if len(crd.Name) > 0 && len(crd.Namespace) > 0 {
+			nsns = append(nsns, crd.NamespacedName)
 		}
-		crdObj, ok := crdNameToObject[crd.Kind]
-		if !ok {
-			return fmt.Errorf("unsupported kind=%q", crd.Kind)
-		}
-		crd.AddRefToObj(crdObj.(client.Object))
-		url, err := getAsURLObject(ctx, rclient, crdObj)
-		if err != nil {
-			if !build.IsNotFound(err) {
-				return fmt.Errorf("cannot get object as url: %w", err)
+		nsns = append(nsns, crd.Objects...)
+		for _, nsn := range nsns {
+			key := crd.AsKey(nsn)
+			if _, ok := crdURLCache[key]; ok {
+				continue
 			}
-			return fmt.Errorf("cannot find CRD link for kind=%q: %w", crd.Kind, err)
+			crdObj, ok := crdNameToObject[crd.Kind]
+			if !ok {
+				return fmt.Errorf("unsupported kind=%q", crd.Kind)
+			}
+			crdObj.SetName(nsn.Name)
+			crdObj.SetNamespace(nsn.Namespace)
+			url, err := getAsURLObject(ctx, rclient, crdObj)
+			if err != nil {
+				if !build.IsNotFound(err) {
+					return fmt.Errorf("cannot get object as url: %w", err)
+				}
+				return fmt.Errorf("cannot find CRD link for kind=%q: %w", crd.Kind, err)
+			}
+			crdURLCache[key] = url
 		}
-		crdURLCache[key] = url
 		return nil
 	}
 	for j := range refs {
 		ref := &refs[j]
 		if err := updateCache(ref.CRD); err != nil {
 			return fmt.Errorf("targetRefs[%d].crd: %w", j, err)
-		}
-		for i, crd := range ref.CRDs {
-			if err := updateCache(&crd); err != nil {
-				return fmt.Errorf("targetRefs[%d].crds[%d]: %w", j, i, err)
-			}
 		}
 	}
 	return nil
@@ -594,16 +597,16 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		var urlPrefixes []string
 		switch {
 		case ref.CRD != nil:
-			urlPrefix := crdURLCache[ref.CRD.AsKey()]
-			if urlPrefix == "" {
-				return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
+			var nsns []vmv1beta1.NamespacedName
+			if len(ref.CRD.Name) > 0 && len(ref.CRD.Namespace) > 0 {
+				nsns = append(nsns, ref.CRD.NamespacedName)
 			}
-			urlPrefixes = append(urlPrefixes, urlPrefix)
-		case len(ref.CRDs) > 0:
-			for i, crd := range ref.CRDs {
-				urlPrefix := crdURLCache[crd.AsKey()]
+			nsns = append(nsns, ref.CRD.Objects...)
+			for _, nsn := range nsns {
+				key := ref.CRD.AsKey(nsn)
+				urlPrefix := crdURLCache[key]
 				if urlPrefix == "" {
-					return nil, fmt.Errorf("cannot find crdRef[%d] target: %q, for user: %s", i, crd.AsKey(), userName)
+					return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", key, userName)
 				}
 				urlPrefixes = append(urlPrefixes, urlPrefix)
 			}
@@ -704,7 +707,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
-		if ref.Static == nil && ref.CRD == nil && len(ref.CRDs) == 0 {
+		if ref.Static == nil && ref.CRD == nil {
 			continue
 		}
 		urlPrefix, err := handleRef(ref)

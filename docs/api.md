@@ -1420,8 +1420,9 @@ Appears in: [TargetRef](#targetref)
 | Field | Description |
 | --- | --- |
 | kind<a href="#crdref-kind" id="crdref-kind">#</a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent |
-| name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name target CRD object name |
-| namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace target CRD object namespace. |
+| name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
+| namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+| objects<a href="#crdref-objects" id="crdref-objects">#</a><br/>_[NamespacedName](#namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |
 
 #### Certs
 
@@ -2230,6 +2231,17 @@ Appears in: [DiscoverySelector](#discoveryselector), [VMPodScrapeSpec](#vmpodscr
 | any<a href="#namespaceselector-any" id="namespaceselector-any">#</a><br/>_boolean_ | _(Optional)_<br/>Boolean describing whether all namespaces are selected in contrast to a<br />list restricting them. |
 | matchNames<a href="#namespaceselector-matchnames" id="namespaceselector-matchnames">#</a><br/>_string array_ | _(Optional)_<br/>List of namespace names. |
 
+#### NamespacedName
+
+NamespacedName defines name and namespace pairs to reference k8s object
+
+Appears in: [CRDRef](#crdref)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#namespacedname-name" id="namespacedname-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
+| namespace<a href="#namespacedname-namespace" id="namespacedname-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+
 #### NomadSDConfig
 
 NomadSDConfig configurations allow retrieving scrape targets from Nomad's Service API.
@@ -2948,7 +2960,7 @@ Appears in: [VMStaticScrapeSpec](#vmstaticscrapespec)
 
 TargetRef describes target for user traffic forwarding.
 one of target types can be chosen:
-crds or static per targetRef.
+crd or static per targetRef.
 user can define multiple targetRefs with different ref Types.
 
 Appears in: [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserSpec](#vmuserspec)
@@ -2957,7 +2969,6 @@ Appears in: [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec
 | --- | --- |
 | URLMapCommon<a href="#targetref-urlmapcommon" id="targetref-urlmapcommon">#</a><br/>_[URLMapCommon](#urlmapcommon)_ | _(Required)_<br/> |
 | crd<a href="#targetref-crd" id="targetref-crd">#</a><br/>_[CRDRef](#crdref)_ | _(Optional)_<br/>CRD describes exist operator's CRD object,<br />operator generates access url based on CRD params. |
-| crds<a href="#targetref-crds" id="targetref-crds">#</a><br/>_[CRDRef](#crdref) array_ | _(Optional)_<br/>CRD describes existing operator's CRD objects,<br />operator generates access url based on CRD params. |
 | hosts<a href="#targetref-hosts" id="targetref-hosts">#</a><br/>_string array_ | _(Required)_<br/> |
 | paths<a href="#targetref-paths" id="targetref-paths">#</a><br/>_string array_ | _(Optional)_<br/>Paths - matched path to route. |
 | query_args<a href="#targetref-query_args" id="targetref-query_args">#</a><br/>_[QueryArg](#queryarg) array_ | _(Optional)_<br/>QueryArgs appends list of query arguments to generated URL |

@@ -75,13 +75,13 @@ func (r *fieldDiffRecorder) Report(rs cmp.Result) {
 		case cmp.SliceIndex:
 			ix, iy := v.SplitKeys()
 			switch {
-			case ix == -1:
+			case ix == -1 || ix == iy:
 				key += fmt.Sprintf("[%d]", iy)
 			case iy == -1:
 				key += fmt.Sprintf("[%d]", ix)
 			default:
 				moved = true
-				key += fmt.Sprintf("[%d->%d]", ix, iy)
+				key += fmt.Sprintf("[%d\u2192%d]", ix, iy)
 			}
 		case cmp.MapIndex:
 			key += "['" + v.String() + "']"

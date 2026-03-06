@@ -80,4 +80,36 @@ func TestDiffDeepDerivativeOk(t *testing.T) {
 		Field2: make(map[int]int),
 	}
 	f(a2FilledPtr, a1EmptyPtr, `{"spec.field1":{"++":["1","2"]}}`)
+
+	a3PartialPtr := &cmpStruct{
+		Field1: []string{"1"},
+	}
+	a3FilledPtr := &cmpStruct{
+		Field1: []string{"1", "2"},
+	}
+	f(a3PartialPtr, a3FilledPtr, `{"spec.field1[1]":{"--":"2"}}`)
+
+	a4PartialPtr := &cmpStruct{
+		Field1: []string{"1"},
+	}
+	a4FilledPtr := &cmpStruct{
+		Field1: []string{"2"},
+	}
+	f(a4PartialPtr, a4FilledPtr, `{"spec.field1[0]":{"--":"2","++":"1"}}`)
+
+	a5PartialPtr := &cmpStruct{
+		Field1: []string{"1", "2"},
+	}
+	a5FilledPtr := &cmpStruct{
+		Field1: []string{"2"},
+	}
+	f(a5PartialPtr, a5FilledPtr, `{"spec.field1[0]":{"++":"1"}}`)
+
+	a6PartialPtr := &cmpStruct{
+		Field1: []string{"1", "2"},
+	}
+	a6FilledPtr := &cmpStruct{
+		Field1: []string{"1"},
+	}
+	f(a6PartialPtr, a6FilledPtr, `{"spec.field1[1]":{"++":"2"}}`)
 }

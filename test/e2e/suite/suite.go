@@ -86,6 +86,8 @@ func GetClient(data []byte) client.WithWatch {
 				envs[envName] = rv
 			}
 		}
+		envName := fmt.Sprintf("VM_%s_TERMINATION_GRACE_PERIOD_SECONDS", prefix)
+		envs[envName] = "5"
 	}
 
 	for en, ev := range envs {

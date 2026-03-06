@@ -711,7 +711,7 @@ func addEndpointAuthTo(cfg yaml.MapSlice, ea *vmv1beta1.EndpointAuth, namespace 
 func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) *build.AssetsCache {
 	cfg := map[build.ResourceKind]*build.ResourceCfg{
 		build.SecretConfigResourceKind: {
-			MountDir:   vmAgentConfDir,
+			MountDir:   confDir,
 			SecretName: build.ResourceName(build.SecretConfigResourceKind, cr),
 		},
 		build.TLSAssetsResourceKind: {

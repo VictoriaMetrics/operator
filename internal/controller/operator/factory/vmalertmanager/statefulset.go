@@ -73,8 +73,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 
 		statefulset.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
-	cfg := config.MustGetBaseConfig()
-	build.StatefulSetAddCommonParams(statefulset, ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity), &cr.Spec.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(statefulset, &cr.Spec.CommonAppsParams)
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
@@ -155,7 +154,6 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
-	cfg := config.MustGetBaseConfig()
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
@@ -377,8 +375,6 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
-
 	ss := &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: cr.ConfigSecretName(),
@@ -386,7 +382,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		Key: alertmanagerSecretConfigKey,
 	}
 	initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
 
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
 	if err != nil {
@@ -404,11 +400,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
-	vmaContainer = build.Probe(vmaContainer, cr)
+	build.Probe(&vmaContainer, cr, &cr.Spec.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmaContainer}
 	operatorContainers = append(operatorContainers, build.ConfigReloaderContainer(false, cr, crMounts, ss))
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to merge containers spec: %w", err)
@@ -421,7 +417,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			}
 		}
 	}
-	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonAppsParams)
 	return &appsv1.StatefulSetSpec{
 		ServiceName: cr.PrefixedName(),
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{

@@ -122,7 +122,6 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	if err != nil {
 		return nil, err
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 	podAnnotations := cr.PodAnnotations()
 	if len(configHash) > 0 {
 		podAnnotations = labels.Merge(podAnnotations, map[string]string{
@@ -158,7 +157,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 		app.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(app, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(app, &cr.Spec.CommonAppsParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)

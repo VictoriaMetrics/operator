@@ -61,17 +61,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
 					VMSelect: &vmv1beta1.VMSelect{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
 					VMInsert: &vmv1beta1.VMInsert{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
@@ -151,16 +151,16 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						VMInsert: &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						},
@@ -176,12 +176,12 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
 					VMSelect: &vmv1beta1.VMSelect{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
@@ -196,12 +196,12 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
 					VMInsert: &vmv1beta1.VMInsert{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
@@ -217,31 +217,24 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
-							},
-
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						},
 					},
@@ -275,11 +268,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
@@ -293,12 +284,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
@@ -312,11 +300,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 								SecurityContext: &vmv1beta1.SecurityContext{
 									PodSecurityContext: &corev1.PodSecurityContext{
 										RunAsNonRoot: ptr.To(true),
@@ -360,7 +346,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								ExtraArgs: map[string]string{
 									"httpListenAddr.useProxyProtocol": "true",
@@ -368,7 +354,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								ExtraArgs: map[string]string{
 									"httpListenAddr.useProxyProtocol": "true",
@@ -376,7 +362,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								ExtraArgs: map[string]string{
 									"httpListenAddr.useProxyProtocol": "true",
@@ -399,17 +385,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							Enabled: true,
 						},
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -463,17 +449,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Spec: vmv1beta1.VMClusterSpec{
 					RetentionPeriod: "1",
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(initialReplicas),
 						},
 					},
 					VMSelect: &vmv1beta1.VMSelect{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(initialReplicas),
 						},
 					},
 					VMInsert: &vmv1beta1.VMInsert{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(initialReplicas),
 						},
 					},
@@ -605,17 +591,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -647,18 +633,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -719,17 +706,17 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -763,18 +750,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -794,18 +782,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -836,18 +825,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -873,11 +863,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				testStep{
 					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMSelect = &vmv1beta1.VMSelect{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						}
 					},
@@ -893,18 +881,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -940,19 +929,15 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				testStep{
 					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage = &vmv1beta1.VMStorage{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						}
 						cr.Spec.VMInsert = &vmv1beta1.VMInsert{
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								UseDefaultResources: ptr.To(false),
-							},
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
+								ReplicaCount:        ptr.To[int32](1),
 							},
 						}
 					},
@@ -971,7 +956,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 							ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -991,7 +976,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 							ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -1068,18 +1053,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						RetentionPeriod:  "1",
 						ImagePullSecrets: nil,
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -1118,18 +1104,19 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							Enabled: false,
 						},
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -1231,17 +1218,17 @@ up{baz="bar"} 123
 							Enabled: false,
 						},
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -1361,24 +1348,25 @@ up{baz="bar"} 123
 						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 							Enabled: true,
 							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-								CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									Port: "8431",
 								},
 							},
 						},
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](2),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -1475,7 +1463,7 @@ up{baz="bar"} 123
 						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{Enabled: true},
 						RetentionPeriod:      "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 							Storage: &vmv1beta1.StorageSpec{
@@ -1496,12 +1484,12 @@ up{baz="bar"} 123
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -1529,18 +1517,19 @@ up{baz="bar"} 123
 						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{Enabled: true},
 						RetentionPeriod:      "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
-						VMInsert: &vmv1beta1.VMInsert{CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](1),
-						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				},
@@ -1658,7 +1647,7 @@ up{baz="bar"} 123
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](4),
 							},
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
@@ -1669,12 +1658,12 @@ up{baz="bar"} 123
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -1714,7 +1703,7 @@ up{baz="bar"} 123
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](4),
 							},
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
@@ -1725,12 +1714,12 @@ up{baz="bar"} 123
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -1774,7 +1763,7 @@ up{baz="bar"} 123
 					Spec: vmv1beta1.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &vmv1beta1.VMStorage{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](4),
 							},
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
@@ -1788,12 +1777,12 @@ up{baz="bar"} 123
 							},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMInsert: &vmv1beta1.VMInsert{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},

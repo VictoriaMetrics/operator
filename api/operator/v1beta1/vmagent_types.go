@@ -79,7 +79,6 @@ type VMAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
 	// Supports only VMPodScrape
 	// (available from v0.55.0).
@@ -114,11 +113,10 @@ type VMAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonRelabelParams               `json:",inline,omitempty"`
-	CommonScrapeParams                `json:",inline,omitempty"`
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonRelabelParams        `json:",inline,omitempty"`
+	CommonScrapeParams         `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -226,12 +224,9 @@ func (cr *VMAgent) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAgent) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-	return false
+	return UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -588,10 +583,6 @@ func (cr *VMAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-func (cr *VMAgent) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VMAgent) ProbePath() string {

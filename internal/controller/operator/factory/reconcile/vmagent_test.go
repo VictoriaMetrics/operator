@@ -30,7 +30,7 @@ func TestVMAgentReconcile(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

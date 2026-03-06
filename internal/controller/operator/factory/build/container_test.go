@@ -17,19 +17,15 @@ import (
 )
 
 type testBuildProbeCR struct {
-	ep              *vmv1beta1.EmbeddedProbes
-	probePath       func() string
-	port            string
-	scheme          string
-	needAddLiveness bool
-}
-
-func (t testBuildProbeCR) Probe() *vmv1beta1.EmbeddedProbes {
-	return t.ep
+	probePath        string
+	port             string
+	scheme           string
+	useProxyProtocol bool
+	needAddLiveness  bool
 }
 
 func (t testBuildProbeCR) ProbePath() string {
-	return t.probePath()
+	return t.probePath
 }
 
 func (t testBuildProbeCR) ProbeScheme() string {
@@ -44,24 +40,27 @@ func (t testBuildProbeCR) ProbeNeedLiveness() bool {
 	return t.needAddLiveness
 }
 
+func (t testBuildProbeCR) UseProxyProtocol() bool {
+	return t.useProxyProtocol
+}
+
 func Test_buildProbe(t *testing.T) {
 	type opts struct {
 		container corev1.Container
 		cr        testBuildProbeCR
 		validate  func(corev1.Container)
+		params    vmv1beta1.CommonAppsParams
 	}
 	f := func(o opts) {
 		t.Helper()
-		got := Probe(o.container, o.cr)
-		o.validate(got)
+		Probe(&o.container, o.cr, &o.params)
+		o.validate(o.container)
 	}
 
 	// build default probe with empty ep
 	f(opts{
 		cr: testBuildProbeCR{
-			probePath: func() string {
-				return "/health"
-			},
+			probePath:       "/health",
 			port:            "8051",
 			needAddLiveness: true,
 			scheme:          "HTTP",
@@ -77,9 +76,7 @@ func Test_buildProbe(t *testing.T) {
 	// build default probe with empty ep using HTTPS
 	f(opts{
 		cr: testBuildProbeCR{
-			probePath: func() string {
-				return "/health"
-			},
+			probePath:       "/health",
 			port:            "8051",
 			needAddLiveness: true,
 			scheme:          "HTTPS",
@@ -96,35 +93,33 @@ func Test_buildProbe(t *testing.T) {
 	// build default probe with ep
 	f(opts{
 		cr: testBuildProbeCR{
-			probePath: func() string {
-				return "/health"
-			},
+			probePath:       "/health",
 			port:            "8051",
 			needAddLiveness: true,
-			ep: &vmv1beta1.EmbeddedProbes{
-				ReadinessProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						Exec: &corev1.ExecAction{
-							Command: []string{"echo", "1"},
-						},
+		},
+		params: vmv1beta1.CommonAppsParams{
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{"echo", "1"},
 					},
 				},
-				StartupProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Host: "some",
-						},
+			},
+			StartupProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Host: "some",
 					},
 				},
-				LivenessProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/live1",
-						},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/live1",
 					},
-					TimeoutSeconds:      15,
-					InitialDelaySeconds: 20,
 				},
+				TimeoutSeconds:      15,
+				InitialDelaySeconds: 20,
 			},
 		},
 		container: corev1.Container{},
@@ -592,7 +587,7 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ExtraArgs: map[string]string{
 						"reloadAuthKey": "test",
 					},
@@ -726,7 +721,7 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ConfigMaps: []string{"extra-template-1", "extra-template-2"},
 				},
 			},

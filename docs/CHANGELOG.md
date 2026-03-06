@@ -11,6 +11,10 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## tip
+
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
+
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
 **Release date:** 04 March 2026
 

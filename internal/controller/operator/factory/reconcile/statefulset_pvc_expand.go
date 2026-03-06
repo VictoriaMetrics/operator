@@ -265,12 +265,12 @@ func immutableVCTFieldsChanged(ctx context.Context, existingObj, newObj, prevObj
 	newLabels := mergeMaps(existingObj.Labels, newObj.Labels, prevLabels)
 	isEqual := equality.Semantic.DeepEqual(existingObj.Labels, newLabels) &&
 		equality.Semantic.DeepEqual(existingObj.Annotations, newAnnotations)
-	specDiff := diffDeepDerivative(newSpec, &existingObj.Spec)
+	specDiff := diffDeepDerivative(newSpec, &existingObj.Spec, "spec")
 	isEqual = isEqual && len(specDiff) == 0
 	if isEqual {
 		return false
 	}
-	logger.WithContext(ctx).Info(fmt.Sprintf("changes detected for PVC=%s, spec_diff=%v", nsn.String(), specDiff))
+	logger.WithContext(ctx).Info(fmt.Sprintf("changes detected for PVC=%s", nsn.String()), "spec_diff", specDiff)
 	return true
 }
 
@@ -293,13 +293,13 @@ func immutableSTSFieldsChanged(ctx context.Context, existingObj, newObj *appsv1.
 	newObjClone.Spec.PersistentVolumeClaimRetentionPolicy = existingObj.Spec.PersistentVolumeClaimRetentionPolicy
 	newObjClone.Spec.RevisionHistoryLimit = existingObj.Spec.RevisionHistoryLimit
 
-	specDiff := diffDeep(newObjClone.Spec, existingObj.Spec)
-	if len(specDiff) > 0 {
-		nsn := types.NamespacedName{Name: existingObj.Name, Namespace: existingObj.Namespace}
-		logger.WithContext(ctx).Info(fmt.Sprintf("immutable StatefulSet=%s field changed, spec_diff=%v", nsn.String(), specDiff))
-		return true
+	specDiff := diffDeep(newObjClone.Spec, existingObj.Spec, "spec")
+	if len(specDiff) == 0 {
+		return false
 	}
-	return false
+	nsn := types.NamespacedName{Name: existingObj.Name, Namespace: existingObj.Namespace}
+	logger.WithContext(ctx).Info(fmt.Sprintf("immutable StatefulSet=%s field changed, spec_diff=%v", nsn.String(), specDiff))
+	return true
 }
 
 func removeStatefulSetKeepPods(ctx context.Context, rclient client.Client, existingObj, newObj *appsv1.StatefulSet) error {

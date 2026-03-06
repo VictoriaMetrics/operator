@@ -6,11 +6,11 @@ spec:
   vmauth:
     name: global-vmauth
     spec:
+      replicaCount: 1
       unauthorizedUserAccessSpec:
         targetRefs:
           - name: read
           - name: write
-      replicaCount: 1
   zoneCommon:
     vmagent:
       spec:
@@ -26,17 +26,4 @@ spec:
           replicaCount: 1
   zones:
     - name: us-east-1
-      vmcluster:
-        spec:
-          vmselect:
-            replicaCount: 3
     - name: us-west-2
-      vmcluster:
-        spec:
-          vmselect:
-            replicaCount: 4
-    - name: eu-west-1
-      vmcluster:
-        spec:
-          vmselect:
-            replicaCount: 2

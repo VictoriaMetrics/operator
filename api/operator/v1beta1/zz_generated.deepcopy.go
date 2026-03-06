@@ -5320,6 +5320,13 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		}
 	}
 	in.VMUserConfigOptions.DeepCopyInto(&out.VMUserConfigOptions)
+	if in.DefaultTargetRefs != nil {
+		in, out := &in.DefaultTargetRefs, &out.DefaultTargetRefs
+		*out = make([]TargetRef, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.UnauthorizedUserAccessSpec != nil {
 		in, out := &in.UnauthorizedUserAccessSpec, &out.UnauthorizedUserAccessSpec
 		*out = new(VMAuthUnauthorizedUserAccessSpec)

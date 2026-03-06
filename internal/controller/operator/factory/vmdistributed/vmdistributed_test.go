@@ -404,6 +404,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			targetRefs := []vmv1beta1.TargetRef{
 				{
+					Name:  "write",
 					Paths: []string{"/insert/.+", "/api/v1/write"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMAgent",
@@ -411,6 +412,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 				{
+					Name:  "read",
 					Paths: []string{"/select/.+", "/admin/tenants"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMCluster/vmselect",
@@ -429,7 +431,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: vmAuth.Namespace,
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
-			assert.Equal(t, targetRefs, got.Spec.UnauthorizedUserAccessSpec.TargetRefs)
+			assert.Equal(t, targetRefs, got.Spec.DefaultTargetRefs)
 		},
 	})
 
@@ -535,6 +537,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			targetRefs := []vmv1beta1.TargetRef{
 				{
+					Name:  "write",
 					Paths: []string{"/insert/.+", "/api/v1/write"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMAgent",
@@ -542,6 +545,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 				{
+					Name:  "read",
 					Paths: []string{"/select/.+", "/admin/tenants"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMCluster/vmselect",
@@ -560,7 +564,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: vmAuth.Namespace,
 			}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
-			assert.Equal(t, targetRefs, got.Spec.UnauthorizedUserAccessSpec.TargetRefs)
+			assert.Equal(t, targetRefs, got.Spec.DefaultTargetRefs)
 		},
 	})
 

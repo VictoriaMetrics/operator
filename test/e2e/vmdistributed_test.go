@@ -111,6 +111,9 @@ func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Clie
 						"vmd-users": name,
 					},
 				},
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{{Name: "read"}, {Name: "write"}},
+				},
 			},
 		}
 		DeferCleanup(func() {

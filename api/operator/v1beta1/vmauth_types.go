@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -80,7 +81,8 @@ type VMAuthSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	VMUserConfigOptions `json:",inline" yaml:",inline"`
-
+	// DefaultTargetRefs - reference to endpoints, which user may access.
+	DefaultTargetRefs []TargetRef `json:"defaultTargetRefs,omitempty" yaml:"-"`
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
 	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
@@ -172,7 +174,7 @@ func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 	}
 	isRetryCodesSet := len(s.RetryStatusCodes) > 0
 	for _, r := range s.TargetRefs {
-		if err := r.validate(isRetryCodesSet); err != nil {
+		if err := r.Validate(false, isRetryCodesSet); err != nil {
 			return fmt.Errorf("%w for unauthorized_user", err)
 		}
 	}
@@ -443,6 +445,18 @@ func (cr *VMAuth) Validate() error {
 	if cr.Spec.UnauthorizedUserAccessSpec != nil {
 		if err := cr.Spec.UnauthorizedUserAccessSpec.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.UnauthorizedUserAccess syntax: %w", err)
+		}
+	}
+
+	refs := sets.New[string]()
+	for i, ref := range cr.Spec.DefaultTargetRefs {
+		if refs.Has(ref.Name) {
+			return fmt.Errorf("spec.defaultTargetRefs[%d] contains duplicated targets with name=%s", i, ref.Name)
+		} else {
+			refs.Insert(ref.Name)
+		}
+		if err := ref.Validate(true, false); err != nil {
+			return fmt.Errorf("spec.defaultTargetRefs[%d]: %w", i, err)
 		}
 	}
 

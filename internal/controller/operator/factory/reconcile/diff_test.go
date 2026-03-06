@@ -64,9 +64,10 @@ func TestDiffDeepDerivativeOk(t *testing.T) {
 	f("new", "line", `{"spec":{"--":"line","++":"new"}}`)
 
 	type cmpStruct struct {
-		Field1 []string    `json:"field1,omitempty"`
-		Field2 map[int]int `json:"field2,omitempty"`
-		Field3 int32       `json:"field3"`
+		Field1 []string       `json:"field1,omitempty"`
+		Field2 map[string]int `json:"field2,omitempty"`
+		Field3 int32          `json:"field3"`
+		Field4 map[int]int    `json:"field4,omitempty"`
 	}
 	var a2Empty cmpStruct
 	a1Filled := cmpStruct{
@@ -77,7 +78,7 @@ func TestDiffDeepDerivativeOk(t *testing.T) {
 	a1EmptyPtr := &cmpStruct{}
 	a2FilledPtr := &cmpStruct{
 		Field1: []string{"1", "2"},
-		Field2: make(map[int]int),
+		Field2: make(map[string]int),
 	}
 	f(a2FilledPtr, a1EmptyPtr, `{"spec.field1":{"++":["1","2"]}}`)
 
@@ -112,4 +113,32 @@ func TestDiffDeepDerivativeOk(t *testing.T) {
 		Field1: []string{"1"},
 	}
 	f(a6PartialPtr, a6FilledPtr, `{"spec.field1[1]":{"++":"2"}}`)
+
+	a7PartialPtr := &cmpStruct{
+		Field2: map[string]int{
+			"1": 1,
+			"2": 2,
+		},
+	}
+	a7FilledPtr := &cmpStruct{
+		Field2: map[string]int{
+			"1": 2,
+			"2": 1,
+		},
+	}
+	f(a7PartialPtr, a7FilledPtr, `{"spec.field2['1']":{"--":2,"++":1},"spec.field2['2']":{"--":1,"++":2}}`)
+
+	a8PartialPtr := &cmpStruct{
+		Field4: map[int]int{
+			1: 1,
+			2: 2,
+		},
+	}
+	a8FilledPtr := &cmpStruct{
+		Field4: map[int]int{
+			1: 2,
+			2: 1,
+		},
+	}
+	f(a8PartialPtr, a8FilledPtr, `{"spec.field4[1]":{"--":2,"++":1},"spec.field4[2]":{"--":1,"++":2}}`)
 }

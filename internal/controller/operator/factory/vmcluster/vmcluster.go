@@ -660,6 +660,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VMSelect.ExtraArgs, cr.Spec.VMSelect.TerminationGracePeriodSeconds)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
@@ -864,6 +865,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VMInsert.ExtraArgs, cr.Spec.VMInsert.TerminationGracePeriodSeconds)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -1084,6 +1086,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
+	args = build.AddHTTPShutdownDelayArg(args, cr.Spec.VMStorage.ExtraArgs, cr.Spec.VMStorage.TerminationGracePeriodSeconds)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
@@ -1511,6 +1514,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	volumes, vmounts = build.LicenseVolumeTo(volumes, vmounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
+	args = build.AddHTTPShutdownDelayArg(args, spec.ExtraArgs, spec.TerminationGracePeriodSeconds)
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{

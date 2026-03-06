@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -202,6 +203,45 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 		extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
 		dashes:    "--",
 		want:      []string{"--log.level=info", "--web.externalURL=http://domain.example"},
+	})
+}
+
+func TestAddHTTPShutdownDelayArg(t *testing.T) {
+	type opts struct {
+		extraArgs                     map[string]string
+		terminationGracePeriodSeconds *int64
+		wantArgs                      []string
+	}
+	f := func(opts opts) {
+		t.Helper()
+		assert.Equal(
+			t,
+			AddHTTPShutdownDelayArg(nil, opts.extraArgs, opts.terminationGracePeriodSeconds),
+			opts.wantArgs,
+		)
+	}
+	// new resource, no explicit settings
+	f(opts{
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: nil,
+		wantArgs:                      []string{"-http.shutdownDelay=30s"},
+	})
+	// if extraArg already exists, no more args should be added, it will be added later in the process of adding extra args
+	f(opts{
+		extraArgs:                     map[string]string{"http.shutdownDelay": "5s"},
+		terminationGracePeriodSeconds: nil,
+		wantArgs:                      nil,
+	})
+	// new resource with explicit terminationGracePeriodSeconds
+	f(opts{
+		extraArgs:                     nil,
+		terminationGracePeriodSeconds: ptr.To[int64](60),
+		wantArgs:                      []string{"-http.shutdownDelay=60s"},
+	})
+	f(opts{
+		extraArgs:                     map[string]string{"http.shutdownDelay": "20s"},
+		terminationGracePeriodSeconds: ptr.To[int64](120),
+		wantArgs:                      nil,
 	})
 }
 

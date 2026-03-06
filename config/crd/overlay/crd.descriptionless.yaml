@@ -12968,6 +12968,151 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              defaultTargetRefs:
+                items:
+                  properties:
+                    crd:
+                      properties:
+                        kind:
+                          enum:
+                          - VMAgent
+                          - VMAlert
+                          - VMSingle
+                          - VLogs
+                          - VMAlertManager
+                          - VMAlertmanager
+                          - VMCluster/vmselect
+                          - VMCluster/vmstorage
+                          - VMCluster/vminsert
+                          - VLSingle
+                          - VLCluster/vlinsert
+                          - VLCluster/vlselect
+                          - VLCluster/vlstorage
+                          - VLAgent
+                          - VTCluster/vtinsert
+                          - VTCluster/vtselect
+                          - VTCluster/vtstorage
+                          - VTSingle
+                          type: string
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                        objects:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                            required:
+                            - name
+                            - namespace
+                            type: object
+                          type: array
+                      required:
+                      - kind
+                      - name
+                      - namespace
+                      type: object
+                    discover_backend_ips:
+                      type: boolean
+                    drop_src_path_prefix_parts:
+                      type: integer
+                    headers:
+                      items:
+                        type: string
+                      type: array
+                    hosts:
+                      items:
+                        type: string
+                      type: array
+                    load_balancing_policy:
+                      enum:
+                      - least_loaded
+                      - first_available
+                      type: string
+                    name:
+                      type: string
+                    paths:
+                      items:
+                        type: string
+                      type: array
+                    query_args:
+                      items:
+                        properties:
+                          name:
+                            type: string
+                          values:
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - name
+                        - values
+                        type: object
+                      type: array
+                    response_headers:
+                      items:
+                        type: string
+                      type: array
+                    retry_status_codes:
+                      items:
+                        type: integer
+                      type: array
+                    src_headers:
+                      items:
+                        type: string
+                      type: array
+                    src_query_args:
+                      items:
+                        type: string
+                      type: array
+                    static:
+                      properties:
+                        url:
+                          type: string
+                        urls:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    target_path_suffix:
+                      type: string
+                    targetRefBasicAuth:
+                      properties:
+                        password:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        username:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      required:
+                      - password
+                      - username
+                      type: object
+                  type: object
+                type: array
               disableAutomountServiceAccountToken:
                 type: boolean
               disableSelfServiceScrape:
@@ -13931,45 +14076,23 @@ spec:
                               type: string
                             namespace:
                               type: string
+                            objects:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                required:
+                                - name
+                                - namespace
+                                type: object
+                              type: array
                           required:
                           - kind
                           - name
                           - namespace
                           type: object
-                        crds:
-                          items:
-                            properties:
-                              kind:
-                                enum:
-                                - VMAgent
-                                - VMAlert
-                                - VMSingle
-                                - VLogs
-                                - VMAlertManager
-                                - VMAlertmanager
-                                - VMCluster/vmselect
-                                - VMCluster/vmstorage
-                                - VMCluster/vminsert
-                                - VLSingle
-                                - VLCluster/vlinsert
-                                - VLCluster/vlselect
-                                - VLCluster/vlstorage
-                                - VLAgent
-                                - VTCluster/vtinsert
-                                - VTCluster/vtselect
-                                - VTCluster/vtstorage
-                                - VTSingle
-                                type: string
-                              name:
-                                type: string
-                              namespace:
-                                type: string
-                            required:
-                            - kind
-                            - name
-                            - namespace
-                            type: object
-                          type: array
                         discover_backend_ips:
                           type: boolean
                         drop_src_path_prefix_parts:
@@ -13986,6 +14109,8 @@ spec:
                           enum:
                           - least_loaded
                           - first_available
+                          type: string
+                        name:
                           type: string
                         paths:
                           items:
@@ -18174,6 +18299,151 @@ spec:
                           - name
                           type: object
                         type: array
+                      defaultTargetRefs:
+                        items:
+                          properties:
+                            crd:
+                              properties:
+                                kind:
+                                  enum:
+                                  - VMAgent
+                                  - VMAlert
+                                  - VMSingle
+                                  - VLogs
+                                  - VMAlertManager
+                                  - VMAlertmanager
+                                  - VMCluster/vmselect
+                                  - VMCluster/vmstorage
+                                  - VMCluster/vminsert
+                                  - VLSingle
+                                  - VLCluster/vlinsert
+                                  - VLCluster/vlselect
+                                  - VLCluster/vlstorage
+                                  - VLAgent
+                                  - VTCluster/vtinsert
+                                  - VTCluster/vtselect
+                                  - VTCluster/vtstorage
+                                  - VTSingle
+                                  type: string
+                                name:
+                                  type: string
+                                namespace:
+                                  type: string
+                                objects:
+                                  items:
+                                    properties:
+                                      name:
+                                        type: string
+                                      namespace:
+                                        type: string
+                                    required:
+                                    - name
+                                    - namespace
+                                    type: object
+                                  type: array
+                              required:
+                              - kind
+                              - name
+                              - namespace
+                              type: object
+                            discover_backend_ips:
+                              type: boolean
+                            drop_src_path_prefix_parts:
+                              type: integer
+                            headers:
+                              items:
+                                type: string
+                              type: array
+                            hosts:
+                              items:
+                                type: string
+                              type: array
+                            load_balancing_policy:
+                              enum:
+                              - least_loaded
+                              - first_available
+                              type: string
+                            name:
+                              type: string
+                            paths:
+                              items:
+                                type: string
+                              type: array
+                            query_args:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  values:
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - name
+                                - values
+                                type: object
+                              type: array
+                            response_headers:
+                              items:
+                                type: string
+                              type: array
+                            retry_status_codes:
+                              items:
+                                type: integer
+                              type: array
+                            src_headers:
+                              items:
+                                type: string
+                              type: array
+                            src_query_args:
+                              items:
+                                type: string
+                              type: array
+                            static:
+                              properties:
+                                url:
+                                  type: string
+                                urls:
+                                  items:
+                                    type: string
+                                  type: array
+                              type: object
+                            target_path_suffix:
+                              type: string
+                            targetRefBasicAuth:
+                              properties:
+                                password:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                username:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              required:
+                              - password
+                              - username
+                              type: object
+                          type: object
+                        type: array
                       disableAutomountServiceAccountToken:
                         type: boolean
                       disableSelfServiceScrape:
@@ -20864,45 +21134,23 @@ spec:
                                       type: string
                                     namespace:
                                       type: string
+                                    objects:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                          namespace:
+                                            type: string
+                                        required:
+                                        - name
+                                        - namespace
+                                        type: object
+                                      type: array
                                   required:
                                   - kind
                                   - name
                                   - namespace
                                   type: object
-                                crds:
-                                  items:
-                                    properties:
-                                      kind:
-                                        enum:
-                                        - VMAgent
-                                        - VMAlert
-                                        - VMSingle
-                                        - VLogs
-                                        - VMAlertManager
-                                        - VMAlertmanager
-                                        - VMCluster/vmselect
-                                        - VMCluster/vmstorage
-                                        - VMCluster/vminsert
-                                        - VLSingle
-                                        - VLCluster/vlinsert
-                                        - VLCluster/vlselect
-                                        - VLCluster/vlstorage
-                                        - VLAgent
-                                        - VTCluster/vtinsert
-                                        - VTCluster/vtselect
-                                        - VTCluster/vtstorage
-                                        - VTSingle
-                                        type: string
-                                      name:
-                                        type: string
-                                      namespace:
-                                        type: string
-                                    required:
-                                    - kind
-                                    - name
-                                    - namespace
-                                    type: object
-                                  type: array
                                 discover_backend_ips:
                                   type: boolean
                                 drop_src_path_prefix_parts:
@@ -20919,6 +21167,8 @@ spec:
                                   enum:
                                   - least_loaded
                                   - first_available
+                                  type: string
+                                name:
                                   type: string
                                 paths:
                                   items:
@@ -37546,45 +37796,23 @@ spec:
                           type: string
                         namespace:
                           type: string
+                        objects:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                            required:
+                            - name
+                            - namespace
+                            type: object
+                          type: array
                       required:
                       - kind
                       - name
                       - namespace
                       type: object
-                    crds:
-                      items:
-                        properties:
-                          kind:
-                            enum:
-                            - VMAgent
-                            - VMAlert
-                            - VMSingle
-                            - VLogs
-                            - VMAlertManager
-                            - VMAlertmanager
-                            - VMCluster/vmselect
-                            - VMCluster/vmstorage
-                            - VMCluster/vminsert
-                            - VLSingle
-                            - VLCluster/vlinsert
-                            - VLCluster/vlselect
-                            - VLCluster/vlstorage
-                            - VLAgent
-                            - VTCluster/vtinsert
-                            - VTCluster/vtselect
-                            - VTCluster/vtstorage
-                            - VTSingle
-                            type: string
-                          name:
-                            type: string
-                          namespace:
-                            type: string
-                        required:
-                        - kind
-                        - name
-                        - namespace
-                        type: object
-                      type: array
                     discover_backend_ips:
                       type: boolean
                     drop_src_path_prefix_parts:
@@ -37601,6 +37829,8 @@ spec:
                       enum:
                       - least_loaded
                       - first_available
+                      type: string
+                    name:
                       type: string
                     paths:
                       items:

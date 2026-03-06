@@ -6,6 +6,10 @@ spec:
   vmauth:
     name: global-vmauth
     spec:
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
       image:
         repository: victoriametrics/vmauth
         pullPolicy: IfNotPresent

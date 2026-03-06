@@ -52,7 +52,7 @@ func TestVMPodScrape(t *testing.T) {
 			cl.Actions = nil
 		}
 		synctest.Test(t, func(t *testing.T) {
-			assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil))
+			assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil, false))
 			assert.Equal(t, o.actions, cl.Actions)
 		})
 	}

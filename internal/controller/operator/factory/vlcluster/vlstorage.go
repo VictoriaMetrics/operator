@@ -206,7 +206,7 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VLStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false), &cr.Spec.VLStorage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VLStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VLStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VLStorage.ClaimTemplates...)
@@ -325,19 +325,18 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = build.Probe(vmstorageContainer, cr.Spec.VLStorage)
+	build.Probe(&vmstorageContainer, cr.Spec.VLStorage, &cr.Spec.VLStorage.CommonAppsParams)
 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.VLStorage.UseStrictSecurity, false)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLStorage.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.VLStorage.CommonAppsParams)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VLStorage.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch storage init containers: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLStorage.SecurityContext, storageContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(storageContainers, &cr.Spec.VLStorage.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(storageContainers, cr.Spec.VLStorage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch storage containers: %w", err)

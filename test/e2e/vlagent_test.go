@@ -65,7 +65,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					Name:      nsn.Name,
 				},
 				Spec: vmv1.VLAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -103,7 +103,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -136,7 +136,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						Storage: &vmv1beta1.StorageSpec{
@@ -226,7 +226,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -338,10 +338,8 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VLAgentSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseStrictSecurity: ptr.To(true),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseStrictSecurity:                   ptr.To(true),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -414,7 +412,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 			Entry("by scaling replicas to to 3", "update-replicas-3",
 				&vmv1.VLAgent{
 					Spec: vmv1.VLAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -438,9 +436,9 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 			),
 			Entry("by deleting and restoring PodDisruptionBudget and podScrape", "pdb-mutations-scrape",
 				&vmv1.VLAgent{Spec: vmv1.VLAgentSpec{
-					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](2),
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						UseDefaultResources: ptr.To(false),
+						ReplicaCount:        ptr.To[int32](2),
 					},
 					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -480,9 +478,9 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 			),
 			Entry("by transition into logs collection and back", "logs-collection-transition",
 				&vmv1.VLAgent{Spec: vmv1.VLAgentSpec{
-					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](2),
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						UseDefaultResources: ptr.To(false),
+						ReplicaCount:        ptr.To[int32](2),
 					},
 					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: &intstr.IntOrString{IntVal: 1}},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{

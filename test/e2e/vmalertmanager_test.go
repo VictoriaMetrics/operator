@@ -74,7 +74,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 						Namespace: namespace,
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 					},
@@ -94,11 +94,9 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 						Namespace: namespace,
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseDefaultResources: ptr.To(false),
-							UseStrictSecurity:   ptr.To(true),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseDefaultResources:                 ptr.To(false),
+							UseStrictSecurity:                   ptr.To(true),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -147,7 +145,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				Namespace: nsn.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 				},
 			},
@@ -258,7 +256,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAlertmanagerSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: &initialReplicas,
 					},
 				},

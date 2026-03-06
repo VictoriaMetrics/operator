@@ -22,7 +22,7 @@ func TestVMAlert_ValidateOk(t *testing.T) {
 	}
 	f(VMAlertSpec{
 		Datasource: VMAlertDatasourceSpec{URL: "http://some-url"},
-		CommonApplicationDeploymentParams: CommonApplicationDeploymentParams{
+		CommonAppsParams: CommonAppsParams{
 			ExtraArgs: map[string]string{"notifier.blackhole": "true"},
 		},
 	})

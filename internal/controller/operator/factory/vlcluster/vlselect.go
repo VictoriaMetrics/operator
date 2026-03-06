@@ -213,7 +213,7 @@ func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false), &cr.Spec.VLSelect.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.VLSelect.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -323,10 +323,10 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	selectContainers = build.Probe(selectContainers, cr.Spec.VLSelect)
+	build.Probe(&selectContainers, cr.Spec.VLSelect, &cr.Spec.VLSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{selectContainers}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VLSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VLSelect.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VLSelect.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VLSelect.Containers)
 	if err != nil {
 		return nil, err

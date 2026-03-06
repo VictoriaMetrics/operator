@@ -126,6 +126,57 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 
 }
 
+func TestUseProxyProtocol(t *testing.T) {
+	type opts struct {
+		args     map[string]string
+		expected bool
+	}
+	f := func(o opts) {
+		assert.Equal(t, o.expected, UseProxyProtocol(o.args))
+	}
+
+	// no args set
+	f(opts{})
+
+	// no proxy protocol flag
+	f(opts{
+		args: map[string]string{
+			"test": "test",
+		},
+	})
+
+	// proxy protocol set to false
+	f(opts{
+		args: map[string]string{
+			httpUseProxyProtocolFlag: "false",
+		},
+	})
+
+	// first proxy protocol value is false
+	f(opts{
+		args: map[string]string{
+			httpUseProxyProtocolFlag: "false,true,true",
+		},
+	})
+
+	// proxy protocol is true
+	f(opts{
+		args: map[string]string{
+			httpUseProxyProtocolFlag: "true",
+		},
+		expected: true,
+	})
+
+	// only first value is true
+	f(opts{
+		args: map[string]string{
+			httpUseProxyProtocolFlag: "true,false,false",
+		},
+		expected: true,
+	})
+
+}
+
 func TestEmbeddedVPAValidation(t *testing.T) {
 	type opts struct {
 		vpa     *EmbeddedVPA

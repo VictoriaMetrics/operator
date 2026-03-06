@@ -186,8 +186,7 @@ type VMDistributedZoneAgentSpec struct {
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional
@@ -215,8 +214,7 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {

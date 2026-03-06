@@ -46,10 +46,11 @@ const (
 )
 
 const (
-	httpPathPrefixFlag  = "http.pathPrefix"
-	reloadAuthKeyFlag   = "reloadAuthKey"
-	tlsFlag             = "tls"
-	snapshotAuthKeyFlag = "snapshotAuthKey"
+	httpPathPrefixFlag       = "http.pathPrefix"
+	httpUseProxyProtocolFlag = "httpListenAddr.useProxyProtocol"
+	reloadAuthKeyFlag        = "reloadAuthKey"
+	tlsFlag                  = "tls"
+	snapshotAuthKeyFlag      = "snapshotAuthKey"
 
 	healthPath     = "/health"
 	metricsPath    = "/metrics"
@@ -128,6 +129,17 @@ func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bo
 		suffix = "internal"
 	}
 	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
+}
+
+// UseProxyProtocol is a helper for build.probeCRD interface implementations
+func UseProxyProtocol(extraArgs map[string]string) bool {
+	if v, ok := extraArgs[httpUseProxyProtocolFlag]; ok {
+		if idx := strings.Index(v, ","); idx != -1 {
+			v = v[:idx]
+		}
+		return strings.TrimSpace(v) == "true"
+	}
+	return false
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
@@ -394,21 +406,6 @@ func (epdbs *EmbeddedPodDisruptionBudgetSpec) SelectorLabelsWithDefaults(default
 		return defaultSelector
 	}
 	return epdbs.SelectorLabels
-}
-
-// EmbeddedProbes - it allows to override some probe params.
-// its not necessary to specify all options,
-// operator will replace missing spec with default values.
-type EmbeddedProbes struct {
-	// LivenessProbe that will be added CRD pod
-	// +optional
-	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
-	// ReadinessProbe that will be added CRD pod
-	// +optional
-	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
-	// StartupProbe that will be added to CRD pod
-	// +optional
-	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
 }
 
 // EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
@@ -1053,38 +1050,6 @@ func (s *StatefulSetUpdateStrategyBehavior) Validate() error {
 	return nil
 }
 
-// CommonDefaultableParams contains Application settings
-// with known values populated from operator configuration
-type CommonDefaultableParams struct {
-	// Image - docker image settings
-	// if no specified operator uses default version from operator config
-	// +optional
-	Image Image `json:"image,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// if not defined default resources from operator config will be used
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-	// UseDefaultResources controls resource settings
-	// By default, operator sets built-in resource requirements
-	// +optional
-	UseDefaultResources *bool `json:"useDefaultResources,omitempty"`
-	// Port listen address
-	// +optional
-	Port string `json:"port,omitempty"`
-	// UseStrictSecurity enables strict security mode for component
-	// it restricts disk writes access
-	// uses non-root user out of the box
-	// drops not needed security permissions
-	// +optional
-	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
-	// DisableSelfServiceScrape controls creation of VMServiceScrape by operator
-	// for the application.
-	// Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable
-	// +optional
-	DisableSelfServiceScrape *bool `json:"disableSelfServiceScrape,omitempty"`
-}
-
 type CommonConfigReloaderParams struct {
 	// UseVMConfigReloader replaces prometheus-like config-reloader
 	// with vm one. It uses secrets watch instead of file watch
@@ -1115,9 +1080,9 @@ type CommonConfigReloaderParams struct {
 	ConfigReloadAuthKeySecret *corev1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
 }
 
-// CommonApplicationDeploymentParams defines common params
+// CommonAppsParams defines common params
 // for deployment and statefulset specifications
-type CommonApplicationDeploymentParams struct {
+type CommonAppsParams struct {
 	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -1174,9 +1139,6 @@ type CommonApplicationDeploymentParams struct {
 	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// MinReadySeconds defines a minimum number of seconds to wait before starting update next pod
@@ -1245,6 +1207,46 @@ type CommonApplicationDeploymentParams struct {
 	// could either be secret or configmap
 	// +optional
 	ExtraEnvsFrom []corev1.EnvFromSource `json:"extraEnvsFrom,omitempty"`
+
+	// Image - docker image settings
+	// if no specified operator uses default version from operator config
+	// +optional
+	Image Image `json:"image,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not defined default resources from operator config will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// UseDefaultResources controls resource settings
+	// By default, operator sets built-in resource requirements
+	// +optional
+	UseDefaultResources *bool `json:"useDefaultResources,omitempty"`
+	// Port listen address
+	// +optional
+	Port string `json:"port,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+	// DisableSelfServiceScrape controls creation of VMServiceScrape by operator
+	// for the application.
+	// Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable
+	// +optional
+	DisableSelfServiceScrape *bool `json:"disableSelfServiceScrape,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// LivenessProbe that will be added to CR pod
+	// +optional
+	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
+	// ReadinessProbe that will be added to CR pod
+	// +optional
+	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
+	// StartupProbe that will be added to CR pod
+	// +optional
+	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext

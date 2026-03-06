@@ -286,7 +286,7 @@ schedulers:
 			Writer: &vmv1.VMAnomalyWritersSpec{
 				DatasourceURL: "http://writer-url",
 			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 				Paused:       true,
 			},

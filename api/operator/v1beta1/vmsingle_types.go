@@ -76,8 +76,6 @@ type VMSingleSpec struct {
 	// ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VMSingle pod
-	*EmbeddedProbes `json:",inline"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
@@ -91,11 +89,10 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonRelabelParams               `json:",inline,omitempty"`
-	CommonScrapeParams                `json:",inline,omitempty"`
-	CommonDefaultableParams           `json:",inline"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline"`
+	CommonRelabelParams        `json:",inline,omitempty"`
+	CommonScrapeParams         `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
@@ -155,12 +152,9 @@ func (cr *VMSingle) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMSingle) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-	return false
+	return UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -215,10 +209,6 @@ func (cr *VMSingle) GetStatus() *VMSingleStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMSingle) DefaultStatusFields(_ *VMSingleStatus) {}
-
-func (cr *VMSingle) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
-}
 
 func (cr *VMSingle) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)

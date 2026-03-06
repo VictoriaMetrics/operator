@@ -72,17 +72,17 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			Spec: vmv1.VLClusterSpec{
 				VLInsert: &vmv1.VLInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
 				VLStorage: &vmv1.VLStorage{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
 				VLSelect: &vmv1.VLSelect{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(2)),
 					},
 				},
@@ -135,7 +135,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					RetentionPeriod:                 "1w",
 					RetentionMaxDiskSpaceUsageBytes: "5GB",
 					FutureRetention:                 "2d",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
@@ -165,13 +165,13 @@ func TestCreateOrUpdate(t *testing.T) {
 							Addr: "localhost:10101",
 						},
 					},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 				VLStorage: &vmv1.VLStorage{
 					RetentionPeriod: "1w",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
@@ -205,13 +205,13 @@ func TestCreateOrUpdate(t *testing.T) {
 							Addr: "localhost:10101",
 						},
 					},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 				VLStorage: &vmv1.VLStorage{
 					RetentionPeriod: "1w",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 					HPA: &vmv1beta1.EmbeddedHPA{
@@ -233,7 +233,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 			Spec: vmv1.VLClusterSpec{
 				VLInsert: &vmv1.VLInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
 					},
 					VPA: &vmv1beta1.EmbeddedVPA{
@@ -290,7 +290,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 			Spec: vmv1.VLClusterSpec{
 				VLSelect: &vmv1.VLSelect{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
 					},
 					VPA: &vmv1beta1.EmbeddedVPA{
@@ -358,7 +358,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 			Spec: vmv1.VLClusterSpec{
 				VLStorage: &vmv1.VLStorage{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
 					},
 					VPA: &vmv1beta1.EmbeddedVPA{
@@ -439,7 +439,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 			Spec: vmv1.VLClusterSpec{
 				VLInsert: &vmv1.VLInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
 					},
 					VPA: &vmv1beta1.EmbeddedVPA{
@@ -532,7 +532,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			Spec: vmv1.VLClusterSpec{
 				VLInsert: &vmv1.VLInsert{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
 					},
 				},
@@ -565,17 +565,17 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1.VLClusterSpec{
 			Paused: true,
 			VLInsert: &vmv1.VLInsert{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VLStorage: &vmv1.VLStorage{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 			VLSelect: &vmv1.VLSelect{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},

@@ -58,8 +58,7 @@ type VMAnomalySpec struct {
 	ShardCount *int `json:"shardCount,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// ConfigRawYaml - raw configuration for anomaly,
 	// it helps it to start without secret.
 	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
@@ -105,9 +104,8 @@ type VMAnomalySpec struct {
 	License *vmv1beta1.License `json:"license,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName                          string `json:"serviceAccountName,omitempty"`
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 // VMAnomalyWritersSpec defines writer configuration for VMAnomaly
@@ -398,11 +396,6 @@ func (cr *VMAnomaly) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return nil
 }
 
-// Probe implements build.probeCRD interface
-func (cr *VMAnomaly) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
-}
-
 // ProbePath implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePath() string {
 	if cr.Spec.Server != nil && cr.Spec.Server.PathPrefix != "" {
@@ -460,6 +453,11 @@ func (cr *VMAnomaly) LastSpecUpdated() bool {
 // Paused checks if given component reconcile loop should be stopped
 func (cr *VMAnomaly) Paused() bool {
 	return cr.Spec.Paused
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMAnomaly) UseProxyProtocol() bool {
+	return false
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

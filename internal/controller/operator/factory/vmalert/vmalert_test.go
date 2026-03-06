@@ -572,6 +572,8 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		assert.NoError(t, discoverNotifiersIfNeeded(ctx, fclient, o.cr))
 		got, err := buildArgs(o.cr, o.ruleConfigMapNames, ac)
@@ -590,7 +592,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{
 					URL: "http://vmsingle-url",
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ExtraArgs: map[string]string{
 						"notifier.url": "http://test",
 					},
@@ -598,7 +600,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 	})
 
 	// with tls args
@@ -620,7 +622,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 						},
 					},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ExtraArgs: map[string]string{
 						"notifier.url": "http://test",
 					},
@@ -628,7 +630,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 	})
 
 	// with static and selector notifiers
@@ -681,7 +683,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 					Labels:      map[string]string{"main": "system"},
 				},
 				Spec: vmv1beta1.VMAlertmanagerSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
@@ -694,7 +696,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 					Labels:      map[string]string{"main": "system"},
 				},
 				Spec: vmv1beta1.VMAlertmanagerSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
@@ -702,7 +704,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		},
 		want: []string{
 			"-datasource.url=http://some-vm-datasource",
-			"-httpListenAddr=:",
+			"-httpListenAddr=:8080",
 			"-notifier.tlsCAFile=,/tmp/ca.cert,,,",
 			"-notifier.tlsCertFile=,/tmp/cert.pem,,,",
 			"-notifier.tlsInsecureSkipVerify=false,true,false,false,false",

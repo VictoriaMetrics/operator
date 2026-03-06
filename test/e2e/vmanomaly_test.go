@@ -152,7 +152,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VMAnomalySpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						License: &vmv1beta1.License{
@@ -246,10 +246,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VMAnomalySpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseStrictSecurity: ptr.To(true),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseStrictSecurity:                   ptr.To(true),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -337,7 +335,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			Entry("by switching to shard mode", "shard",
 				&vmv1.VMAnomaly{
 					Spec: vmv1.VMAnomalySpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						License: &vmv1beta1.License{
@@ -382,9 +380,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			Entry("by deleting and restoring PodDisruptionBudget and podScrape", "pdb-mutations-scrape",
 				&vmv1.VMAnomaly{
 					Spec: vmv1.VMAnomalySpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-							ReplicaCount: ptr.To[int32](2),
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseDefaultResources: ptr.To(false),
+							ReplicaCount:        ptr.To[int32](2),
 						},
 						License: &vmv1beta1.License{
 							KeyRef: &corev1.SecretKeySelector{
@@ -450,7 +448,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					Name:      nsn.Name,
 				},
 				Spec: vmv1.VMAnomalySpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(initialReplicas),
 					},
 					License: &vmv1beta1.License{

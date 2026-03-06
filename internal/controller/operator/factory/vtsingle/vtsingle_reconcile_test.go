@@ -102,7 +102,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		cr: &vmv1.VTSingle{
 			ObjectMeta: objectMeta,
 			Spec: vmv1.VTSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -124,7 +124,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		cr: &vmv1.VTSingle{
 			ObjectMeta: objectMeta,
 			Spec: vmv1.VTSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -155,7 +155,7 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VTSingleSpec{
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To(int32(1)),
 				Paused:       true,
 			},

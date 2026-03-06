@@ -295,7 +295,6 @@ type VMSelect struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// Configures horizontal pod autoscaling.
 	// Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
 	// +optional
@@ -317,8 +316,7 @@ type VMSelect struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
-	CommonDefaultableParams           `json:",inline"`
-	CommonApplicationDeploymentParams `json:",inline"`
+	CommonAppsParams `json:",inline"`
 }
 
 type InsertPorts struct {
@@ -374,23 +372,22 @@ type VMInsert struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// HPA defines kubernetes PodAutoScaling configuration version 2.
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
-	CommonDefaultableParams           `json:",inline"`
-	CommonApplicationDeploymentParams `json:",inline"`
-}
-
-func (cr *VMInsert) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
+	CommonAppsParams `json:",inline"`
 }
 
 func (cr *VMInsert) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMInsert) UseProxyProtocol() bool {
+	return UseProxyProtocol(cr.ExtraArgs)
 }
 
 func (cr *VMInsert) ProbeScheme() string {
@@ -456,7 +453,6 @@ type VMStorage struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	// lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3].
 	// Useful at storage expanding, when you want to rebalance some data at cluster.
@@ -479,8 +475,7 @@ type VMStorage struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
-	CommonDefaultableParams           `json:",inline"`
-	CommonApplicationDeploymentParams `json:",inline"`
+	CommonAppsParams `json:",inline"`
 }
 
 type VMBackup struct {
@@ -607,6 +602,11 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 		return storageSpec.VolumeClaimTemplate.Name
 	}
 	return "vmselect-cachedir"
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMSelect) UseProxyProtocol() bool {
+	return UseProxyProtocol(cr.ExtraArgs)
 }
 
 // GetRemoteWriteURL returns remote write url for VMCluster
@@ -808,6 +808,11 @@ func (cr *VMStorage) GetMetricsPath() string {
 	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMStorage) UseProxyProtocol() bool {
+	return UseProxyProtocol(cr.ExtraArgs)
+}
+
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VMStorage) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
@@ -905,10 +910,6 @@ func (cr *VMCluster) AsURL(kind ClusterComponent) string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), cr.PrefixedName(kind), cr.Namespace, port)
 }
 
-func (cr *VMSelect) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
-}
-
 func (cr *VMSelect) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
 }
@@ -923,10 +924,6 @@ func (cr *VMSelect) ProbePort() string {
 
 func (*VMSelect) ProbeNeedLiveness() bool {
 	return true
-}
-
-func (cr *VMStorage) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 func (cr *VMStorage) ProbePath() string {
@@ -976,10 +973,8 @@ type VMAuthLoadBalancerSpec struct {
 	// LogLevel for vmauth container.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
-	LogLevel                          string `json:"logLevel,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline"`
-	CommonDefaultableParams           `json:",inline"`
-	*EmbeddedProbes                   `json:",inline"`
+	LogLevel         string `json:"logLevel,omitempty"`
+	CommonAppsParams `json:",inline"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
@@ -997,11 +992,6 @@ type VMAuthLoadBalancerSpec struct {
 	// +optional
 	License                    *License `json:"license,omitempty"`
 	CommonConfigReloaderParams `json:",inline,omitempty"`
-}
-
-// ProbePath returns path for probe requests
-func (cr *VMAuthLoadBalancerSpec) Probe() *EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePort returns port for probe requests
@@ -1022,6 +1012,11 @@ func (cr *VMAuthLoadBalancerSpec) ProbePath() string {
 // ProbeScheme returns scheme for probe requests
 func (cr *VMAuthLoadBalancerSpec) ProbeScheme() string {
 	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMAuthLoadBalancerSpec) UseProxyProtocol() bool {
+	return UseProxyProtocol(cr.ExtraArgs)
 }
 
 // GetServiceScrape implements build.serviceScrapeBuilder interface

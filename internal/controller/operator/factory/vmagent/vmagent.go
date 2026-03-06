@@ -369,8 +369,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
 	if cr.Spec.DaemonSetMode {
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -394,8 +392,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.DaemonSetAddCommonParams(dsSpec, &cr.Spec.CommonAppsParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 		return dsSpec, nil
 	}
@@ -430,8 +428,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 			stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 		}
-		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
+		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
@@ -466,8 +464,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
+	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 	return depSpec, nil
 }
@@ -676,10 +674,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, cr.AutomountServiceAccountToken())
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vmagentContainer = build.Probe(vmagentContainer, cr)
-
+	build.Probe(&vmagentContainer, cr, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	var operatorContainers []corev1.Container
@@ -695,7 +690,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 				Key: configFilename,
 			}
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
+			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
@@ -708,7 +703,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	operatorContainers = append([]corev1.Container{vmagentContainer}, operatorContainers...)
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {

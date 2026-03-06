@@ -48,7 +48,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				VLSelect: &vmv1.VLSelect{},
 				VLStorage: &vmv1.VLStorage{
 					RetentionPeriod: "1",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
@@ -302,7 +302,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					modify: func(cr *vmv1.VLCluster) {
 						By("upscaling vlselect, removing vlinsert", func() {
 							cr.Spec.VLSelect = &vmv1.VLSelect{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									ReplicaCount: ptr.To(int32(2)),
 								},
 							}
@@ -328,12 +328,12 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					modify: func(cr *vmv1.VLCluster) {
 						By("downscaling all components to 0 replicas", func() {
 							cr.Spec.VLSelect = &vmv1.VLSelect{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									ReplicaCount: ptr.To(int32(0)),
 								},
 							}
 							cr.Spec.VLInsert = &vmv1.VLInsert{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									ReplicaCount: ptr.To(int32(0)),
 								},
 							}

@@ -1958,12 +1958,12 @@ unauthorized_user:
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					VMSelect: &vmv1beta1.VMSelect{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(int32(10)),
 						},
 					},
 					VMInsert: &vmv1beta1.VMInsert{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(int32(5)),
 						},
 					},

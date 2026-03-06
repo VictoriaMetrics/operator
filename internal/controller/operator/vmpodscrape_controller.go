@@ -36,15 +36,13 @@ type VMPodScrapeReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
-func (r *VMPodScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMPodScrapeReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, _ *config.BaseOperatorConf) {
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMPodScrape")
 	r.OriginScheme = sc
-	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -72,10 +70,10 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmpodscrape"}
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = collectVMAgentScrapes(l, ctx, r.Client, instance); err != nil {
 		return
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = collectVMSingleScrapes(l, ctx, r.Client, instance); err != nil {
 		return
 	}
 	return

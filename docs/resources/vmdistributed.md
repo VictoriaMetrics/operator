@@ -59,6 +59,10 @@ spec:
     name: my-distributed-vmauth
     spec:
       replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read 
+          - name: write
   zoneCommon:
     vmagent:
       spec:
@@ -92,6 +96,10 @@ spec:
   vmauth:
     spec:
       replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read 
+          - name: write
   zoneCommon:
     vmagent:
       name: vmagent-%ZONE%
@@ -156,3 +164,35 @@ VMDistributed creates or becomes an owner of existing VMAuth, VMAgent and VMClus
 - Only one `VMAuth` can be managed per `VMDistributed`.
 - All objects must belong to the same namespace as the `VMDistributed`.
 - Objects must be referred to by name; label selectors are not supported for cluster selection.
+
+### Authorization
+By default VMDistributed provides no access to read/write endpoints. Instead it provides preconfigured named backebds `read` and `write`, which can be referenced in `spec.vmauth.spec.unauthorizedUserAccessSpec` section for provide unauthorized access or in VMUser spec for authorized access.
+
+To provide unauthorized access to the distributed setup need to add `spec.vmauth.spec.unauthorizedUserAccessSpec` section, where `read`, `write` backends should be referenced:
+
+```
+spec:
+  vmauth:
+    spec:
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read 
+          - name: write
+```
+
+With configuration above both `read` and `write` endpoints become available for unauthorized access
+
+In order to configure authorization `spec.vmauth.spec` should have [user selectors](https://docs.victoriametrics.com/operator/resources/vmauth/#users) properly configured and `VMUser` CRs should reference `read` and `write` backend in targetRefs:
+
+```
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: example
+spec:
+  username: simple-user
+  password: simple-password
+  targetRefs:
+    - name: write
+    - name: read
+```

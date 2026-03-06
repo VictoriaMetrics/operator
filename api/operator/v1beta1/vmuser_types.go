@@ -57,6 +57,9 @@ type VMUserSpec struct {
 // crd or static per targetRef.
 // user can define multiple targetRefs with different ref Types.
 type TargetRef struct {
+	// Name references item at VMAuths spec.defaultTargetRefs map, with name set other attributes are skipped
+	// +optional
+	Name string `json:"name,omitempty"`
 	// CRD describes exist operator's CRD object,
 	// operator generates access url based on CRD params.
 	// +optional
@@ -85,8 +88,11 @@ type TargetRef struct {
 	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`
 }
 
-func (r *TargetRef) validate(isRetryCodesSet bool) error {
+func (r *TargetRef) Validate(isDefault, isRetryCodesSet bool) error {
 	var refs []string
+	if isDefault && len(r.Name) == 0 {
+		return fmt.Errorf("default targetRef items should contain name")
+	}
 	if r.CRD != nil {
 		refs = append(refs, "crd")
 	}
@@ -94,9 +100,14 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 		refs = append(refs, "static")
 	}
 	if len(refs) != 1 {
-		return fmt.Errorf("targetRef validation failed, exactly one of `crd` or `static` must be configured, found: [%s]", strings.Join(refs, ","))
+		if len(r.Name) == 0 {
+			return fmt.Errorf("targetRef validation failed, exactly one of `crd` or `static` must be configured if `name` is not set, found: [%s]", strings.Join(refs, ","))
+		} else if len(refs) > 1 {
+			return fmt.Errorf("targetRef validation failed, both `crd` and `static` cannot be configured")
+		}
 	}
-	if r.Static != nil {
+	switch {
+	case r.Static != nil:
 		if r.Static.URL == "" && len(r.Static.URLs) == 0 {
 			return fmt.Errorf("for targetRef.static url or urls option must be set")
 		}
@@ -110,8 +121,7 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 				return fmt.Errorf("incorrect value at static.urls: %w", err)
 			}
 		}
-	}
-	if r.CRD != nil {
+	case r.CRD != nil:
 		if len(r.CRD.Objects) == 0 && (r.CRD.Namespace == "" || r.CRD.Name == "") {
 			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 		}
@@ -322,7 +332,7 @@ func (cr *VMUser) Validate() error {
 	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
 	for i := range cr.Spec.TargetRefs {
 		targetRef := &cr.Spec.TargetRefs[i]
-		if err := targetRef.validate(isRetryCodesSet); err != nil {
+		if err := targetRef.Validate(false, isRetryCodesSet); err != nil {
 			return fmt.Errorf("%w for users[%d]", err, i)
 		}
 	}

@@ -31,6 +31,7 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vm
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return vmv1beta1.TargetRef{
+		Name: "read",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
@@ -62,6 +63,7 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, excludeIds ...int) vmv1beta
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return vmv1beta1.TargetRef{
+		Name: "write",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
@@ -86,14 +88,9 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 		},
 		Spec: *cr.Spec.VMAuth.Spec.DeepCopy(),
 	}
-	if vmAuth.Spec.UnauthorizedUserAccessSpec == nil {
-		vmAuth.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{}
-	}
 	var targetRefs []vmv1beta1.TargetRef
 	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, excludeIds...))
 	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, excludeIds...))
-	vmAuth.Spec.UnauthorizedUserAccessSpec.URLMap = nil
-	vmAuth.Spec.UnauthorizedUserAccessSpec.URLPrefix = nil
-	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = targetRefs
+	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

@@ -90,6 +90,63 @@ spec:
       kubernetes.io/metadata.name: my-namespace
 ```
 
+## Predefined backends
+
+VMAuth supports predefined named backends configuration using `spec.defaultTargetRefs` property, which can be referenced by VMUser and at `unauthorizedUserAccessSpec`.
+
+For unauthorized access:
+
+```
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: select-ns
+spec:
+  defaultTargetRefs:
+    - name: single
+      paths: ["/metrics"]
+      crd:
+        kind: VMSingle
+        objects:
+          - namespace: default
+            name: example-1
+          - namespace: default
+            name: example-2
+  unauthorizedUserAccessSpec:
+    targetRefs:
+      - name: single
+```
+
+For authorized access:
+
+```
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: select-ns
+spec:
+  defaultTargetRefs:
+    - name: single
+      paths: ["/metrics"]
+      crd:
+        kind: VMSingle
+        objects:
+          - namespace: default
+            name: example-1
+          - namespace: default
+            name: example-2
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-sample
+spec:
+  username: simple-user
+  password: simple-password
+  targetRefs:
+  - name: single
+```
+
 ## Unauthorized access
 
 You can configure `VMAuth` to allow unauthorized access for specified routes with `unauthorizedUserAccessSpec` field.

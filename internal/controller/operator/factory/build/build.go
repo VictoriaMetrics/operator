@@ -322,7 +322,7 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]any) {
 
 // MergeDeep merges an override object into a base one.
 // Fields present in the override will overwrite corresponding fields in the base.
-func MergeDeep[T comparable](base, override T) error {
+func MergeDeep[T comparable](base, override T, reverse bool) error {
 	var zero T
 	if override == zero {
 		return nil
@@ -348,6 +348,9 @@ func MergeDeep[T comparable](base, override T) error {
 
 	// Perform a deep merge: fields from overrideMap recursively overwrite corresponding fields in baseMap.
 	// If an override value is explicitly nil, it signifies the removal or nullification of that field.
+	if reverse {
+		baseMap, overrideMap = overrideMap, baseMap
+	}
 	mergeMapsRecursive(baseMap, overrideMap)
 	mergedSpecJSON, err := json.Marshal(baseMap)
 	if err != nil {

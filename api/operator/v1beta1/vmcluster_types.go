@@ -488,9 +488,9 @@ type VMBackup struct {
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
 	SnapshotCreateURL string `json:"snapshotCreateURL,omitempty"`
-	// SnapShotDeleteURL overwrites url for snapshot delete
+	// SnapshotDeleteURL overwrites url for snapshot delete
 	// +optional
-	SnapShotDeleteURL string `json:"snapshotDeleteURL,omitempty"`
+	SnapshotDeleteURL string `json:"snapshotDeleteURL,omitempty"`
 	// Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10)
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`

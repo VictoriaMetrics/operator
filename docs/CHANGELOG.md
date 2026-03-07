@@ -15,6 +15,8 @@ aliases:
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
+
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
 **Release date:** 04 March 2026
 

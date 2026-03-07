@@ -12,6 +12,7 @@
 | VM_CUSTOMCONFIGRELOADERIMAGE: `-` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a><br>Deprecated: use VM_CONFIG_RELOADER_IMAGE instead |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |
 | VM_ENABLETCP6: `false` <a href="#variables-vm-enabletcp6" id="variables-vm-enabletcp6">#</a> |
+| VM_LOOPBACK: `-` <a href="#variables-vm-loopback" id="variables-vm-loopback">#</a><br>Overrides default loopback interface that will be used for all VM components |
 | VM_CONFIG_RELOADER_IMAGE: `victoriametrics/operator:config-reloader-${VM_OPERATOR_VERSION}` <a href="#variables-vm-config-reloader-image" id="variables-vm-config-reloader-image">#</a><br>default image for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_MEMORY: `unlimited` <a href="#variables-vm-config-reloader-limit-memory" id="variables-vm-config-reloader-limit-memory">#</a><br>defines global resource.limits.memory for all config-reloader containers |
 | VM_CONFIG_RELOADER_LIMIT_CPU: `unlimited` <a href="#variables-vm-config-reloader-limit-cpu" id="variables-vm-config-reloader-limit-cpu">#</a><br>defines global resource.limits.cpu for all config-reloader containers |

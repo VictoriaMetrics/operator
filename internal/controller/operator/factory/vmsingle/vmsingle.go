@@ -39,10 +39,14 @@ const (
 	configFilename        = "scrape.yaml"
 )
 
+func isStorageEmpty(pvc *corev1.PersistentVolumeClaimSpec) bool {
+	return pvc == nil || pvc.Resources.Requests.Storage().IsZero()
+}
+
 func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	newPvc := makePvc(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
+	if prevCR != nil && !isStorageEmpty(prevCR.Spec.Storage) {
 		prevPVC = makePvc(prevCR)
 	}
 	owner := cr.AsOwner()
@@ -98,7 +102,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
@@ -203,7 +207,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	var crMounts []corev1.VolumeMount
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: cr.PrefixedName(),
 		}

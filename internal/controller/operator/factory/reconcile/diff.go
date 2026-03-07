@@ -84,7 +84,7 @@ func (r *fieldDiffRecorder) Report(rs cmp.Result) {
 				key += fmt.Sprintf("[%d\u2192%d]", ix, iy)
 			}
 		case cmp.MapIndex:
-			key += "['" + v.String() + "']"
+			key += strings.ReplaceAll(v.String(), `"`, `'`)
 		}
 	}
 	if !moved {

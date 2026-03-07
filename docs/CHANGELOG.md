@@ -27,7 +27,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): remove finalizers from VMServiceScrape and VMPodScrape objects, and keep finalizers on VMAgent, VMCluster, and VMAuth when DeletionTimestamp is not empty.
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously, ingest-only mode could still mount scrape configuration secrets when relabeling or stream aggregation was configured, which caused unexpected secret mounts and RBAC-related failures; now these secrets are not mounted in ingest-only mode, so deployments start with the expected minimal permissions and avoid related runtime errors. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): do not recreate STS if VCT size was increased and recreate in other cases.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): ignore VMAuth update/delete operations if controller is disabled.
 

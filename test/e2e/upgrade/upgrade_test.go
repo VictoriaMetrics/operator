@@ -19,6 +19,8 @@ import (
 const (
 	vmagentName   = "test-agent"
 	vmsingleName  = "test-single"
+	vmauthName    = "test-auth"
+	vmalertName   = "test-alert"
 	vmclusterName = "test-cluster"
 )
 
@@ -28,6 +30,18 @@ type vmAgentTestCase struct {
 	depSpec         *appsv1.DeploymentSpec
 	dsSpec          *appsv1.DaemonSetSpec
 	stsSpec         *appsv1.StatefulSetSpec
+}
+
+type vmAuthTestCase struct {
+	operatorVersion string
+	mod             func(*vmv1beta1.VMAuth)
+	depSpec         *appsv1.DeploymentSpec
+}
+
+type vmAlertTestCase struct {
+	operatorVersion string
+	mod             func(*vmv1beta1.VMAlert)
+	depSpec         *appsv1.DeploymentSpec
 }
 
 type vmSingleTestCase struct {
@@ -44,7 +58,7 @@ type vmClusterTestCase struct {
 	storageStsSpec  appsv1.StatefulSetSpec
 }
 
-var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
+var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmAgentTestCase{
@@ -241,6 +255,193 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMSingle) {
 
 		}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	DescribeTable("should not rollout VMAuth changes", func(operatorVersion string, mod func(*vmv1beta1.VMAuth)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		tc := vmAuthTestCase{
+			operatorVersion: operatorVersion,
+			mod:             mod,
+		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
+
+		By("creating VMAuth in " + namespace)
+		cr := &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmauthName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmauth",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+				UnauthorizedAccessConfig: []vmv1beta1.VMAuthUnauthorizedPath{
+					{
+						Paths: []string{"/api/v1/query"},
+						URLs:  []string{"http://localhost:8428"},
+					},
+				},
+			},
+		}
+		if tc.mod != nil {
+			tc.mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMAuth to become operational")
+		nsn := types.NamespacedName{Name: vmauthName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child workload specs")
+		childNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmauth-%s", vmauthName),
+			Namespace: namespace,
+		}
+
+		var dep appsv1.Deployment
+		Eventually(func() error {
+			return k8sClient.Get(ctx, childNSN, &dep)
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+		tc.depSpec = dep.Spec.DeepCopy()
+		expectedGeneration := dep.Generation
+
+		removeOldOperator(ctx, k8sClient, namespace)
+
+		startNewOperator(ctx)
+		DeferCleanup(func() {
+			defer GinkgoRecover()
+			cleanupNamespace(ctx, k8sClient, namespace)
+		})
+
+		By("waiting for latest operator to reconcile VMAuth")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec remains stable over time")
+		Consistently(func() string {
+			var d appsv1.Deployment
+			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+			if d.Generation != expectedGeneration {
+				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+				return cmp.Diff(*expectedDepSpec, *s)
+			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAuth) {}),
+		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAuth) {}),
+		PEntry("from v0.65.0", "v0.65.0", nil),
+		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAuth) {}),
+		PEntry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	DescribeTable("should not rollout VMAlert changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlert)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		tc := vmAlertTestCase{
+			operatorVersion: operatorVersion,
+			mod:             mod,
+		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
+
+		By("creating VMAlert in " + namespace)
+		cr := &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmalertName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmalert",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://localhost:8428",
+				},
+				Notifier: &vmv1beta1.VMAlertNotifierSpec{
+					URL: "http://localhost:9093",
+				},
+				EvaluationInterval: "15s",
+			},
+		}
+		if tc.mod != nil {
+			tc.mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMAlert to become operational")
+		nsn := types.NamespacedName{Name: vmalertName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child workload specs")
+		childNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmalert-%s", vmalertName),
+			Namespace: namespace,
+		}
+
+		var dep appsv1.Deployment
+		Eventually(func() error {
+			return k8sClient.Get(ctx, childNSN, &dep)
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+		tc.depSpec = dep.Spec.DeepCopy()
+		expectedGeneration := dep.Generation
+
+		removeOldOperator(ctx, k8sClient, namespace)
+
+		startNewOperator(ctx)
+		DeferCleanup(func() {
+			defer GinkgoRecover()
+			cleanupNamespace(ctx, k8sClient, namespace)
+		})
+
+		By("waiting for latest operator to reconcile VMAlert")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec remains stable over time")
+		Consistently(func() string {
+			var d appsv1.Deployment
+			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+			if d.Generation != expectedGeneration {
+				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+				return cmp.Diff(*expectedDepSpec, *s)
+			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAlert) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAlert) {}),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),

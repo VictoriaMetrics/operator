@@ -90,7 +90,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}
 
 		var dep appsv1.Deployment
-		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, childNSN, &dep)
+		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
 		expectedGeneration := dep.Generation
@@ -186,7 +188,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}
 
 		var dep appsv1.Deployment
-		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, childNSN, &dep)
+		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
 		expectedGeneration := dep.Generation
@@ -304,7 +308,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 		var insertDep appsv1.Deployment
-		Expect(k8sClient.Get(ctx, insertNSN, &insertDep)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, insertNSN, &insertDep)
+		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
 		tc.insertDepSpec = *insertDep.Spec.DeepCopy()
 		expectedInsertDepSpec := sanitizeDeploymentSpec(tc.insertDepSpec.DeepCopy())
 		expectedInsertGeneration := insertDep.Generation
@@ -314,7 +320,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 		var selectDep appsv1.Deployment
-		Expect(k8sClient.Get(ctx, selectNSN, &selectDep)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, selectNSN, &selectDep)
+		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
 		tc.selectDepSpec = *selectDep.Spec.DeepCopy()
 		expectedSelectDepSpec := sanitizeDeploymentSpec(tc.selectDepSpec.DeepCopy())
 		expectedSelectGeneration := selectDep.Generation
@@ -324,7 +332,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 		var storageSts appsv1.StatefulSet
-		Expect(k8sClient.Get(ctx, storageNSN, &storageSts)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, storageNSN, &storageSts)
+		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
 		tc.storageStsSpec = *storageSts.Spec.DeepCopy()
 		expectedStorageStsSpec := tc.storageStsSpec.DeepCopy()
 		expectedStorageGeneration := storageSts.Generation

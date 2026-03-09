@@ -19,6 +19,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
@@ -247,6 +248,40 @@ func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {
 
 func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespace string) {
 	GinkgoHelper()
+
+	// Clear finalizers from VMAgent objects to ensure namespace doesn't block
+	var agents vmv1beta1.VMAgentList
+	if err := k8sClient.List(ctx, &agents, client.InNamespace(watchNamespace)); err == nil {
+		for i := range agents.Items {
+			agent := &agents.Items[i]
+			agent.Finalizers = nil
+			_ = k8sClient.Update(ctx, agent)
+			_ = k8sClient.Delete(ctx, agent)
+		}
+	}
+
+	// Clear finalizers from VMSingle objects
+	var singles vmv1beta1.VMSingleList
+	if err := k8sClient.List(ctx, &singles, client.InNamespace(watchNamespace)); err == nil {
+		for i := range singles.Items {
+			single := &singles.Items[i]
+			single.Finalizers = nil
+			_ = k8sClient.Update(ctx, single)
+			_ = k8sClient.Delete(ctx, single)
+		}
+	}
+
+	// Clear finalizers from VMCluster objects
+	var clusters vmv1beta1.VMClusterList
+	if err := k8sClient.List(ctx, &clusters, client.InNamespace(watchNamespace)); err == nil {
+		for i := range clusters.Items {
+			cluster := &clusters.Items[i]
+			cluster.Finalizers = nil
+			_ = k8sClient.Update(ctx, cluster)
+			_ = k8sClient.Delete(ctx, cluster)
+		}
+	}
+
 	// Delete namespace
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: watchNamespace},

@@ -106,6 +106,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+			cleanupNamespace(ctx, k8sClient, namespace)
+
 			cancelManager()
 			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
 		})
@@ -205,6 +208,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
 			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
 		})
@@ -346,6 +351,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
 			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
 		})
@@ -405,9 +412,4 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)
-
-	AfterEach(func() {
-		namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
-		cleanupNamespace(ctx, k8sClient, namespace)
-	})
 })

@@ -110,6 +110,14 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
 	resultErr = pos.users.ForEachCollectSkipNotFound(func(user *vmv1beta1.VMUser) error {
 		switch {
+		case user.Spec.JWT != nil:
+			for _, ref := range user.Spec.JWT.PublicKeyRefs {
+				if secret, err := ac.LoadKeyFromSecret(user.Namespace, &ref); err != nil {
+					return fmt.Errorf("cannot get jwt public key from secret: %w", err)
+				} else {
+					user.Spec.JWT.PublicKeys = append(user.Spec.JWT.PublicKeys, secret)
+				}
+			}
 		case user.Spec.PasswordRef != nil:
 			if secret, err := ac.LoadKeyFromSecret(user.Namespace, user.Spec.PasswordRef); err != nil {
 				return fmt.Errorf("cannot get password from secret: %w", err)
@@ -180,7 +188,6 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 			secret.Data["name"] = []byte(*vmuser.Spec.Name)
 		}
 	}
-
 	if vmuser.Spec.BearerToken != nil {
 		if len(secret.Data["username"]) > 0 || len(secret.Data["password"]) > 0 {
 			needUpdate = true
@@ -828,6 +835,44 @@ func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1b
 		})
 		return r, nil
 	}
+
+	if user.Spec.JWT != nil {
+		var jwt yaml.MapSlice
+		if user.Spec.JWT.SkipVerify {
+			jwt = append(jwt, yaml.MapItem{
+				Key:   "skip_verify",
+				Value: user.Spec.JWT.SkipVerify,
+			})
+		} else if len(user.Spec.JWT.PublicKeys) > 0 {
+			jwt = append(jwt, yaml.MapItem{
+				Key:   "public_keys",
+				Value: user.Spec.JWT.PublicKeys,
+			})
+		}
+		if len(user.Spec.JWT.MatchClaims) > 0 {
+			jwt = append(jwt, yaml.MapItem{
+				Key:   "match_claims",
+				Value: user.Spec.JWT.MatchClaims,
+			})
+		}
+		if user.Spec.JWT.OIDC != nil {
+			jwt = append(jwt, yaml.MapItem{
+				Key: "oidc",
+				Value: yaml.MapSlice{
+					yaml.MapItem{
+						Key:   "issuer",
+						Value: user.Spec.JWT.OIDC.Issuer,
+					},
+				},
+			})
+		}
+		r = append(r, yaml.MapItem{
+			Key:   "jwt",
+			Value: jwt,
+		})
+		return r, nil
+	}
+
 	// mutate vmuser
 	if username == "" {
 		username = user.Name

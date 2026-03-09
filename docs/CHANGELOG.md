@@ -20,6 +20,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support `targetRefs[*].crds` to place multiple CRD objects behind a single backend
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support JWT-based auth.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend

@@ -11,6 +11,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// VMUserOIDC defines configuration for OIDC
+type VMUserOIDC struct {
+	// Issuer defines issuer URL for OIDC
+	// +required
+	Issuer string `json:"issuer"`
+}
+
+// VMUserJWT defines configuration for JWT
+type VMUserJWT struct {
+	// SkipVerify skips signature verification for testing purposes
+	SkipVerify bool `json:"skipVerify,omitempty"`
+	// PublicKeys defines a list of public keys that are used for signature verification
+	PublicKeys []string `json:"publicKeys,omitempty"`
+	// PublicKeyRefs defines a list of Secret selectors that reference public keys
+	PublicKeyRefs []corev1.SecretKeySelector `json:"publicKeyRefs,omitempty"`
+	// MatchClaims enables claim based routing
+	MatchClaims map[string]string `json:"matchClaims,omitempty"`
+	// OIDC defines OIDC configuration section
+	OIDC *VMUserOIDC `json:"oidc,omitempty"`
+}
+
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
 	// Name of the VMUser object.
@@ -20,6 +41,8 @@ type VMUserSpec struct {
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional
 	Username *string `json:"username,omitempty"`
+	// JWT defines JWT based auth for a user
+	JWT *VMUserJWT `json:"jwt,omitempty"`
 	// Password basic auth password for accessing protected endpoint.
 	// +optional
 	Password *string `json:"password,omitempty"`
@@ -317,8 +340,34 @@ func (cr *VMUser) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.Username != nil && cr.Spec.BearerToken != nil {
-		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
+	var authMechanisms []string
+	if len(ptr.Deref(cr.Spec.Username, "")) > 0 {
+		authMechanisms = append(authMechanisms, "username")
+	}
+	if len(ptr.Deref(cr.Spec.BearerToken, "")) > 0 {
+		authMechanisms = append(authMechanisms, "bearerToken")
+	}
+	if cr.Spec.JWT != nil {
+		authMechanisms = append(authMechanisms, "jwt")
+		var jwtVerification []string
+		if cr.Spec.JWT.SkipVerify {
+			jwtVerification = append(jwtVerification, "skip_verify")
+		}
+		if len(cr.Spec.JWT.PublicKeys) > 0 || len(cr.Spec.JWT.PublicKeyRefs) > 0 {
+			jwtVerification = append(jwtVerification, "public_keys")
+		}
+		if cr.Spec.JWT.OIDC != nil {
+			jwtVerification = append(jwtVerification, "oidc")
+			if len(cr.Spec.JWT.OIDC.Issuer) == 0 {
+				return fmt.Errorf("jwt.oidc.issuer is required if OIDC is set")
+			}
+		}
+		if len(jwtVerification) != 1 {
+			return fmt.Errorf("exactly one spec.jwt.{skipVerify,publicKeys|publicKeyRefs,oidc} JWT verification mechanism is expected, got: [%s]", strings.Join(jwtVerification, ","))
+		}
+	}
+	if len(authMechanisms) > 1 {
+		return fmt.Errorf("one of spec.{username,bearerToken,jwt} must be defined for user, got: [%s]", strings.Join(authMechanisms, ","))
 	}
 	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")

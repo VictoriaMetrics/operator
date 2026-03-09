@@ -1214,6 +1214,107 @@ func Test_buildConfig(t *testing.T) {
 			},
 			&vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-22",
+					Namespace: "monitoring",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					Name: ptr.To("user-22"),
+					JWT: &vmv1beta1.VMUserJWT{
+						SkipVerify: true,
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: nil,
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-25",
+					Namespace: "monitoring",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					Name: ptr.To("user-25"),
+					JWT: &vmv1beta1.VMUserJWT{
+						MatchClaims: map[string]string{
+							"test": "test",
+						},
+						OIDC: &vmv1beta1.VMUserOIDC{
+							Issuer: "http://test",
+						},
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: nil,
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-23",
+					Namespace: "monitoring",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					Name: ptr.To("user-23"),
+					JWT:  &vmv1beta1.VMUserJWT{},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: nil,
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-24",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					Name: ptr.To("user-24"),
+					JWT: &vmv1beta1.VMUserJWT{
+						PublicKeys: []string{"testkey"},
+						PublicKeyRefs: []corev1.SecretKeySelector{{
+							Key: "password",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "backend-auth-secret",
+							},
+						}},
+					},
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Static: nil,
+							CRD: &vmv1beta1.CRDRef{
+								Kind:      "VMAgent",
+								Name:      "test",
+								Namespace: "default",
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "user-15",
 					Namespace: "monitoring",
 				},
@@ -1265,8 +1366,28 @@ func Test_buildConfig(t *testing.T) {
   password: generated-password
 - url_prefix:
   - http://vmagent-test.default.svc:8429
+  name: user-24
+  jwt:
+    public_keys:
+    - testkey
+    - pass
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   name: user-15
   bearer_token: bearer-token-10
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  name: user-22
+  jwt:
+    skip_verify: true
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  name: user-25
+  jwt:
+    match_claims:
+      test: test
+    oidc:
+      issuer: http://test
 `,
 	})
 

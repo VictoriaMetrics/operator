@@ -213,6 +213,15 @@ func removeOldOperator(ctx context.Context, k8sClient client.Client, watchNamesp
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, &appsv1.Deployment{})
 		return k8serrors.IsNotFound(err)
 	}, 30*time.Second, 2*time.Second).Should(BeTrue())
+
+	// Delete RBAC resources
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("upgrade-test-operator-%s", watchNamespace)},
+	}
+	err := k8sClient.Delete(ctx, crb)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 }
 
 func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {

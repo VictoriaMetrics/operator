@@ -8,8 +8,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -46,18 +44,11 @@ type vmClusterTestCase struct {
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
-		namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmAgentTestCase{
 			operatorVersion: operatorVersion,
 			mod:             mod,
 		}
-
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
-			return k8serrors.IsNotFound(err)
-		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
-		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		Expect(err).ToNot(HaveOccurred())
 		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
 
 		By("creating VMAgent in " + namespace)
@@ -108,7 +99,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
-			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
 			cleanupNamespace(ctx, k8sClient, namespace)
 
 			cancelManager()
@@ -153,18 +143,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
-		namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmSingleTestCase{
 			operatorVersion: operatorVersion,
 			mod:             mod,
 		}
-
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
-			return k8serrors.IsNotFound(err)
-		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
-		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		Expect(err).ToNot(HaveOccurred())
 		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
 
 		By("creating VMSingle in " + namespace)
@@ -212,7 +195,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
-			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
 			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
 			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
@@ -256,18 +238,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	DescribeTable("should not rollout VMCluster changes", func(operatorVersion string, mod func(*vmv1beta1.VMCluster)) {
-		namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
+		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmClusterTestCase{
 			operatorVersion: operatorVersion,
 			mod:             mod,
 		}
-
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
-			return k8serrors.IsNotFound(err)
-		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
-		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		Expect(err).ToNot(HaveOccurred())
 		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
 
 		By("creating VMCluster in " + namespace)
@@ -357,7 +332,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
-			namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
 			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
 			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())

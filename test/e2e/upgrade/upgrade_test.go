@@ -99,26 +99,45 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("snapshotting child Deployment and Service specs")
+		By("snapshotting child workload specs")
 		childNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
 
-		var dep appsv1.Deployment
+		var expectedGeneration int64
 		Eventually(func() error {
-			return k8sClient.Get(ctx, childNSN, &dep)
+			var getErr error
+			if cr.Spec.DaemonSetMode {
+				ds := &appsv1.DaemonSet{}
+				getErr = k8sClient.Get(ctx, childNSN, ds)
+				if getErr == nil {
+					tc.dsSpec = ds.Spec.DeepCopy()
+					expectedGeneration = ds.Generation
+				}
+			} else if cr.Spec.StatefulMode {
+				sts := &appsv1.StatefulSet{}
+				getErr = k8sClient.Get(ctx, childNSN, sts)
+				if getErr == nil {
+					tc.stsSpec = sts.Spec.DeepCopy()
+					expectedGeneration = sts.Generation
+				}
+			} else {
+				dep := &appsv1.Deployment{}
+				getErr = k8sClient.Get(ctx, childNSN, dep)
+				if getErr == nil {
+					tc.depSpec = dep.Spec.DeepCopy()
+					expectedGeneration = dep.Generation
+				}
+			}
+			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.depSpec = dep.Spec.DeepCopy()
-		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		_, _ = startNewOperator(ctx)
+		startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
-
 			cleanupNamespace(ctx, k8sClient, namespace)
 		})
 
@@ -128,41 +147,291 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("checking Deployment spec is unchanged")
-		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
+		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				return cmp.Diff(*expectedDepSpec, *s)
+			if tc.dsSpec != nil {
+				var d appsv1.DaemonSet
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					return cmp.Diff(*tc.dsSpec, d.Spec)
+				}
+			} else if tc.stsSpec != nil {
+				var s appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
+				if s.Generation != expectedGeneration {
+					return cmp.Diff(*tc.stsSpec, s.Spec)
+				}
+			} else {
+				var d appsv1.Deployment
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+					return cmp.Diff(*expectedDepSpec, *s)
+				}
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
-		Entry("from v0.64.0 daemonset", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.DaemonSetMode = true
-		}),
-		Entry("from v0.64.0 statefulset", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.StatefulMode = true
-		}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
 		Entry("from v0.65.0", "v0.65.0", nil),
 		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		Entry("from v0.66.0 daemonset", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.DaemonSetMode = true
-		}),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.0 statefulset", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.StatefulMode = true
-		}),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	DescribeTable("should not rollout VMAgent changes (DaemonSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		tc := vmAgentTestCase{
+			operatorVersion: operatorVersion,
+			mod:             mod,
+		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
+
+		By("creating VMAgent in " + namespace)
+		cr := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmagentName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://localhost:8428/api/v1/write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmagent",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+			},
+		}
+		if tc.mod != nil {
+			tc.mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMAgent to become operational")
+		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child workload specs")
+		childNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+			Namespace: namespace,
+		}
+
+		var expectedGeneration int64
+		Eventually(func() error {
+			var getErr error
+			if cr.Spec.DaemonSetMode {
+				ds := &appsv1.DaemonSet{}
+				getErr = k8sClient.Get(ctx, childNSN, ds)
+				if getErr == nil {
+					tc.dsSpec = ds.Spec.DeepCopy()
+					expectedGeneration = ds.Generation
+				}
+			} else if cr.Spec.StatefulMode {
+				sts := &appsv1.StatefulSet{}
+				getErr = k8sClient.Get(ctx, childNSN, sts)
+				if getErr == nil {
+					tc.stsSpec = sts.Spec.DeepCopy()
+					expectedGeneration = sts.Generation
+				}
+			} else {
+				dep := &appsv1.Deployment{}
+				getErr = k8sClient.Get(ctx, childNSN, dep)
+				if getErr == nil {
+					tc.depSpec = dep.Spec.DeepCopy()
+					expectedGeneration = dep.Generation
+				}
+			}
+			return getErr
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+
+		removeOldOperator(ctx, k8sClient, namespace)
+
+		startNewOperator(ctx)
+		DeferCleanup(func() {
+			defer GinkgoRecover()
+			cleanupNamespace(ctx, k8sClient, namespace)
+		})
+
+		By("waiting for latest operator to reconcile VMAgent")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec remains stable over time")
+		Consistently(func() string {
+			if tc.dsSpec != nil {
+				var d appsv1.DaemonSet
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					return cmp.Diff(*tc.dsSpec, d.Spec)
+				}
+			} else if tc.stsSpec != nil {
+				var s appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
+				if s.Generation != expectedGeneration {
+					return cmp.Diff(*tc.stsSpec, s.Spec)
+				}
+			} else {
+				var d appsv1.Deployment
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+					return cmp.Diff(*expectedDepSpec, *s)
+				}
+			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.DaemonSetMode = true
+		}),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.DaemonSetMode = true
+		}),
+		Entry("from v0.68.0", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.DaemonSetMode = true
+		}),
+	)
+
+	DescribeTable("should not rollout VMAgent changes (StatefulSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		tc := vmAgentTestCase{
+			operatorVersion: operatorVersion,
+			mod:             mod,
+		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
+
+		By("creating VMAgent in " + namespace)
+		cr := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmagentName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://localhost:8428/api/v1/write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmagent",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+			},
+		}
+		if tc.mod != nil {
+			tc.mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMAgent to become operational")
+		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child workload specs")
+		childNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+			Namespace: namespace,
+		}
+
+		var expectedGeneration int64
+		Eventually(func() error {
+			var getErr error
+			if cr.Spec.DaemonSetMode {
+				ds := &appsv1.DaemonSet{}
+				getErr = k8sClient.Get(ctx, childNSN, ds)
+				if getErr == nil {
+					tc.dsSpec = ds.Spec.DeepCopy()
+					expectedGeneration = ds.Generation
+				}
+			} else if cr.Spec.StatefulMode {
+				sts := &appsv1.StatefulSet{}
+				getErr = k8sClient.Get(ctx, childNSN, sts)
+				if getErr == nil {
+					tc.stsSpec = sts.Spec.DeepCopy()
+					expectedGeneration = sts.Generation
+				}
+			} else {
+				dep := &appsv1.Deployment{}
+				getErr = k8sClient.Get(ctx, childNSN, dep)
+				if getErr == nil {
+					tc.depSpec = dep.Spec.DeepCopy()
+					expectedGeneration = dep.Generation
+				}
+			}
+			return getErr
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+
+		removeOldOperator(ctx, k8sClient, namespace)
+
+		startNewOperator(ctx)
+		DeferCleanup(func() {
+			defer GinkgoRecover()
+			cleanupNamespace(ctx, k8sClient, namespace)
+		})
+
+		By("waiting for latest operator to reconcile VMAgent")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec remains stable over time")
+		Consistently(func() string {
+			if tc.dsSpec != nil {
+				var d appsv1.DaemonSet
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					return cmp.Diff(*tc.dsSpec, d.Spec)
+				}
+			} else if tc.stsSpec != nil {
+				var s appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
+				if s.Generation != expectedGeneration {
+					return cmp.Diff(*tc.stsSpec, s.Spec)
+				}
+			} else {
+				var d appsv1.Deployment
+				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+				if d.Generation != expectedGeneration {
+					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+					return cmp.Diff(*expectedDepSpec, *s)
+				}
+			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.StatefulMode = true
+		}),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.StatefulMode = true
+		}),
+		Entry("from v0.68.0", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.StatefulMode = true
+		}),
 	)
 
 	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
@@ -285,10 +554,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(5)),
 				},
-				UnauthorizedAccessConfig: []vmv1beta1.VMAuthUnauthorizedPath{
+				UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
 					{
-						Paths: []string{"/api/v1/query"},
-						URLs:  []string{"http://localhost:8428"},
+						SrcPaths:  []string{"/api/v1/query"},
+						URLPrefix: vmv1beta1.StringOrArray{"http://localhost:8428"},
 					},
 				},
 			},

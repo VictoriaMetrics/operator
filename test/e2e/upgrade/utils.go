@@ -282,6 +282,28 @@ func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespa
 		}
 	}
 
+	// Clear finalizers from Roles
+	var roles rbacv1.RoleList
+	if err := k8sClient.List(ctx, &roles, client.InNamespace(watchNamespace)); err == nil {
+		for i := range roles.Items {
+			role := &roles.Items[i]
+			role.Finalizers = nil
+			_ = k8sClient.Update(ctx, role)
+			_ = k8sClient.Delete(ctx, role)
+		}
+	}
+
+	// Clear finalizers from RoleBindings
+	var roleBindings rbacv1.RoleBindingList
+	if err := k8sClient.List(ctx, &roleBindings, client.InNamespace(watchNamespace)); err == nil {
+		for i := range roleBindings.Items {
+			rb := &roleBindings.Items[i]
+			rb.Finalizers = nil
+			_ = k8sClient.Update(ctx, rb)
+			_ = k8sClient.Delete(ctx, rb)
+		}
+	}
+
 	// Delete namespace
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: watchNamespace},

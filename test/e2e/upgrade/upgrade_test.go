@@ -53,10 +53,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}
 
 		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		Expect(err).ToNot(HaveOccurred())
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
 			Expect(err).ToNot(HaveOccurred())
 		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
 
 		By("creating VMAgent in " + namespace)
 		cr := &vmv1beta1.VMAgent{
@@ -158,10 +158,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}
 
 		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		Expect(err).ToNot(HaveOccurred())
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
 			Expect(err).ToNot(HaveOccurred())
 		}
+		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
 
 		By("creating VMSingle in " + namespace)
 		cr := &vmv1beta1.VMSingle{

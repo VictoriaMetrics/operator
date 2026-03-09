@@ -108,8 +108,8 @@ func GetClient(data []byte) client.WithWatch {
 	return k8sClient
 }
 
-// InitOperatorProcess prepares operator process for usage, must be called once
-func InitOperatorProcess(extraNamespaces ...string) []byte {
+// InitTestEnv sets up the envtest environment and k8sClient, returning kubeconfig data
+func InitTestEnv(extraNamespaces ...string) []byte {
 	format.MaxLength = 50000
 	l := zap.New(zap.WriteTo(GinkgoWriter), zap.Level(zapcore.DebugLevel))
 	logf.SetLogger(l)
@@ -164,7 +164,12 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		err := k8sClient.Create(context.Background(), &testNamespace)
 		Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
 	}
+	return buf.Bytes()
+}
 
+// InitOperatorProcess prepares operator process for usage, must be called once
+func InitOperatorProcess(extraNamespaces ...string) []byte {
+	data := InitTestEnv(extraNamespaces...)
 	// disable web servers because it fails to listen when running several test packages one after another
 	// also web servers aren't very useful in tests
 	os.Args = append(os.Args[:1],
@@ -181,7 +186,7 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		Expect(err).NotTo(HaveOccurred())
 	}(ctx)
 	cancelManager = cancel
-	return buf.Bytes()
+	return data
 }
 
 // ShutdownOperatorProcess stops operator process
@@ -190,8 +195,14 @@ func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
 	cancelManager(operator.ErrShutdown)
 	Eventually(stopped, 60, 2).Should(BeClosed())
-	Expect(testEnv.Stop()).ToNot(HaveOccurred())
+	ShutdownTestEnv()
+}
 
+// ShutdownTestEnv stops the envtest environment
+func ShutdownTestEnv() {
+	if testEnv != nil {
+		Expect(testEnv.Stop()).ToNot(HaveOccurred())
+	}
 }
 
 func isLocalHost(host string) bool {

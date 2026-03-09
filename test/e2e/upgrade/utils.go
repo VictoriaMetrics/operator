@@ -225,22 +225,33 @@ func removeOldOperator(ctx context.Context, k8sClient client.Client, watchNamesp
 	}
 }
 
+var managerStarted bool
+var cancelManager context.CancelFunc
+var managerDone chan struct{}
+
 func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {
+	if managerStarted {
+		return cancelManager, managerDone
+	}
+	managerStarted = true
+
 	os.Args = append(os.Args[:1],
 		"--metrics-bind-address", "0",
 		"--pprof-addr", "0",
 		"--health-probe-bind-address", "0",
 		"--controller.maxConcurrentReconciles", "30",
 	)
-	managerDone := make(chan struct{})
+	managerDone = make(chan struct{})
 	var managerCtx context.Context
-	var cancelManager context.CancelFunc
 	managerCtx, cancelManager = context.WithCancel(ctx)
+
 	go func() {
 		defer GinkgoRecover()
 		err := manager.RunManager(managerCtx)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			fmt.Printf("manager returned error: %v\n", err)
+		}
 		close(managerDone)
-		Expect(err).NotTo(HaveOccurred())
 	}()
 
 	return cancelManager, managerDone

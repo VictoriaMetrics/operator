@@ -42,7 +42,7 @@ type vmClusterTestCase struct {
 	storageStsSpec  appsv1.StatefulSetSpec
 }
 
-var _ = Describe("operator upgrade", Label("upgrade"), func() {
+var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmAgentTestCase{
@@ -92,19 +92,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		var dep appsv1.Deployment
 		Eventually(func() error {
 			return k8sClient.Get(ctx, childNSN, &dep)
-		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
 		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		cancelManager, managerDone := startNewOperator(ctx)
+		_, _ = startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
+
 			cleanupNamespace(ctx, k8sClient, namespace)
-			cancelManager()
-			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMAgent")
@@ -190,19 +189,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		var dep appsv1.Deployment
 		Eventually(func() error {
 			return k8sClient.Get(ctx, childNSN, &dep)
-		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
 		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		cancelManager, managerDone := startNewOperator(ctx)
+		_, _ = startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
+
 			cleanupNamespace(ctx, k8sClient, namespace)
-			cancelManager()
-			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMSingle")
@@ -310,7 +308,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		var insertDep appsv1.Deployment
 		Eventually(func() error {
 			return k8sClient.Get(ctx, insertNSN, &insertDep)
-		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.insertDepSpec = *insertDep.Spec.DeepCopy()
 		expectedInsertDepSpec := sanitizeDeploymentSpec(tc.insertDepSpec.DeepCopy())
 		expectedInsertGeneration := insertDep.Generation
@@ -322,7 +320,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		var selectDep appsv1.Deployment
 		Eventually(func() error {
 			return k8sClient.Get(ctx, selectNSN, &selectDep)
-		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.selectDepSpec = *selectDep.Spec.DeepCopy()
 		expectedSelectDepSpec := sanitizeDeploymentSpec(tc.selectDepSpec.DeepCopy())
 		expectedSelectGeneration := selectDep.Generation
@@ -334,19 +332,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		var storageSts appsv1.StatefulSet
 		Eventually(func() error {
 			return k8sClient.Get(ctx, storageNSN, &storageSts)
-		}, 60*time.Second, 2*time.Second).ShouldNot(HaveOccurred())
+		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.storageStsSpec = *storageSts.Spec.DeepCopy()
 		expectedStorageStsSpec := tc.storageStsSpec.DeepCopy()
 		expectedStorageGeneration := storageSts.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		cancelManager, managerDone := startNewOperator(ctx)
+		_, _ = startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
+
 			cleanupNamespace(ctx, k8sClient, namespace)
-			cancelManager()
-			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMCluster")

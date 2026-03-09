@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
@@ -17,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -249,24 +249,24 @@ func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {
 func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespace string) {
 	GinkgoHelper()
 
-	// Clear finalizers from all namespaced objects using kubectl.
-	exec.Command("sh", "-c", fmt.Sprintf(
-		"kubectl get $(kubectl api-resources --namespaced=true --verbs=list -o name | tr \"\n\" \",\" | sed -e 's/,$//') -n %s -o name | xargs -I {} kubectl patch {} -n %s -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge",
-		watchNamespace, watchNamespace,
-	)).Run()
-
 	// Delete namespace
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: watchNamespace},
 	}
-	err := k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{
-		PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8serrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
-	}
+	Expect(k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{})).ToNot(HaveOccurred())
+}
+
+func createRandomNamespace(ctx context.Context, k8sClient client.Client) string {
+	GinkgoHelper()
+	namespace := fmt.Sprintf("upgrade-%s", utilrand.String(5))
+
 	Eventually(func() bool {
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: watchNamespace}, &corev1.Namespace{})
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
 		return k8serrors.IsNotFound(err)
-	}, 120*time.Second, 2*time.Second).Should(BeTrue(), "timeout waiting for namespace to be deleted")
+	}, 5*time.Minute, 5*time.Second).Should(BeTrue())
+
+	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	Expect(err).ToNot(HaveOccurred())
+
+	return namespace
 }

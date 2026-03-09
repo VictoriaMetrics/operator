@@ -38,7 +38,7 @@ type vmClusterTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMCluster)
 	insertDepSpec   appsv1.DeploymentSpec
-	selectDepSpec   appsv1.DeploymentSpec
+	selectDepSpec   appsv1.StatefulSetSpec
 	storageStsSpec  appsv1.StatefulSetSpec
 }
 
@@ -317,13 +317,13 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
 			Namespace: namespace,
 		}
-		var selectDep appsv1.Deployment
+		var selectSTS appsv1.StatefulSet
 		Eventually(func() error {
-			return k8sClient.Get(ctx, selectNSN, &selectDep)
+			return k8sClient.Get(ctx, selectNSN, &selectSTS)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.selectDepSpec = *selectDep.Spec.DeepCopy()
-		expectedSelectDepSpec := sanitizeDeploymentSpec(tc.selectDepSpec.DeepCopy())
-		expectedSelectGeneration := selectDep.Generation
+		tc.selectDepSpec = *selectSTS.Spec.DeepCopy()
+		expectedSelectDepSpec := tc.selectDepSpec.DeepCopy()
+		expectedSelectGeneration := selectSTS.Generation
 
 		storageNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
@@ -355,8 +355,8 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 		By("checking VMInsert Deployment spec is unchanged")
 		Expect(k8sClient.Get(ctx, insertNSN, &insertDep)).ToNot(HaveOccurred())
 
-		By("checking VMSelect Deployment spec is unchanged")
-		Expect(k8sClient.Get(ctx, selectNSN, &selectDep)).ToNot(HaveOccurred())
+		By("checking VMSelect StatefulSet spec is unchanged")
+		Expect(k8sClient.Get(ctx, selectNSN, &selectSTS)).ToNot(HaveOccurred())
 
 		By("checking VMStorage StatefulSet spec is unchanged")
 		Expect(k8sClient.Get(ctx, storageNSN, &storageSts)).ToNot(HaveOccurred())
@@ -370,13 +370,13 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 				return "insert:\n" + cmp.Diff(*expectedInsertDepSpec, *s)
 			}
 
-			Expect(k8sClient.Get(ctx, selectNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedSelectGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			var sts appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, selectNSN, &sts)).ToNot(HaveOccurred())
+			if sts.Generation != expectedSelectGeneration {
+				s := sts.Spec.DeepCopy()
 				return "select:\n" + cmp.Diff(*expectedSelectDepSpec, *s)
 			}
 
-			var sts appsv1.StatefulSet
 			Expect(k8sClient.Get(ctx, storageNSN, &sts)).ToNot(HaveOccurred())
 			if sts.Generation != expectedStorageGeneration {
 				s := sts.Spec.DeepCopy()

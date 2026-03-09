@@ -253,7 +253,9 @@ func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespa
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: watchNamespace},
 	}
-	Expect(k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{})).ToNot(HaveOccurred())
+	Expect(k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{
+		PropagationPolicy: ptr.To(metav1.DeletePropagationBackground),
+	})).ToNot(HaveOccurred())
 }
 
 func createRandomNamespace(ctx context.Context, k8sClient client.Client) string {

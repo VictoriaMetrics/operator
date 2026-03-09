@@ -199,6 +199,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1beta1.VMAgentSpec{
+				DaemonSetMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://localhost:8428/api/v1/write"},
 				},
@@ -298,15 +299,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.DaemonSetMode = true
-		}),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.DaemonSetMode = true
-		}),
-		Entry("from v0.68.0", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.DaemonSetMode = true
-		}),
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
 	DescribeTable("should not rollout VMAgent changes (StatefulSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
@@ -324,6 +325,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1beta1.VMAgentSpec{
+				StatefulMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://localhost:8428/api/v1/write"},
 				},
@@ -423,15 +425,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.StatefulMode = true
-		}),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.StatefulMode = true
-		}),
-		Entry("from v0.68.0", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
-			cr.Spec.StatefulMode = true
-		}),
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
 	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {

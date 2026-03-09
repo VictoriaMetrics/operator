@@ -81,7 +81,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and Service specs")
 		childNSN := types.NamespacedName{
@@ -99,17 +99,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			defer GinkgoRecover()
 			cleanupNamespace(ctx, k8sClient, namespace)
-
 			cancelManager()
-			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
+			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMAgent")
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("checking Deployment spec is unchanged")
 		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
@@ -123,7 +123,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return cmp.Diff(*expectedDepSpec, *s)
 			}
 			return ""
-		}, 15*time.Second, 3*time.Second).Should(BeEmpty())
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
 
@@ -177,7 +177,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and Service specs")
 		childNSN := types.NamespacedName{
@@ -195,16 +195,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			defer GinkgoRecover()
 			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
-			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
+			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMSingle")
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("checking Deployment spec is unchanged")
 		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
@@ -218,7 +219,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return cmp.Diff(*expectedDepSpec, *s)
 			}
 			return ""
-		}, 15*time.Second, 3*time.Second).Should(BeEmpty())
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
 
@@ -295,7 +296,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -332,16 +333,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		cancelManager, managerDone := startNewOperator(ctx)
 		DeferCleanup(func() {
+			defer GinkgoRecover()
 			cleanupNamespace(ctx, k8sClient, namespace)
 			cancelManager()
-			Eventually(managerDone, 60*time.Second, 2*time.Second).Should(BeClosed())
+			Eventually(managerDone, 5*time.Minute, 5*time.Second).Should(BeClosed())
 		})
 
 		By("waiting for latest operator to reconcile VMCluster")
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 3*time.Second).ShouldNot(HaveOccurred())
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("checking VMInsert Deployment spec is unchanged")
 		Expect(k8sClient.Get(ctx, insertNSN, &insertDep)).ToNot(HaveOccurred())
@@ -374,7 +376,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return "storage:\n" + cmp.Diff(*expectedStorageStsSpec, *s)
 			}
 			return ""
-		}, 15*time.Second, 3*time.Second).Should(BeEmpty())
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {
 

@@ -107,28 +107,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		var expectedGeneration int64
 		Eventually(func() error {
-			var getErr error
-			if cr.Spec.DaemonSetMode {
-				ds := &appsv1.DaemonSet{}
-				getErr = k8sClient.Get(ctx, childNSN, ds)
-				if getErr == nil {
-					tc.dsSpec = ds.Spec.DeepCopy()
-					expectedGeneration = ds.Generation
-				}
-			} else if cr.Spec.StatefulMode {
-				sts := &appsv1.StatefulSet{}
-				getErr = k8sClient.Get(ctx, childNSN, sts)
-				if getErr == nil {
-					tc.stsSpec = sts.Spec.DeepCopy()
-					expectedGeneration = sts.Generation
-				}
-			} else {
-				dep := &appsv1.Deployment{}
-				getErr = k8sClient.Get(ctx, childNSN, dep)
-				if getErr == nil {
-					tc.depSpec = dep.Spec.DeepCopy()
-					expectedGeneration = dep.Generation
-				}
+			dep := &appsv1.Deployment{}
+			getErr := k8sClient.Get(ctx, childNSN, dep)
+			if getErr == nil {
+				tc.depSpec = dep.Spec.DeepCopy()
+				expectedGeneration = dep.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -149,26 +132,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			if tc.dsSpec != nil {
-				var d appsv1.DaemonSet
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					return cmp.Diff(*tc.dsSpec, d.Spec)
-				}
-			} else if tc.stsSpec != nil {
-				var s appsv1.StatefulSet
-				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
-				if s.Generation != expectedGeneration {
-					return cmp.Diff(*tc.stsSpec, s.Spec)
-				}
-			} else {
-				var d appsv1.Deployment
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-					return cmp.Diff(*expectedDepSpec, *s)
-				}
+			var d appsv1.Deployment
+			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+			if d.Generation != expectedGeneration {
+				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+				return cmp.Diff(*expectedDepSpec, *s)
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
@@ -233,28 +202,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		var expectedGeneration int64
 		Eventually(func() error {
-			var getErr error
-			if cr.Spec.DaemonSetMode {
-				ds := &appsv1.DaemonSet{}
-				getErr = k8sClient.Get(ctx, childNSN, ds)
-				if getErr == nil {
-					tc.dsSpec = ds.Spec.DeepCopy()
-					expectedGeneration = ds.Generation
-				}
-			} else if cr.Spec.StatefulMode {
-				sts := &appsv1.StatefulSet{}
-				getErr = k8sClient.Get(ctx, childNSN, sts)
-				if getErr == nil {
-					tc.stsSpec = sts.Spec.DeepCopy()
-					expectedGeneration = sts.Generation
-				}
-			} else {
-				dep := &appsv1.Deployment{}
-				getErr = k8sClient.Get(ctx, childNSN, dep)
-				if getErr == nil {
-					tc.depSpec = dep.Spec.DeepCopy()
-					expectedGeneration = dep.Generation
-				}
+			ds := &appsv1.DaemonSet{}
+			getErr := k8sClient.Get(ctx, childNSN, ds)
+			if getErr == nil {
+				tc.dsSpec = ds.Spec.DeepCopy()
+				expectedGeneration = ds.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -275,26 +227,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			if tc.dsSpec != nil {
-				var d appsv1.DaemonSet
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					return cmp.Diff(*tc.dsSpec, d.Spec)
-				}
-			} else if tc.stsSpec != nil {
-				var s appsv1.StatefulSet
-				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
-				if s.Generation != expectedGeneration {
-					return cmp.Diff(*tc.stsSpec, s.Spec)
-				}
-			} else {
-				var d appsv1.Deployment
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-					return cmp.Diff(*expectedDepSpec, *s)
-				}
+			var d appsv1.DaemonSet
+			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
+			if d.Generation != expectedGeneration {
+				return cmp.Diff(*tc.dsSpec, d.Spec)
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
@@ -359,28 +295,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		var expectedGeneration int64
 		Eventually(func() error {
-			var getErr error
-			if cr.Spec.DaemonSetMode {
-				ds := &appsv1.DaemonSet{}
-				getErr = k8sClient.Get(ctx, childNSN, ds)
-				if getErr == nil {
-					tc.dsSpec = ds.Spec.DeepCopy()
-					expectedGeneration = ds.Generation
-				}
-			} else if cr.Spec.StatefulMode {
-				sts := &appsv1.StatefulSet{}
-				getErr = k8sClient.Get(ctx, childNSN, sts)
-				if getErr == nil {
-					tc.stsSpec = sts.Spec.DeepCopy()
-					expectedGeneration = sts.Generation
-				}
-			} else {
-				dep := &appsv1.Deployment{}
-				getErr = k8sClient.Get(ctx, childNSN, dep)
-				if getErr == nil {
-					tc.depSpec = dep.Spec.DeepCopy()
-					expectedGeneration = dep.Generation
-				}
+			sts := &appsv1.StatefulSet{}
+			getErr := k8sClient.Get(ctx, childNSN, sts)
+			if getErr == nil {
+				tc.stsSpec = sts.Spec.DeepCopy()
+				expectedGeneration = sts.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -401,26 +320,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			if tc.dsSpec != nil {
-				var d appsv1.DaemonSet
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					return cmp.Diff(*tc.dsSpec, d.Spec)
-				}
-			} else if tc.stsSpec != nil {
-				var s appsv1.StatefulSet
-				Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
-				if s.Generation != expectedGeneration {
-					return cmp.Diff(*tc.stsSpec, s.Spec)
-				}
-			} else {
-				var d appsv1.Deployment
-				Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-				if d.Generation != expectedGeneration {
-					s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-					expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-					return cmp.Diff(*expectedDepSpec, *s)
-				}
+			var s appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
+			if s.Generation != expectedGeneration {
+				return cmp.Diff(*tc.stsSpec, s.Spec)
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())

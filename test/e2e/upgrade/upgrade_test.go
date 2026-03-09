@@ -25,7 +25,9 @@ const (
 type vmAgentTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMAgent)
-	depSpec         appsv1.DeploymentSpec
+	depSpec         *appsv1.DeploymentSpec
+	dsSpec          *appsv1.DaemonSetSpec
+	stsSpec         *appsv1.StatefulSetSpec
 }
 
 type vmSingleTestCase struct {
@@ -93,7 +95,7 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 		Eventually(func() error {
 			return k8sClient.Get(ctx, childNSN, &dep)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.depSpec = *dep.Spec.DeepCopy()
+		tc.depSpec = dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
 		expectedGeneration := dep.Generation
 
@@ -126,19 +128,25 @@ var _ = Describe("operator upgrade", Serial, Label("upgrade"), func() {
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
-
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.64.0 daemonset", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.DaemonSetMode = true
 		}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {
-
+		Entry("from v0.64.0 statefulset", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.StatefulMode = true
 		}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
-
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
+		Entry("from v0.66.0 daemonset", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.DaemonSetMode = true
 		}),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.0 statefulset", "v0.68.0", func(cr *vmv1beta1.VMAgent) {
+			cr.Spec.StatefulMode = true
+		}),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)

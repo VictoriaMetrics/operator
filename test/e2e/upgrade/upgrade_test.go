@@ -24,14 +24,16 @@ const (
 
 type vmAgentTestCase struct {
 	operatorVersion string
+	mod             func(*vmv1beta1.VMAgent)
 	depSpec         appsv1.DeploymentSpec
 }
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
-	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string) {
+	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := fmt.Sprintf("upgrade-%d", GinkgoParallelProcess())
 		tc := vmAgentTestCase{
 			operatorVersion: operatorVersion,
+			mod:             mod,
 		}
 
 		k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
@@ -56,6 +58,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					TerminationGracePeriodSeconds: ptr.To(int64(5)),
 				},
 			},
+		}
+		if tc.mod != nil {
+			tc.mod(cr)
 		}
 		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 
@@ -106,15 +111,21 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return ""
 		}, 15*time.Second, 3*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0"),
-		Entry("from v0.64.1", "v0.64.1"),
-		Entry("from v0.65.0", "v0.65.0"),
-		Entry("from v0.66.0", "v0.66.0"),
-		Entry("from v0.66.1", "v0.66.1"),
-		Entry("from v0.67.0", "v0.67.0"),
-		Entry("from v0.68.0", "v0.68.0"),
-		Entry("from v0.68.1", "v0.68.1"),
-		Entry("from v0.68.2", "v0.68.2"),
+		FEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {
+
+		}),
+		FEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {
+
+		}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		FEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {
+
+		}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
 	AfterEach(func() {

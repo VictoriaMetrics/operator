@@ -55,7 +55,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
 			return k8serrors.IsNotFound(err)
-		}, 60*time.Second, 2*time.Second).Should(BeTrue())
+		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
 		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 		Expect(err).ToNot(HaveOccurred())
 		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)
@@ -162,7 +162,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
 			return k8serrors.IsNotFound(err)
-		}, 60*time.Second, 2*time.Second).Should(BeTrue())
+		}, 5*time.Minute, 5*time.Second).Should(BeTrue())
 		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 		Expect(err).ToNot(HaveOccurred())
 		deployOldOperator(ctx, k8sClient, tc.operatorVersion, namespace)

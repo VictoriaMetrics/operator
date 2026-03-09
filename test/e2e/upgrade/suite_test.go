@@ -24,7 +24,7 @@ func TestUpgrade(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	By("bootstrapping upgrade test environment")
-	data := suite.InitTestEnv("upgrade-1", "upgrade-2", "upgrade-3", "upgrade-4")
+	data := suite.InitTestEnv()
 	k8sClient = suite.GetClient(data)
 })
 

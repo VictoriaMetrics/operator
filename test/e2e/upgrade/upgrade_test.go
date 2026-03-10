@@ -687,7 +687,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, selectNSN, &selectSTS)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.selectDepSpec = *selectSTS.Spec.DeepCopy()
-		expectedSelectDepSpec := tc.selectDepSpec.DeepCopy()
+		expectedSelectSpec := tc.selectDepSpec.DeepCopy()
 
 		storageNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
@@ -698,6 +698,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, storageNSN, &storageSts)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.storageStsSpec = *storageSts.Spec.DeepCopy()
+		expectedStorageSpec := tc.selectDepSpec.DeepCopy()
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
@@ -736,16 +737,16 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			var sts appsv1.StatefulSet
 			Expect(k8sClient.Get(ctx, selectNSN, &sts)).ToNot(HaveOccurred())
 			stsSpec := sts.Spec.DeepCopy()
-			diff = cmp.Diff(*expectedSelectDepSpec, *stsSpec)
+			diff = cmp.Diff(*expectedSelectSpec, *stsSpec)
 			if diff != "" {
 				return "select:\n" + diff
 			}
 
 			Expect(k8sClient.Get(ctx, storageNSN, &sts)).ToNot(HaveOccurred())
 			stsSpec = sts.Spec.DeepCopy()
-			diff = cmp.Diff(*expectedSelectDepSpec, *stsSpec)
+			diff = cmp.Diff(*expectedStorageSpec, *stsSpec)
 			if diff != "" {
-				return "select:\n" + diff
+				return "storage:\n" + diff
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())

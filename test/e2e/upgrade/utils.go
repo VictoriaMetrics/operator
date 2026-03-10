@@ -229,9 +229,9 @@ var managerStarted bool
 var cancelManager context.CancelFunc
 var managerDone chan struct{}
 
-func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {
+func startNewOperator(ctx context.Context) {
 	if managerStarted {
-		return cancelManager, managerDone
+		return
 	}
 	managerStarted = true
 
@@ -252,9 +252,8 @@ func startNewOperator(ctx context.Context) (context.CancelFunc, chan struct{}) {
 			fmt.Printf("manager returned error: %v\n", err)
 		}
 		close(managerDone)
+		cancelManager()
 	}()
-
-	return cancelManager, managerDone
 }
 
 func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespace string) {

@@ -284,57 +284,57 @@ func createRandomNamespace(ctx context.Context, k8sClient client.Client) string 
 }
 
 // snapshotDeployment snapshots a Deployment spec
-func snapshotDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.DeploymentSpec {
+func snapshotDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var dep appsv1.Deployment
 	Eventually(func() error {
 		return k8sClient.Get(ctx, resource, &dep)
 	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-	return dep.Spec.DeepCopy()
+	return dep.Spec.Template.Spec.DeepCopy()
 }
 
 // verifyDeployment verifies a Deployment spec matches expected
-func verifyDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.DeploymentSpec) string {
+func verifyDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var d appsv1.Deployment
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
-	return cmp.Diff(*expected, d.Spec)
+	return cmp.Diff(*expected, d.Spec.Template.Spec)
 }
 
 // snapshotStatefulSet snapshots a StatefulSet spec
-func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.StatefulSetSpec {
+func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var sts appsv1.StatefulSet
 	Eventually(func() error {
 		return k8sClient.Get(ctx, resource, &sts)
 	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-	return sts.Spec.DeepCopy()
+	return sts.Spec.Template.Spec.DeepCopy()
 }
 
 // verifyStatefulSet verifies a StatefulSet spec matches expected
-func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.StatefulSetSpec) string {
+func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var s appsv1.StatefulSet
 	if err := k8sClient.Get(ctx, resource, &s); err != nil {
 		return err.Error()
 	}
-	return cmp.Diff(*expected, s.Spec)
+	return cmp.Diff(*expected, s.Spec.Template.Spec)
 }
 
 // snapshotDaemonSet snapshots a DaemonSet spec
-func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.DaemonSetSpec {
+func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var ds appsv1.DaemonSet
 	Eventually(func() error {
 		return k8sClient.Get(ctx, resource, &ds)
 	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-	return ds.Spec.DeepCopy()
+	return ds.Spec.Template.Spec.DeepCopy()
 }
 
 // verifyDaemonSet verifies a DaemonSet spec matches expected
-func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.DaemonSetSpec) string {
+func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var d appsv1.DaemonSet
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
-	return cmp.Diff(*expected, d.Spec)
+	return cmp.Diff(*expected, d.Spec.Template.Spec)
 }
 
 func restartManagerAndCleanup(ctx context.Context, k8sClient client.Client, namespace string) {

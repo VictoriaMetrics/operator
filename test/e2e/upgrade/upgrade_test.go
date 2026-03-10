@@ -900,7 +900,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	//nolint:dupl
-	FDescribeTable("should not rollout VLCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
+	DescribeTable("should not rollout VLCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 

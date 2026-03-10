@@ -72,7 +72,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, deploymentNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, deploymentNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -84,7 +84,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, deploymentNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, deploymentNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -144,7 +144,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
-		initialDaemonsetSpec := snapshotDaemonSet(ctx, k8sClient, daemonsetNSN)
+		expectedDaemonsetSpec := snapshotDaemonSet(ctx, k8sClient, daemonsetNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -156,7 +156,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, initialDaemonsetSpec)
+			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, expectedDaemonsetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -216,7 +216,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
-		initialStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
+		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -228,7 +228,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			return verifyStatefulSet(ctx, k8sClient, resourceNSN, initialStatefulSetSpec)
+			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -284,7 +284,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -296,7 +296,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
@@ -364,7 +364,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -376,7 +376,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAuth) {}),
@@ -439,7 +439,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -451,7 +451,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
@@ -763,7 +763,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -775,7 +775,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLSingle) {}),
@@ -1079,7 +1079,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -1091,7 +1091,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTSingle) {}),

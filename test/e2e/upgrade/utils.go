@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
@@ -26,21 +27,6 @@ import (
 const (
 	operatorImageBase = "quay.io/victoriametrics/operator:"
 )
-
-// sanitizeDeploymentSpec clears fields that legitimately differ between operator versions
-// such as config-reloader images.
-func sanitizeDeploymentSpec(spec *appsv1.DeploymentSpec) *appsv1.DeploymentSpec {
-	for i := range spec.Template.Spec.InitContainers {
-		spec.Template.Spec.InitContainers[i].Image = ""
-	}
-	for i := range spec.Template.Spec.Containers {
-		c := &spec.Template.Spec.Containers[i]
-		if c.Name == "config-reloader" {
-			c.Image = ""
-		}
-	}
-	return spec
-}
 
 // operatorEnvVars builds the env var list for the operator pod,
 // TODO[vrutkovs]: do we need to copy it?
@@ -259,13 +245,26 @@ func startNewOperator(ctx context.Context) {
 func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespace string) {
 	GinkgoHelper()
 
+	// Clear finalizers from all namespaced objects using kubectl.
+	exec.Command("sh", "-c", fmt.Sprintf(
+		"kubectl get $(kubectl api-resources --namespaced=true --verbs=list -o name | tr \"\n\" \",\" | sed -e 's/,$//') -n %s -o name | xargs -I {} kubectl patch {} -n %s -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge",
+		watchNamespace, watchNamespace,
+	)).Run()
+
 	// Delete namespace
 	nsObj := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: watchNamespace},
 	}
-	Expect(k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{
-		PropagationPolicy: ptr.To(metav1.DeletePropagationBackground),
-	})).ToNot(HaveOccurred())
+	err := k8sClient.Delete(ctx, nsObj, &client.DeleteOptions{
+		PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: watchNamespace}, &corev1.Namespace{})
+		return k8serrors.IsNotFound(err)
+	}, 120*time.Second, 2*time.Second).Should(BeTrue(), "timeout waiting for namespace to be deleted")
 }
 
 func createRandomNamespace(ctx context.Context, k8sClient client.Client) string {

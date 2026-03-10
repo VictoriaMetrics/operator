@@ -105,13 +105,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		var expectedGeneration int64
 		Eventually(func() error {
 			dep := &appsv1.Deployment{}
 			getErr := k8sClient.Get(ctx, childNSN, dep)
 			if getErr == nil {
 				tc.depSpec = dep.Spec.DeepCopy()
-				expectedGeneration = dep.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -134,12 +132,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-				return cmp.Diff(*expectedDepSpec, *s)
-			}
-			return ""
+			return cmp.Diff(tc.depSpec.DeepCopy(), d.Spec.DeepCopy())
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -153,6 +146,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VMAgent changes (DaemonSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmAgentTestCase{
@@ -199,14 +193,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
-
-		var expectedGeneration int64
 		Eventually(func() error {
 			ds := &appsv1.DaemonSet{}
 			getErr := k8sClient.Get(ctx, childNSN, ds)
 			if getErr == nil {
 				tc.dsSpec = ds.Spec.DeepCopy()
-				expectedGeneration = ds.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -229,10 +220,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.DaemonSet
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				return cmp.Diff(*tc.dsSpec, d.Spec)
-			}
-			return ""
+			return cmp.Diff(*tc.dsSpec, d.Spec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -246,6 +234,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VMAgent changes (StatefulSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		tc := vmAgentTestCase{
@@ -382,7 +371,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, childNSN, &dep)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
-		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+		expectedDepSpec := tc.depSpec.DeepCopy()
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
@@ -406,7 +395,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			s := d.Spec.DeepCopy()
 			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
@@ -500,8 +489,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-			expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+			s := d.Spec.DeepCopy()
+			expectedDepSpec := tc.depSpec.DeepCopy()
 			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
@@ -590,8 +579,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-			expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+			s := d.Spec.DeepCopy()
+			expectedDepSpec := tc.depSpec.DeepCopy()
 			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
@@ -676,7 +665,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, insertNSN, &insertDep)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.insertDepSpec = *insertDep.Spec.DeepCopy()
-		expectedInsertDepSpec := sanitizeDeploymentSpec(tc.insertDepSpec.DeepCopy())
+		expectedInsertDepSpec := tc.insertDepSpec.DeepCopy()
 
 		selectNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
@@ -728,7 +717,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, insertNSN, &d)).ToNot(HaveOccurred())
-			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			s := d.Spec.DeepCopy()
 			diff := cmp.Diff(*expectedInsertDepSpec, *s)
 			if diff != "" {
 				return "insert:\n" + diff

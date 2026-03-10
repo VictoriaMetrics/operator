@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"time"
 
 	"github.com/google/go-cmp/cmp" //nolint:staticcheck

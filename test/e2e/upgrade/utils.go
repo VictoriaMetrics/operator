@@ -298,6 +298,7 @@ func verifyDeployment(ctx context.Context, k8sClient client.Client, resource typ
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
+	sanitizePodSpec(&d.Spec.Template.Spec)
 	return cmp.Diff(*expected, d.Spec.Template.Spec)
 }
 
@@ -307,7 +308,9 @@ func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource 
 	Eventually(func() error {
 		return k8sClient.Get(ctx, resource, &sts)
 	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-	return sts.Spec.Template.Spec.DeepCopy()
+	spec := sts.Spec.Template.Spec.DeepCopy()
+	sanitizePodSpec(spec)
+	return spec
 }
 
 // verifyStatefulSet verifies a StatefulSet spec matches expected
@@ -316,6 +319,7 @@ func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource ty
 	if err := k8sClient.Get(ctx, resource, &s); err != nil {
 		return err.Error()
 	}
+	sanitizePodSpec(&s.Spec.Template.Spec)
 	return cmp.Diff(*expected, s.Spec.Template.Spec)
 }
 
@@ -325,7 +329,9 @@ func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource ty
 	Eventually(func() error {
 		return k8sClient.Get(ctx, resource, &ds)
 	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-	return ds.Spec.Template.Spec.DeepCopy()
+	spec := ds.Spec.Template.Spec.DeepCopy()
+	sanitizePodSpec(spec)
+	return spec
 }
 
 // verifyDaemonSet verifies a DaemonSet spec matches expected
@@ -334,6 +340,7 @@ func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource type
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
+	sanitizePodSpec(&d.Spec.Template.Spec)
 	return cmp.Diff(*expected, d.Spec.Template.Spec)
 }
 
@@ -343,5 +350,18 @@ func restartManagerAndCleanup(ctx context.Context, k8sClient client.Client, name
 	DeferCleanup(func() {
 		defer GinkgoRecover()
 		cleanupNamespace(ctx, k8sClient, namespace)
+	})
+}
+
+// sanitizePodSpec modifies a PodSpec to ensure its containers are sorted in a predictable way.
+func sanitizePodSpec(spec *corev1.PodSpec) {
+	if spec == nil {
+		return
+	}
+	sort.Slice(spec.Containers, func(i, j int) bool {
+		return spec.Containers[i].Name < spec.Containers[j].Name
+	})
+	sort.Slice(spec.InitContainers, func(i, j int) bool {
+		return spec.InitContainers[i].Name < spec.InitContainers[j].Name
 	})
 }

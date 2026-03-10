@@ -293,13 +293,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Namespace: namespace,
 		}
 
-		var expectedGeneration int64
 		Eventually(func() error {
 			sts := &appsv1.StatefulSet{}
 			getErr := k8sClient.Get(ctx, childNSN, sts)
 			if getErr == nil {
 				tc.stsSpec = sts.Spec.DeepCopy()
-				expectedGeneration = sts.Generation
 			}
 			return getErr
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
@@ -322,10 +320,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var s appsv1.StatefulSet
 			Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
-			if s.Generation != expectedGeneration {
-				return cmp.Diff(*tc.stsSpec, s.Spec)
-			}
-			return ""
+			return cmp.Diff(*tc.stsSpec, s.Spec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -388,11 +383,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = *dep.Spec.DeepCopy()
 		expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		_, _ = startNewOperator(ctx)
+		startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
 
@@ -412,11 +406,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				return cmp.Diff(*expectedDepSpec, *s)
-			}
-			return ""
+			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
@@ -490,7 +481,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, childNSN, &dep)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = dep.Spec.DeepCopy()
-		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
@@ -510,12 +500,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-				return cmp.Diff(*expectedDepSpec, *s)
-			}
-			return ""
+			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAuth) {}),
@@ -584,7 +571,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, childNSN, &dep)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.depSpec = dep.Spec.DeepCopy()
-		expectedGeneration := dep.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
@@ -604,12 +590,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
-				return cmp.Diff(*expectedDepSpec, *s)
-			}
-			return ""
+			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			expectedDepSpec := sanitizeDeploymentSpec(tc.depSpec.DeepCopy())
+			return cmp.Diff(*expectedDepSpec, *s)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
@@ -694,7 +677,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.insertDepSpec = *insertDep.Spec.DeepCopy()
 		expectedInsertDepSpec := sanitizeDeploymentSpec(tc.insertDepSpec.DeepCopy())
-		expectedInsertGeneration := insertDep.Generation
 
 		selectNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
@@ -706,7 +688,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.selectDepSpec = *selectSTS.Spec.DeepCopy()
 		expectedSelectDepSpec := tc.selectDepSpec.DeepCopy()
-		expectedSelectGeneration := selectSTS.Generation
 
 		storageNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
@@ -717,12 +698,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return k8sClient.Get(ctx, storageNSN, &storageSts)
 		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 		tc.storageStsSpec = *storageSts.Spec.DeepCopy()
-		expectedStorageStsSpec := tc.storageStsSpec.DeepCopy()
-		expectedStorageGeneration := storageSts.Generation
 
 		removeOldOperator(ctx, k8sClient, namespace)
 
-		_, _ = startNewOperator(ctx)
+		startNewOperator(ctx)
 		DeferCleanup(func() {
 			defer GinkgoRecover()
 
@@ -748,22 +727,25 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Consistently(func() string {
 			var d appsv1.Deployment
 			Expect(k8sClient.Get(ctx, insertNSN, &d)).ToNot(HaveOccurred())
-			if d.Generation != expectedInsertGeneration {
-				s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
-				return "insert:\n" + cmp.Diff(*expectedInsertDepSpec, *s)
+			s := sanitizeDeploymentSpec(d.Spec.DeepCopy())
+			diff := cmp.Diff(*expectedInsertDepSpec, *s)
+			if diff != "" {
+				return "insert:\n" + diff
 			}
 
 			var sts appsv1.StatefulSet
 			Expect(k8sClient.Get(ctx, selectNSN, &sts)).ToNot(HaveOccurred())
-			if sts.Generation != expectedSelectGeneration {
-				s := sts.Spec.DeepCopy()
-				return "select:\n" + cmp.Diff(*expectedSelectDepSpec, *s)
+			stsSpec := sts.Spec.DeepCopy()
+			diff = cmp.Diff(*expectedSelectDepSpec, *stsSpec)
+			if diff != "" {
+				return "select:\n" + diff
 			}
 
 			Expect(k8sClient.Get(ctx, storageNSN, &sts)).ToNot(HaveOccurred())
-			if sts.Generation != expectedStorageGeneration {
-				s := sts.Spec.DeepCopy()
-				return "storage:\n" + cmp.Diff(*expectedStorageStsSpec, *s)
+			stsSpec = sts.Spec.DeepCopy()
+			diff = cmp.Diff(*expectedSelectDepSpec, *stsSpec)
+			if diff != "" {
+				return "select:\n" + diff
 			}
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())

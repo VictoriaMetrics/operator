@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
@@ -17,6 +18,8 @@ import (
 const (
 	vmagentName   = "test-agent"
 	vmsingleName  = "test-single"
+	vlsingleName  = "test-vlsingle"
+	vlclusterName = "test-vlcluster"
 	vmauthName    = "test-auth"
 	vmalertName   = "test-alert"
 	vmclusterName = "test-cluster"
@@ -35,6 +38,20 @@ type vmAuthTestCase struct {
 type vmAlertTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMAlert)
+}
+
+type vlSingleTestCase struct {
+	operatorVersion string
+	mod             func(*vmv1.VLSingle)
+	depSpec         *appsv1.DeploymentSpec
+}
+
+type vlClusterTestCase struct {
+	operatorVersion string
+	mod             func(*vmv1.VLCluster)
+	insertDepSpec   *appsv1.DeploymentSpec
+	selectDepSpec   *appsv1.DeploymentSpec
+	storageStsSpec  *appsv1.StatefulSetSpec
 }
 
 type vmSingleTestCase struct {

@@ -7,8 +7,9 @@ import (
 	"os/exec"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
-	. "github.com/onsi/gomega"    //nolint:staticcheck
+	"github.com/google/go-cmp/cmp" //nolint:staticcheck
+	. "github.com/onsi/ginkgo/v2"  //nolint:staticcheck
+	. "github.com/onsi/gomega"     //nolint:staticcheck
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -280,4 +281,67 @@ func createRandomNamespace(ctx context.Context, k8sClient client.Client) string 
 	Expect(err).ToNot(HaveOccurred())
 
 	return namespace
+}
+
+// snapshotDeployment snapshots a Deployment spec
+func snapshotDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.DeploymentSpec {
+	var dep appsv1.Deployment
+	Eventually(func() error {
+		return k8sClient.Get(ctx, resource, &dep)
+	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+	return dep.Spec.DeepCopy()
+}
+
+// verifyDeployment verifies a Deployment spec matches expected
+func verifyDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.DeploymentSpec) string {
+	var d appsv1.Deployment
+	if err := k8sClient.Get(ctx, resource, &d); err != nil {
+		return err.Error()
+	}
+	return cmp.Diff(*expected, d.Spec)
+}
+
+// snapshotStatefulSet snapshots a StatefulSet spec
+func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.StatefulSetSpec {
+	var sts appsv1.StatefulSet
+	Eventually(func() error {
+		return k8sClient.Get(ctx, resource, &sts)
+	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+	return sts.Spec.DeepCopy()
+}
+
+// verifyStatefulSet verifies a StatefulSet spec matches expected
+func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.StatefulSetSpec) string {
+	var s appsv1.StatefulSet
+	if err := k8sClient.Get(ctx, resource, &s); err != nil {
+		return err.Error()
+	}
+	return cmp.Diff(*expected, s.Spec)
+}
+
+// snapshotDaemonSet snapshots a DaemonSet spec
+func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *appsv1.DaemonSetSpec {
+	var ds appsv1.DaemonSet
+	Eventually(func() error {
+		return k8sClient.Get(ctx, resource, &ds)
+	}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+	return ds.Spec.DeepCopy()
+}
+
+// verifyDaemonSet verifies a DaemonSet spec matches expected
+func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *appsv1.DaemonSetSpec) string {
+	var d appsv1.DaemonSet
+	if err := k8sClient.Get(ctx, resource, &d); err != nil {
+		return err.Error()
+	}
+	return cmp.Diff(*expected, d.Spec)
+}
+
+func restartManagerAndCleanup(ctx context.Context, k8sClient client.Client, namespace string) {
+	removeOldOperator(ctx, k8sClient, namespace)
+	startNewOperator(ctx)
+	DeferCleanup(func() {
+		defer GinkgoRecover()
+		cleanupNamespace(ctx, k8sClient, namespace)
+	})
 }

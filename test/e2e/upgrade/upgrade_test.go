@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -27,35 +25,26 @@ const (
 type vmAgentTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMAgent)
-	depSpec         *appsv1.DeploymentSpec
-	dsSpec          *appsv1.DaemonSetSpec
-	stsSpec         *appsv1.StatefulSetSpec
 }
 
 type vmAuthTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMAuth)
-	depSpec         *appsv1.DeploymentSpec
 }
 
 type vmAlertTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMAlert)
-	depSpec         *appsv1.DeploymentSpec
 }
 
 type vmSingleTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMSingle)
-	depSpec         appsv1.DeploymentSpec
 }
 
 type vmClusterTestCase struct {
 	operatorVersion string
 	mod             func(*vmv1beta1.VMCluster)
-	insertDepSpec   appsv1.DeploymentSpec
-	selectDepSpec   appsv1.StatefulSetSpec
-	storageStsSpec  appsv1.StatefulSetSpec
 }
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
@@ -100,27 +89,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
-		childNSN := types.NamespacedName{
+		deploymentNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
+		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, deploymentNSN)
 
-		Eventually(func() error {
-			dep := &appsv1.Deployment{}
-			getErr := k8sClient.Get(ctx, childNSN, dep)
-			if getErr == nil {
-				tc.depSpec = dep.Spec.DeepCopy()
-			}
-			return getErr
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMAgent")
 		Eventually(func() error {
@@ -130,9 +105,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			return cmp.Diff(tc.depSpec.DeepCopy(), d.Spec.DeepCopy())
+			return verifyDeployment(ctx, k8sClient, deploymentNSN, initialDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -189,26 +162,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
-		childNSN := types.NamespacedName{
+		daemonsetNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
-		Eventually(func() error {
-			ds := &appsv1.DaemonSet{}
-			getErr := k8sClient.Get(ctx, childNSN, ds)
-			if getErr == nil {
-				tc.dsSpec = ds.Spec.DeepCopy()
-			}
-			return getErr
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+		initialDaemonsetSpec := snapshotDaemonSet(ctx, k8sClient, daemonsetNSN)
 
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMAgent")
 		Eventually(func() error {
@@ -218,9 +178,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.DaemonSet
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			return cmp.Diff(*tc.dsSpec, d.Spec)
+			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, initialDaemonsetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -277,27 +235,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
-		childNSN := types.NamespacedName{
+		resourceNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
 			Namespace: namespace,
 		}
+		initialStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
 
-		Eventually(func() error {
-			sts := &appsv1.StatefulSet{}
-			getErr := k8sClient.Get(ctx, childNSN, sts)
-			if getErr == nil {
-				tc.stsSpec = sts.Spec.DeepCopy()
-			}
-			return getErr
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMAgent")
 		Eventually(func() error {
@@ -307,9 +251,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var s appsv1.StatefulSet
-			Expect(k8sClient.Get(ctx, childNSN, &s)).ToNot(HaveOccurred())
-			return cmp.Diff(*tc.stsSpec, s.Spec)
+			return verifyStatefulSet(ctx, k8sClient, resourceNSN, initialStatefulSetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
@@ -360,27 +302,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("snapshotting child Deployment and Service specs")
-		childNSN := types.NamespacedName{
+		By("snapshotting child Deployment specs")
+		resourceNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmsingle-%s", vmsingleName),
 			Namespace: namespace,
 		}
 
-		var dep appsv1.Deployment
-		Eventually(func() error {
-			return k8sClient.Get(ctx, childNSN, &dep)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.depSpec = *dep.Spec.DeepCopy()
-		expectedDepSpec := tc.depSpec.DeepCopy()
+		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMSingle")
 		Eventually(func() error {
@@ -388,15 +318,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("checking Deployment spec is unchanged")
-		Expect(k8sClient.Get(ctx, childNSN, &dep)).ToNot(HaveOccurred())
-
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := d.Spec.DeepCopy()
-			return cmp.Diff(*expectedDepSpec, *s)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
@@ -460,24 +384,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
-		childNSN := types.NamespacedName{
+		resourceNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmauth-%s", vmauthName),
 			Namespace: namespace,
 		}
 
-		var dep appsv1.Deployment
-		Eventually(func() error {
-			return k8sClient.Get(ctx, childNSN, &dep)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.depSpec = dep.Spec.DeepCopy()
+		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMAuth")
 		Eventually(func() error {
@@ -487,11 +401,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := d.Spec.DeepCopy()
-			expectedDepSpec := tc.depSpec.DeepCopy()
-			return cmp.Diff(*expectedDepSpec, *s)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAuth) {}),
@@ -550,24 +460,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
-		childNSN := types.NamespacedName{
+		resourceNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmalert-%s", vmalertName),
 			Namespace: namespace,
 		}
 
-		var dep appsv1.Deployment
-		Eventually(func() error {
-			return k8sClient.Get(ctx, childNSN, &dep)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.depSpec = dep.Spec.DeepCopy()
+		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMAlert")
 		Eventually(func() error {
@@ -577,11 +477,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, childNSN, &d)).ToNot(HaveOccurred())
-			s := d.Spec.DeepCopy()
-			expectedDepSpec := tc.depSpec.DeepCopy()
-			return cmp.Diff(*expectedDepSpec, *s)
+			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
@@ -660,43 +556,21 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Name:      fmt.Sprintf("vminsert-%s", vmclusterName),
 			Namespace: namespace,
 		}
-		var insertDep appsv1.Deployment
-		Eventually(func() error {
-			return k8sClient.Get(ctx, insertNSN, &insertDep)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.insertDepSpec = *insertDep.Spec.DeepCopy()
-		expectedInsertDepSpec := tc.insertDepSpec.DeepCopy()
+		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
 
 		selectNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
 			Namespace: namespace,
 		}
-		var selectSTS appsv1.StatefulSet
-		Eventually(func() error {
-			return k8sClient.Get(ctx, selectNSN, &selectSTS)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.selectDepSpec = *selectSTS.Spec.DeepCopy()
-		expectedSelectSpec := tc.selectDepSpec.DeepCopy()
+		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
 
 		storageNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
 			Namespace: namespace,
 		}
-		var storageSts appsv1.StatefulSet
-		Eventually(func() error {
-			return k8sClient.Get(ctx, storageNSN, &storageSts)
-		}, 5*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-		tc.storageStsSpec = *storageSts.Spec.DeepCopy()
-		expectedStorageSpec := tc.selectDepSpec.DeepCopy()
+		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
 
-		removeOldOperator(ctx, k8sClient, namespace)
-
-		startNewOperator(ctx)
-		DeferCleanup(func() {
-			defer GinkgoRecover()
-
-			cleanupNamespace(ctx, k8sClient, namespace)
-		})
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
 		By("waiting for latest operator to reconcile VMCluster")
 		Eventually(func() error {
@@ -704,36 +578,19 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("checking VMInsert Deployment spec is unchanged")
-		Expect(k8sClient.Get(ctx, insertNSN, &insertDep)).ToNot(HaveOccurred())
-
-		By("checking VMSelect StatefulSet spec is unchanged")
-		Expect(k8sClient.Get(ctx, selectNSN, &selectSTS)).ToNot(HaveOccurred())
-
-		By("checking VMStorage StatefulSet spec is unchanged")
-		Expect(k8sClient.Get(ctx, storageNSN, &storageSts)).ToNot(HaveOccurred())
-
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			var d appsv1.Deployment
-			Expect(k8sClient.Get(ctx, insertNSN, &d)).ToNot(HaveOccurred())
-			s := d.Spec.DeepCopy()
-			diff := cmp.Diff(*expectedInsertDepSpec, *s)
+			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
 			if diff != "" {
 				return "insert:\n" + diff
 			}
 
-			var sts appsv1.StatefulSet
-			Expect(k8sClient.Get(ctx, selectNSN, &sts)).ToNot(HaveOccurred())
-			stsSpec := sts.Spec.DeepCopy()
-			diff = cmp.Diff(*expectedSelectSpec, *stsSpec)
+			diff = verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec)
 			if diff != "" {
 				return "select:\n" + diff
 			}
 
-			Expect(k8sClient.Get(ctx, storageNSN, &sts)).ToNot(HaveOccurred())
-			stsSpec = sts.Spec.DeepCopy()
-			diff = cmp.Diff(*expectedStorageSpec, *stsSpec)
+			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
 			if diff != "" {
 				return "storage:\n" + diff
 			}

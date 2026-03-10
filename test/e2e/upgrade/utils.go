@@ -299,8 +299,10 @@ func verifyDeployment(ctx context.Context, k8sClient client.Client, resource typ
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
+	expectedSpec := expected.DeepCopy()
+	sanitizePodSpec(expectedSpec)
 	sanitizePodSpec(&d.Spec.Template.Spec)
-	return cmp.Diff(*expected, d.Spec.Template.Spec)
+	return cmp.Diff(*expectedSpec, d.Spec.Template.Spec)
 }
 
 // snapshotStatefulSet snapshots a StatefulSet spec
@@ -341,8 +343,10 @@ func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource type
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
 		return err.Error()
 	}
+	expectedSpec := expected.DeepCopy()
+	sanitizePodSpec(expectedSpec)
 	sanitizePodSpec(&d.Spec.Template.Spec)
-	return cmp.Diff(*expected, d.Spec.Template.Spec)
+	return cmp.Diff(*expectedSpec, d.Spec.Template.Spec)
 }
 
 func restartManagerAndCleanup(ctx context.Context, k8sClient client.Client, namespace string) {

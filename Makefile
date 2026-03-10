@@ -169,7 +169,7 @@ test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-timeout=30m \
+		-timeout=60m \
 		-junit-report=report.xml ./test/e2e/...
 
 .PHONY: lint

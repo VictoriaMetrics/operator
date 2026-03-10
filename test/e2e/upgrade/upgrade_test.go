@@ -23,6 +23,8 @@ const (
 	vmauthName    = "test-auth"
 	vmalertName   = "test-alert"
 	vmclusterName = "test-cluster"
+	vtsingleName  = "test-vtsingle"
+	vtclusterName = "test-vtcluster"
 )
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
@@ -640,8 +642,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vlselect",
-							Tag:        "v1.44.0-victorialogs",
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
 						},
 						TerminationGracePeriodSeconds: ptr.To(int64(5)),
 					},
@@ -650,8 +652,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vlinsert",
-							Tag:        "v1.44.0-victorialogs",
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
 						},
 						TerminationGracePeriodSeconds: ptr.To(int64(5)),
 					},
@@ -660,8 +662,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vlstorage",
-							Tag:        "v1.44.0-victorialogs",
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
 						},
 						TerminationGracePeriodSeconds: ptr.To(int64(5)),
 					},
@@ -729,6 +731,182 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLCluster) {}),
 		Entry("from v0.65.0", "v0.65.0", nil),
 		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VLCluster) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	DescribeTable("should not rollout VTSingle changes", func(operatorVersion string, mod func(*vmv1.VTSingle)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		cr := &vmv1.VTSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vtsingleName,
+				Namespace: namespace,
+			},
+			Spec: vmv1.VTSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-traces",
+						Tag:        "v0.4.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VTSingle to become operational")
+		nsn := types.NamespacedName{Name: vtsingleName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment specs")
+		resourceNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtsingle-%s", vtsingleName),
+			Namespace: namespace,
+		}
+
+		initialDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VTSingle")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying deployment spec remains stable over time")
+		Consistently(func() string {
+			return verifyDeployment(ctx, k8sClient, resourceNSN, initialDeploymentSpec)
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTSingle) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTSingle) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VTSingle) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	//nolint:dupl
+	DescribeTable("should not rollout VTCluster changes", func(operatorVersion string, mod func(*vmv1.VTCluster)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		cr := &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vtclusterName,
+				Namespace: namespace,
+			},
+			Spec: vmv1.VTClusterSpec{
+				Select: &vmv1.VTSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				Insert: &vmv1.VTInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				Storage: &vmv1.VTStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VTCluster to become operational")
+		nsn := types.NamespacedName{Name: vtclusterName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment and StatefulSet specs")
+		insertNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtinsert-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
+
+		selectNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtselect-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
+
+		storageNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtstorage-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VTCluster")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying specs remain stable over time")
+		Consistently(func() string {
+			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
+			if diff != "" {
+				return "insert:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
+			if diff != "" {
+				return "select:\n" + diff
+			}
+
+			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
+			if diff != "" {
+				return "storage:\n" + diff
+			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTCluster) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTCluster) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VTCluster) {}),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),

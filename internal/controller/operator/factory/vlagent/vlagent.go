@@ -543,7 +543,8 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 	var storageLimit int64
 
 	if cr.Spec.Storage != nil {
-		if storage, ok := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+		storage := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests.Storage()
+		if !storage.IsZero() {
 			storageInt, ok := storage.AsInt64()
 			if ok {
 				storageLimit = storageInt

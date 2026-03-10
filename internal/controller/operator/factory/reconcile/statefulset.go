@@ -73,7 +73,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
-	var mustRecreatePod bool
+	var recreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
 	var prevVCTs []corev1.PersistentVolumeClaim
@@ -116,9 +116,9 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			spec.Replicas = existingObj.Spec.Replicas
 		}
 
-		var mustRecreateSTS bool
-		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
+		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {
+			recreatePod = mustRecreatePod
 			if err := finalize.RemoveFinalizer(ctx, rclient, &existingObj); err != nil {
 				return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn.String(), err)
 			}
@@ -164,7 +164,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
 		opts := rollingUpdateOpts{
-			recreate:       mustRecreatePod,
+			recreate:       recreatePod,
 			selector:       cr.SelectorLabels(),
 			maxUnavailable: 1,
 		}

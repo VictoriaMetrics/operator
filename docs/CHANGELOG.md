@@ -14,8 +14,10 @@ aliases:
 ## tip
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMAgents into a single write backend
 
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
 **Release date:** 04 March 2026

@@ -32,7 +32,9 @@ func TestVMUser_Validate(t *testing.T) {
 			Username: ptr.To("some-user"),
 			TargetRefs: []TargetRef{
 				{
-					CRD:    &CRDRef{Name: "sm"},
+					CRD: &CRDRef{
+						NamespacedName: NamespacedName{Name: "sm"},
+					},
 					Static: &StaticRef{URL: "some"},
 				},
 			},
@@ -58,9 +60,11 @@ func TestVMUser_Validate(t *testing.T) {
 			TargetRefs: []TargetRef{
 				{
 					CRD: &CRDRef{
-						Name:      "some-1",
-						Kind:      "VMSingle",
-						Namespace: "",
+						Kind: "VMSingle",
+						NamespacedName: NamespacedName{
+							Name:      "some-1",
+							Namespace: "",
+						},
 					},
 					Paths: []string{"/some-path"},
 				},
@@ -88,9 +92,11 @@ func TestVMUser_Validate(t *testing.T) {
 			TargetRefs: []TargetRef{
 				{
 					CRD: &CRDRef{
-						Name:      "some-1",
-						Namespace: "some-ns",
-						Kind:      "VMSingle",
+						Kind: "VMSingle",
+						NamespacedName: NamespacedName{
+							Name:      "some-1",
+							Namespace: "some-ns",
+						},
 					},
 					Paths: []string{"/"},
 				},

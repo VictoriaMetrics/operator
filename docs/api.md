@@ -1420,8 +1420,9 @@ Appears in: [TargetRef](#targetref)
 | Field | Description |
 | --- | --- |
 | kind<a href="#crdref-kind" id="crdref-kind">#</a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent |
-| name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name target CRD object name |
-| namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace target CRD object namespace. |
+| name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
+| namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+| objects<a href="#crdref-objects" id="crdref-objects">#</a><br/>_[NamespacedName](#namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |
 
 #### Certs
 
@@ -2230,6 +2231,17 @@ Appears in: [DiscoverySelector](#discoveryselector), [VMPodScrapeSpec](#vmpodscr
 | any<a href="#namespaceselector-any" id="namespaceselector-any">#</a><br/>_boolean_ | _(Optional)_<br/>Boolean describing whether all namespaces are selected in contrast to a<br />list restricting them. |
 | matchNames<a href="#namespaceselector-matchnames" id="namespaceselector-matchnames">#</a><br/>_string array_ | _(Optional)_<br/>List of namespace names. |
 
+#### NamespacedName
+
+NamespacedName defines name and namespace pairs to reference k8s object
+
+Appears in: [CRDRef](#crdref)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#namespacedname-name" id="namespacedname-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
+| namespace<a href="#namespacedname-namespace" id="namespacedname-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+
 #### NomadSDConfig
 
 NomadSDConfig configurations allow retrieving scrape targets from Nomad's Service API.
@@ -2948,17 +2960,17 @@ Appears in: [VMStaticScrapeSpec](#vmstaticscrapespec)
 
 TargetRef describes target for user traffic forwarding.
 one of target types can be chosen:
-crds or static per targetRef.
+crd or static per targetRef.
 user can define multiple targetRefs with different ref Types.
 
-Appears in: [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserSpec](#vmuserspec)
+Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
 | URLMapCommon<a href="#targetref-urlmapcommon" id="targetref-urlmapcommon">#</a><br/>_[URLMapCommon](#urlmapcommon)_ | _(Required)_<br/> |
 | crd<a href="#targetref-crd" id="targetref-crd">#</a><br/>_[CRDRef](#crdref)_ | _(Optional)_<br/>CRD describes exist operator's CRD object,<br />operator generates access url based on CRD params. |
-| crds<a href="#targetref-crds" id="targetref-crds">#</a><br/>_[CRDRef](#crdref) array_ | _(Optional)_<br/>CRD describes existing operator's CRD objects,<br />operator generates access url based on CRD params. |
 | hosts<a href="#targetref-hosts" id="targetref-hosts">#</a><br/>_string array_ | _(Required)_<br/> |
+| name<a href="#targetref-name" id="targetref-name">#</a><br/>_string_ | _(Optional)_<br/>Name references item at VMAuths spec.defaultTargetRefs map, with name set other attributes are skipped |
 | paths<a href="#targetref-paths" id="targetref-paths">#</a><br/>_string array_ | _(Optional)_<br/>Paths - matched path to route. |
 | query_args<a href="#targetref-query_args" id="targetref-query_args">#</a><br/>_[QueryArg](#queryarg) array_ | _(Optional)_<br/>QueryArgs appends list of query arguments to generated URL |
 | static<a href="#targetref-static" id="targetref-static">#</a><br/>_[StaticRef](#staticref)_ | _(Optional)_<br/>Static - user defined url for traffic forward,<br />for instance http://vmsingle:8428 |
@@ -3741,6 +3753,7 @@ Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 | configReloaderResources<a href="#vmauthspec-configreloaderresources" id="vmauthspec-configreloaderresources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#resourcerequirements-v1-core)_ | _(Optional)_<br/>ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | configSecret<a href="#vmauthspec-configsecret" id="vmauthspec-configsecret">#</a><br/>_string_ | _(Required)_<br/>ConfigSecret is the name of a Kubernetes Secret in the same namespace as the<br />VMAuth object, which contains auth configuration for vmauth,<br />configuration must be inside secret key: config.yaml.<br />It must be created and managed manually.<br />If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders<br/><b>Deprecated: </b>since version <a href="https://docs.victoriametrics.com/operator/changelog/#v0490">v0.49.0</a> will be removed in <a href="https://docs.victoriametrics.com/operator/changelog/#v0690">v0.69.0</a> use <a href="#vmauthspec-externalconfig">externalConfig</a> instead<br/> |
 | containers<a href="#vmauthspec-containers" id="vmauthspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
+| defaultTargetRefs<a href="#vmauthspec-defaulttargetrefs" id="vmauthspec-defaulttargetrefs">#</a><br/>_[TargetRef](#targetref) array_ | _(Required)_<br/>DefaultTargetRefs list of named targetRefs, which may be referenced by VMUser and at unauthorizedUserAccessSpec. |
 | default_url<a href="#vmauthspec-default_url" id="vmauthspec-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | disableAutomountServiceAccountToken<a href="#vmauthspec-disableautomountserviceaccounttoken" id="vmauthspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
 | disableSelfServiceScrape<a href="#vmauthspec-disableselfservicescrape" id="vmauthspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |

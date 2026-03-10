@@ -33,23 +33,105 @@ type parsedObjects struct {
 	users *build.ChildObjects[*vmv1beta1.VMUser]
 }
 
+func updateCRDObjURLs(ctx context.Context, rclient client.Client, crd *vmv1beta1.CRDRef, objURLs map[string]string) error {
+	if crd == nil {
+		return nil
+	}
+	var nsns []vmv1beta1.NamespacedName
+	if len(crd.Name) > 0 && len(crd.Namespace) > 0 {
+		nsns = append(nsns, crd.NamespacedName)
+	}
+	nsns = append(nsns, crd.Objects...)
+	for _, nsn := range nsns {
+		key := crd.AsKey(nsn)
+		if _, ok := objURLs[key]; ok {
+			continue
+		}
+		crdObj, ok := crdNameToObject[crd.Kind]
+		if !ok {
+			return fmt.Errorf("unsupported kind=%q", crd.Kind)
+		}
+		crdObj.SetName(nsn.Name)
+		crdObj.SetNamespace(nsn.Namespace)
+		url, err := getAsURLObject(ctx, rclient, crdObj)
+		if err != nil {
+			if !build.IsNotFound(err) {
+				return fmt.Errorf("cannot get object as url: %w", err)
+			}
+			return fmt.Errorf("cannot find CRD link for kind=%q: %w", crd.Kind, err)
+		}
+		objURLs[key] = url
+	}
+	return nil
+}
+
 // builds vmauth config.
 func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]byte, error) {
 	// loads info about exist operator object kind for crdRef.
-	crdURLCache := make(map[string]string)
-	if cr.Spec.UnauthorizedUserAccessSpec != nil {
-		if err := fetchCRDRefURLs(ctx, rclient, cr.Spec.UnauthorizedUserAccessSpec.TargetRefs, crdURLCache); err != nil {
-			return nil, fmt.Errorf("failed to fetch unauthorized_user.target_refs[*].crd: %w", err)
+	objURLs := make(map[string]string)
+	backends := make(map[string]*vmv1beta1.TargetRef)
+	updateObjURLs := func(ref *vmv1beta1.TargetRef, isDefault bool) error {
+		if ref == nil {
+			return nil
+		}
+		if len(ref.Name) > 0 {
+			if isDefault {
+				backends[ref.Name] = ref
+			} else {
+				if r, ok := backends[ref.Name]; ok {
+					if err := build.MergeDeep(ref, r, true); err != nil {
+						return fmt.Errorf("failed to merge target refs: %w", err)
+					}
+				} else {
+					return fmt.Errorf("failed to find defaultTargetRef=%s", ref.Name)
+				}
+			}
+		}
+		return updateCRDObjURLs(ctx, rclient, ref.CRD, objURLs)
+	}
+	if len(cr.Spec.DefaultTargetRefs) > 0 {
+		for i := range cr.Spec.DefaultTargetRefs {
+			ref := &cr.Spec.DefaultTargetRefs[i]
+			if err := updateObjURLs(ref, true); err != nil {
+				return nil, fmt.Errorf("failed to fetch spec.defaultTargetRefs[%d]: %w", i, err)
+			}
 		}
 	}
-	pos.fetchCRDRefURLs(ctx, rclient, crdURLCache)
+	if cr.Spec.UnauthorizedUserAccessSpec != nil {
+		isRetryCodesSet := len(cr.Spec.UnauthorizedUserAccessSpec.RetryStatusCodes) > 0
+		for i := range cr.Spec.UnauthorizedUserAccessSpec.TargetRefs {
+			ref := &cr.Spec.UnauthorizedUserAccessSpec.TargetRefs[i]
+			if err := updateObjURLs(ref, false); err != nil {
+				return nil, fmt.Errorf("failed to fetch spec.unauthorizedUserAccessSpec.targetRefs[%d]: %w", i, err)
+			}
+			if len(ref.Name) > 0 {
+				if err := ref.Validate(false, isRetryCodesSet); err != nil {
+					return nil, fmt.Errorf("failed to validate target ref: %w", err)
+				}
+			}
+		}
+	}
+	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
+		for i := range user.Spec.TargetRefs {
+			ref := &user.Spec.TargetRefs[i]
+			if err := updateObjURLs(ref, false); err != nil {
+				return fmt.Errorf("failed to fetch VMUser=%s/%s spec.targetRefs[%d]: %w", user.Namespace, user.Name, i, err)
+			}
+		}
+		if !build.MustSkipRuntimeValidation() {
+			if err := user.Validate(); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	toCreateSecrets, toUpdate, err := pos.addAuthCredentialsBuildSecrets(ac)
 	if err != nil {
 		return nil, err
 	}
 
 	// generate yaml config for vmauth.
-	cfg, err := pos.generateVMAuthConfig(cr, crdURLCache, ac)
+	cfg, err := pos.generateConfig(cr, objURLs, ac)
 	if err != nil {
 		return nil, err
 	}
@@ -304,64 +386,14 @@ func (c *clusterWithURL) AsURL() string {
 	return builder(c.Object)
 }
 
-func fetchCRDRefURLs(ctx context.Context, rclient client.Client, refs []vmv1beta1.TargetRef, crdURLCache map[string]string) error {
-	updateCache := func(crd *vmv1beta1.CRDRef) error {
-		if crd == nil {
-			return nil
-		}
-		key := crd.AsKey()
-		if _, ok := crdURLCache[key]; ok {
-			return nil
-		}
-		crdObj, ok := crdNameToObject[crd.Kind]
-		if !ok {
-			return fmt.Errorf("unsupported kind=%q", crd.Kind)
-		}
-		crd.AddRefToObj(crdObj.(client.Object))
-		url, err := getAsURLObject(ctx, rclient, crdObj)
-		if err != nil {
-			if !build.IsNotFound(err) {
-				return fmt.Errorf("cannot get object as url: %w", err)
-			}
-			return fmt.Errorf("cannot find CRD link for kind=%q: %w", crd.Kind, err)
-		}
-		crdURLCache[key] = url
-		return nil
-	}
-	for j := range refs {
-		ref := &refs[j]
-		if err := updateCache(ref.CRD); err != nil {
-			return fmt.Errorf("targetRefs[%d].crd: %w", j, err)
-		}
-		for i, crd := range ref.CRDs {
-			if err := updateCache(&crd); err != nil {
-				return fmt.Errorf("targetRefs[%d].crds[%d]: %w", j, i, err)
-			}
-		}
-	}
-	return nil
-}
-
-// fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
-func (pos *parsedObjects) fetchCRDRefURLs(ctx context.Context, rclient client.Client, crdURLCache map[string]string) {
-	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		if !build.MustSkipRuntimeValidation() {
-			if err := user.Validate(); err != nil {
-				return err
-			}
-		}
-		return fetchCRDRefURLs(ctx, rclient, user.Spec.TargetRefs, crdURLCache)
-	})
-}
-
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdURLCache map[string]string, ac *build.AssetsCache) ([]byte, error) {
+func (pos *parsedObjects) generateConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac *build.AssetsCache) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
 
 	pos.users.ForEachCollectSkipInvalid(func(user *vmv1beta1.VMUser) error {
-		userCfg, err := genUserCfg(user, crdURLCache, cr, ac)
+		userCfg, err := genUserCfg(user, objURLs, cr, ac)
 		if err != nil {
 			return err
 		}
@@ -378,7 +410,7 @@ func (pos *parsedObjects) generateVMAuthConfig(cr *vmv1beta1.VMAuth, crdURLCache
 		}
 	}
 
-	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, crdURLCache, ac)
+	unAuthorizedAccessValue, err := buildUnauthorizedConfig(cr, objURLs, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build unauthorized_user config section: %w", err)
 	}
@@ -403,7 +435,7 @@ func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSl
 	return origin
 }
 
-func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, crdURLCache map[string]string, ac *build.AssetsCache) ([]yaml.MapItem, error) {
+func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac *build.AssetsCache) ([]yaml.MapItem, error) {
 	var result []yaml.MapItem
 
 	switch {
@@ -435,7 +467,7 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, crdURLCache map[string]string
 		}
 		var err error
 		if resultLen == len(result) {
-			result, err = genURLMaps("unauthorized_user", uua.TargetRefs, result, crdURLCache)
+			result, err = genURLMaps("unauthorized_user", uua.TargetRefs, result, objURLs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 			}
@@ -588,22 +620,22 @@ func addIPFiltersToYaml(dst yaml.MapSlice, ipf vmv1beta1.VMUserIPFilters) yaml.M
 }
 
 // generates routing config for given target refs
-func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlice, crdURLCache map[string]string) (yaml.MapSlice, error) {
+func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlice, objURLs map[string]string) (yaml.MapSlice, error) {
 	var urlMaps []yaml.MapSlice
 	handleRef := func(ref vmv1beta1.TargetRef) ([]string, error) {
 		var urlPrefixes []string
 		switch {
 		case ref.CRD != nil:
-			urlPrefix := crdURLCache[ref.CRD.AsKey()]
-			if urlPrefix == "" {
-				return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
+			var nsns []vmv1beta1.NamespacedName
+			if len(ref.CRD.Name) > 0 && len(ref.CRD.Namespace) > 0 {
+				nsns = append(nsns, ref.CRD.NamespacedName)
 			}
-			urlPrefixes = append(urlPrefixes, urlPrefix)
-		case len(ref.CRDs) > 0:
-			for i, crd := range ref.CRDs {
-				urlPrefix := crdURLCache[crd.AsKey()]
+			nsns = append(nsns, ref.CRD.Objects...)
+			for _, nsn := range nsns {
+				key := ref.CRD.AsKey(nsn)
+				urlPrefix := objURLs[key]
 				if urlPrefix == "" {
-					return nil, fmt.Errorf("cannot find crdRef[%d] target: %q, for user: %s", i, crd.AsKey(), userName)
+					return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", key, userName)
 				}
 				urlPrefixes = append(urlPrefixes, urlPrefix)
 			}
@@ -704,7 +736,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 	for i := range refs {
 		var urlMap yaml.MapSlice
 		ref := refs[i]
-		if ref.Static == nil && ref.CRD == nil && len(ref.CRDs) == 0 {
+		if ref.Static == nil && ref.CRD == nil {
 			continue
 		}
 		urlPrefix, err := handleRef(ref)
@@ -779,10 +811,10 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *vmv1beta1.VMUser, crdURLCache map[string]string, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) (yaml.MapSlice, error) {
+func genUserCfg(user *vmv1beta1.VMUser, objURLs map[string]string, cr *vmv1beta1.VMAuth, ac *build.AssetsCache) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
-	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)
+	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, objURLs)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 	}

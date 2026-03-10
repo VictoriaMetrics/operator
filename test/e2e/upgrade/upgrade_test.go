@@ -585,6 +585,148 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	//nolint:dupl
+	DescribeTable("should not rollout VMCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1beta1.VMCluster)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		By("creating VMCluster in " + namespace)
+		cr := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmclusterName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+						},
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Image: vmv1beta1.Image{
+								Repository: "quay.io/victoriametrics/vmauth",
+								Tag:        "v1.136.0",
+							},
+							TerminationGracePeriodSeconds: ptr.To(int64(5)),
+						},
+					},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmselect",
+							Tag:        "v1.136.0-cluster",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vminsert",
+							Tag:        "v1.136.0-cluster",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmstorage",
+							Tag:        "v1.136.0-cluster",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMCluster to become operational")
+		nsn := types.NamespacedName{Name: vmclusterName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment and StatefulSet specs")
+		insertNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vminsert-%s", vmclusterName),
+			Namespace: namespace,
+		}
+		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
+
+		selectNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
+			Namespace: namespace,
+		}
+		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
+
+		storageNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
+			Namespace: namespace,
+		}
+		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
+
+		lbNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmclusterlb-%s", vmclusterName),
+			Namespace: namespace,
+		}
+		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VMCluster")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying specs remain stable over time")
+		Consistently(func() string {
+			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
+			if diff != "" {
+				return "insert:\n" + diff
+			}
+
+			diff = verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec)
+			if diff != "" {
+				return "select:\n" + diff
+			}
+
+			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
+			if diff != "" {
+				return "storage:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
+			if diff != "" {
+				return "lb:\n" + diff
+			}
+
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMCluster) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMCluster) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	//nolint:dupl
 	DescribeTable("should not rollout VLSingle changes", func(operatorVersion string, mod func(*vmv1.VLSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 
@@ -743,6 +885,147 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			if diff != "" {
 				return "storage:\n" + diff
 			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLCluster) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLCluster) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VLCluster) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	//nolint:dupl
+	FDescribeTable("should not rollout VLCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		By("creating VLCluster in " + namespace)
+		cr := &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vlclusterName,
+				Namespace: namespace,
+			},
+			Spec: vmv1.VLClusterSpec{
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+						},
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Image: vmv1beta1.Image{
+								Repository: "quay.io/victoriametrics/vmauth",
+								Tag:        "v1.136.0",
+							},
+							TerminationGracePeriodSeconds: ptr.To(int64(5)),
+						},
+					},
+				},
+				VLSelect: &vmv1.VLSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				VLStorage: &vmv1.VLStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-logs",
+							Tag:        "v1.44.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VLCluster to become operational")
+		nsn := types.NamespacedName{Name: vlclusterName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment and StatefulSet specs")
+		insertNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vlinsert-%s", vlclusterName),
+			Namespace: namespace,
+		}
+		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
+
+		selectNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vlselect-%s", vlclusterName),
+			Namespace: namespace,
+		}
+		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
+
+		storageNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vlstorage-%s", vlclusterName),
+			Namespace: namespace,
+		}
+		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
+
+		lbNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vlclusterlb-%s", vlclusterName),
+			Namespace: namespace,
+		}
+		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VLCluster")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying specs remain stable over time")
+		Consistently(func() string {
+			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
+			if diff != "" {
+				return "insert:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
+			if diff != "" {
+				return "select:\n" + diff
+			}
+
+			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
+			if diff != "" {
+				return "storage:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
+			if diff != "" {
+				return "lb:\n" + diff
+			}
+
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
@@ -920,6 +1203,147 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			if diff != "" {
 				return "storage:\n" + diff
 			}
+			return ""
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTCluster) {}),
+		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTCluster) {}),
+		Entry("from v0.65.0", "v0.65.0", nil),
+		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VTCluster) {}),
+		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+	)
+
+	//nolint:dupl
+	DescribeTable("should not rollout VTCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VTCluster)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		By("creating VTCluster in " + namespace)
+		cr := &vmv1.VTCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vtclusterName,
+				Namespace: namespace,
+			},
+			Spec: vmv1.VTClusterSpec{
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+						},
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Image: vmv1beta1.Image{
+								Repository: "quay.io/victoriametrics/vmauth",
+								Tag:        "v1.136.0",
+							},
+							TerminationGracePeriodSeconds: ptr.To(int64(5)),
+						},
+					},
+				},
+				Select: &vmv1.VTSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				Insert: &vmv1.VTInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+				Storage: &vmv1.VTStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/victoria-traces",
+							Tag:        "v0.4.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VTCluster to become operational")
+		nsn := types.NamespacedName{Name: vtclusterName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment and StatefulSet specs")
+		insertNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtinsert-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
+
+		selectNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtselect-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
+
+		storageNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtstorage-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
+
+		lbNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vtclusterlb-%s", vtclusterName),
+			Namespace: namespace,
+		}
+		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VTCluster")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying specs remain stable over time")
+		Consistently(func() string {
+			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
+			if diff != "" {
+				return "insert:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
+			if diff != "" {
+				return "select:\n" + diff
+			}
+
+			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
+			if diff != "" {
+				return "storage:\n" + diff
+			}
+
+			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
+			if diff != "" {
+				return "lb:\n" + diff
+			}
+
 			return ""
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},

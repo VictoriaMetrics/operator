@@ -42,6 +42,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://localhost:8428/api/v1/write"},
 				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -110,6 +113,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				DaemonSetMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://localhost:8428/api/v1/write"},
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
 				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
@@ -180,6 +186,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://localhost:8428/api/v1/write"},
 				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -244,6 +253,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1beta1.VMSingleSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -315,6 +327,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1beta1.VMAuthSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -386,6 +401,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1beta1.VMAlertSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -566,6 +584,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VLSingle changes", func(operatorVersion string, mod func(*vmv1.VLSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 
@@ -738,6 +757,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VTSingle changes", func(operatorVersion string, mod func(*vmv1.VTSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)

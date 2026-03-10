@@ -116,6 +116,8 @@ type BaseOperatorConf struct {
 	CustomConfigReloaderImage string `env:"VM_CUSTOMCONFIGRELOADERIMAGE"`
 	PSPAutoCreateEnabled      bool   `default:"false" env:"VM_PSPAUTOCREATEENABLED"`
 	EnableTCP6                bool   `default:"false" env:"VM_ENABLETCP6"`
+	// Overrides default loopback interface that will be used for all VM components
+	Loopback string `env:"VM_LOOPBACK"`
 
 	// defines global config reloader parameters
 	ConfigReloader struct {
@@ -747,6 +749,9 @@ func MustGetBaseConfig() *BaseOperatorConf {
 // GetLocalhost returns localhost value depending on global configuration
 func GetLocalhost() string {
 	cfg := MustGetBaseConfig()
+	if len(cfg.Loopback) > 0 {
+		return cfg.Loopback
+	}
 	if cfg.EnableTCP6 {
 		return "localhost"
 	}

@@ -741,6 +741,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	//nolint:dupl
 	DescribeTable("should not rollout VLSingle changes", func(operatorVersion string, mod func(*vmv1.VLSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 
 		cr := &vmv1.VLSingle{
 			ObjectMeta: metav1.ObjectMeta{
@@ -761,6 +762,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		if mod != nil {
 			mod(cr)
 		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 
 		By("waiting for VLSingle to become operational")
 		nsn := types.NamespacedName{Name: vlsingleName, Namespace: namespace}
@@ -804,6 +806,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	//nolint:dupl
 	DescribeTable("should not rollout VLCluster changes", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 
 		cr := &vmv1.VLCluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -846,6 +849,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		if mod != nil {
 			mod(cr)
 		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 
 		By("waiting for VLCluster to become operational")
 		nsn := types.NamespacedName{Name: vlclusterName, Namespace: namespace}

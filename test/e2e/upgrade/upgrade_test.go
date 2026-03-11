@@ -582,6 +582,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		PEntry("from v0.68.2 with loopback override", "v0.68.2", func(cr *vmv1beta1.VMCluster) {
+			// os.Setenv("VM_LOOPBACK", "localhost")
+			cr.Spec.VMSelect.ExtraArgs = map[string]string{
+				"httpListenAddr": "127.0.0.1:8481",
+			}
+			cr.Spec.VMInsert.ExtraArgs = map[string]string{
+				"httpListenAddr": "127.0.0.1:8480",
+			}
+			cr.Spec.VMStorage.ExtraArgs = map[string]string{
+				"httpListenAddr": "127.0.0.1:8482",
+			}
+		}),
 	)
 
 	//nolint:dupl

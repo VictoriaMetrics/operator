@@ -449,11 +449,11 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonAppsParams, cp *commonPar
 		} else {
 			common.Image.Tag = appDefaults.Version
 		}
-		if cp != nil && cp.license.IsProvided() {
-			common.Image.Tag = addEntSuffixToTag(common.Image.Tag)
-		}
 	}
 	if cp != nil {
+		if cp.license.IsProvided() {
+			common.Image.Tag = addEntSuffixToTag(common.Image.Tag)
+		}
 		common.ImagePullSecrets = append(common.ImagePullSecrets, cp.imagePullSecrets...)
 		if cp.useStrictSecurity != nil {
 			useStrictSecurity = *cp.useStrictSecurity

@@ -47,7 +47,7 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 				Key: ptr.To("license-key-value"),
 			},
 		},
-		wantVersion: "v1.120.0",
+		wantVersion: "v1.120.0-enterprise",
 	})
 	f(opts{
 		specVersion: "v1.120.0",
@@ -56,7 +56,7 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 				Key: ptr.To("license-key-value"),
 			},
 		},
-		wantVersion: "v1.120.0",
+		wantVersion: "v1.120.0-enterprise",
 	})
 	f(opts{
 		specVersion: "v1.120.0-enterprise",

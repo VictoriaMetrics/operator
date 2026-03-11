@@ -892,7 +892,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return "insert:\n" + diff
 			}
 
-			diff = verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec)
+			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
 			if diff != "" {
 				return "select:\n" + diff
 			}

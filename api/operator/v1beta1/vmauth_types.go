@@ -24,6 +24,11 @@ var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 type VMAuthSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty" yaml:"podMetadata,omitempty"`

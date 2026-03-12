@@ -214,6 +214,10 @@ func (cr *VTClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 
 // VTInsert defines vtinsert component configuration at victoria-traces cluster
 type VTInsert struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VTInsert pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VTInsert to be configured with.
@@ -309,6 +313,10 @@ type VTStorageNode struct {
 
 // VTSelect defines vtselect component configuration at victoria-traces cluster
 type VTSelect struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VTSelect pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VTSelect to be configured with.
@@ -401,6 +409,10 @@ func (*VTSelect) ProbeNeedLiveness() bool {
 
 // VTStorage defines vtstorage component configuration at victoria-traces cluster
 type VTStorage struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// RetentionPeriod for the stored traces
 	// https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
 	// +optional

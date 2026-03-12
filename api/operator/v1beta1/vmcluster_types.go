@@ -258,6 +258,10 @@ func init() {
 
 // VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 type VMSelect struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMSelect to be configured with.
@@ -335,6 +339,10 @@ type InsertPorts struct {
 }
 
 type VMInsert struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMInsert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMInsert to be configured with.
@@ -403,6 +411,10 @@ func (*VMInsert) ProbeNeedLiveness() bool {
 }
 
 type VMStorage struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMStorage to be configured with.
@@ -955,6 +967,10 @@ type VMAuthLoadBalancer struct {
 // VMAuthLoadBalancerSpec defines configuration spec for VMAuth used as load-balancer
 // for VMCluster component
 type VMAuthLoadBalancerSpec struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// Common params for scheduling
 	// PodMetadata configures Labels and Annotations which are propagated to the vmauth lb pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`

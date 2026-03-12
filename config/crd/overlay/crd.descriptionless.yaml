@@ -207,6 +207,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -1255,6 +1257,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -1811,6 +1815,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -2303,6 +2309,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -3350,6 +3358,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -4348,6 +4358,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -9353,6 +9365,8 @@ spec:
                 type: string
               clusterDomainName:
                 type: string
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -10475,6 +10489,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -11708,6 +11724,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -12901,6 +12919,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -14695,6 +14715,8 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   clusterNativeListenPort:
                     type: string
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -15191,6 +15213,8 @@ spec:
                       type: object
                     type: array
                   clusterNativeListenPort:
+                    type: string
+                  componentVersion:
                     type: string
                   configMaps:
                     items:
@@ -15863,6 +15887,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -17517,6 +17543,8 @@ spec:
                                 x-kubernetes-list-type: atomic
                             type: object
                         type: object
+                      componentVersion:
+                        type: string
                       configMaps:
                         items:
                           type: string
@@ -35150,6 +35178,8 @@ spec:
                   deny:
                     type: boolean
                 type: object
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -38134,6 +38164,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -38637,6 +38669,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -39131,6 +39165,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -40084,6 +40120,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string

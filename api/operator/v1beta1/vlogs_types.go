@@ -89,6 +89,11 @@ type VLogsSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 }
 
 // VLogsStatus defines the observed state of VLogs

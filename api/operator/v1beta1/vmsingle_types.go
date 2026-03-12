@@ -89,6 +89,11 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
+
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
 	CommonConfigReloaderParams `json:",inline,omitempty"`

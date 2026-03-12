@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
 var (
@@ -31,4 +32,8 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	By("tearing down the upgrade test environment")
 	suite.ShutdownTestEnv()
+})
+
+var _ = ReportAfterSuite("allure report", func(report Report) {
+	_ = allure.FromGinkgoReport(report)
 })

@@ -37719,6 +37719,41 @@ spec:
                       type: string
                     type: array
                 type: object
+              jwt:
+                properties:
+                  matchClaims:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  oidc:
+                    properties:
+                      issuer:
+                        type: string
+                    required:
+                    - issuer
+                    type: object
+                  publicKeyRefs:
+                    items:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    type: array
+                  publicKeys:
+                    items:
+                      type: string
+                    type: array
+                  skipVerify:
+                    type: boolean
+                type: object
               load_balancing_policy:
                 enum:
                 - least_loaded

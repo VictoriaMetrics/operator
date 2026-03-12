@@ -17,7 +17,9 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
-* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMAgents into a single write backend
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMAgents into a single write backend.
+
+* SECURITY: upgrade Go builder from Go1.25.7 to Go1.25.8. See [the list of issues addressed in Go1.25.8](https://github.com/golang/go/issues?q=milestone%3AGo1.25.8+label%3ACherryPickApproved).
 
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
 **Release date:** 04 March 2026

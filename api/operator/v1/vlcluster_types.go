@@ -41,11 +41,6 @@ type VLClusterSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// ComponentVersion defines default images tag for all components.
-	// it can be overwritten with component specific image.tag value.
-	// +optional
-	ComponentVersion string `json:"componentVersion,omitempty"`
-
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -224,6 +219,10 @@ func (cr *VLClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 
 // VLInsert defines vlinsert component configuration at victoria-logs cluster
 type VLInsert struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSelect pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VLSelect to be configured with.
@@ -407,6 +406,10 @@ type VLStorageNode struct {
 
 // VLSelect defines vlselect component configuration at victoria-logs cluster
 type VLSelect struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSelect pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VLSelect to be configured with.
@@ -499,6 +502,10 @@ func (*VLSelect) ProbeNeedLiveness() bool {
 
 // VLStorage defines vlstorage component configuration at victoria-logs cluster
 type VLStorage struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// RetentionPeriod for the stored logs
 	// https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
@@ -684,9 +691,6 @@ func (cr *VLCluster) AsOwner() metav1.OwnerReference {
 func (cr *VLCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
-	}
-	if cr.Spec.ClusterVersion != "" && cr.Spec.ComponentVersion != "" {
-		return fmt.Errorf("spec.clusterVersion and spec.componentVersion cannot be used together")
 	}
 	if cr.Spec.VLSelect != nil {
 		vms := cr.Spec.VLSelect

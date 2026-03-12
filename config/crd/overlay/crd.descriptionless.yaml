@@ -1192,8 +1192,6 @@ spec:
                 type: string
               clusterVersion:
                 type: string
-              componentVersion:
-                type: string
               imagePullSecrets:
                 items:
                   properties:
@@ -1259,6 +1257,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -1815,6 +1815,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -2307,6 +2309,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -14638,8 +14642,6 @@ spec:
                 type: string
               clusterVersion:
                 type: string
-              componentVersion:
-                type: string
               imagePullSecrets:
                 items:
                   properties:
@@ -14712,6 +14714,8 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   clusterNativeListenPort:
+                    type: string
+                  componentVersion:
                     type: string
                   configMaps:
                     items:
@@ -15209,6 +15213,8 @@ spec:
                       type: object
                     type: array
                   clusterNativeListenPort:
+                    type: string
+                  componentVersion:
                     type: string
                   configMaps:
                     items:
@@ -15881,6 +15887,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -38142,8 +38150,6 @@ spec:
                 type: string
               clusterVersion:
                 type: string
-              componentVersion:
-                type: string
               imagePullSecrets:
                 items:
                   properties:
@@ -38158,6 +38164,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -38661,6 +38669,8 @@ spec:
                   affinity:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string
@@ -39155,6 +39165,8 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     type: array
+                  componentVersion:
+                    type: string
                   configMaps:
                     items:
                       type: string

@@ -406,7 +406,7 @@ func addVMClusterDefaults(objI any) {
 	}
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
+		tag:               cr.Spec.ClusterVersion,
 		license:           cr.Spec.License,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -421,7 +421,9 @@ func addVMClusterDefaults(objI any) {
 			cr.Spec.VMStorage.VMSelectPort = c.VMCluster.Storage.VMSelectPort
 		}
 		cv := config.ApplicationDefaults(c.VMCluster.Storage.Common)
-		addDefaultsToCommonParams(&cr.Spec.VMStorage.CommonAppsParams, &cp, &cv)
+		cpStorage := cp
+		cpStorage.tag = setTag(cr.Spec.VMStorage.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VMStorage.CommonAppsParams, &cpStorage, &cv)
 
 		bv := config.ApplicationDefaults(c.VMBackup)
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
@@ -432,17 +434,23 @@ func addVMClusterDefaults(objI any) {
 	}
 	if cr.Spec.VMInsert != nil {
 		cv := config.ApplicationDefaults(c.VMCluster.Insert)
-		addDefaultsToCommonParams(&cr.Spec.VMInsert.CommonAppsParams, &cp, &cv)
+		cpInsert := cp
+		cpInsert.tag = setTag(cr.Spec.VMInsert.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VMInsert.CommonAppsParams, &cpInsert, &cv)
 	}
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.CacheMountPath == "" {
 			cr.Spec.VMSelect.CacheMountPath = "/cache"
 		}
 		cv := config.ApplicationDefaults(c.VMCluster.Select)
-		addDefaultsToCommonParams(&cr.Spec.VMSelect.CommonAppsParams, &cp, &cv)
+		cpSelect := cp
+		cpSelect.tag = setTag(cr.Spec.VMSelect.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VMSelect.CommonAppsParams, &cpSelect, &cv)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
-		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cp)
+		cpLB := cp
+		cpLB.tag = setTag(cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion, cp.tag)
+		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cpLB)
 	}
 }
 
@@ -557,7 +565,7 @@ func addVTClusterDefaults(objI any) {
 	c := getCfg()
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
+		tag:               cr.Spec.ClusterVersion,
 		license:           nil,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -569,21 +577,29 @@ func addVTClusterDefaults(objI any) {
 			cr.Spec.Storage.StorageDataPath = vtStorageDefaultDBPath
 		}
 		cv := config.ApplicationDefaults(c.VTCluster.Storage)
-		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &cv)
+		cpStorage := cp
+		cpStorage.tag = setTag(cr.Spec.Storage.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cpStorage, &cv)
 	}
 
 	if cr.Spec.Insert != nil {
 		cv := config.ApplicationDefaults(c.VTCluster.Insert)
-		addDefaultsToCommonParams(&cr.Spec.Insert.CommonAppsParams, &cp, &cv)
+		cpInsert := cp
+		cpInsert.tag = setTag(cr.Spec.Insert.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.Insert.CommonAppsParams, &cpInsert, &cv)
 	}
 
 	if cr.Spec.Select != nil {
 		cv := config.ApplicationDefaults(c.VTCluster.Select)
-		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cp, &cv)
+		cpSelect := cp
+		cpSelect.tag = setTag(cr.Spec.Select.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cpSelect, &cv)
 	}
 
 	if cr.Spec.RequestsLoadBalancer.Enabled {
-		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cp)
+		cpLB := cp
+		cpLB.tag = setTag(cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion, cp.tag)
+		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cpLB)
 	}
 }
 
@@ -592,7 +608,7 @@ func addVLClusterDefaults(objI any) {
 	c := getCfg()
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
+		tag:               cr.Spec.ClusterVersion,
 		license:           cr.Spec.License,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -604,18 +620,26 @@ func addVLClusterDefaults(objI any) {
 			cr.Spec.VLStorage.StorageDataPath = vlStorageDefaultDBPath
 		}
 		cv := config.ApplicationDefaults(c.VLCluster.Storage)
-		addDefaultsToCommonParams(&cr.Spec.VLStorage.CommonAppsParams, &cp, &cv)
+		cpStorage := cp
+		cpStorage.tag = setTag(cr.Spec.VLStorage.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VLStorage.CommonAppsParams, &cpStorage, &cv)
 	}
 	if cr.Spec.VLInsert != nil {
 		cv := config.ApplicationDefaults(c.VLCluster.Insert)
-		addDefaultsToCommonParams(&cr.Spec.VLInsert.CommonAppsParams, &cp, &cv)
+		cpInsert := cp
+		cpInsert.tag = setTag(cr.Spec.VLInsert.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VLInsert.CommonAppsParams, &cpInsert, &cv)
 	}
 	if cr.Spec.VLSelect != nil {
 		cv := config.ApplicationDefaults(c.VLCluster.Select)
-		addDefaultsToCommonParams(&cr.Spec.VLSelect.CommonAppsParams, &cp, &cv)
+		cpSelect := cp
+		cpSelect.tag = setTag(cr.Spec.VLSelect.ComponentVersion, cp.tag)
+		addDefaultsToCommonParams(&cr.Spec.VLSelect.CommonAppsParams, &cpSelect, &cv)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
-		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cp)
+		cpLB := cp
+		cpLB.tag = setTag(cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion, cp.tag)
+		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cpLB)
 	}
 }
 

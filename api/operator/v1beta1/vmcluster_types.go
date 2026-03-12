@@ -35,11 +35,6 @@ type VMClusterSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// ComponentVersion defines default images tag for all components.
-	// it can be overwritten with component specific image.tag value.
-	// +optional
-	ComponentVersion string `json:"componentVersion,omitempty"`
-
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -263,6 +258,10 @@ func init() {
 
 // VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 type VMSelect struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMSelect to be configured with.
@@ -340,6 +339,10 @@ type InsertPorts struct {
 }
 
 type VMInsert struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMInsert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMInsert to be configured with.
@@ -408,6 +411,10 @@ func (*VMInsert) ProbeNeedLiveness() bool {
 }
 
 type VMStorage struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMStorage to be configured with.
@@ -626,10 +633,6 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 func (cr *VMCluster) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
-	}
-
-	if cr.Spec.ClusterVersion != "" && cr.Spec.ComponentVersion != "" {
-		return fmt.Errorf("spec.clusterVersion and spec.componentVersion cannot be used together")
 	}
 	if cr.Spec.VMSelect != nil {
 		vms := cr.Spec.VMSelect
@@ -964,6 +967,10 @@ type VMAuthLoadBalancer struct {
 // VMAuthLoadBalancerSpec defines configuration spec for VMAuth used as load-balancer
 // for VMCluster component
 type VMAuthLoadBalancerSpec struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// Common params for scheduling
 	// PodMetadata configures Labels and Annotations which are propagated to the vmauth lb pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`

@@ -200,3 +200,44 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 		wantVersion: "v1.120.0-enterprise-cluster@sha256xxx",
 	})
 }
+
+func TestSetTag(t *testing.T) {
+	type opts struct {
+		componentVersion string
+		clusterVersion   string
+		expected         string
+	}
+	f := func(o opts) {
+		t.Helper()
+		actual := setTag(o.componentVersion, o.clusterVersion)
+		assert.Equal(t, o.expected, actual)
+	}
+
+	// both componentVersion and clusterVersion present
+	f(opts{
+		componentVersion: "v1.1.0",
+		clusterVersion:   "v1.0.0",
+		expected:         "v1.1.0",
+	})
+
+	// only componentVersion present
+	f(opts{
+		componentVersion: "v1.1.0",
+		clusterVersion:   "",
+		expected:         "v1.1.0",
+	})
+
+	// only clusterVersion present
+	f(opts{
+		componentVersion: "",
+		clusterVersion:   "v1.0.0",
+		expected:         "v1.0.0",
+	})
+
+	// none present
+	f(opts{
+		componentVersion: "",
+		clusterVersion:   "",
+		expected:         "",
+	})
+}

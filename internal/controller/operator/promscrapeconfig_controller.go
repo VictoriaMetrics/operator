@@ -27,6 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	converter "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/converter/v1alpha1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -60,21 +61,20 @@ func (r *PromScrapeConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=scrapeconfigs/status,verbs=get;update;patch
 func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("scrapeconfig", req.Name, "namespace", req.Namespace)
-	instance := &promv1alpha1.ScrapeConfig{}
+	var instance promv1alpha1.ScrapeConfig
 	ctx = logger.AddToContext(ctx, l)
 
-	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
-	}()
 	// Fetch the PromScrapeConfig instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "scrapeconfig", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "scrapeconfig", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "scrapeconfig")
-	cr, err := converter.ScrapeConfig(ctx, instance, r.BaseConf)
-	if err != nil {
-		return result, &getError{err, "scrapeconfig", req}
+	RegisterObjectStat(&instance, "scrapeconfig")
+	var cr *vmv1beta1.VMScrapeConfig
+	if cr, err = converter.ScrapeConfig(ctx, &instance, r.BaseConf); err != nil {
+		err = &getError{err, "scrapeconfig", req}
+		return
 	}
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {

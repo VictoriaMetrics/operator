@@ -60,19 +60,17 @@ func (r *PromProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=probes/status,verbs=get;update;patch
 func (r *PromProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("probe", req.Name, "namespace", req.Namespace)
-	instance := &promv1.Probe{}
+	var instance promv1.Probe
 	ctx = logger.AddToContext(ctx, l)
 
-	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
-	}()
 	// Fetch the PromProbe instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "probe", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "probe", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "probe")
-	cr := converter.Probe(ctx, instance, r.BaseConf)
+	RegisterObjectStat(&instance, "probe")
+	cr := converter.Probe(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {
 		owner = &cr.OwnerReferences[0]

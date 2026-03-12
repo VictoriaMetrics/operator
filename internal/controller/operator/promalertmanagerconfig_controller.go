@@ -27,6 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	converter "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/converter/v1alpha1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -60,21 +61,20 @@ func (r *PromAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs/status,verbs=get;update;patch
 func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("alertmanagerconfig", req.Name, "namespace", req.Namespace)
-	instance := &promv1alpha1.AlertmanagerConfig{}
+	var instance promv1alpha1.AlertmanagerConfig
 	ctx = logger.AddToContext(ctx, l)
 
-	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
-	}()
 	// Fetch the PromAlertmanagerConfig instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "alertmanagerconfig", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "alertmanagerconfig", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "alertmanagerconfig")
-	cr, err := converter.AlertmanagerConfig(instance, r.BaseConf)
-	if err != nil {
-		return result, &getError{err, "alertmanagerconfig", req}
+	RegisterObjectStat(&instance, "alertmanagerconfig")
+	var cr *vmv1beta1.VMAlertmanagerConfig
+	if cr, err = converter.AlertmanagerConfig(&instance, r.BaseConf); err != nil {
+		err = &getError{err, "alertmanagerconfig", req}
+		return
 	}
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {

@@ -28,7 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/converter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -61,23 +60,17 @@ func (r *PromRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules/status,verbs=get;update;patch
 func (r *PromRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("prometheusrule", req.Name, "namespace", req.Namespace)
-	if build.IsControllerDisabled("VMAlert") || build.IsControllerDisabled("VMRule") {
-		l.Info("skipping Prometheus Rule reconcile since VMAlert and VMRule controllers are disabled")
-		return
-	}
-	instance := &promv1.PrometheusRule{}
+	var instance promv1.PrometheusRule
 	ctx = logger.AddToContext(ctx, l)
 
-	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
-	}()
 	// Fetch the PrometheusRule instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "prometheusrule", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "prometheusrule", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "prometheusrule")
-	cr := converter.PrometheusRule(ctx, instance, r.BaseConf)
+	RegisterObjectStat(&instance, "prometheusrule")
+	cr := converter.PrometheusRule(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {
 		owner = &cr.OwnerReferences[0]

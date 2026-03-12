@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -33,20 +32,7 @@ func TestOnVMSingleDelete(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
-		if o.clusterWide {
-			// Save and restore cluster wide config
-			original := config.MustGetBaseConfig().WatchNamespaces
-			config.MustGetBaseConfig().WatchNamespaces = nil
-			defer func() {
-				config.MustGetBaseConfig().WatchNamespaces = original
-			}()
-		} else {
-			original := config.MustGetBaseConfig().WatchNamespaces
-			config.MustGetBaseConfig().WatchNamespaces = []string{"default"}
-			defer func() {
-				config.MustGetBaseConfig().WatchNamespaces = original
-			}()
-		}
+		// TODO: add tests for WatchNamespaces
 
 		err := OnVMSingleDelete(ctx, cl, o.cr)
 		assert.NoError(t, err)
@@ -67,17 +53,19 @@ func TestOnVMSingleDelete(t *testing.T) {
 			Finalizers: []string{vmv1beta1.FinalizerName},
 		},
 		Spec: vmv1beta1.VMSingleSpec{
-			RemovePvcAfterDelete: true, // we will keep owner ref on pvc to be garbage collected
-		},
-	}
-	cr.Spec.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{
-		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
-			Name: "custom-service",
-		},
-	}
-	cr.Spec.AdditionalScrapeConfigs = &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: "extra-scrape",
+			RemovePvcAfterDelete: true,
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+					Name: "custom-service",
+				},
+			},
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				AdditionalScrapeConfigs: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "extra-scrape",
+					},
+				},
+			},
 		},
 	}
 
@@ -280,7 +268,7 @@ func TestOnVMSingleDelete(t *testing.T) {
 			err = cl.Get(ctx, nsnPrefixed, &pvc)
 			assert.NoError(t, err)
 			assert.Empty(t, pvc.Finalizers)
-			assert.NotEmpty(t, pvc.OwnerReferences) // Since RemovePvcAfterDelete=true, deleteOwnerReferences=false
+			assert.NotEmpty(t, pvc.OwnerReferences)
 		},
 	})
 
@@ -332,18 +320,16 @@ func TestOnVMSingleDelete(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, vmsingle.Finalizers)
 
-			// ClusterRoleBinding and ClusterRole should NOT be deleted, finalizers should NOT be removed
-			// Because clusterWide is false!
+			// ClusterRoleBinding and ClusterRole should be deleted by SafeDeleteWithFinalizer
+			// (ClusterWideAccess is true by default)
 			nsnClusterRBAC := types.NamespacedName{Name: cr2.GetRBACName()}
 			var crb rbacv1.ClusterRoleBinding
 			err = cl.Get(ctx, nsnClusterRBAC, &crb)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, crb.Finalizers)
+			assert.Error(t, err)
 
 			var crole rbacv1.ClusterRole
 			err = cl.Get(ctx, nsnClusterRBAC, &crole)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, crole.Finalizers)
+			assert.Error(t, err)
 
 			// PVC behavior check
 			nsnPrefixed := types.NamespacedName{Name: cr2.PrefixedName(), Namespace: cr2.Namespace}

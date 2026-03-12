@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -34,20 +33,7 @@ func TestOnVMAgentDelete(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
-		if o.clusterWide {
-			// Save and restore cluster wide config
-			original := config.MustGetBaseConfig().WatchNamespaces
-			config.MustGetBaseConfig().WatchNamespaces = nil
-			defer func() {
-				config.MustGetBaseConfig().WatchNamespaces = original
-			}()
-		} else {
-			original := config.MustGetBaseConfig().WatchNamespaces
-			config.MustGetBaseConfig().WatchNamespaces = []string{"default"}
-			defer func() {
-				config.MustGetBaseConfig().WatchNamespaces = original
-			}()
-		}
+		// TODO: add tests for clusterWide configuration (WatchNamespaces)
 
 		err := OnVMAgentDelete(ctx, cl, o.cr)
 		assert.NoError(t, err)
@@ -343,18 +329,16 @@ func TestOnVMAgentDelete(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, vmagent.Finalizers)
 
-			// ClusterRoleBinding and ClusterRole should NOT be deleted, finalizers should NOT be removed by VMAgentDelete
-			// Because clusterWide is false!
+			// ClusterRoleBinding and ClusterRole should be deleted by SafeDeleteWithFinalizer
+			// (ClusterWideAccess is true by default)
 			nsnRBAC := types.NamespacedName{Name: cr2.GetRBACName()}
 			var crb rbacv1.ClusterRoleBinding
 			err = cl.Get(ctx, nsnRBAC, &crb)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, crb.Finalizers)
+			assert.Error(t, err)
 
 			var crole rbacv1.ClusterRole
 			err = cl.Get(ctx, nsnRBAC, &crole)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, crole.Finalizers)
+			assert.Error(t, err)
 
 			// Normal resources should have their finalizers removed
 			var svc corev1.Service

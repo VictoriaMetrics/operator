@@ -69,10 +69,10 @@ Usage of bin/config-reloader:
     	Whether to disable caches for interned strings. This may reduce memory usage at the cost of higher CPU usage. See https://en.wikipedia.org/wiki/String_interning . See also -internStringCacheExpireDuration and -internStringMaxLen
   -internStringMaxLen int
     	The maximum length for strings to intern. A lower limit may save memory at the cost of higher CPU usage. See https://en.wikipedia.org/wiki/String_interning . See also -internStringDisableCache and -internStringCacheExpireDuration (default 500)
-  -loggerDisableTimestamps
-    	Whether to disable writing timestamps in logs
   -log-format string
     	log format alias to loggerFormat
+  -loggerDisableTimestamps
+    	Whether to disable writing timestamps in logs
   -loggerErrorsPerSecondLimit int
     	Per-second limit on the number of ERROR messages. If more than the given number of errors are emitted per second, the remaining errors are suppressed. Zero values disable the rate limit
   -loggerFormat string

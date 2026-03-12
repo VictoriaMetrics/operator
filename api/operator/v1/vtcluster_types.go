@@ -41,6 +41,11 @@ type VTClusterSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
+
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -589,6 +594,9 @@ func (cr *VTCluster) AsOwner() metav1.OwnerReference {
 func (cr *VTCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
+	}
+	if cr.Spec.ClusterVersion != "" && cr.Spec.ComponentVersion != "" {
+		return fmt.Errorf("spec.clusterVersion and spec.componentVersion cannot be used together")
 	}
 	if cr.Spec.Select != nil {
 		vms := cr.Spec.Select

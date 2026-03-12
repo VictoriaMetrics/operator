@@ -207,6 +207,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -1189,6 +1191,8 @@ spec:
               clusterDomainName:
                 type: string
               clusterVersion:
+                type: string
+              componentVersion:
                 type: string
               imagePullSecrets:
                 items:
@@ -3350,6 +3354,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -4348,6 +4354,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -9353,6 +9361,8 @@ spec:
                 type: string
               clusterDomainName:
                 type: string
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -10475,6 +10485,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -11708,6 +11720,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -12901,6 +12915,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -14621,6 +14637,8 @@ spec:
               clusterDomainName:
                 type: string
               clusterVersion:
+                type: string
+              componentVersion:
                 type: string
               imagePullSecrets:
                 items:
@@ -17517,6 +17535,8 @@ spec:
                                 x-kubernetes-list-type: atomic
                             type: object
                         type: object
+                      componentVersion:
+                        type: string
                       configMaps:
                         items:
                           type: string
@@ -35150,6 +35170,8 @@ spec:
                   deny:
                     type: boolean
                 type: object
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string
@@ -38120,6 +38142,8 @@ spec:
                 type: string
               clusterVersion:
                 type: string
+              componentVersion:
+                type: string
               imagePullSecrets:
                 items:
                   properties:
@@ -40084,6 +40108,8 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              componentVersion:
+                type: string
               configMaps:
                 items:
                   type: string

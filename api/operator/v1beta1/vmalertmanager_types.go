@@ -207,6 +207,11 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
+
 	CommonConfigReloaderParams `json:",inline,omitempty"`
 	CommonAppsParams           `json:",inline,omitempty"`
 }

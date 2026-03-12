@@ -35,6 +35,11 @@ type VMClusterSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
+
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -621,6 +626,10 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 func (cr *VMCluster) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
+	}
+
+	if cr.Spec.ClusterVersion != "" && cr.Spec.ComponentVersion != "" {
+		return fmt.Errorf("spec.clusterVersion and spec.componentVersion cannot be used together")
 	}
 	if cr.Spec.VMSelect != nil {
 		vms := cr.Spec.VMSelect

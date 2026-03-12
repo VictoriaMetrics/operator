@@ -227,6 +227,7 @@ func addVMAuthDefaults(objI any) {
 	}
 	cv := config.ApplicationDefaults(c.VMAuth)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -239,6 +240,7 @@ func addVMAlertDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAlert)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -254,6 +256,7 @@ func addVMAgentDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VMAgent)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -269,6 +272,7 @@ func addVLAgentDefaults(objI any) {
 
 	cv := config.ApplicationDefaults(c.VLAgent)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -279,6 +283,7 @@ func addVMSingleDefaults(objI any) {
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VMSingle)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -298,7 +303,8 @@ func addVLogsDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VLogs)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLogs)
-	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, nil, &cv)
+	cp := commonParams{tag: cr.Spec.ComponentVersion}
+	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 }
 
 func addVMAnomalyDefaults(objI any) {
@@ -322,6 +328,7 @@ func addVMAnomalyDefaults(objI any) {
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VMAnomaly)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -339,6 +346,7 @@ func addVLSingleDefaults(objI any) {
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VLSingle)
 	cp := commonParams{
+		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -348,7 +356,8 @@ func addVTSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VTSingle)
 	c := getCfg()
 	cv := config.ApplicationDefaults(c.VTSingle)
-	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, nil, &cv)
+	cp := commonParams{tag: cr.Spec.ComponentVersion}
+	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 }
 
 func addVMAlertmanagerDefaults(objI any) {
@@ -364,7 +373,8 @@ func addVMAlertmanagerDefaults(objI any) {
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = "web"
 	}
-	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, nil, &cv)
+	cp := commonParams{tag: cr.Spec.ComponentVersion}
+	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
 }
 
@@ -396,7 +406,7 @@ func addVMClusterDefaults(objI any) {
 	}
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               cr.Spec.ClusterVersion,
+		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
 		license:           cr.Spec.License,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -547,7 +557,7 @@ func addVTClusterDefaults(objI any) {
 	c := getCfg()
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               cr.Spec.ClusterVersion,
+		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
 		license:           nil,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -582,7 +592,7 @@ func addVLClusterDefaults(objI any) {
 	c := getCfg()
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
-		tag:               cr.Spec.ClusterVersion,
+		tag:               setTag(cr.Spec.ComponentVersion, cr.Spec.ClusterVersion),
 		license:           cr.Spec.License,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
@@ -630,4 +640,12 @@ func addEntSuffixToTag(versionTag string) string {
 	}
 
 	return versionTag
+}
+
+// setTag sets the tag if componentVersion or clusterVersion is not empty.
+func setTag(componentVersion, clusterVersion string) string {
+	if componentVersion != "" {
+		return componentVersion
+	}
+	return clusterVersion
 }

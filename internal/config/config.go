@@ -557,12 +557,18 @@ type BaseOperatorConf struct {
 	} `prefix:"VM_VTCLUSTERDEFAULT_"`
 
 	EnabledPrometheusConverter struct {
-		PodMonitor         bool `default:"true" env:"PODMONITOR"`
-		ServiceMonitor     bool `default:"true" env:"SERVICESCRAPE"`
-		PrometheusRule     bool `default:"true" env:"PROMETHEUSRULE"`
-		Probe              bool `default:"true" env:"PROBE"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=PodMonitor instead
+		PodMonitor bool `default:"true" env:"PODMONITOR"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=ServiceMonitor instead
+		ServiceMonitor bool `default:"true" env:"SERVICESCRAPE"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=PrometheusRule instead
+		PrometheusRule bool `default:"true" env:"PROMETHEUSRULE"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=Probe instead
+		Probe bool `default:"true" env:"PROBE"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=AlertmanagerConfig instead
 		AlertmanagerConfig bool `default:"true" env:"ALERTMANAGERCONFIG"`
-		ScrapeConfig       bool `default:"true" env:"SCRAPECONFIG"`
+		// Deprecated: use command-line flag with value -controller.disableReconcileFor=ScrapeConfig instead
+		ScrapeConfig bool `default:"true" env:"SCRAPECONFIG"`
 	} `prefix:"VM_ENABLEDPROMETHEUSCONVERTER_"`
 	// adds compare-options and sync-options for prometheus objects converted by operator.
 	// It helps to properly use converter with ArgoCD

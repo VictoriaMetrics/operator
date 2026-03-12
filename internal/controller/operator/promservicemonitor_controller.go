@@ -60,19 +60,17 @@ func (r *PromServiceMonitorReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors/status,verbs=get;update;patch
 func (r *PromServiceMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("servicemonitor", req.Name, "namespace", req.Namespace)
-	instance := &promv1.ServiceMonitor{}
+	var instance promv1.ServiceMonitor
 	ctx = logger.AddToContext(ctx, l)
 
-	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
-	}()
 	// Fetch the PromServiceMonitor instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "servicemonitor", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "servicemonitor", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "servicemonitor")
-	cr := converter.ServiceMonitor(ctx, instance, r.BaseConf)
+	RegisterObjectStat(&instance, "servicemonitor")
+	cr := converter.ServiceMonitor(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {
 		owner = &cr.OwnerReferences[0]

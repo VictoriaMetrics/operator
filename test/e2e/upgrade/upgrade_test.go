@@ -87,11 +87,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, deploymentNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
+		// Moving this to Pending as it runs with old config-reloader by default
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.65.0", "v0.65.0", nil),
 		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		Entry("from v0.66.1", "v0.66.1", nil),
+		PEntry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -159,11 +160,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, expectedDaemonsetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
+		// Moving this to Pending as it runs with old config-reloader by default
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.65.0", "v0.65.0", nil),
 		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		Entry("from v0.66.1", "v0.66.1", nil),
+		PEntry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -231,6 +233,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
+		// Moving this to Pending as it runs with old config-reloader by default
 		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
 		PEntry("from v0.65.0", "v0.65.0", nil),

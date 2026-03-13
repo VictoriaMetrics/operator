@@ -548,8 +548,8 @@ type VMAuthStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAuthStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAuth) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAuth is the Schema for the vmauths API

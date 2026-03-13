@@ -397,8 +397,8 @@ func (cr *VMDistributed) DefaultStatusFields(vs *VMDistributedStatus) {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMDistributedStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMDistributed) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

@@ -59,33 +59,33 @@ func (r *VLSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runt
 func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vlsingle", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1.VLSingle{}
+	var instance vmv1.VLSingle
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vlsingle", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vlsingle", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vlsingle")
+	RegisterObjectStat(&instance, "vlsingle")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVLSingleDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVLSingleDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vlsingle"}
+		err = &parsingError{instance.Spec.ParsingError, "vlsingle"}
+		return
 	}
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vlsingle.CreateOrUpdate(ctx, r, instance); err != nil {
+		if err := vlsingle.CreateOrUpdate(ctx, r, &instance); err != nil {
 			return result, fmt.Errorf("failed create or update vlsingle: %w", err)
 		}
 		return result, nil

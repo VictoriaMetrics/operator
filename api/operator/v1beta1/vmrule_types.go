@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -25,6 +26,8 @@ var initVMAlertTemplatesOnce sync.Once
 type VMRuleSpec struct {
 	// Groups list of group rules
 	Groups []RuleGroup `json:"groups"`
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 }
 
 // RuleGroup is a list of sequentially evaluated recording and alerting rules.
@@ -138,6 +141,14 @@ func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMRule) GetStatus() *VMRuleStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMRule) DefaultStatusFields(vs *VMRuleStatus) {}
+
 // AsKey returns unique key for object
 func (cr *VMRule) AsKey(_ bool) string {
 	return fmt.Sprintf("%s-%s.yaml", cr.Namespace, cr.Name)
@@ -228,6 +239,16 @@ type VMRule struct {
 	Spec VMRuleSpec `json:"spec"`
 	// +optional
 	Status VMRuleStatus `json:"status,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (r *VMRule) UnmarshalJSON(src []byte) error {
+	type rcfg VMRule
+	if err := json.Unmarshal(src, (*rcfg)(r)); err != nil {
+		r.Spec.ParsingError = fmt.Sprintf("cannot parse vmrule config: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

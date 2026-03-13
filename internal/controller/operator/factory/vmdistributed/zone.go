@@ -295,7 +295,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
-		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
+		err := wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			var metricValues map[string]float64
 			if metricValues, err = fetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "path"); err != nil {
@@ -321,17 +321,22 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 			logger.WithContext(ctx).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
 			return true, nil
 		})
+		// If the poll was canceled, return the cause along with the error.
+		if err != nil && errors.Is(err, context.Canceled) {
+			return errors.Join(err, context.Cause(pctx))
+		}
+		return err
 	}
 
 	var wg sync.WaitGroup
 	var resultErr error
 	var once sync.Once
-	gctx, gcancel := context.WithCancel(ctx)
-	defer gcancel()
+	gctx, gcancel := context.WithCancelCause(ctx)
+	defer gcancel(&ErrVMAgent{msg: "all VMAgent instances processed"})
 	cancel := func(err error) {
 		once.Do(func() {
 			resultErr = err
-			gcancel()
+			gcancel(&ErrVMAgent{msg: "failed to process VMAgent instance", err: err})
 		})
 	}
 
@@ -356,7 +361,8 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					pctx := m.add(addr)
 					wg.Go(func() {
 						if err := pollMetrics(pctx, nsn, addr); err != nil {
-							if !errors.Is(err, context.Canceled) {
+							var ez *ErrZone
+							if !errors.Is(err, context.Canceled) || errors.As(err, &ez) {
 								cancel(err)
 								return
 							}
@@ -381,18 +387,18 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 }
 
 func newManager(ctx context.Context) *manager {
-	actx, acancel := context.WithCancel(ctx)
+	actx, acancel := context.WithCancelCause(ctx)
 	return &manager{
 		ctx:     actx,
 		cancel:  acancel,
-		cancels: make(map[string]context.CancelFunc),
+		cancels: make(map[string]context.CancelCauseFunc),
 	}
 }
 
 type manager struct {
 	ctx     context.Context
-	cancel  context.CancelFunc
-	cancels map[string]context.CancelFunc
+	cancel  context.CancelCauseFunc
+	cancels map[string]context.CancelCauseFunc
 	mu      sync.Mutex
 }
 
@@ -401,9 +407,9 @@ func (m *manager) add(id string) context.Context {
 	defer m.mu.Unlock()
 	cancel, ok := m.cancels[id]
 	if ok && cancel != nil {
-		cancel()
+		cancel(&ErrZone{Err: "failed to process zone", ZoneId: id})
 	}
-	pctx, pcancel := context.WithCancel(m.ctx)
+	pctx, pcancel := context.WithCancelCause(m.ctx)
 	m.cancels[id] = pcancel
 	return pctx
 }
@@ -413,7 +419,7 @@ func (m *manager) stop(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel()
+			cancel(&ErrZone{Err: "stopping zone process", ZoneId: id})
 			m.cancels[id] = nil
 		}
 	}
@@ -432,7 +438,7 @@ func (m *manager) delete(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel()
+			cancel(&ErrZone{Err: "deleting zone process", ZoneId: id})
 		}
 		delete(m.cancels, id)
 	}
@@ -448,7 +454,7 @@ func (m *manager) cancelIfNeeded() {
 			return
 		}
 	}
-	m.cancel()
+	m.cancel(&ErrZone{Err: "all zone processes stopped"})
 }
 
 func (m *manager) ids() []string {
@@ -459,4 +465,32 @@ func (m *manager) ids() []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+type ErrVMAgent struct {
+	msg string
+	err error
+}
+
+func (e *ErrVMAgent) Error() string {
+	if e.err != nil {
+		return fmt.Sprintf("%s: %v", e.msg, e.err)
+	}
+	return e.msg
+}
+
+func (e *ErrVMAgent) Unwrap() error {
+	return e.err
+}
+
+type ErrZone struct {
+	Err    string
+	ZoneId string
+}
+
+func (e *ErrZone) Error() string {
+	if e.ZoneId != "" {
+		return fmt.Sprintf("%s %s", e.Err, e.ZoneId)
+	}
+	return e.Err
 }

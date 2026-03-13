@@ -88,7 +88,7 @@ func main() {
 	}
 	buildinfo.Init()
 	logger.Init()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	_, err := url.Parse(*reloadURL)
 	if err != nil {
 		logger.Fatalf("incorrect value for reload-url=%q: %s", *reloadURL, err)
@@ -107,7 +107,7 @@ func main() {
 			logger.Fatalf("failed to init config: %v", err)
 		}
 		logger.Infof("config initiation succeed, exit now")
-		cancel()
+		cancel(fmt.Errorf("config initiation succeed, exiting"))
 		configWatcher.close()
 		return
 	}
@@ -133,7 +133,7 @@ func main() {
 	go httpserver.Serve([]string{*listenAddr}, requestHandler, httpserver.ServeOptions{})
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
-	cancel()
+	cancel(fmt.Errorf("received stop signal"))
 	watcher.close()
 	configWatcher.close()
 	dw.close()

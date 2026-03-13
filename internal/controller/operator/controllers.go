@@ -28,6 +28,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 )
 
 // BindFlags binds package flags to the given flagSet
@@ -126,6 +127,10 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		var errZone *vmdistributed.ErrZone
+		if errors.As(err, &errZone) {
+			return ctrl.Result{Requeue: true}, nil
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		namespacedName := "unknown"
@@ -197,6 +202,10 @@ func handleReconcileErrWithoutStatus(
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		var errZone *vmdistributed.ErrZone
+		if errors.As(err, &errZone) {
+			return ctrl.Result{Requeue: true}, nil
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		parseObjectErrorsTotal.WithLabelValues(pe.controller, "unknown").Inc()

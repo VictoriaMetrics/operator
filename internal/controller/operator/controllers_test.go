@@ -2,16 +2,20 @@ package operator
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmdistributed"
 )
 
 func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
@@ -312,5 +316,85 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			},
 		},
 		isMatch: true,
+	})
+}
+
+func TestHandleReconcileErrWithoutStatus(t *testing.T) {
+	type opts struct {
+		err        error
+		origin     ctrl.Result
+		wantResult ctrl.Result
+		wantErr    error
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		got, err := handleReconcileErrWithoutStatus(context.Background(), nil, nil, o.origin, o.err)
+		assert.Equal(t, o.wantErr, err)
+		assert.Equal(t, o.wantResult, got)
+	}
+
+	// no error
+	f(opts{
+		err:        nil,
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    nil,
+	})
+
+	// context canceled
+	f(opts{
+		err:        context.Canceled,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    nil,
+	})
+
+	// context canceled with ErrZone
+	f(opts{
+		err:        fmt.Errorf("wrapped: %w", errors.Join(context.Canceled, &vmdistributed.ErrZone{Err: "some error"})),
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{Requeue: true},
+		wantErr:    nil,
+	})
+}
+
+func TestHandleReconcileErr(t *testing.T) {
+	type opts struct {
+		err        error
+		origin     ctrl.Result
+		wantResult ctrl.Result
+		wantErr    error
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		got, err := handleReconcileErr(context.Background(), nil, (*vmv1beta1.VMCluster)(nil), o.origin, o.err)
+		assert.Equal(t, o.wantErr, err)
+		assert.Equal(t, o.wantResult, got)
+	}
+
+	// no error
+	f(opts{
+		err:        nil,
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    nil,
+	})
+
+	// context canceled
+	f(opts{
+		err:        context.Canceled,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    nil,
+	})
+
+	// context canceled with ErrZone
+	f(opts{
+		err:        fmt.Errorf("wrapped: %w", errors.Join(context.Canceled, &vmdistributed.ErrZone{Err: "some error"})),
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{Requeue: true},
+		wantErr:    nil,
 	})
 }

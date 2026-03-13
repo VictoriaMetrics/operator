@@ -1183,9 +1183,6 @@ type HTTPConfig struct {
 	// TLS configuration for the client.
 	// +optional
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
-	// Optional proxy URL.
-	// +optional
-	ProxyURL string `json:"proxyURL,omitempty" yaml:"proxy_url,omitempty"`
 	// Authorization header configuration for the client.
 	// This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
 	// +optional
@@ -1193,6 +1190,29 @@ type HTTPConfig struct {
 	// OAuth2 client credentials used to fetch a token for the targets.
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// +optional
+	ProxyConfig `json:",inline"`
+}
+
+// ProxyConfig defines proxy configs
+type ProxyConfig struct {
+	// ProxyUrl defines the HTTP proxy server to use.
+	// +kubebuilder:validation:Pattern:="^(http|https|socks5)://.+$"
+	// +optional
+	ProxyURL string `json:"proxyURL,omitempty" yaml:"proxy_url,omitempty"`
+	// NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
+	// IP and domain names can contain port numbers.
+	// +optional
+	NoProxy string `json:"noProxy,omitempty" yaml:"no_proxy,omitempty"`
+	// ProxyFromEnvironment defines whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY).
+	// +optional
+	ProxyFromEnvironment bool `json:"proxyFromEnvironment,omitempty" yaml:"proxy_from_environment,omitempty"`
+	// ProxyConnectHeader optionally specifies headers to send to proxies during CONNECT requests.
+	// +optional
+	ProxyConnectHeader map[string][]corev1.SecretKeySelector `json:"proxyConnectHeader,omitempty" yaml:"proxy_connect_header,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaller interface

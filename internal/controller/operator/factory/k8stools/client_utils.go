@@ -188,7 +188,7 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 					return
 				case ev, ok := <-w.ResultChan():
 					if !ok {
-						close(ownss.result)
+						cancel()
 						return
 					}
 					watchEventsTotalByType.WithLabelValues(string(ev.Type), labelValue, crdTypeName).Inc()

@@ -327,11 +327,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var resultErr error
 	var once sync.Once
 	gctx, gcancel := context.WithCancelCause(ctx)
-	defer gcancel(fmt.Errorf("all VMAgent instances processed"))
+	defer gcancel(&ErrVMAgent{msg: "all VMAgent instances processed"})
 	cancel := func(err error) {
 		once.Do(func() {
 			resultErr = err
-			gcancel(fmt.Errorf("failed to process VMAgent instance: %w", err))
+			gcancel(&ErrVMAgent{msg: "failed to process VMAgent instance", err: err})
 		})
 	}
 
@@ -401,7 +401,7 @@ func (m *manager) add(id string) context.Context {
 	defer m.mu.Unlock()
 	cancel, ok := m.cancels[id]
 	if ok && cancel != nil {
-		cancel(fmt.Errorf("failed to process zone %s", id))
+		cancel(&ErrZone{Err: "failed to process zone", ZoneId: id})
 	}
 	pctx, pcancel := context.WithCancelCause(m.ctx)
 	m.cancels[id] = pcancel
@@ -413,7 +413,7 @@ func (m *manager) stop(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel(fmt.Errorf("stopping zone process %s", id))
+			cancel(&ErrZone{Err: "stopping zone process", ZoneId: id})
 			m.cancels[id] = nil
 		}
 	}
@@ -432,7 +432,7 @@ func (m *manager) delete(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel(fmt.Errorf("deleting zone process %s", id))
+			cancel(&ErrZone{Err: "deleting zone process", ZoneId: id})
 		}
 		delete(m.cancels, id)
 	}
@@ -448,7 +448,7 @@ func (m *manager) cancelIfNeeded() {
 			return
 		}
 	}
-	m.cancel(fmt.Errorf("all zone processes stopped"))
+	m.cancel(&ErrZone{Err: "all zone processes stopped"})
 }
 
 func (m *manager) ids() []string {
@@ -459,4 +459,32 @@ func (m *manager) ids() []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+type ErrVMAgent struct {
+	msg string
+	err error
+}
+
+func (e *ErrVMAgent) Error() string {
+	if e.err != nil {
+		return fmt.Sprintf("%s: %v", e.msg, e.err)
+	}
+	return e.msg
+}
+
+func (e *ErrVMAgent) Unwrap() error {
+	return e.err
+}
+
+type ErrZone struct {
+	Err    string
+	ZoneId string
+}
+
+func (e *ErrZone) Error() string {
+	if e.ZoneId != "" {
+		return fmt.Sprintf("%s %s", e.Err, e.ZoneId)
+	}
+	return e.Err
 }

@@ -47,34 +47,34 @@ func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmcluster", request.Name, "namespace", request.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMCluster{}
+	var instance vmv1beta1.VMCluster
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Client.Get(ctx, request.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmcluster", request}
+	if err = r.Client.Get(ctx, request.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmcluster", request}
+		return
 	}
 
-	RegisterObjectStat(instance, "vmcluster")
+	RegisterObjectStat(&instance, "vmcluster")
 
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnClusterDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
-		return result, nil
+		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
+		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmcluster"}
+		err = &parsingError{instance.Spec.ParsingError, "vmcluster"}
+		return
 	}
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmcluster.CreateOrUpdate(ctx, instance, r.Client); err != nil {
+		if err := vmcluster.CreateOrUpdate(ctx, &instance, r.Client); err != nil {
 			return result, fmt.Errorf("failed create or update vmcluster: %w", err)
 		}
 		return result, nil

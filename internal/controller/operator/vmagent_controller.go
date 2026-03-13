@@ -83,14 +83,15 @@ func (r *VMAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmagent", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMAgent{}
-
+	var instance vmv1beta1.VMAgent
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
+
 	// Fetch the VMAgent instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{origin: err, controller: "vmagent", requestObject: req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{origin: err, controller: "vmagent", requestObject: req}
+		return
 	}
 
 	if !instance.IsUnmanaged(nil) {
@@ -98,25 +99,24 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		defer agentSync.RUnlock()
 	}
 
-	RegisterObjectStat(instance, "vmagent")
+	RegisterObjectStat(&instance, "vmagent")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAgentDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmagent"}
+		err = &parsingError{instance.Spec.ParsingError, "vmagent"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmagent.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vmagent.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, err
 		}
 		return result, nil
@@ -150,17 +150,18 @@ func (*VMAgentReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[stri
 	return false
 }
 
-func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) error {
+func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
 	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.MustThrottleReconcile() {
 		return nil
 	}
 	agentSync.Lock()
 	defer agentSync.Unlock()
 	var objects vmv1beta1.VMAgentList
-	if err := k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMAgentList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
+		err = fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
+		return
 	}
 	for i := range objects.Items {
 		item := &objects.Items[i]
@@ -190,9 +191,10 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 			}
 		}
 
-		if err := vmagent.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); err != nil {
-			continue
+		if configErr := vmagent.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); configErr != nil {
+			l.Error(configErr, "cannot update VMAgent scrape configuration")
+			err = configErr
 		}
 	}
-	return nil
+	return
 }

@@ -175,20 +175,20 @@ type ObjectWithDeepCopyAndStatus[T client.Object, ST StatusWithMetadata[STC], ST
 	client.Object
 	DeepCopy() T
 	GetStatus() ST
+	GetStatusMetadata() *vmv1beta1.StatusMetadata
 	DefaultStatusFields(ST)
 }
 
 // StatusWithMetadata defines
 type StatusWithMetadata[T any] interface {
 	DeepCopy() T
-	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
 
 // UpdateStatus reconcile provided object status with given actualStatus status
 func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ctx context.Context, rclient client.Client, object ObjectWithDeepCopyAndStatus[T, ST, STC], actualStatus vmv1beta1.UpdateStatus, maybeErr error) error {
 	currentStatus := object.GetStatus()
 	prevStatus := currentStatus.DeepCopy()
-	currMeta := currentStatus.GetStatusMetadata()
+	currMeta := object.GetStatusMetadata()
 	newUpdateStatus := actualStatus
 
 	switch actualStatus {

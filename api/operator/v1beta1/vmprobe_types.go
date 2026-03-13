@@ -167,6 +167,14 @@ func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMProbe) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMProbe) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
 // AsKey returns unique key for object
 func (cr *VMProbe) AsKey(_ bool) string {
 	return cr.Namespace + "/" + cr.Name

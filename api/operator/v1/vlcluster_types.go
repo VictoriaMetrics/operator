@@ -213,8 +213,8 @@ type VLClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLCluster) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLInsert defines vlinsert component configuration at victoria-logs cluster

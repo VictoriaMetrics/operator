@@ -189,8 +189,8 @@ type VMAnomalyStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAnomalyStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAnomaly) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAnomaly is the Schema for the vmanomalies API.

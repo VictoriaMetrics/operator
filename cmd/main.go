@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,11 +32,11 @@ var (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	stop := signals.SetupSignalHandler()
 	go func() {
 		<-stop.Done()
-		cancel()
+		cancel(fmt.Errorf("graceful shutdown, exiting"))
 	}()
 
 	err := manager.RunManager(ctx)

@@ -326,12 +326,12 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var wg sync.WaitGroup
 	var resultErr error
 	var once sync.Once
-	gctx, gcancel := context.WithCancel(ctx)
-	defer gcancel()
+	gctx, gcancel := context.WithCancelCause(ctx)
+	defer gcancel(fmt.Errorf("all VMAgent instances processed"))
 	cancel := func(err error) {
 		once.Do(func() {
 			resultErr = err
-			gcancel()
+			gcancel(fmt.Errorf("failed to process VMAgent instance: %w", err))
 		})
 	}
 
@@ -381,18 +381,18 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 }
 
 func newManager(ctx context.Context) *manager {
-	actx, acancel := context.WithCancel(ctx)
+	actx, acancel := context.WithCancelCause(ctx)
 	return &manager{
 		ctx:     actx,
 		cancel:  acancel,
-		cancels: make(map[string]context.CancelFunc),
+		cancels: make(map[string]context.CancelCauseFunc),
 	}
 }
 
 type manager struct {
 	ctx     context.Context
-	cancel  context.CancelFunc
-	cancels map[string]context.CancelFunc
+	cancel  context.CancelCauseFunc
+	cancels map[string]context.CancelCauseFunc
 	mu      sync.Mutex
 }
 
@@ -401,9 +401,9 @@ func (m *manager) add(id string) context.Context {
 	defer m.mu.Unlock()
 	cancel, ok := m.cancels[id]
 	if ok && cancel != nil {
-		cancel()
+		cancel(fmt.Errorf("failed to process zone %s", id))
 	}
-	pctx, pcancel := context.WithCancel(m.ctx)
+	pctx, pcancel := context.WithCancelCause(m.ctx)
 	m.cancels[id] = pcancel
 	return pctx
 }
@@ -413,7 +413,7 @@ func (m *manager) stop(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel()
+			cancel(fmt.Errorf("stopping zone process %s", id))
 			m.cancels[id] = nil
 		}
 	}
@@ -432,7 +432,7 @@ func (m *manager) delete(id string) {
 	defer m.mu.Unlock()
 	if cancel, ok := m.cancels[id]; ok {
 		if cancel != nil {
-			cancel()
+			cancel(fmt.Errorf("deleting zone process %s", id))
 		}
 		delete(m.cancels, id)
 	}
@@ -448,7 +448,7 @@ func (m *manager) cancelIfNeeded() {
 			return
 		}
 	}
-	m.cancel()
+	m.cancel(fmt.Errorf("all zone processes stopped"))
 }
 
 func (m *manager) ids() []string {

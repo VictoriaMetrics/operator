@@ -146,7 +146,7 @@ var (
 type ObjectWatcherForNamespaces struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface
-	cancel         func()
+	cancel         context.CancelCauseFunc
 	wg             sync.WaitGroup
 }
 
@@ -158,7 +158,7 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 	})
 	// all watchers must be gracefully stopped at any child channel close
 	// or at watch.Stop call
-	localCtx, cancel := context.WithCancel(ctx)
+	localCtx, cancel := context.WithCancelCause(ctx)
 
 	ownss := ObjectWatcherForNamespaces{
 		result: make(chan watch.Event),
@@ -169,7 +169,7 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 		dst := PT(new(T))
 		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
 		if err != nil {
-			cancel()
+			cancel(fmt.Errorf("failed to watch namespace %s: %w", ns, err))
 			return err
 		}
 		ownss.wg.Add(1)
@@ -217,7 +217,7 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 
 	go func() {
 		ownss.wg.Wait()
-		cancel()
+		cancel(fmt.Errorf("all watchers stopped"))
 		close(ownss.result)
 	}()
 	return &ownss, nil
@@ -235,6 +235,6 @@ func (ow *ObjectWatcherForNamespaces) Stop() {
 	}
 	// cancel on-going items processing
 	// it must properly release all created resources by watchers
-	ow.cancel()
+	ow.cancel(fmt.Errorf("stop called"))
 	ow.wg.Wait()
 }

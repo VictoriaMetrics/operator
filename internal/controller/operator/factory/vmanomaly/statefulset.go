@@ -206,7 +206,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		err  error
 	}
 	rtCh := make(chan *returnValue)
-	shardCtx, cancel := context.WithCancel(ctx)
+	shardCtx, cancel := context.WithCancelCause(ctx)
 	owner := cr.AsOwner()
 	updateShard := func(num int) {
 		var rv returnValue
@@ -255,12 +255,12 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	go func() {
 		wg.Wait()
 		close(rtCh)
-		cancel()
+		cancel(fmt.Errorf("all shards processed"))
 	}()
 	var errs []error
 	for r := range rtCh {
 		if r.err != nil {
-			cancel()
+			cancel(fmt.Errorf("shard failed: %w", r.err))
 			errs = append(errs, r.err)
 		}
 		if r.name != "" {

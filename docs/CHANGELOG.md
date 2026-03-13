@@ -14,10 +14,13 @@ aliases:
 ## tip
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
-* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases. Note: this change may cause component rollouts when 127.0.0.1 is used as the loopback address. Make sure to set this env var before upgrading.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
-* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMAgents into a single write backend.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): pod recreation isn't lost after triggerring StatefulSet delete.
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com.com/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMAgents into a single write backend.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix finalizer cleanup for VLAgent, VLogs, VMAgent, and VMSingle to target the correct resources.
+* BUGFIX: [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader): `log-format` option supported as fallback for `loggerFormat`. See [#1954](https://github.com/VictoriaMetrics/operator/issues/1954).
 
 * SECURITY: upgrade Go builder from Go1.25.7 to Go1.25.8. See [the list of issues addressed in Go1.25.8](https://github.com/golang/go/issues?q=milestone%3AGo1.25.8+label%3ACherryPickApproved).
 

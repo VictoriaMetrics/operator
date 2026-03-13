@@ -25,14 +25,18 @@ import (
 )
 
 const (
-	dataDataDir         = "/victoria-metrics-data"
+	dataDir             = "/victoria-metrics-data"
 	streamAggrSecretKey = "config.yaml"
 )
+
+func isStorageEmpty(pvc *corev1.PersistentVolumeClaimSpec) bool {
+	return pvc == nil || pvc.Resources.Requests.Storage().IsZero()
+}
 
 func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	newPvc := makePvc(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
+	if prevCR != nil && !isStorageEmpty(prevCR.Spec.Storage) {
 		prevPVC = makePvc(prevCR)
 	}
 	owner := cr.AsOwner()
@@ -84,7 +88,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
@@ -146,7 +150,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
 
-	storagePath := dataDataDir
+	storagePath := dataDir
 	if cr.Spec.StorageDataPath != "" {
 		storagePath = cr.Spec.StorageDataPath
 	}
@@ -176,7 +180,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: cr.PrefixedName(),
 		}

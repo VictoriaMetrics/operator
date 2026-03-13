@@ -343,8 +343,8 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			}
 			var targetRefs []vmv1beta1.TargetRef
-			targetRefs = appendVMAgentTargetRefs(targetRefs, d.zones.vmagents)
-			targetRefs = appendVMClusterTargetRefs(targetRefs, []*vmv1beta1.VMCluster{d.zones.vmclusters[0]})
+			targetRefs = append(targetRefs, vmAgentTargetRef(d.zones.vmagents))
+			targetRefs = append(targetRefs, vmClusterTargetRef([]*vmv1beta1.VMCluster{d.zones.vmclusters[0]}))
 			lb.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
 				TargetRefs: targetRefs,
 			}
@@ -405,27 +405,31 @@ func TestCreateOrUpdate(t *testing.T) {
 			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
-			targetRefs := make([]vmv1beta1.TargetRef, 6)
+			var vmClusterURLs, vmAgentURLs []string
+			for i := range d.zones.vmagents {
+				vmAgentURLs = append(vmAgentURLs, d.zones.vmagents[i].AsURL())
+			}
+			for i := range d.zones.vmclusters {
+				vmClusterURLs = append(vmClusterURLs, d.zones.vmclusters[i].AsURL(vmv1beta1.ClusterComponentSelect))
+			}
+			targetRefs := []vmv1beta1.TargetRef{
+				{
+					Paths: []string{"/insert/.+", "/api/v1/write"},
+					Static: &vmv1beta1.StaticRef{
+						URLs: vmAgentURLs,
+					},
+				},
+				{
+					Paths: []string{"/select/.+", "/admin/tenants"},
+					Static: &vmv1beta1.StaticRef{
+						URLs: vmClusterURLs,
+					},
+				},
+			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
 				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
-				if i < len(d.zones.vmagents) {
-					targetRef.CRD = &vmv1beta1.CRDRef{
-						Name:      d.zones.vmagents[i].Name,
-						Namespace: d.zones.vmagents[i].Namespace,
-						Kind:      "VMAgent",
-					}
-					targetRef.Paths = []string{"/insert/.+", "/api/v1/write"}
-				} else {
-					idx := i - len(d.zones.vmagents)
-					targetRef.CRD = &vmv1beta1.CRDRef{
-						Name:      d.zones.vmclusters[idx].Name,
-						Namespace: d.zones.vmclusters[idx].Namespace,
-						Kind:      "VMCluster/vmselect",
-					}
-					targetRef.Paths = []string{"/select/.+", "/admin/tenants"}
-				}
 			}
 			var got vmv1beta1.VMAuth
 			nsn := types.NamespacedName{
@@ -534,27 +538,31 @@ func TestCreateOrUpdate(t *testing.T) {
 			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
-			targetRefs := make([]vmv1beta1.TargetRef, 6)
+			var vmClusterURLs, vmAgentURLs []string
+			for i := range d.zones.vmagents {
+				vmAgentURLs = append(vmAgentURLs, d.zones.vmagents[i].AsURL())
+			}
+			for i := range d.zones.vmclusters {
+				vmClusterURLs = append(vmClusterURLs, d.zones.vmclusters[i].AsURL(vmv1beta1.ClusterComponentSelect))
+			}
+			targetRefs := []vmv1beta1.TargetRef{
+				{
+					Paths: []string{"/insert/.+", "/api/v1/write"},
+					Static: &vmv1beta1.StaticRef{
+						URLs: vmAgentURLs,
+					},
+				},
+				{
+					Paths: []string{"/select/.+", "/admin/tenants"},
+					Static: &vmv1beta1.StaticRef{
+						URLs: vmClusterURLs,
+					},
+				},
+			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
 				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
-				if i < len(d.zones.vmagents) {
-					targetRef.CRD = &vmv1beta1.CRDRef{
-						Name:      d.zones.vmagents[i].Name,
-						Namespace: d.zones.vmagents[i].Namespace,
-						Kind:      "VMAgent",
-					}
-					targetRef.Paths = []string{"/insert/.+", "/api/v1/write"}
-				} else {
-					idx := i - len(d.zones.vmagents)
-					targetRef.CRD = &vmv1beta1.CRDRef{
-						Name:      d.zones.vmclusters[idx].Name,
-						Namespace: d.zones.vmclusters[idx].Namespace,
-						Kind:      "VMCluster/vmselect",
-					}
-					targetRef.Paths = []string{"/select/.+", "/admin/tenants"}
-				}
 			}
 			var got vmv1beta1.VMAuth
 			nsn := types.NamespacedName{

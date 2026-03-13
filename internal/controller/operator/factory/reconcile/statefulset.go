@@ -19,9 +19,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -71,7 +73,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
-	var mustRecreatePod bool
+	var recreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
 	var prevVCTs []corev1.PersistentVolumeClaim
@@ -84,7 +86,6 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	rclient.Scheme().Default(newObj)
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
-	var recreateSTS func() error
 	removeFinalizer := true
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
@@ -115,14 +116,28 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			spec.Replicas = existingObj.Spec.Replicas
 		}
 
-		var mustRecreateSTS bool
-		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
+		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {
-			recreateSTS = func() error {
-				return removeStatefulSetKeepPods(ctx, rclient, &existingObj, newObj)
+			recreatePod = mustRecreatePod
+			if err := finalize.RemoveFinalizer(ctx, rclient, &existingObj); err != nil {
+				return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn.String(), err)
 			}
-			return nil
+			opts := client.DeleteOptions{
+				PropagationPolicy: ptr.To(metav1.DeletePropagationOrphan),
+			}
+			if err := rclient.Delete(ctx, &existingObj, &opts); err != nil {
+				return err
+			}
+			return newErrRecreate(ctx, &existingObj)
 		}
+
+		// check if pvcs need to resize
+		if cr.HasClaim {
+			if err := updateSTSPVC(ctx, rclient, &existingObj, prevVCTs); err != nil {
+				return err
+			}
+		}
+
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
@@ -139,27 +154,17 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn.String(), err)
 		}
-		// check if pvcs need to resize
-		if cr.HasClaim {
-			return updateSTSPVC(ctx, rclient, &existingObj, owner)
-		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	if recreateSTS != nil {
-		if err = recreateSTS(); err != nil {
-			return err
-		}
-	}
-
 	// perform manual update only with OnDelete policy, which is default.
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
 		opts := rollingUpdateOpts{
-			recreate:       mustRecreatePod,
+			recreate:       recreatePod,
 			selector:       cr.SelectorLabels(),
 			maxUnavailable: 1,
 		}

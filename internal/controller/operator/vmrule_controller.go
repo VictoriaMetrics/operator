@@ -39,15 +39,13 @@ type VMRuleReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Init implements crdController interface
-func (r *VMRuleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMRuleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, _ *config.BaseOperatorConf) {
 	r.Client = rclient
 	r.Log = l.WithName("controller.VMRule")
 	r.OriginScheme = sc
-	r.BaseConf = cf
 }
 
 // Scheme implements interface.
@@ -82,7 +80,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	alertSync.Lock()
 	defer alertSync.Unlock()
 	var objects vmv1beta1.VMAlertList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertList) {
+	if err := k8stools.ListObjects(ctx, r.Client, func(dst *vmv1beta1.VMAlertList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		return result, fmt.Errorf("cannot list vmalerts for vmrule: %w", err)

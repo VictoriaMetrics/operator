@@ -295,7 +295,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
-		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
+		err := wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			var metricValues map[string]float64
 			if metricValues, err = fetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "path"); err != nil {
@@ -321,6 +321,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 			logger.WithContext(ctx).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
 			return true, nil
 		})
+		// If the poll was canceled, return the cause along with the error.
+		if err != nil && errors.Is(err, context.Canceled) {
+			return errors.Join(err, context.Cause(pctx))
+		}
+		return err
 	}
 
 	var wg sync.WaitGroup
@@ -356,7 +361,8 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					pctx := m.add(addr)
 					wg.Go(func() {
 						if err := pollMetrics(pctx, nsn, addr); err != nil {
-							if !errors.Is(err, context.Canceled) {
+							var ez *ErrZone
+							if !errors.Is(err, context.Canceled) || errors.As(err, &ez) {
 								cancel(err)
 								return
 							}

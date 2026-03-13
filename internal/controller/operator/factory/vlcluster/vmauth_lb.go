@@ -266,7 +266,7 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	if !ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.DisableSelfServiceScrape, false) {
 		svs := buildVMAuthScrape(cr, svc)
 		prevSvs := buildVMAuthScrape(prevCR, prevSvc)
-		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner); err != nil {
+		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
 			return fmt.Errorf("cannot reconcile vmauthlb vmservicescrape: %w", err)
 		}
 	}

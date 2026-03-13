@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: deprecated env variables for Prometheus CRs conversion `VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR`, `VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE`, `VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE`, `VM_ENABLEDPROMETHEUSCONVERTER_PROBE`, `VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG`. Use `-controller.disableReconcileFor` command-line flag with comma-separated list of controller names, that should be disabled.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.137.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.137.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0).
 

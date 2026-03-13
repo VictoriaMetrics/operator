@@ -43,16 +43,12 @@ By default, the vmoperator converts all existing [prometheus-operator](https://g
 API objects into corresponding VictoriaMetrics Operator objects, 
 i.e. creates resources of VictoriaMetrics similar to Prometheus resources in the same namespace.
 
-You can control this behaviour by setting env variable for operator:
-
-```sh
-# disable conversion for each object
-VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
-VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
-VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
-VM_ENABLEDPROMETHEUSCONVERTER_PROBE=false
-VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG=false
-```
+You can control this behaviour by setting `-controller.disableReconcileFor` operator command-line flag with values:
+- `PodMonitor` - disable PodMonitor conversion
+- `ServiceMonitor` - disable ServiceMonitor conversion
+- `PrometheusRule` - disable PrometheusRule conversion
+- `Probe` - disable Probe conversion
+- `ScrapeConfig` - disable ScrapeConfig conversion
 
 For [victoria-metrics-operator helm-chart](https://docs.victoriametrics.com/helm/victoria-metrics-operator/) you can use following way:
 

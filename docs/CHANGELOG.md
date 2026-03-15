@@ -15,6 +15,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.137.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.137.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): use `tcpSocket` probes for the operator deployment instead of `httpGet`, so that probes work correctly with both plain-text and TLS health-probe servers. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
 
 * FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): VMSingle reuses vmagent implementation to allow scraping and relabelling. See [#1694](https://github.com/VictoriaMetrics/operator/issues/1694)
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).

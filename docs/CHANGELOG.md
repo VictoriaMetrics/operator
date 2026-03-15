@@ -25,7 +25,7 @@ aliases:
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend
-* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): fix PVC being owned by StatefulSet and top-level object simultaenously. See [#1845](https://github.com/VictoriaMetrics/operator/issues/1845).
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): fix PVC being owned by StatefulSet and top-level object simultaneously. See [#1845](https://github.com/VictoriaMetrics/operator/issues/1845).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove unneeded finalizer from core K8s resources. See [#835](https://github.com/VictoriaMetrics/operator/issues/835).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): remove finalizers from VMServiceScrape and VMPodScrape objects, and keep finalizers on VMAgent, VMCluster, and VMAuth when DeletionTimestamp is not empty.
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously, ingest-only mode could still mount scrape configuration secrets when relabeling or stream aggregation was configured, which caused unexpected secret mounts and RBAC-related failures; now these secrets are not mounted in ingest-only mode, so deployments start with the expected minimal permissions and avoid related runtime errors. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
@@ -181,7 +181,7 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 
 **It isn't recommended to use Operator  v0.64.0 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.65.0](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
 
-**Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation - 
+**Update Note 1:** This release deprecates 3rd party config-reloader containers - `jimmidyson/configmap-reload` and `quay.io/prometheus-operator/prometheus-config-reloader` in favor of own implementation -
 [victoriametrics/operator:config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader).
 This change could be reverted by providing env variable `VM_USECUSTOMCONFIGRELOADER=false` to the operator binary.
 
@@ -281,7 +281,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `PodDisruptionBudget` at `StatefulSet` updates. See this [1458](https://github.com/VictoriaMetrics/operator/pull/1458) PR for details. Thanks to the @vpedosyuk for the fix.
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): do not add `spec.clusterVersion`  to the `spec.requestsLoadBalancer.spec.image.tag` as default value. See this [1365](https://github.com/VictoriaMetrics/operator/issues/1365) issue for details.
-* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add remoteWrite `streamAggr` configuration. Previously, operator failed to mount volume with configution. Bug was introduced at v0.60.0 release at commit 8df334ccab1706d91c2bd1708dfd9096f8c8a568. See this [9c47f448908edc80e3e6e89af9e3dac0ff8eb720](https://github.com/VictoriaMetrics/operator/commit/9c47f448908edc80e3e6e89af9e3dac0ff8eb720) commit for details.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): properly add remoteWrite `streamAggr` configuration. Previously, operator failed to mount volume with configuration. Bug was introduced at v0.60.0 release at commit 8df334ccab1706d91c2bd1708dfd9096f8c8a568. See this [9c47f448908edc80e3e6e89af9e3dac0ff8eb720](https://github.com/VictoriaMetrics/operator/commit/9c47f448908edc80e3e6e89af9e3dac0ff8eb720) commit for details.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly generate format URL port for `Vlogs` and `VLSingle` at `targetRef.crd`. See [1465](https://github.com/VictoriaMetrics/operator/issues/1465) this issue for details.
 
 * FEATURE: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): added the `maxUnavailable` field to VLStorage specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457).
@@ -385,7 +385,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 **Release date:** 14 May 2025
 
 **Update Note 1:** This release by default deploys`vmagent` which contains a bug, see more details in [VictoriaMetrics#8941](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/8941).
-We recommend skipping this release and waiting for newer release. 
+We recommend skipping this release and waiting for newer release.
 If you still want to upgrade, you can override the vmagent image version by setting the environment variable: `VM_VMAGENTDEFAULT_VERSION=v1.117.1`
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.117.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11170) version
@@ -406,7 +406,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default VLogs  [v1.21.0](https://docs.victoriametrics.com/victorialogs/changelog/#v1210) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default  alertmanager to [0.28.1](https://github.com/prometheus/alertmanager/releases/tag/v0.28.1) version
 
-* FEATURE: [operator](https://docs.victoriametrics.com/operator/): introduce [FIPS](https://go.dev/doc/security/fips140) builds for `operator` and `config-reloader` containers with `-fips` tag prefix. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1348) for details. 
+* FEATURE: [operator](https://docs.victoriametrics.com/operator/): introduce [FIPS](https://go.dev/doc/security/fips140) builds for `operator` and `config-reloader` containers with `-fips` tag prefix. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1348) for details.
 * FEATURE: [operator](https://docs.victoriametrics.com/operator/): introduce new field `spec.configReloadAuthKeySecret` for `VMAgent`, `VMAlert` and `VMAuth` components. It instructs application to use provided value for `-configReload` auth key. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1323) for details.
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): add `msteamsv2_configs` conversion from Prometheus resource AlertmanagerConfig. See [this commit](https://github.com/VictoriaMetrics/operator/commit/5cc7457e9eef325f75d9b1d9633d161230a6e0f7) for details.
 * FEATURE: upgrade Go builder from Go1.24.0 to Go1.24.4 See [Go1.24 release notes](https://tip.golang.org/doc/go1.24).
@@ -511,7 +511,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Properly generate kustomize config for validation webhook. See [this commit](https://github.com/VictoriaMetrics/operator/commit/40e91d66440db52bf1cbfa9cc41f18f4879dbff0).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): reduce request latency for `validation` webhook. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1094) for details.
-* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly validate `targetRef.crd.kind`. Previously it incorrectly forbid `VLogs` reference. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1241) for details. 
+* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): properly validate `targetRef.crd.kind`. Previously it incorrectly forbid `VLogs` reference. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1241) for details.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): reduce CPU and memory usage at large scale. Now operator could skip expensive runtime validation for `VMRule` and `VMAlertmanagerConfig` objects if `-webhook.enable` is set. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1245) for details.
 
 ## [v0.53.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.53.0)

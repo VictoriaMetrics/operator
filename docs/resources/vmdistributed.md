@@ -61,7 +61,7 @@ spec:
       replicaCount: 1
       unauthorizedUserAccessSpec:
         targetRefs:
-          - name: read 
+          - name: read
           - name: write
   zoneCommon:
     vmagent:
@@ -98,7 +98,7 @@ spec:
       replicaCount: 1
       unauthorizedUserAccessSpec:
         targetRefs:
-          - name: read 
+          - name: read
           - name: write
   zoneCommon:
     vmagent:
@@ -166,7 +166,7 @@ VMDistributed creates or becomes an owner of existing VMAuth, VMAgent and VMClus
 - Objects must be referred to by name; label selectors are not supported for cluster selection.
 
 ### Authorization
-By default VMDistributed provides no access to read/write endpoints. Instead it provides preconfigured named backebds `read` and `write`, which can be referenced in `spec.vmauth.spec.unauthorizedUserAccessSpec` section for provide unauthorized access or in VMUser spec for authorized access.
+By default VMDistributed provides no access to read/write endpoints. Instead it provides preconfigured named backends `read` and `write`, which can be referenced in `spec.vmauth.spec.unauthorizedUserAccessSpec` section for provide unauthorized access or in VMUser spec for authorized access.
 
 To provide unauthorized access to the distributed setup need to add `spec.vmauth.spec.unauthorizedUserAccessSpec` section, where `read`, `write` backends should be referenced:
 
@@ -176,7 +176,7 @@ spec:
     spec:
       unauthorizedUserAccessSpec:
         targetRefs:
-          - name: read 
+          - name: read
           - name: write
 ```
 

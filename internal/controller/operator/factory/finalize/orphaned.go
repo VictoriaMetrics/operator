@@ -88,7 +88,7 @@ func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr crObject,
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames, shouldRemove)
 }
 
-// RemoveOrphanedVMServiceScrapes removes VMSeviceScrapes detached from given object
+// RemoveOrphanedVMServiceScrapes removes VMServiceScrapes detached from given object
 func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr crObject, keepNames sets.Set[string], shouldRemove bool) error {
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil

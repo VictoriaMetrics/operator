@@ -334,7 +334,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 					// evict pod to trigger re-creation
 					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
-						// retry distruption interrupt error:
+						// retry disruption interrupt error:
 						// https://github.com/kubernetes/kubernetes/blob/9a50e306361ea936e57fb6eb8c635f971e7bb707/pkg/registry/core/pod/storage/eviction.go#L418
 						if strings.Contains(err.Error(), "Cannot evict pod as it would violate the pod's disruption budget") {
 							return false, nil

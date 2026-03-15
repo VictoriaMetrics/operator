@@ -81,7 +81,7 @@ func getDefaultOptions() controller.Options {
 	return *defaultOptions
 }
 
-// parsingError usually occurs in case of x-preserve-unknow-fields option enable to CRD
+// parsingError usually occurs in case of x-preserve-unknown-fields option enable to CRD
 // in this case k8s api server cannot perform proper validation and it may result in bad user input for some fields
 type parsingError struct {
 	origin     string

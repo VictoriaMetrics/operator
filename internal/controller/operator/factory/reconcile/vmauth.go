@@ -58,7 +58,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 	if err != nil {
 		return err
 	}
-	if err := waitForStatus(ctx, rclient, newObj, vmStatusInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := waitForStatus(ctx, rclient, newObj, vmWaitReadyInterval, vmv1beta1.UpdateStatusOperational); err != nil {
 		return fmt.Errorf("failed to wait for VMAuth=%s to be ready: %w", nsn.String(), err)
 	}
 	return nil

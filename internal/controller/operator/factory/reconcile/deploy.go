@@ -69,7 +69,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	if err != nil {
 		return err
 	}
-	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
+	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyTimeout)
 }
 
 // waitForDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready

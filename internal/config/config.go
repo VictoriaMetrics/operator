@@ -546,13 +546,19 @@ type BaseOperatorConf struct {
 	// Defines deadline for deployment/statefulset
 	// to transit into ready state
 	// to wait for transition to ready state
-	AppReadyTimeout time.Duration `default:"80s" env:"VM_APPREADYTIMEOUT"`
+	AppWaitReadyTimeout time.Duration `default:"80s" env:"VM_APPREADYTIMEOUT"`
+	// Defines poll interval for pods ready check
+	// at statefulset rollout update
+	PodWaitReadyInterval time.Duration `default:"5s" env:"VM_PODWAITREADYINTERVALCHECK"`
 	// Defines single pod deadline
 	// to wait for transition to ready state
 	PodWaitReadyTimeout time.Duration `default:"80s" env:"VM_PODWAITREADYTIMEOUT"`
-	// Defines poll interval for pods ready check
-	// at statefulset rollout update
-	PodWaitReadyIntervalCheck time.Duration `default:"5s" env:"VM_PODWAITREADYINTERVALCHECK"`
+	// Defines poll interval for PVC ready check
+	PVCWaitReadyInterval time.Duration `default:"5s" env:"VM_PVC_WAIT_READY_INTERVAL"`
+	// Defines poll timeout for PVC ready check
+	PVCWaitReadyTimeout time.Duration `default:"80s" env:"VM_PVC_WAIT_READY_TIMEOUT"`
+	// Defines poll interval for VM CRs
+	VMWaitReadyInterval time.Duration `default:"5s" env:"VM_WAIT_READY_INTERVAL"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s" env:"VM_FORCERESYNCINTERVAL"`
 	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator

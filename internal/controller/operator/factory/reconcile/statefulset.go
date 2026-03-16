@@ -43,7 +43,7 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 	if newObj.Spec.Replicas == nil {
 		return nil
 	}
-	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -195,8 +195,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 // if ObservedGeneration matches current generation
 func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS types.NamespacedName) (*appsv1.StatefulSet, error) {
 	var sts appsv1.StatefulSet
-	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck,
-		appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval,
+		appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 			if err := rclient.Get(ctx, targetSTS, &sts); err != nil {
 				return true, err
 			}
@@ -227,7 +227,7 @@ type rollingUpdateOpts struct {
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
 func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
-	time.Sleep(podWaitReadyIntervalCheck)
+	time.Sleep(podWaitReadyInterval)
 	nsn := types.NamespacedName{
 		Name:      obj.Name,
 		Namespace: obj.Namespace,
@@ -316,7 +316,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
 				// eviction may fail due to podDisruption budget and it's unexpected
 				// so retry pod eviction
-				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 					if o.delete {
 						if err := rclient.Delete(ctx, &pod); err != nil {
 							if k8serrors.IsNotFound(err) {
@@ -379,7 +379,7 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
 	var pod corev1.Pod
-	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, nsn, &pod); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil

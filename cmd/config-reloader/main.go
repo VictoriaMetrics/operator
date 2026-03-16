@@ -68,6 +68,8 @@ var (
 		"Optional TLS server name to use for connections to -reload-url.")
 	tlsInsecureSkipVerify = flag.Bool("reload.tlsInsecureSkipVerify", true,
 		"Whether to skip tls verification when connecting to -reload-url")
+	logFormat = flag.String("log-format", "",
+		"log format alias to loggerFormat")
 )
 
 var (
@@ -81,6 +83,9 @@ var (
 
 func main() {
 	envflag.Parse()
+	if *logFormat != "" {
+		_ = flag.Set("loggerFormat", *logFormat)
+	}
 	buildinfo.Init()
 	logger.Init()
 	ctx, cancel := context.WithCancel(context.Background())

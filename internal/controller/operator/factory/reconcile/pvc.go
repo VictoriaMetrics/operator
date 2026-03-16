@@ -6,8 +6,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -20,24 +22,62 @@ import (
 // in case of deletion timestamp > 0 does nothing
 // user must manually remove finalizer if needed
 func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
-	l := logger.WithContext(ctx)
-	var existingObj corev1.PersistentVolumeClaim
 	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
-	if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
-		if k8serrors.IsNotFound(err) {
-			l.Info(fmt.Sprintf("creating new PVC=%s", nsn.String()))
-			if err := rclient.Create(ctx, newObj); err != nil {
-				return fmt.Errorf("cannot create new PVC=%s: %w", nsn.String(), err)
+	var existingObj corev1.PersistentVolumeClaim
+	err := retryOnConflict(func() error {
+		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.WithContext(ctx).Info(fmt.Sprintf("creating new PVC=%s", nsn.String()))
+				return rclient.Create(ctx, newObj)
 			}
+			return fmt.Errorf("cannot get existing PVC=%s: %w", nsn.String(), err)
+		}
+		if !existingObj.DeletionTimestamp.IsZero() {
 			return nil
 		}
-		return fmt.Errorf("cannot get existing PVC=%s: %w", nsn.String(), err)
+		return updatePVC(ctx, rclient, &existingObj, newObj, prevObj, owner)
+	})
+	if err != nil {
+		return err
+	}
+	size := newObj.Spec.Resources.Requests[corev1.ResourceStorage]
+	if !existingObj.CreationTimestamp.IsZero() {
+		size = existingObj.Spec.Resources.Requests[corev1.ResourceStorage]
+	}
+	if err = waitForPVCReady(ctx, rclient, nsn, size); err != nil {
+		return err
 	}
 	if !existingObj.DeletionTimestamp.IsZero() {
-		l.Info(fmt.Sprintf("PVC=%s has non zero DeletionTimestamp, skip update."+
+		logger.WithContext(ctx).Info(fmt.Sprintf("PVC=%s has non zero DeletionTimestamp, skip update."+
 			" To fix this, make backup for this pvc, delete pvc finalizers and restore from backup.", nsn.String()))
-		return nil
 	}
+	return nil
+}
 
-	return updatePVC(ctx, rclient, &existingObj, newObj, prevObj, owner)
+func waitForPVCReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, size resource.Quantity) error {
+	var pvc corev1.PersistentVolumeClaim
+	return wait.PollUntilContextTimeout(ctx, pvcWaitReadyInterval, pvcWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+		if err := rclient.Get(ctx, nsn, &pvc); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, fmt.Errorf("cannot get PVC=%s: %w", nsn.String(), err)
+		}
+		if !pvc.DeletionTimestamp.IsZero() {
+			return true, nil
+		}
+		if len(pvc.Status.Capacity) == 0 {
+			return true, nil
+		}
+		actualSize := pvc.Status.Capacity[corev1.ResourceStorage]
+		if actualSize.Cmp(size) < 0 {
+			return false, nil
+		}
+		for _, condition := range pvc.Status.Conditions {
+			if condition.Type == corev1.PersistentVolumeClaimResizing && condition.Status == corev1.ConditionTrue {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 }

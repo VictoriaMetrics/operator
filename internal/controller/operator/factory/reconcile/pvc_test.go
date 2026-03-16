@@ -38,6 +38,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 				},
 			},
 		}
+		pvc.Status.Capacity = pvc.Spec.Resources.Requests
 		for _, fn := range fns {
 			fn(pvc)
 		}
@@ -47,7 +48,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		synctest.Test(t, func(t *testing.T) {
 			assert.NoError(t, PersistentVolumeClaim(ctx, cl, o.new, o.prev, nil))
 			assert.Equal(t, o.actions, cl.Actions)
@@ -62,6 +63,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 			{Verb: "Create", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 
@@ -73,6 +75,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 			getPVC(),
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
@@ -89,6 +92,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 
@@ -106,6 +110,7 @@ func TestPersistentVolumeClaimReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: nn},
 		},
 	})
 }

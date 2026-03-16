@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.68.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.3)
+**Release date:** 16 March 2026
+
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases. Note: this change may cause component rollouts when 127.0.0.1 is used as the loopback address. Make sure to set this env var before upgrading.
 

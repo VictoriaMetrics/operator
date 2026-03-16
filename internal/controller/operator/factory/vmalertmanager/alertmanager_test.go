@@ -190,7 +190,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				}
 			}
 
-			assert.ElementsMatch(t, clusterPeers, []string{
+			assert.Equal(t, clusterPeers, []string{
 				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring:9094",
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring:9094",
@@ -225,7 +225,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				}
 			}
 
-			assert.ElementsMatch(t, clusterPeers, []string{
+			assert.Equal(t, clusterPeers, []string{
 				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring.svc.example.com.:9094",

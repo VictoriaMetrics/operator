@@ -181,7 +181,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			LabelSelector: labels.SelectorFromSet(o.sts.Spec.Selector.MatchLabels),
 		}
 		assert.NoError(t, cl.List(ctx, &pvcs, listOpts))
-		assert.ElementsMatch(t, o.expected, pvcs.Items)
+		assert.Equal(t, o.expected, pvcs.Items)
 	}
 
 	buildSTS := func(fns ...func(*appsv1.StatefulSet)) *appsv1.StatefulSet {

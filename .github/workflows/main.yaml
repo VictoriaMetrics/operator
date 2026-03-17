@@ -109,7 +109,8 @@ jobs:
           # check for uncommited changes to crds, docs or API
           git diff --exit-code
           make test
-          TAG=${TAG} make test-e2e
+          git fetch origin ${{ github.base_ref || 'master' }}
+          BASE_REF=origin/${{ github.base_ref || 'master' }} TAG=${TAG} make test-e2e
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
         if: success() || failure()

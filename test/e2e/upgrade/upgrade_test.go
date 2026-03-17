@@ -236,6 +236,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
@@ -458,7 +459,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
-	FDescribeTable("should not rollout VMAlertmanager changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlertmanager)) {
+	//nolint:dupl
+	DescribeTable("should not rollout VMAlertmanager changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlertmanager)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 

@@ -4637,6 +4637,30 @@ Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmaut
 | allow_list<a href="#vmuseripfilters-allow_list" id="vmuseripfilters-allow_list">#</a><br/>_string array_ | _(Required)_<br/> |
 | deny_list<a href="#vmuseripfilters-deny_list" id="vmuseripfilters-deny_list">#</a><br/>_string array_ | _(Required)_<br/> |
 
+#### VMUserJWT
+
+VMUserJWT defines configuration for JWT
+
+Appears in: [VMUserSpec](#vmuserspec)
+
+| Field | Description |
+| --- | --- |
+| matchClaims<a href="#vmuserjwt-matchclaims" id="vmuserjwt-matchclaims">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>MatchClaims enables claim based routing |
+| oidc<a href="#vmuserjwt-oidc" id="vmuserjwt-oidc">#</a><br/>_[VMUserOIDC](#vmuseroidc)_ | _(Required)_<br/>OIDC defines OIDC configuration section |
+| publicKeyRefs<a href="#vmuserjwt-publickeyrefs" id="vmuserjwt-publickeyrefs">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core) array_ | _(Required)_<br/>PublicKeyRefs defines a list of Secret selectors that reference public keys |
+| publicKeys<a href="#vmuserjwt-publickeys" id="vmuserjwt-publickeys">#</a><br/>_string array_ | _(Required)_<br/>PublicKeys defines a list of public keys that are used for signature verification |
+| skipVerify<a href="#vmuserjwt-skipverify" id="vmuserjwt-skipverify">#</a><br/>_boolean_ | _(Required)_<br/>SkipVerify skips signature verification for testing purposes |
+
+#### VMUserOIDC
+
+VMUserOIDC defines configuration for OIDC
+
+Appears in: [VMUserJWT](#vmuserjwt)
+
+| Field | Description |
+| --- | --- |
+| issuer<a href="#vmuseroidc-issuer" id="vmuseroidc-issuer">#</a><br/>_string_ | _(Required)_<br/>Issuer defines issuer URL for OIDC |
+
 #### VMUserSpec
 
 VMUserSpec defines the desired state of VMUser
@@ -4654,6 +4678,7 @@ Appears in: [VMUser](#vmuser)
 | generatePassword<a href="#vmuserspec-generatepassword" id="vmuserspec-generatepassword">#</a><br/>_boolean_ | _(Optional)_<br/>GeneratePassword instructs operator to generate password for user<br />if spec.password if empty. |
 | headers<a href="#vmuserspec-headers" id="vmuserspec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth |
 | ip_filters<a href="#vmuserspec-ip_filters" id="vmuserspec-ip_filters">#</a><br/>_[VMUserIPFilters](#vmuseripfilters)_ | _(Optional)_<br/>IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters) |
+| jwt<a href="#vmuserspec-jwt" id="vmuserspec-jwt">#</a><br/>_[VMUserJWT](#vmuserjwt)_ | _(Required)_<br/>JWT defines JWT based auth for a user |
 | load_balancing_policy<a href="#vmuserspec-load_balancing_policy" id="vmuserspec-load_balancing_policy">#</a><br/>_string_ | _(Optional)_<br/>LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded") |
 | managedMetadata<a href="#vmuserspec-managedmetadata" id="vmuserspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | max_concurrent_requests<a href="#vmuserspec-max_concurrent_requests" id="vmuserspec-max_concurrent_requests">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth |

@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -12,6 +13,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -1391,4 +1393,67 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
+	Describe("VM_LOOPBACK behavior", func() {
+		It("should handle VM_LOOPBACK env var behaviour", func() {
+			namespace := createRandomNamespace(ctx, k8sClient)
+			deployOldOperator(ctx, k8sClient, "v0.68.2", namespace)
+
+			By("creating VMAgent in " + namespace)
+			cr := &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      vmagentName,
+					Namespace: namespace,
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+						{URL: "http://[::1]:8428/api/v1/write"},
+					},
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmagent",
+							Tag:        "v1.136.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(5)),
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+			By("waiting for VMAgent to become operational")
+			nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
+			Eventually(func() error {
+				return suite.ExpectObjectStatus(ctx, k8sClient,
+					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+			}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+			By("snapshotting child workload specs")
+			resourceNSN := types.NamespacedName{
+				Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+				Namespace: namespace,
+			}
+			expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+
+			By("updating VM_LOOPBACK on the new operator and restarting it")
+			os.Setenv("VM_LOOPBACK", "[::1]")
+			config.MustGetBaseConfig().Loopback = "[::1]"
+			DeferCleanup(func() {
+				os.Unsetenv("VM_LOOPBACK")
+				config.MustGetBaseConfig().Loopback = ""
+			})
+
+			restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+			By("waiting for latest operator to reconcile VMAgent")
+			Eventually(func() error {
+				return suite.ExpectObjectStatus(ctx, k8sClient,
+					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+			}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+			By("verifying workload spec has not changed due to VM_LOOPBACK")
+			Eventually(func() string {
+				return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
+			}, 15*time.Second, 5*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
+		})
+	})
 })

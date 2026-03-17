@@ -137,7 +137,8 @@ func deployOldOperator(ctx context.Context, k8sClient client.Client, version, wa
 					Labels: map[string]string{"app": "vm-operator"},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: "vm-operator",
+					ServiceAccountName:            "vm-operator",
+					TerminationGracePeriodSeconds: ptr.To[int64](1),
 					Containers: []corev1.Container{
 						{
 							Name:  "manager",

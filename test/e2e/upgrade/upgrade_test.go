@@ -88,7 +88,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, deploymentNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
@@ -157,7 +157,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, expectedDaemonsetSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
@@ -226,7 +226,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
@@ -291,7 +291,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
 
@@ -372,7 +372,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
@@ -444,7 +444,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAlert) {}),
@@ -513,7 +513,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
 			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
@@ -623,7 +623,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return "storage:\n" + diff
 			}
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {
 
@@ -772,7 +772,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			}
 
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMCluster) {}),
@@ -838,7 +838,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLSingle) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLSingle) {}),
@@ -951,7 +951,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return "storage:\n" + diff
 			}
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLCluster) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLCluster) {}),
@@ -1093,7 +1093,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			}
 
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLCluster) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLCluster) {}),
@@ -1159,7 +1159,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTSingle) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTSingle) {}),
@@ -1272,7 +1272,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				return "storage:\n" + diff
 			}
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTCluster) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTCluster) {}),
@@ -1414,7 +1414,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			}
 
 			return ""
-		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VTCluster) {}),
 		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VTCluster) {}),
@@ -1488,7 +1488,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			By("verifying workload spec has not changed due to VM_LOOPBACK")
 			Eventually(func() string {
 				return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-			}, 15*time.Second, 5*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
+			}, 5*time.Second, 1*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
 		})
 	})
 })

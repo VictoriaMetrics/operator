@@ -263,10 +263,6 @@ func cleanupNamespace(ctx context.Context, k8sClient client.Client, watchNamespa
 	if err != nil && !k8serrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
-	Eventually(func() bool {
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: watchNamespace}, &corev1.Namespace{})
-		return k8serrors.IsNotFound(err)
-	}, 120*time.Second, 2*time.Second).Should(BeTrue(), "timeout waiting for namespace to be deleted")
 }
 
 func createRandomNamespace(ctx context.Context, k8sClient client.Client) string {

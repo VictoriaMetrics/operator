@@ -36,6 +36,25 @@ var (
 			{TargetLabel: "cluster", Replacement: ptr.To("test")},
 		}
 	}
+	apiServerConfigFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.APIServerConfig = &vmv1beta1.APIServerConfig{
+			Host: "https://kubernetes.default.svc",
+		}
+	}
+	insertPortsFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.InsertPorts = &vmv1beta1.InsertPorts{
+			OpenTSDBPort:     "4242",
+			OpenTSDBHTTPPort: "4243",
+			GraphitePort:     "2003",
+			InfluxPort:       "8089",
+		}
+	}
+	remoteWriteSettingsFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{
+			MaxBlockSize: ptr.To(int32(100)),
+			Queues:       ptr.To(int32(2)),
+		}
+	}
 	inlineScrapeConfigFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.InlineScrapeConfig = "- job_name: \"test-scrape\"\n  static_configs:\n  - targets: [\"localhost:8428\"]"
 	}
@@ -131,6 +150,23 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
+		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
+		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
+		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
+		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
+
+		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
+		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
+		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
+		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
+		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
+
+		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
+		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
+		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
 
 		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
 		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
@@ -218,6 +254,23 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
+		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
+		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
+		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
+		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
+
+		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
+		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
+		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
+		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
+		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
+
+		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
+		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
+		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
 
 		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
 		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
@@ -323,6 +376,23 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
+		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
+		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
+		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
+		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
+
+		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
+		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
+		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
+		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
+		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
+
+		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
+		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
+		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
+		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
 	)
 
 	//nolint:dupl

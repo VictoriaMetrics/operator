@@ -312,6 +312,66 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
+	DescribeTable("should not rollout VMSingle changes (IngestOnlyMode)", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		By("creating VMSingle with IngestOnlyMode in " + namespace)
+		cr := &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmsingleName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-metrics",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMSingle to become operational")
+		nsn := types.NamespacedName{Name: vmsingleName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child Deployment specs")
+		resourceNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmsingle-%s", vmsingleName),
+			Namespace: namespace,
+		}
+
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VMSingle")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying deployment spec remains stable over time")
+		Consistently(func() string {
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.68.3", "v0.68.3", nil),
+	)
+
 	//nolint:dupl
 	DescribeTable("should not rollout VMAuth changes", func(operatorVersion string, mod func(*vmv1beta1.VMAuth)) {
 		namespace := createRandomNamespace(ctx, k8sClient)

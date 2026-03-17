@@ -18,15 +18,16 @@ import (
 )
 
 const (
-	vmagentName   = "test-agent"
-	vmsingleName  = "test-single"
-	vlsingleName  = "test-vlsingle"
-	vlclusterName = "test-vlcluster"
-	vmauthName    = "test-auth"
-	vmalertName   = "test-alert"
-	vmclusterName = "test-cluster"
-	vtsingleName  = "test-vtsingle"
-	vtclusterName = "test-vtcluster"
+	vmagentName        = "test-agent"
+	vmsingleName       = "test-single"
+	vlsingleName       = "test-vlsingle"
+	vlclusterName      = "test-vlcluster"
+	vmauthName         = "test-auth"
+	vmalertName        = "test-alert"
+	vmclusterName      = "test-cluster"
+	vtsingleName       = "test-vtsingle"
+	vtclusterName      = "test-vtcluster"
+	vmalertmanagerName = "test-am"
 )
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
@@ -450,6 +451,71 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.65.0", "v0.65.0", nil),
 		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAlert) {}),
 		Entry("from v0.66.1", "v0.66.1", nil),
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
+	)
+
+	FDescribeTable("should not rollout VMAlertmanager changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlertmanager)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		By("creating VMAlertmanager in " + namespace)
+		cr := &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmalertmanagerName,
+				Namespace: namespace,
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/prometheus/alertmanager",
+						Tag:        "v0.27.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(5)),
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VMAlertmanager to become operational")
+		nsn := types.NamespacedName{Name: vmalertmanagerName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child workload specs")
+		resourceNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmalertmanager-%s", vmalertmanagerName),
+			Namespace: namespace,
+		}
+
+		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VMAlertmanager")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec remains stable over time")
+		Consistently(func() string {
+			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
+		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
+	},
+		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),

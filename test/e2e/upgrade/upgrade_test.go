@@ -31,6 +31,32 @@ const (
 )
 
 var (
+	vmsingleAPIServerConfigFunc = func(cr *vmv1beta1.VMSingle) {
+		cr.Spec.APIServerConfig = &vmv1beta1.APIServerConfig{
+			Host: "https://kubernetes.default.svc",
+		}
+	}
+	vmsingleInsertPortsFunc = func(cr *vmv1beta1.VMSingle) {
+		cr.Spec.InsertPorts = &vmv1beta1.InsertPorts{
+			OpenTSDBPort:     "4242",
+			OpenTSDBHTTPPort: "4243",
+			GraphitePort:     "2003",
+			InfluxPort:       "8089",
+		}
+	}
+	vmsingleIngestOnlyModeWithRelabelingFunc = func(cr *vmv1beta1.VMSingle) {
+		cr.Spec.IngestOnlyMode = ptr.To(true)
+		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
+			{TargetLabel: "cluster", Replacement: ptr.To("test")},
+		}
+	}
+	vmsingleStreamAggrConfigFunc = func(cr *vmv1beta1.VMSingle) {
+		cr.Spec.StreamAggrConfig = &vmv1beta1.StreamAggrConfig{
+			Rules: []vmv1beta1.StreamAggrRule{
+				{Match: vmv1beta1.StringOrArray{`{__name__=~".+"}`}, Interval: "1m", Outputs: []string{"total"}},
+			},
+		}
+	}
 	ingestOnlyModeFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.IngestOnlyMode = ptr.To(true)
 	}
@@ -334,6 +360,30 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", vmsingleAPIServerConfigFunc),
+		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", vmsingleAPIServerConfigFunc),
+		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", vmsingleAPIServerConfigFunc),
+		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", vmsingleAPIServerConfigFunc),
+		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", vmsingleAPIServerConfigFunc),
+
+		Entry("from v0.67.0 with InsertPorts", "v0.67.0", vmsingleInsertPortsFunc),
+		Entry("from v0.68.0 with InsertPorts", "v0.68.0", vmsingleInsertPortsFunc),
+		Entry("from v0.68.1 with InsertPorts", "v0.68.1", vmsingleInsertPortsFunc),
+		Entry("from v0.68.2 with InsertPorts", "v0.68.2", vmsingleInsertPortsFunc),
+		Entry("from v0.68.3 with InsertPorts", "v0.68.3", vmsingleInsertPortsFunc),
+
+		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", vmsingleIngestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", vmsingleIngestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", vmsingleIngestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", vmsingleIngestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", vmsingleIngestOnlyModeWithRelabelingFunc),
+
+		Entry("from v0.67.0 with IngestOnlyMode and StreamAggrConfig", "v0.67.0", vmsingleStreamAggrConfigFunc),
+		Entry("from v0.68.0 with IngestOnlyMode and StreamAggrConfig", "v0.68.0", vmsingleStreamAggrConfigFunc),
+		Entry("from v0.68.1 with IngestOnlyMode and StreamAggrConfig", "v0.68.1", vmsingleStreamAggrConfigFunc),
+		Entry("from v0.68.2 with IngestOnlyMode and StreamAggrConfig", "v0.68.2", vmsingleStreamAggrConfigFunc),
+		Entry("from v0.68.3 with IngestOnlyMode and StreamAggrConfig", "v0.68.3", vmsingleStreamAggrConfigFunc),
 	)
 
 	DescribeTable("should not rollout VMSingle changes (IngestOnlyMode)", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {

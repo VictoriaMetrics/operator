@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"github.com/VictoriaMetrics/operator/internal/controller/operator"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
@@ -31,11 +32,11 @@ var (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	stop := signals.SetupSignalHandler()
 	go func() {
 		<-stop.Done()
-		cancel()
+		cancel(operator.ErrShutdown)
 	}()
 
 	err := manager.RunManager(ctx)

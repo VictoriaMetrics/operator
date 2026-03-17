@@ -60,7 +60,7 @@ type VMAnomalySpec struct {
 	// in this case operator will use 1 sts per shard with
 	// replicas count according to spec.replicas.
 	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
+	ShardCount *int32 `json:"shardCount,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
@@ -306,7 +306,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 	var shardCnt int32
 	if cr.IsSharded() {
-		shardCnt = int32(*cr.Spec.ShardCount)
+		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Shards = shardCnt
 }
@@ -441,7 +441,7 @@ func (cr *VMAnomaly) IsSharded() bool {
 }
 
 // GetShardCount returns shard count for vmanomaly
-func (cr *VMAnomaly) GetShardCount() int {
+func (cr *VMAnomaly) GetShardCount() int32 {
 	if !cr.IsSharded() {
 		return 1
 	}

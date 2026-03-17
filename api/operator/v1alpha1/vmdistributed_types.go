@@ -214,6 +214,10 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// Configures horizontal pod autoscaling.
+	// +optional
+	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+
 	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 

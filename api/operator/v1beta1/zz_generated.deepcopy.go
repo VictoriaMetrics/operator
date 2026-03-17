@@ -4378,7 +4378,7 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 	}
 	if in.ShardCount != nil {
 		in, out := &in.ShardCount, &out.ShardCount
-		*out = new(int)
+		*out = new(int32)
 		**out = **in
 	}
 	if in.UpdateStrategy != nil {
@@ -4416,6 +4416,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 	if in.License != nil {
 		in, out := &in.License, &out.License
 		*out = new(License)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(EmbeddedHPA)
 		(*in).DeepCopyInto(*out)
 	}
 	in.CommonRelabelParams.DeepCopyInto(&out.CommonRelabelParams)

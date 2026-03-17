@@ -168,6 +168,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
+				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentName},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
 				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},

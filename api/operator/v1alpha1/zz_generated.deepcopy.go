@@ -247,6 +247,11 @@ func (in *VMDistributedZoneAgentSpec) DeepCopyInto(out *VMDistributedZoneAgentSp
 		*out = new(v1beta1.License)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(v1beta1.EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonAppsParams.DeepCopyInto(&out.CommonAppsParams)
 }
 

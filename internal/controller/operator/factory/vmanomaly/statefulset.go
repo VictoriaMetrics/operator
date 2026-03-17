@@ -92,7 +92,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name != "vmanomaly" {
@@ -108,11 +108,11 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 		envs = append(envs, []corev1.EnvVar{
 			{
 				Name:  "VMANOMALY_MEMBERS_COUNT",
-				Value: strconv.Itoa(shardCount),
+				Value: strconv.FormatInt(int64(shardCount), 32),
 			},
 			{
 				Name:  "VMANOMALY_MEMBER_NUM",
-				Value: strconv.Itoa(shardNum),
+				Value: strconv.FormatInt(int64(shardNum), 32),
 			},
 		}...)
 		container.Env = envs
@@ -208,7 +208,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
 	owner := cr.AsOwner()
-	updateShard := func(num int) {
+	updateShard := func(num int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -282,7 +282,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return nil
 }
 
-func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int) (*appsv1.StatefulSet, error) {
+func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int32) (*appsv1.StatefulSet, error) {
 	if appTpl == nil || !cr.IsSharded() {
 		return appTpl, nil
 	}

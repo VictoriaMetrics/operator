@@ -12,6 +12,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -147,6 +148,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return err
 	}
 
+	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
+
 	ac := getAssetsCache(ctx, rclient, cr)
 	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
@@ -204,7 +209,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 	owner := cr.AsOwner()
-	updateShard := func(shardNum int) {
+	updateShard := func(shardNum int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -299,6 +304,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: func() map[string]string {
 					return selectorLabels
+				},
+				UpdateReplicaCount: func(count *int32) {
+					if cr.Spec.HPA != nil && count != nil {
+						cr.Spec.ShardCount = count
+					}
 				},
 			}
 			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
@@ -727,7 +737,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}, nil
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name == "vmagent" {
@@ -1173,6 +1183,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.Spec.DaemonSetMode {
 		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
 	}
+	if cr.Spec.HPA == nil {
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
+	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
@@ -1300,4 +1313,26 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	return nil
+}
+
+func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	if cr.Spec.HPA == nil {
+		return nil
+	}
+	kind := "Deployment"
+	if cr.Spec.StatefulMode {
+		kind = "StatefulSet"
+	}
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       kind,
+		APIVersion: "apps/v1",
+	}
+	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.HPA != nil {
+		prevHPA = build.HPA(prevCR, targetRef, prevCR.Spec.HPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }

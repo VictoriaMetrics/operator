@@ -23,9 +23,9 @@ type shardOpts interface {
 }
 
 // ShardNumIter iterates over shardCount in order defined in backward
-func ShardNumIter(backward bool, shardCount int) iter.Seq[int] {
+func ShardNumIter(backward bool, shardCount int32) iter.Seq[int32] {
 	if backward {
-		return func(yield func(int) bool) {
+		return func(yield func(int32) bool) {
 			for shardCount > 0 {
 				shardCount--
 				num := shardCount
@@ -35,8 +35,8 @@ func ShardNumIter(backward bool, shardCount int) iter.Seq[int] {
 			}
 		}
 	}
-	return func(yield func(int) bool) {
-		for i := 0; i < shardCount; i++ {
+	return func(yield func(int32) bool) {
+		for i := int32(0); i < shardCount; i++ {
 			if !yield(i) {
 				return
 			}
@@ -72,19 +72,19 @@ func ShardPodLabels(cr shardOpts) map[string]string {
 }
 
 // RenderShard replaces resource's shard number placeholder with a given shard number
-func RenderShard[T any](resource *T, num int) (*T, error) {
+func RenderShard[T any](resource *T, num int32) (*T, error) {
 	placeholders := map[string]string{
-		shardNumPlaceholder: strconv.Itoa(num),
+		shardNumPlaceholder: strconv.FormatInt(int64(num), 32),
 	}
 	return k8stools.RenderPlaceholders(resource, placeholders)
 }
 
 // ShardPodDisruptionBudget creates object for given CRD and shard num
-func ShardPodDisruptionBudget(cr shardOpts, spec *vmv1beta1.EmbeddedPodDisruptionBudgetSpec, num int) *policyv1.PodDisruptionBudget {
+func ShardPodDisruptionBudget(cr shardOpts, spec *vmv1beta1.EmbeddedPodDisruptionBudgetSpec, num int32) *policyv1.PodDisruptionBudget {
 	pdb := PodDisruptionBudget(cr, spec)
 	if cr.IsSharded() {
 		pdb.Name = fmt.Sprintf("%s-%d", pdb.Name, num)
-		pdb.Spec.Selector.MatchLabels[shardLabelName] = strconv.Itoa(num)
+		pdb.Spec.Selector.MatchLabels[shardLabelName] = strconv.FormatInt(int64(num), 32)
 	}
 	return pdb
 }

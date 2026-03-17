@@ -30,6 +30,12 @@ const (
 	vmalertmanagerName = "test-am"
 )
 
+var inlineRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
+	cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
+		{TargetLabel: "cluster", Replacement: ptr.To("test")},
+	}
+}
+
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
@@ -96,6 +102,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
+		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
+		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
 	)
 
 	//nolint:dupl

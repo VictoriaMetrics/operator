@@ -111,8 +111,8 @@ type VLSingleStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLSingleStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLSingle) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLSingle is fast, cost-effective and scalable logs database.

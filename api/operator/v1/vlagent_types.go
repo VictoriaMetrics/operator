@@ -288,8 +288,8 @@ type VLAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLAgentStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLAgent) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // +genclient

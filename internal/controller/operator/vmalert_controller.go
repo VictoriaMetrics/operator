@@ -69,14 +69,15 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalert", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMAlert{}
+	var instance vmv1beta1.VMAlert
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmalert", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmalert", req}
+		return
 	}
 
 	if !instance.IsUnmanaged() {
@@ -84,29 +85,28 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		defer alertSync.RUnlock()
 	}
 
-	RegisterObjectStat(instance, "vmalert")
+	RegisterObjectStat(&instance, "vmalert")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
-		return result, nil
+		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
+		return
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmalert"}
+		err = &parsingError{instance.Spec.ParsingError, "vmalert"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, instance, nil)
+		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, &instance, nil)
 		if err != nil {
 			return result, err
 		}
-		if err := vmalert.CreateOrUpdate(ctx, instance, r, maps); err != nil {
+		if err := vmalert.CreateOrUpdate(ctx, &instance, r, maps); err != nil {
 			return result, err
 		}
 		return result, nil

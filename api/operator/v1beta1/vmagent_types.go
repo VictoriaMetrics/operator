@@ -415,8 +415,8 @@ type VMAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAgentStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAgent) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // +genclient

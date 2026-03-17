@@ -63,35 +63,35 @@ func (r *VLAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vlagent", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1.VLAgent{}
+	var instance vmv1.VLAgent
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VLAgent instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{origin: err, controller: "vlagent", requestObject: req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{origin: err, controller: "vlagent", requestObject: req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vlagent")
+	RegisterObjectStat(&instance, "vlagent")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVLAgentDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVLAgentDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vlagent"}
+		err = &parsingError{instance.Spec.ParsingError, "vlagent"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vlagent.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vlagent.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, err
 		}
 		return result, nil

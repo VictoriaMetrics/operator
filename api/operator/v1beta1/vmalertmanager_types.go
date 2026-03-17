@@ -285,8 +285,8 @@ type VMAlertmanagerStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAlertmanagerStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAlertmanager) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface

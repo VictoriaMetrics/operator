@@ -397,8 +397,8 @@ func (cr *VMDistributed) DefaultStatusFields(vs *VMDistributedStatus) {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMDistributedStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMDistributed) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation

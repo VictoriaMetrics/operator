@@ -256,8 +256,8 @@ type VMClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMClusterStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMCluster) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMClusterList contains a list of VMCluster

@@ -156,7 +156,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	interval time.Duration,
 	status vmv1beta1.UpdateStatus,
 ) error {
-	lastStatus := obj.GetStatus().GetStatusMetadata()
+	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
@@ -166,7 +166,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn.String(), err)
 			return
 		}
-		lastStatus = obj.GetStatus().GetStatusMetadata()
+		lastStatus = obj.GetStatusMetadata()
 		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {

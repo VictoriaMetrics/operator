@@ -205,8 +205,8 @@ type VTClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VTClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VTCluster) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VTInsert defines vtinsert component configuration at victoria-traces cluster

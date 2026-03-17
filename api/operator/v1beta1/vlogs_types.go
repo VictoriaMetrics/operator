@@ -97,8 +97,8 @@ type VLogsStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLogs) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLogs is fast, cost-effective and scalable logs database.

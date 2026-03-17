@@ -109,6 +109,14 @@ func (r *VMAlertmanagerConfig) GetStatusMetadata() *StatusMetadata {
 	return &r.Status.StatusMetadata
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlertmanagerConfig) GetStatus() *VMAlertmanagerConfigStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMAlertmanagerConfig) DefaultStatusFields(vs *VMAlertmanagerConfigStatus) {}
+
 func (r *VMAlertmanagerConfig) Validate() error {
 	if MustSkipCRValidation(r) {
 		return nil

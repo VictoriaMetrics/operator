@@ -72,13 +72,14 @@ func (r *VMAlertmanagerReconciler) Scheme() *runtime.Scheme {
 func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalertmanager", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMAlertmanager{}
+	var instance vmv1beta1.VMAlertmanager
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmalertmanager", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmalertmanager", req}
+		return
 	}
 
 	if !instance.IsUnmanaged() {
@@ -86,27 +87,26 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		defer alertmanagerSync.RUnlock()
 	}
 
-	RegisterObjectStat(instance, "vmalertmanager")
+	RegisterObjectStat(&instance, "vmalertmanager")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAlertManagerDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmalertmanager"}
+		err = &parsingError{instance.Spec.ParsingError, "vmalertmanager"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, instance, nil); err != nil {
+		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, &instance, nil); err != nil {
 			return result, err
 		}
-		if err := vmalertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
+		if err := vmalertmanager.CreateOrUpdateAlertManager(ctx, &instance, r); err != nil {
 			return result, err
 		}
 		return result, nil

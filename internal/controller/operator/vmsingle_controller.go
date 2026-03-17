@@ -66,33 +66,33 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmsingle", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMSingle{}
+	var instance vmv1beta1.VMSingle
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmsingle", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmsingle", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vmsingle")
+	RegisterObjectStat(&instance, "vmsingle")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMSingleDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVMSingleDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmsingle"}
+		err = &parsingError{instance.Spec.ParsingError, "vmsingle"}
+		return
 	}
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmsingle.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vmsingle.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("failed create or update vmsingle: %w", err)
 		}
 		return result, nil

@@ -350,8 +350,8 @@ func (cr *VMSingle) Validate() error {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMSingle) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

@@ -105,8 +105,8 @@ type VTSingleStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VTSingleStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VTSingle) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VTSingle is fast, cost-effective and scalable traces database.

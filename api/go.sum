@@ -2,12 +2,12 @@ github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/VictoriaMetrics/VictoriaLogs v1.43.1 h1:qbTvuyL7hnvFJ/iU2p7+gBa3svPy6O33TqU+HBHP+B0=
 github.com/VictoriaMetrics/VictoriaLogs v1.43.1/go.mod h1:h2A8euPqsnGZg1IJJQYtwPLng2OvWqj3fyxMXCgVZig=
-github.com/VictoriaMetrics/VictoriaMetrics v1.137.0 h1:uBhbluw1D1jw+fJfexc0FsGk9zSJni9tafHTHtoy2EA=
-github.com/VictoriaMetrics/VictoriaMetrics v1.137.0/go.mod h1:LJpBKAGtKgX1cgwP4zT55gBrT8k+cFunsNkmE7MCOwI=
+github.com/VictoriaMetrics/VictoriaMetrics v1.138.0 h1:9bckGvMoVoa7peUuee3doO6iqPzKEM2LYJfTNDlnsGE=
+github.com/VictoriaMetrics/VictoriaMetrics v1.138.0/go.mod h1:ljqu5qQGGu6JUMzdPtU4Uza/rVhdwiMgFtQFZ/BT45U=
 github.com/VictoriaMetrics/easyproto v1.2.0 h1:FJT9uNXA2isppFuJErbLqD306KoFlehl7Wn2dg/6oIE=
 github.com/VictoriaMetrics/easyproto v1.2.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
-github.com/VictoriaMetrics/metrics v1.41.2 h1:pLQ4Mw9TqXFq3ZsZVJkz88JHpjL9LY5NHTY3v2gBNAw=
-github.com/VictoriaMetrics/metrics v1.41.2/go.mod h1:xDM82ULLYCYdFRgQ2JBxi8Uf1+8En1So9YUwlGTOqTc=
+github.com/VictoriaMetrics/metrics v1.42.0 h1:t/OGs3BjMUYhxw/h83Z28qAss8DuA4QEVwO4NwJ9hZc=
+github.com/VictoriaMetrics/metrics v1.42.0/go.mod h1:xDM82ULLYCYdFRgQ2JBxi8Uf1+8En1So9YUwlGTOqTc=
 github.com/VictoriaMetrics/metricsql v0.85.0 h1:xI+EfqsOgY0T2yd7p8hcYQ52LOtf+1i8fQQzQ+RGtZM=
 github.com/VictoriaMetrics/metricsql v0.85.0/go.mod h1:d4EisFO6ONP/HIGDYTAtwrejJBBeKGQYiRl095bS4QQ=
 github.com/aws/aws-sdk-go-v2 v1.41.1 h1:ABlyEARCDLN034NhxlRUSZr4l71mh+T5KAeGh6cerhU=

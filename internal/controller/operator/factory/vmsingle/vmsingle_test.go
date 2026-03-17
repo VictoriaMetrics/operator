@@ -102,7 +102,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
 		assert.Equal(t, got.Name, o.want.Name)
-		assert.ElementsMatch(t, got.Spec.Ports, o.want.Spec.Ports)
+		assert.Equal(t, got.Spec.Ports, o.want.Spec.Ports)
 	}
 
 	// base service test

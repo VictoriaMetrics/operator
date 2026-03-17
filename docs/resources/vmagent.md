@@ -17,7 +17,7 @@ tags:
 The `VMAgent` CRD declaratively defines a desired [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/)
 setup to run in a Kubernetes cluster.
 
-It requires access to Kubernetes API and you can create RBAC for it first, it can be found 
+It requires access to Kubernetes API and you can create RBAC for it first, it can be found
 at [`examples/vmagent_rbac.yaml`](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_rbac.yaml)
 Or you can use default rbac account, that will be created for `VMAgent` by operator automatically.
 
@@ -40,7 +40,7 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api/#vmagent)**.
 
-If you can't find necessary field in the specification of the custom resource, 
+If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/vmagent/#extra-arguments).
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmagent/#examples) section.
@@ -113,7 +113,7 @@ metadata:
   name: select-ns
 spec:
   # ...
-  serviceScrapeNamespaceSelector: 
+  serviceScrapeNamespaceSelector:
     matchLabels:
       kubernetes.io/metadata.name: my-namespace
   podScrapeNamespaceSelector:
@@ -178,7 +178,7 @@ spec:
 
 Deduplication is automatically enabled with `replicationFactor > 1` on `VMCluster`.
 
-After enabling deduplication you can increase replicas for VMAgent. 
+After enabling deduplication you can increase replicas for VMAgent.
 
 For instance, let's create `VMAgent` with 2 replicas:
 
@@ -214,7 +214,7 @@ It uses the following formula for calculation: `requests.storage/count(remoteWri
 
 Example of configuration for `StatefulMode`:
 
-```yaml 
+```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
@@ -283,18 +283,18 @@ spec:
   # ...
 ```
 
-This configuration produces `5` deployments with `2` replicas at each. 
+This configuration produces `5` deployments with `2` replicas at each.
 Each deployment has its own shard num and scrapes only `1/5` of all targets.
 
 Also, you can use special placeholder `%SHARD_NUM%` in fields of `VMAgent` specification
-and operator will replace it with current shard num of vmagent when creating deployment or statefullset for vmagent.
+and operator will replace it with current shard num of vmagent when creating deployment or statefulset for vmagent.
 
 In the example above, the `%SHARD_NUM%` placeholder is used in the `podAntiAffinity` section,
 which recommend to scheduler that pods with the same shard num (label `shard-num` in the pod template)
-are not deployed on the same node. You can use another `topologyKey` for availability zone or region instead of nodes. 
+are not deployed on the same node. You can use another `topologyKey` for availability zone or region instead of nodes.
 
-**Note** that at the moment operator doesn't use `-promscrape.cluster.replicationFactor` parameter of `VMAgent` and 
-creates `replicaCount` of replicas for each shard (which leads greater resource consumption). 
+**Note** that at the moment operator doesn't use `-promscrape.cluster.replicationFactor` parameter of `VMAgent` and
+creates `replicaCount` of replicas for each shard (which leads greater resource consumption).
 This will be fixed in the future, more details can be seen in [this issue](https://github.com/VictoriaMetrics/operator/issues/604).
 
 Also see [this example](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_stateful_with_sharding.yaml).
@@ -391,7 +391,7 @@ spec:
     clusterid: some_cluster
 ```
 
-`VMAgent` CR supports relabeling with [custom configMap](https://docs.victoriametrics.com/operator/resources/vmagent/#relabeling-config-in-configmap) 
+`VMAgent` CR supports relabeling with [custom configMap](https://docs.victoriametrics.com/operator/resources/vmagent/#relabeling-config-in-configmap)
 or [inline defined at CRD](https://docs.victoriametrics.com/operator/resources/vmagent/#inline-relabeling-config).
 
 ### Relabeling config in Configmap
@@ -424,7 +424,7 @@ data:
 
 Second, add `relabelConfig` to `VMagent` spec for global relabeling for all remoteWrite targets with name of `Configmap` - `vmagent-relabel` and key `remote-write-relabel.yaml`.
 
-For relabeling per remoteWrite target, add `urlRelabelConfig` name of `Configmap` - `vmagent-relabel` 
+For relabeling per remoteWrite target, add `urlRelabelConfig` name of `Configmap` - `vmagent-relabel`
 and key `target-1-relabel.yaml` to one of remoteWrite target for relabeling only for this target:
 
 ```yaml
@@ -658,7 +658,7 @@ spec:
     # ...
 ```
 
-If these parameters are not specified, then, 
+If these parameters are not specified, then,
 by default all `VMAgent` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
 - `VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAgent` pods,
@@ -668,7 +668,7 @@ by default all `VMAgent` pods have resource requests and limits from the default
 
 These default parameters will be used if:
 
-- `VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value), 
+- `VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value),
 - `VMAgent` CR doesn't have `resources` field in `spec` section.
 
 Field `resources` in vmagent spec have higher priority than operator parameters.
@@ -715,7 +715,7 @@ spec:
     kafka.consumer.topic.format: influx
     kafka.consumer.topic: metrics-by-telegraf
     kafka.consumer.topic.groupID: some-id
-    
+
   # ...other fields...
 ```
 
@@ -740,7 +740,7 @@ spec:
   # more details about kafka integration you can read on https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration
   remoteWrite:
     # sasl with username and password
-    - url: kafka://broker-1:9092/?topic=prom-rw-1&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN 
+    - url: kafka://broker-1:9092/?topic=prom-rw-1&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN
       # it requires to create kubernetes secret `kafka-basic-auth` with keys `username` and `password` in the same namespace
       basicAuth:
         username:

@@ -81,12 +81,15 @@ func getDefaultOptions() controller.Options {
 	return *defaultOptions
 }
 
-// parsingError usually occurs in case of x-preserve-unknow-fields option enable to CRD
+// parsingError usually occurs in case of x-preserve-unknown-fields option enable to CRD
 // in this case k8s api server cannot perform proper validation and it may result in bad user input for some fields
 type parsingError struct {
 	origin     string
 	controller string
 }
+
+// ErrShutdown is a custom error returned as a cause of operator context cancel
+var ErrShutdown = fmt.Errorf("graceful shutdown, exiting")
 
 func (pe *parsingError) Error() string {
 	return fmt.Sprintf("parsing object error for object controller=%q: %q",
@@ -126,6 +129,9 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		if !errors.Is(context.Cause(ctx), ErrShutdown) {
+			originResult.RequeueAfter = time.Second * 5
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		namespacedName := "unknown"
@@ -197,6 +203,9 @@ func handleReconcileErrWithoutStatus(
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		if !errors.Is(context.Cause(ctx), ErrShutdown) {
+			originResult.RequeueAfter = time.Second * 5
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		parseObjectErrorsTotal.WithLabelValues(pe.controller, "unknown").Inc()

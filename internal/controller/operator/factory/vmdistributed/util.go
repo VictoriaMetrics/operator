@@ -253,7 +253,7 @@ func mergeSpecs[T any](a, b *T, name string) (*T, error) {
 	}
 
 	// Apply cluster-specific override if it exist
-	if err := build.MergeDeep(merged, b); err != nil {
+	if err := build.MergeDeep(merged, b, false); err != nil {
 		return nil, fmt.Errorf("failed to merge spec: %w", err)
 	}
 	return merged, nil

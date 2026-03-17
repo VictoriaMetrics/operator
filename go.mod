@@ -1,11 +1,11 @@
 module github.com/VictoriaMetrics/operator
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.137.0
-	github.com/VictoriaMetrics/metrics v1.41.2
+	github.com/VictoriaMetrics/VictoriaMetrics v1.138.0
+	github.com/VictoriaMetrics/metrics v1.42.0
 	github.com/VictoriaMetrics/metricsql v0.85.0
 	github.com/VictoriaMetrics/operator/api v0.66.1
 	github.com/caarlos0/env/v11 v11.4.0
@@ -30,7 +30,7 @@ require (
 	k8s.io/client-go v0.35.2
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
-	sigs.k8s.io/controller-runtime v0.23.1
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/gateway-api v1.5.0
 )
 

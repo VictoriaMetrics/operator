@@ -100,6 +100,11 @@ type VLSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
+
 	// SyslogSpec defines syslog listener configuration
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`

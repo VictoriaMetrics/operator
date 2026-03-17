@@ -158,7 +158,7 @@ func TestDeepMerge(t *testing.T) {
 		}
 		merged := base.DeepCopy()
 		for _, o := range oss {
-			o.validate(base, merged, MergeDeep(merged, o.override))
+			o.validate(base, merged, MergeDeep(merged, o.override, false))
 		}
 	}
 

@@ -222,7 +222,7 @@ After that you can pass [Downsampling](https://docs.victoriametrics.com/victoria
 flag to `VMSingle` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) too.
 
 Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling):
- 
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
@@ -272,7 +272,7 @@ spec:
 ### Backup automation
 
 You can check [vmbackupmanager documentation](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) for backup automation.
-It contains a description of the service and its features. This section covers vmbackumanager integration in vmoperator.
+It contains a description of the service and its features. This section covers vmbackupmanager integration in vmoperator.
 
 `VMSingle` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
 It supports incremental backups (hourly, daily, weekly, monthly) with popular object storages (aws s3, google cloud storage).
@@ -314,7 +314,7 @@ stringData:
     [default]
     aws_access_key_id = your_access_key_id
     aws_secret_access_key = your_secret_access_key
-``` 
+```
 
 You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
@@ -361,10 +361,10 @@ Steps:
         credentialsSecret:
           name: remote-storage-keys
           key: credentials
-          
+
       extraArgs:
         runOnStart: "true"
-        
+
       initContainers:
         - name: vmrestore
           image: victoriametrics/vmrestore:latest
@@ -378,7 +378,7 @@ Steps:
             - -storageDataPath=/victoria-metrics-data
             - -src=s3://your_bucket/folder/latest
             - -credsFilePath=/etc/vm/creds/credentials
-    
+
       # ...other fields...
     ```
 1. Apply it, and db will be restored from S3

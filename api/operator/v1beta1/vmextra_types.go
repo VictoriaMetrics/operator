@@ -131,15 +131,19 @@ func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bo
 	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
 }
 
-// UseProxyProtocol is a helper for build.probeCRD interface implementations
-func UseProxyProtocol(extraArgs map[string]string) bool {
-	if v, ok := extraArgs[httpUseProxyProtocolFlag]; ok {
+func getFirstValue(args map[string]string, name string) string {
+	if v, ok := args[name]; ok {
 		if idx := strings.Index(v, ","); idx != -1 {
 			v = v[:idx]
 		}
-		return strings.TrimSpace(v) == "true"
+		return strings.ToLower(strings.TrimSpace(v))
 	}
-	return false
+	return ""
+}
+
+// UseProxyProtocol is a helper for build.probeCRD interface implementations
+func UseProxyProtocol(extraArgs map[string]string) bool {
+	return getFirstValue(extraArgs, httpUseProxyProtocolFlag) == "true"
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
@@ -343,15 +347,8 @@ func BuildLocalURL(key, host, port, path string, extraArgs map[string]string) st
 }
 
 // UseTLS returns true if TLS is enabled
-func UseTLS(flags map[string]string) bool {
-	if v, ok := flags[tlsFlag]; ok {
-		firstIdx := strings.IndexByte(v, ',')
-		if firstIdx > 0 {
-			v = v[:firstIdx]
-		}
-		return strings.ToLower(v) == "true"
-	}
-	return false
+func UseTLS(extraArgs map[string]string) bool {
+	return getFirstValue(extraArgs, tlsFlag) == "true"
 }
 
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags

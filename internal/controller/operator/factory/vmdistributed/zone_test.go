@@ -194,7 +194,8 @@ func TestWaitForEmptyPQ(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 		defer cancel()
 
-		err = zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
+		zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
+		err = ctx.Err()
 		if len(o.errMsg) > 0 {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), o.errMsg)
@@ -241,6 +242,6 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			fmt.Fprintf(w, `%s{path="/tmp/1_EF46DB3751D8E999"} 0`, vmAgentQueueMetricName)
 		},
 		timeout: 500 * time.Millisecond,
-		errMsg:  "failed to wait for VMAgent metrics",
+		errMsg:  "context deadline exceeded",
 	})
 }

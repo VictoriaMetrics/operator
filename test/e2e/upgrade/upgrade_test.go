@@ -39,6 +39,11 @@ var (
 	inlineScrapeConfigFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.InlineScrapeConfig = "- job_name: \"test-scrape\"\n  static_configs:\n  - targets: [\"localhost:8428\"]"
 	}
+	inlineUrlRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.RemoteWrite[0].InlineUrlRelabelConfig = []*vmv1beta1.RelabelConfig{
+			{TargetLabel: "url_cluster", Replacement: ptr.To("test")},
+		}
+	}
 	streamAggrConfigFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.StreamAggrConfig = &vmv1beta1.StreamAggrConfig{
 			Rules: []vmv1beta1.StreamAggrRule{
@@ -219,6 +224,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
 		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
 		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
+
+		Entry("from v0.67.0 with InlineUrlRelabelConfig", "v0.67.0", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.0 with InlineUrlRelabelConfig", "v0.68.0", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.1 with InlineUrlRelabelConfig", "v0.68.1", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.2 with InlineUrlRelabelConfig", "v0.68.2", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.3 with InlineUrlRelabelConfig", "v0.68.3", inlineUrlRelabelConfigFunc),
 	)
 
 	//nolint:dupl
@@ -294,11 +305,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
 		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
 		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
+
 		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
 		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
 		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
 		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
 		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
+
+		Entry("from v0.67.0 with InlineUrlRelabelConfig", "v0.67.0", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.0 with InlineUrlRelabelConfig", "v0.68.0", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.1 with InlineUrlRelabelConfig", "v0.68.1", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.2 with InlineUrlRelabelConfig", "v0.68.2", inlineUrlRelabelConfigFunc),
+		Entry("from v0.68.3 with InlineUrlRelabelConfig", "v0.68.3", inlineUrlRelabelConfigFunc),
 
 		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
 		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),

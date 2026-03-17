@@ -470,7 +470,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
 
 
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
 		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),

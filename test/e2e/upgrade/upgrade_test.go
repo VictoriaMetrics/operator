@@ -55,6 +55,15 @@ var (
 			Queues:       ptr.To(int32(2)),
 		}
 	}
+	ingestOnlyModeFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.IngestOnlyMode = ptr.To(true)
+	}
+	ingestOnlyModeWithRelabelingFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.IngestOnlyMode = ptr.To(true)
+		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
+			{TargetLabel: "cluster", Replacement: ptr.To("test")},
+		}
+	}
 	inlineScrapeConfigFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.InlineScrapeConfig = "- job_name: \"test-scrape\"\n  static_configs:\n  - targets: [\"localhost:8428\"]"
 	}
@@ -150,6 +159,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
+		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
+		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
+		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
+		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+
+		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
 		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
 		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
 		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
@@ -254,6 +274,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
+		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
+		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
+		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
+		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+
+		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
 		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
 		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
 		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
@@ -376,6 +407,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
 		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
 		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
+		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
+		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
+		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
+		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+
+		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
+		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
 		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
 		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
 		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),

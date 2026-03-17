@@ -32,88 +32,40 @@ const (
 )
 
 var (
-	vmsingleAPIServerConfigFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.APIServerConfig = &vmv1beta1.APIServerConfig{
-			Host: "https://kubernetes.default.svc",
-		}
+	vmsingleUseProxyProtocolFunc = func(cr *vmv1beta1.VMSingle) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-	vmsingleInsertPortsFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.InsertPorts = &vmv1beta1.InsertPorts{
-			OpenTSDBPort:     "4242",
-			OpenTSDBHTTPPort: "4243",
-			GraphitePort:     "2003",
-			InfluxPort:       "8089",
-		}
-	}
-	vmsingleIngestOnlyModeWithRelabelingFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "cluster", Replacement: ptr.To("test")},
-		}
-	}
-	vmsingleStreamAggrConfigFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.StreamAggrConfig = &vmv1beta1.StreamAggrConfig{
-			Rules: []vmv1beta1.StreamAggrRule{
-				{Match: vmv1beta1.StringOrArray{`{__name__=~".+"}`}, Interval: "1m", Outputs: []string{"total"}},
-			},
-		}
-	}
-	ingestOnlyModeFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-	}
-	vmauthTargetRefsFunc = func(cr *vmv1beta1.VMAuth) {
-		cr.Spec.UnauthorizedAccessConfig = nil
-		cr.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-			TargetRefs: []vmv1beta1.TargetRef{
-				{
-					Paths: []string{"/api/v1/query"},
-					Static: &vmv1beta1.StaticRef{
-						URL: "http://localhost:8428",
-					},
-				},
-			},
-		}
+	vmagentUseProxyProtocolFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
 	vmalertUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlert) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vmalertmanagerUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlertmanager) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vmclusterUseProxyProtocolFunc = func(cr *vmv1beta1.VMCluster) {
 		cr.Spec.VMSelect.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 		cr.Spec.VMInsert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vlagentLicenseFunc = func(cr *vmv1.VLAgent) {
 		cr.Spec.License = &vmv1beta1.License{
 			Key: ptr.To("my-key"),
 		}
 	}
-
-	vlclusterLicenseFunc = func(cr *vmv1.VLCluster) {
-		cr.Spec.License = &vmv1beta1.License{
-			Key: ptr.To("my-key"),
-		}
+	vlagentUseProxyProtocolFunc = func(cr *vmv1.VLAgent) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vtclusterUseProxyProtocolFunc = func(cr *vmv1.VTCluster) {
 		cr.Spec.Select.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 		cr.Spec.Insert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vtsingleUseProxyProtocolFunc = func(cr *vmv1.VTSingle) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
-	vlsingleLicenseFunc = func(cr *vmv1.VLSingle) {
-		cr.Spec.License = &vmv1beta1.License{
-			Key: ptr.To("my-key"),
-		}
+	vlsingleUseProxyProtocolFunc = func(cr *vmv1.VLSingle) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
-
 	vmauthUseProxyProtocolFunc = func(cr *vmv1beta1.VMAuth) {
 		cr.Spec.UseProxyProtocol = true
 	}
@@ -187,122 +139,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
-		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
-		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
-		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
-		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
-		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -374,122 +215,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
-		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
-		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
-		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
-		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
-		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -561,22 +291,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
@@ -648,35 +370,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
 		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
 
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
-		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
-		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
-		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
-		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
-		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlagentUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlagentUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlagentUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlagentUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlagentUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -749,131 +448,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmsingleUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmsingleUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmsingleUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmsingleUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
 	)
 
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
-		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", vmsingleAPIServerConfigFunc),
-		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", vmsingleAPIServerConfigFunc),
-		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", vmsingleAPIServerConfigFunc),
-		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", vmsingleAPIServerConfigFunc),
-		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", vmsingleAPIServerConfigFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
-		Entry("from v0.67.0 with InsertPorts", "v0.67.0", vmsingleInsertPortsFunc),
-		Entry("from v0.68.0 with InsertPorts", "v0.68.0", vmsingleInsertPortsFunc),
-		Entry("from v0.68.1 with InsertPorts", "v0.68.1", vmsingleInsertPortsFunc),
-		Entry("from v0.68.2 with InsertPorts", "v0.68.2", vmsingleInsertPortsFunc),
-		Entry("from v0.68.3 with InsertPorts", "v0.68.3", vmsingleInsertPortsFunc),
-	)
-
+	//nolint:dupl
+	// TODO: merge with the above table
 	DescribeTable("should not rollout VMSingle changes (IngestOnlyMode)", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
@@ -932,123 +515,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
-		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", vmsingleIngestOnlyModeWithRelabelingFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
-		Entry("from v0.68.3 with IngestOnlyMode and StreamAggrConfig", "v0.68.3", vmsingleStreamAggrConfigFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1121,124 +588,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1713
-		Entry("from v0.67.0 with TargetRefs", "v0.67.0", vmauthTargetRefsFunc),
-		Entry("from v0.68.0 with TargetRefs", "v0.68.0", vmauthTargetRefsFunc),
-		Entry("from v0.68.1 with TargetRefs", "v0.68.1", vmauthTargetRefsFunc),
-		Entry("from v0.68.2 with TargetRefs", "v0.68.2", vmauthTargetRefsFunc),
-		Entry("from v0.68.3 with TargetRefs", "v0.68.3", vmauthTargetRefsFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmauthUseProxyProtocolFunc),
@@ -1325,117 +674,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertUseProxyProtocolFunc),
 		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertUseProxyProtocolFunc),
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertUseProxyProtocolFunc),
@@ -1507,110 +745,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
@@ -1724,90 +858,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
-
-		Entry("from v0.64.1", "v0.64.1", nil),
-
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
 		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
 		Entry("from v0.66.0", "v0.66.0", nil),
@@ -1817,29 +867,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
@@ -1992,110 +1019,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
 		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
@@ -2169,115 +1092,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlsingleUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlsingleUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlsingleUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlsingleUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlsingleUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -2391,117 +1210,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -2644,110 +1352,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -2816,108 +1420,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -3039,109 +1546,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
 
-
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -3291,110 +1701,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-
-	)
-
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
 	)
 
 	Describe("VM_LOOPBACK behavior", func() {

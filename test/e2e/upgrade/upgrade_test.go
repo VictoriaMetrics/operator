@@ -89,12 +89,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, deploymentNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		// Moving this to Pending as it runs with old config-reloader by default
-		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.65.0", "v0.65.0", nil),
-		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.66.1", "v0.66.1", nil),
+		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -163,12 +158,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, expectedDaemonsetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		// Moving this to Pending as it runs with old config-reloader by default
-		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.65.0", "v0.65.0", nil),
-		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.66.1", "v0.66.1", nil),
+		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -237,12 +227,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		// Moving this to Pending as it runs with old config-reloader by default
-		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.65.0", "v0.65.0", nil),
-		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAgent) {}),
-		PEntry("from v0.66.1", "v0.66.1", nil),
+		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -388,11 +373,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 15*time.Second, 5*time.Second).Should(BeEmpty())
 	},
-		PEntry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAuth) {}),
-		PEntry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAuth) {}),
-		PEntry("from v0.65.0", "v0.65.0", nil),
-		PEntry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAuth) {}),
-		PEntry("from v0.66.1", "v0.66.1", nil),
+		// Configurations before 0.67 would be forcibly rolled out
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -593,18 +574,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
-		PEntry("from v0.68.2 with loopback override", "v0.68.2", func(cr *vmv1beta1.VMCluster) {
-			// os.Setenv("VM_LOOPBACK", "localhost")
-			cr.Spec.VMSelect.ExtraArgs = map[string]string{
-				"httpListenAddr": "127.0.0.1:8481",
-			}
-			cr.Spec.VMInsert.ExtraArgs = map[string]string{
-				"httpListenAddr": "127.0.0.1:8480",
-			}
-			cr.Spec.VMStorage.ExtraArgs = map[string]string{
-				"httpListenAddr": "127.0.0.1:8482",
-			}
-		}),
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 

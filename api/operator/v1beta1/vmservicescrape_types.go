@@ -174,6 +174,14 @@ func (cr *VMServiceScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
 
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMServiceScrape) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMServiceScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
 func init() {
 	SchemeBuilder.Register(&VMServiceScrape{}, &VMServiceScrapeList{})
 }

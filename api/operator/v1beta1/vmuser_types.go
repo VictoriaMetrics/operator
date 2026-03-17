@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -33,6 +34,8 @@ type VMUserJWT struct {
 
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
@@ -301,6 +304,16 @@ func (cr *VMUser) SelectorLabels() map[string]string {
 	}
 }
 
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMUserSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMUserSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmuserspec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
+}
+
 // FinalLabels returns combination of selector and managed labels
 func (cr *VMUser) FinalLabels() map[string]string {
 	v := cr.SelectorLabels()
@@ -314,6 +327,14 @@ func (cr *VMUser) FinalLabels() map[string]string {
 func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
+
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMUser) GetStatus() *VMUserStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMUser) DefaultStatusFields(vs *VMUserStatus) {}
 
 func (cr *VMUser) AsKey(hide bool) string {
 	var id string

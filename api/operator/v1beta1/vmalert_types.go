@@ -269,8 +269,8 @@ type VMAlertStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAlertStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAlert) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAlert  executes a list of given alerting or recording rules against configured address.

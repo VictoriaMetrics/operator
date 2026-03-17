@@ -97,6 +97,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -170,6 +171,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -243,6 +245,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
@@ -317,6 +320,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	DescribeTable("should not rollout VMAuth changes", func(operatorVersion string, mod func(*vmv1beta1.VMAuth)) {
@@ -391,6 +395,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	DescribeTable("should not rollout VMAlert changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlert)) {
@@ -466,6 +471,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	DescribeTable("should not rollout VMCluster changes", func(operatorVersion string, mod func(*vmv1beta1.VMCluster)) {
@@ -597,6 +603,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				"httpListenAddr": "127.0.0.1:8482",
 			}
 		}),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -739,6 +746,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -804,6 +812,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -916,6 +925,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -1057,6 +1067,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -1122,6 +1133,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -1234,6 +1246,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -1375,6 +1388,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
 })

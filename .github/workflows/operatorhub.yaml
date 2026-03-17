@@ -50,7 +50,7 @@ jobs:
           git_commit_gpgsign: true
           workdir: __k8s-operatorhub-repo
 
-      - uses: dawidd6/action-download-artifact@v16
+      - uses: dawidd6/action-download-artifact@v18
         with:
           name: olm
           workflow: main.yaml

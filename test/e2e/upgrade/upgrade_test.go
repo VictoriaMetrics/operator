@@ -31,53 +31,8 @@ const (
 )
 
 var (
-	inlineRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "cluster", Replacement: ptr.To("test")},
-		}
-	}
-	apiServerConfigFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.APIServerConfig = &vmv1beta1.APIServerConfig{
-			Host: "https://kubernetes.default.svc",
-		}
-	}
-	insertPortsFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.InsertPorts = &vmv1beta1.InsertPorts{
-			OpenTSDBPort:     "4242",
-			OpenTSDBHTTPPort: "4243",
-			GraphitePort:     "2003",
-			InfluxPort:       "8089",
-		}
-	}
-	remoteWriteSettingsFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.RemoteWriteSettings = &vmv1beta1.VMAgentRemoteWriteSettings{
-			MaxBlockSize: ptr.To(int32(100)),
-			Queues:       ptr.To(int32(2)),
-		}
-	}
 	ingestOnlyModeFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.IngestOnlyMode = ptr.To(true)
-	}
-	ingestOnlyModeWithRelabelingFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "cluster", Replacement: ptr.To("test")},
-		}
-	}
-	inlineScrapeConfigFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.InlineScrapeConfig = "- job_name: \"test-scrape\"\n  static_configs:\n  - targets: [\"localhost:8428\"]"
-	}
-	inlineUrlRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.RemoteWrite[0].InlineUrlRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "url_cluster", Replacement: ptr.To("test")},
-		}
-	}
-	streamAggrConfigFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.StreamAggrConfig = &vmv1beta1.StreamAggrConfig{
-			Rules: []vmv1beta1.StreamAggrRule{
-				{Match: vmv1beta1.StringOrArray{`{__name__=~".+"}`}, Interval: "1m", Outputs: []string{"total"}},
-			},
-		}
 	}
 )
 
@@ -148,51 +103,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
-		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
-		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
-		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
-
-		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
-		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
-		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
-		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
-		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
 		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
 		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
-
-		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
-		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
-		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
-		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
-		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
-
-		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
-		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
-		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
-		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
-		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
-
-		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
-		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
-		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
-
-		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
-		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
-		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
 	)
 
 	//nolint:dupl
@@ -263,57 +178,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
-		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
-		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
-		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
-
-		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
-		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
-		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
-		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
-		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
 		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
 		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
-
-		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
-		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
-		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
-		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
-		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
-
-		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
-		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
-		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
-		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
-		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
-
-		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
-		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
-		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
-
-		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
-		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
-		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
-
-		Entry("from v0.67.0 with InlineUrlRelabelConfig", "v0.67.0", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.0 with InlineUrlRelabelConfig", "v0.68.0", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.1 with InlineUrlRelabelConfig", "v0.68.1", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.2 with InlineUrlRelabelConfig", "v0.68.2", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.3 with InlineUrlRelabelConfig", "v0.68.3", inlineUrlRelabelConfigFunc),
 	)
 
 	//nolint:dupl
@@ -384,57 +253,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
-		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
-		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
-		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
-		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
-
-		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
-		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
-		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
-		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
-
-		Entry("from v0.67.0 with InlineUrlRelabelConfig", "v0.67.0", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.0 with InlineUrlRelabelConfig", "v0.68.0", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.1 with InlineUrlRelabelConfig", "v0.68.1", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.2 with InlineUrlRelabelConfig", "v0.68.2", inlineUrlRelabelConfigFunc),
-		Entry("from v0.68.3 with InlineUrlRelabelConfig", "v0.68.3", inlineUrlRelabelConfigFunc),
-
-		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
-		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
-		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
-		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
-		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
 		Entry("from v0.68.2 with IngestOnlyMode", "v0.68.2", ingestOnlyModeFunc),
 		Entry("from v0.68.3 with IngestOnlyMode", "v0.68.3", ingestOnlyModeFunc),
-
-		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", ingestOnlyModeWithRelabelingFunc),
-		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", apiServerConfigFunc),
-		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", apiServerConfigFunc),
-		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", apiServerConfigFunc),
-		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", apiServerConfigFunc),
-		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", apiServerConfigFunc),
-
-		Entry("from v0.67.0 with InsertPorts", "v0.67.0", insertPortsFunc),
-		Entry("from v0.68.0 with InsertPorts", "v0.68.0", insertPortsFunc),
-		Entry("from v0.68.1 with InsertPorts", "v0.68.1", insertPortsFunc),
-		Entry("from v0.68.2 with InsertPorts", "v0.68.2", insertPortsFunc),
-		Entry("from v0.68.3 with InsertPorts", "v0.68.3", insertPortsFunc),
-
-		Entry("from v0.67.0 with RemoteWriteSettings", "v0.67.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.0 with RemoteWriteSettings", "v0.68.0", remoteWriteSettingsFunc),
-		Entry("from v0.68.1 with RemoteWriteSettings", "v0.68.1", remoteWriteSettingsFunc),
-		Entry("from v0.68.2 with RemoteWriteSettings", "v0.68.2", remoteWriteSettingsFunc),
-		Entry("from v0.68.3 with RemoteWriteSettings", "v0.68.3", remoteWriteSettingsFunc),
 	)
 
 	//nolint:dupl

@@ -30,11 +30,23 @@ const (
 	vmalertmanagerName = "test-am"
 )
 
-var inlineRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
-	cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-		{TargetLabel: "cluster", Replacement: ptr.To("test")},
+var (
+	inlineRelabelConfigFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
+			{TargetLabel: "cluster", Replacement: ptr.To("test")},
+		}
 	}
-}
+	inlineScrapeConfigFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.InlineScrapeConfig = "- job_name: \"test-scrape\"\n  static_configs:\n  - targets: [\"localhost:8428\"]"
+	}
+	streamAggrConfigFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.StreamAggrConfig = &vmv1beta1.StreamAggrConfig{
+			Rules: []vmv1beta1.StreamAggrRule{
+				{Match: vmv1beta1.StringOrArray{`{__name__=~".+"}`}, Interval: "1m", Outputs: []string{"total"}},
+			},
+		}
+	}
+)
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
@@ -102,11 +114,24 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
 		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
 		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
 		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
 		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
 		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
+
+		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
+		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
+		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
+		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
+		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+
+		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
+		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
+		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
 	)
 
 	//nolint:dupl
@@ -176,6 +201,24 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
+		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
+		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
+
+		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
+		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
+		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
+		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
+		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
+
+		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
+		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
+		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
 	)
 
 	//nolint:dupl
@@ -245,6 +288,23 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		Entry("from v0.67.0 with InlineRelabelConfig", "v0.67.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.0 with InlineRelabelConfig", "v0.68.0", inlineRelabelConfigFunc),
+		Entry("from v0.68.1 with InlineRelabelConfig", "v0.68.1", inlineRelabelConfigFunc),
+		Entry("from v0.68.2 with InlineRelabelConfig", "v0.68.2", inlineRelabelConfigFunc),
+		Entry("from v0.68.3 with InlineRelabelConfig", "v0.68.3", inlineRelabelConfigFunc),
+		Entry("from v0.67.0 with InlineScrapeConfig", "v0.67.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.0 with InlineScrapeConfig", "v0.68.0", inlineScrapeConfigFunc),
+		Entry("from v0.68.1 with InlineScrapeConfig", "v0.68.1", inlineScrapeConfigFunc),
+		Entry("from v0.68.2 with InlineScrapeConfig", "v0.68.2", inlineScrapeConfigFunc),
+		Entry("from v0.68.3 with InlineScrapeConfig", "v0.68.3", inlineScrapeConfigFunc),
+
+		Entry("from v0.67.0 with StreamingAggregation", "v0.67.0", streamAggrConfigFunc),
+		Entry("from v0.68.0 with StreamingAggregation", "v0.68.0", streamAggrConfigFunc),
+		Entry("from v0.68.1 with StreamingAggregation", "v0.68.1", streamAggrConfigFunc),
+		Entry("from v0.68.2 with StreamingAggregation", "v0.68.2", streamAggrConfigFunc),
+		Entry("from v0.68.3 with StreamingAggregation", "v0.68.3", streamAggrConfigFunc),
 	)
 
 	//nolint:dupl

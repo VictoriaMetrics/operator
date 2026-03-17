@@ -176,6 +176,14 @@ test-e2e: load-kind ginkgo crust-gather mirrord
 		-timeout=90m \
 		-junit-report=report.xml ./test/e2e/...
 
+.PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
+test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
+	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+		-ldflags="-linkmode=external" \
+		-procs=$(E2E_TESTS_CONCURRENCY) \
+		-timeout=90m \
+		-junit-report=report.xml ./test/e2e/upgrade/...
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	cd api && $(GOLANGCI_LINT) run operator/...

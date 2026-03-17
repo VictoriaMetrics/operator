@@ -88,6 +88,9 @@ type parsingError struct {
 	controller string
 }
 
+// ErrShutdown is a custom error returned as a cause of operator context cancel
+var ErrShutdown = fmt.Errorf("graceful shutdown, exiting")
+
 func (pe *parsingError) Error() string {
 	return fmt.Sprintf("parsing object error for object controller=%q: %q",
 		pe.controller, pe.origin)
@@ -126,6 +129,9 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		if !errors.Is(context.Cause(ctx), ErrShutdown) {
+			originResult.RequeueAfter = time.Second * 5
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		namespacedName := "unknown"
@@ -197,6 +203,9 @@ func handleReconcileErrWithoutStatus(
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		if !errors.Is(context.Cause(ctx), ErrShutdown) {
+			originResult.RequeueAfter = time.Second * 5
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		parseObjectErrorsTotal.WithLabelValues(pe.controller, "unknown").Inc()

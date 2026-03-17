@@ -60,6 +60,41 @@ var (
 	ingestOnlyModeFunc = func(cr *vmv1beta1.VMAgent) {
 		cr.Spec.IngestOnlyMode = ptr.To(true)
 	}
+	vmauthTargetRefsFunc = func(cr *vmv1beta1.VMAuth) {
+		cr.Spec.UnauthorizedAccessConfig = nil
+		cr.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+			TargetRefs: []vmv1beta1.TargetRef{
+				{
+					Paths: []string{"/api/v1/query"},
+					Static: &vmv1beta1.StaticRef{
+						URL: "http://localhost:8428",
+					},
+				},
+			},
+		}
+	}
+	vmalertUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlert) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
+	}
+
+	vmalertmanagerUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlertmanager) {
+		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
+	}
+
+	vmclusterUseProxyProtocolFunc = func(cr *vmv1beta1.VMCluster) {
+		cr.Spec.VMSelect.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
+		cr.Spec.VMInsert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
+	}
+
+	vlsingleLicenseFunc = func(cr *vmv1.VLSingle) {
+		cr.Spec.License = &vmv1beta1.License{
+			Key: ptr.To("my-key"),
+		}
+	}
+
+	vmauthUseProxyProtocolFunc = func(cr *vmv1beta1.VMAuth) {
+		cr.Spec.UseProxyProtocol = true
+	}
 )
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
@@ -129,6 +164,30 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
@@ -204,6 +263,30 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
@@ -279,6 +362,30 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1556
 		Entry("from v0.67.0 with IngestOnlyMode", "v0.67.0", ingestOnlyModeFunc),
 		Entry("from v0.68.0 with IngestOnlyMode", "v0.68.0", ingestOnlyModeFunc),
 		Entry("from v0.68.1 with IngestOnlyMode", "v0.68.1", ingestOnlyModeFunc),
@@ -344,16 +451,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMSingle) {
-
-		}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMSingle) {
-
-		}),
+		Entry("from v0.64.0", "v0.64.0", nil),
+		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMSingle) {
-
-		}),
+		Entry("from v0.66.0", "v0.66.0", nil),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
@@ -361,29 +462,42 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
 
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
 		Entry("from v0.67.0 with APIServerConfig", "v0.67.0", vmsingleAPIServerConfigFunc),
 		Entry("from v0.68.0 with APIServerConfig", "v0.68.0", vmsingleAPIServerConfigFunc),
 		Entry("from v0.68.1 with APIServerConfig", "v0.68.1", vmsingleAPIServerConfigFunc),
 		Entry("from v0.68.2 with APIServerConfig", "v0.68.2", vmsingleAPIServerConfigFunc),
 		Entry("from v0.68.3 with APIServerConfig", "v0.68.3", vmsingleAPIServerConfigFunc),
 
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
 		Entry("from v0.67.0 with InsertPorts", "v0.67.0", vmsingleInsertPortsFunc),
 		Entry("from v0.68.0 with InsertPorts", "v0.68.0", vmsingleInsertPortsFunc),
 		Entry("from v0.68.1 with InsertPorts", "v0.68.1", vmsingleInsertPortsFunc),
 		Entry("from v0.68.2 with InsertPorts", "v0.68.2", vmsingleInsertPortsFunc),
 		Entry("from v0.68.3 with InsertPorts", "v0.68.3", vmsingleInsertPortsFunc),
-
-		Entry("from v0.67.0 with IngestOnlyMode and Relabeling", "v0.67.0", vmsingleIngestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.0 with IngestOnlyMode and Relabeling", "v0.68.0", vmsingleIngestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.1 with IngestOnlyMode and Relabeling", "v0.68.1", vmsingleIngestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.2 with IngestOnlyMode and Relabeling", "v0.68.2", vmsingleIngestOnlyModeWithRelabelingFunc),
-		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", vmsingleIngestOnlyModeWithRelabelingFunc),
-
-		Entry("from v0.67.0 with IngestOnlyMode and StreamAggrConfig", "v0.67.0", vmsingleStreamAggrConfigFunc),
-		Entry("from v0.68.0 with IngestOnlyMode and StreamAggrConfig", "v0.68.0", vmsingleStreamAggrConfigFunc),
-		Entry("from v0.68.1 with IngestOnlyMode and StreamAggrConfig", "v0.68.1", vmsingleStreamAggrConfigFunc),
-		Entry("from v0.68.2 with IngestOnlyMode and StreamAggrConfig", "v0.68.2", vmsingleStreamAggrConfigFunc),
-		Entry("from v0.68.3 with IngestOnlyMode and StreamAggrConfig", "v0.68.3", vmsingleStreamAggrConfigFunc),
 	)
 
 	DescribeTable("should not rollout VMSingle changes (IngestOnlyMode)", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
@@ -444,6 +558,35 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
+		Entry("from v0.68.3 with IngestOnlyMode and Relabeling", "v0.68.3", vmsingleIngestOnlyModeWithRelabelingFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1702
+		Entry("from v0.68.3 with IngestOnlyMode and StreamAggrConfig", "v0.68.3", vmsingleStreamAggrConfigFunc),
 	)
 
 	//nolint:dupl
@@ -516,6 +659,43 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1713
+		Entry("from v0.67.0 with TargetRefs", "v0.67.0", vmauthTargetRefsFunc),
+		Entry("from v0.68.0 with TargetRefs", "v0.68.0", vmauthTargetRefsFunc),
+		Entry("from v0.68.1 with TargetRefs", "v0.68.1", vmauthTargetRefsFunc),
+		Entry("from v0.68.2 with TargetRefs", "v0.68.2", vmauthTargetRefsFunc),
+		Entry("from v0.68.3 with TargetRefs", "v0.68.3", vmauthTargetRefsFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmauthUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmauthUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmauthUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmauthUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmauthUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -583,16 +763,46 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMAlert) {}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMAlert) {}),
+		Entry("from v0.64.0", "v0.64.0", nil),
+		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMAlert) {}),
+		Entry("from v0.66.0", "v0.66.0", nil),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -659,6 +869,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -764,22 +997,42 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return ""
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {
+		Entry("from v0.64.0", "v0.64.0", nil),
 
-		}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMCluster) {
+		Entry("from v0.64.1", "v0.64.1", nil),
 
-		}),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMCluster) {
+		Entry("from v0.66.0", "v0.66.0", nil),
 
-		}),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -913,16 +1166,39 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return ""
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1beta1.VMCluster) {}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1beta1.VMCluster) {}),
+		Entry("from v0.64.0", "v0.64.0", nil),
+		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1beta1.VMCluster) {}),
+		Entry("from v0.66.0", "v0.66.0", nil),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -979,16 +1255,39 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", func(cr *vmv1.VLSingle) {}),
-		Entry("from v0.64.1", "v0.64.1", func(cr *vmv1.VLSingle) {}),
+		Entry("from v0.64.0", "v0.64.0", nil),
+		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", func(cr *vmv1.VLSingle) {}),
+		Entry("from v0.66.0", "v0.66.0", nil),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1102,6 +1401,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1244,6 +1566,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1310,6 +1655,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1423,6 +1791,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1565,6 +1956,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
 		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
+
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
+		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 	)
 
 	Describe("VM_LOOPBACK behavior", func() {

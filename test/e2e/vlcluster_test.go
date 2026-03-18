@@ -54,6 +54,86 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				},
 			},
 		}
+		DescribeTable("should create vlcluster",
+			func(name string, cr *vmv1.VLCluster, verify func(cr *vmv1.VLCluster)) {
+				cr.Name = name
+				cr.Namespace = namespace
+				nsn.Name = name
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+				if verify != nil {
+					var created vmv1.VLCluster
+					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
+					verify(&created)
+				}
+			},
+			Entry("with UseProxyProtocol on all components", "proxy-protocol",
+				&vmv1.VLCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: vmv1.VLClusterSpec{
+						VLInsert: &vmv1.VLInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+						VLSelect: &vmv1.VLSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+						VLStorage: &vmv1.VLStorage{
+							RetentionPeriod: "1",
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+					},
+				},
+				nil,
+			),
+			Entry("with RequestsLoadBalancer enabled", "with-lb",
+				&vmv1.VLCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: vmv1.VLClusterSpec{
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+							Enabled: true,
+						},
+						VLInsert: &vmv1.VLInsert{},
+						VLSelect: &vmv1.VLSelect{},
+						VLStorage: &vmv1.VLStorage{
+							RetentionPeriod: "1",
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+				func(cr *vmv1.VLCluster) {
+					var dep appsv1.Deployment
+					nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)}
+					Expect(k8sClient.Get(ctx, nss, &dep)).ToNot(HaveOccurred())
+					var svc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
+					Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)))
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
+					Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)))
+				},
+			),
+		)
+
 		type testStep struct {
 			setup  func(*vmv1.VLCluster)
 			modify func(*vmv1.VLCluster)

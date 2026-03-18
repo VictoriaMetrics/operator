@@ -386,6 +386,65 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(vmc.VolumeMounts).To(HaveLen(5))
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).ToNot(HaveOccurred())
 				}),
+			Entry("with UseProxyProtocol in deployment mode", "proxy-protocol-deploy",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
+			Entry("with UseProxyProtocol in statefulset mode", "proxy-protocol-sts",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						StatefulMode: true,
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
+			Entry("with UseProxyProtocol in daemonset mode", "proxy-protocol-ds",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						DaemonSetMode: true,
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
 		)
 		type testStep struct {
 			setup  func(*vmv1beta1.VMAgent)

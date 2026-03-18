@@ -377,6 +377,25 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).To(HaveOccurred())
 				},
 			),
+			Entry("with UseProxyProtocol", "proxy-protocol",
+				&vmv1.VLAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1.VLAgentSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{{URL: "http://localhost:9428/internal/insert"}},
+					},
+				},
+				nil,
+				func(cr *vmv1.VLAgent) {},
+			),
 		)
 		type testStep struct {
 			setup  func(*vmv1.VLAgent)

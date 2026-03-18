@@ -493,6 +493,17 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						},
 					},
 				),
+				Entry("by enabling UseProxyProtocol", "proxy-protocol", false,
+					baseSingle.DeepCopy(),
+					testStep{
+						modify: func(cr *vmv1beta1.VMSingle) {
+							cr.Spec.ExtraArgs = map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							}
+						},
+						verify: func(cr *vmv1beta1.VMSingle) {},
+					},
+				),
 			)
 		},
 		)

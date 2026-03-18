@@ -337,6 +337,80 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					}
 				},
 			),
+			Entry("with UseProxyProtocol on all components", "proxy-protocol",
+				&vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+						},
+					},
+				},
+				nil,
+			),
+			Entry("with RequestsLoadBalancer enabled", "with-lb",
+				&vmv1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+							Enabled: true,
+						},
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				},
+				func(cr *vmv1beta1.VMCluster) {
+					var lbDep appsv1.Deployment
+					nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)}
+					Expect(k8sClient.Get(ctx, nss, &lbDep)).ToNot(HaveOccurred())
+					var svc corev1.Service
+					Expect(k8sClient.Get(ctx, nss, &svc)).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
+				},
+			),
 		)
 	})
 	Context("update", func() {

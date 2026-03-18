@@ -35,6 +35,8 @@ const (
 )
 
 var (
+	waitTimeout = 5 * time.Minute
+
 	vmsingleUseProxyProtocolFunc = func(cr *vmv1beta1.VMSingle) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
@@ -153,7 +155,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		deploymentNSN := types.NamespacedName{
@@ -168,7 +170,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -236,7 +238,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		daemonsetNSN := types.NamespacedName{
@@ -251,7 +253,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -319,7 +321,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		resourceNSN := types.NamespacedName{
@@ -334,7 +336,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -349,8 +351,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		// Fails on latest master
+		// Changes the probe - nothing we can do about it
 		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+
+		// Fails to start
 		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
 		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
 		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
@@ -400,7 +404,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child StatefulSet spec")
 		resourceNSN := types.NamespacedName{
@@ -416,7 +420,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying StatefulSet spec remains stable over time")
 		Consistently(func() string {
@@ -487,7 +491,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child DaemonSet spec")
 		resourceNSN := types.NamespacedName{
@@ -502,7 +506,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying DaemonSet spec remains stable over time")
 		Consistently(func() string {
@@ -558,7 +562,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment specs")
 		resourceNSN := types.NamespacedName{
@@ -574,7 +578,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
@@ -651,7 +655,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		resourceNSN := types.NamespacedName{
@@ -667,7 +671,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -731,7 +735,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		resourceNSN := types.NamespacedName{
@@ -747,7 +751,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -809,7 +813,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child workload specs")
 		resourceNSN := types.NamespacedName{
@@ -825,7 +829,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -909,7 +913,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -936,7 +940,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1048,7 +1052,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -1081,7 +1085,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1159,7 +1163,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment specs")
 		resourceNSN := types.NamespacedName{
@@ -1175,7 +1179,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
@@ -1261,7 +1265,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -1288,7 +1292,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1411,7 +1415,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -1444,7 +1448,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1534,7 +1538,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment specs")
 		resourceNSN := types.NamespacedName{
@@ -1550,7 +1554,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying deployment spec remains stable over time")
 		Consistently(func() string {
@@ -1634,7 +1638,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -1661,7 +1665,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1777,7 +1781,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child Deployment and StatefulSet specs")
 		insertNSN := types.NamespacedName{
@@ -1810,7 +1814,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
@@ -1898,7 +1902,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VMAnomaly{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("snapshotting child StatefulSet spec")
 		resourceNSN := types.NamespacedName{
@@ -1913,7 +1917,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Eventually(func() error {
 			return suite.ExpectObjectStatus(ctx, k8sClient,
 				&vmv1.VMAnomaly{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 		By("verifying workload spec remains stable over time")
 		Consistently(func() string {
@@ -2092,7 +2096,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Eventually(func() error {
 				return suite.ExpectObjectStatus(ctx, k8sClient,
 					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-			}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 			By("snapshotting child workload specs")
 			resourceNSN := types.NamespacedName{
@@ -2115,7 +2119,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			Eventually(func() error {
 				return suite.ExpectObjectStatus(ctx, k8sClient,
 					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-			}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
 			By("verifying workload spec has not changed due to VM_LOOPBACK")
 			Eventually(func() string {

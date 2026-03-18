@@ -24,14 +24,6 @@ To run in a cluster the operator needs certain permissions, you can see them in 
 
 Also, you can use single-namespace mode with minimal permissions, see [this section](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode) for details.
 
-Also in [the same directory](https://github.com/VictoriaMetrics/operator/tree/master/config/rbac) are files with a set of separate permissions to view or edit [operator resources](https://docs.victoriametrics.com/operator/resources/) to organize fine-grained access:
-
-- file `<RESOURCE_NAME>_viewer_role.yaml` - permissions for viewing (`get`, `list` and `watch`) some resource of vmoperator.
-- file `<RESOURCE_NAME>_editor_role.yaml` - permissions for editing (`create`, `delete`, `patch`, `update` and `deletecollection`) some resource of vmoperator (also includes viewing permissions).
-
-For instance, [`vmalert_editor_role.yaml` file](https://github.com/VictoriaMetrics/operator/blob/master/config/rbac/operator_vmalert_editor_role.yaml) contain permission
-for editing [`vmagent` custom resources](https://docs.victoriametrics.com/operator/resources/vmagent/).
-
 <!-- TODO: service accounts / role bindings? -->
 <!-- TODO: resource/roles relations -->
 

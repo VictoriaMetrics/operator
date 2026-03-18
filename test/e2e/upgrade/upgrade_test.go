@@ -1844,6 +1844,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VMAnomaly changes", func(operatorVersion string, mod func(*vmv1.VMAnomaly)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
@@ -1913,6 +1914,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
+	//nolint:dupl
 	DescribeTable("should not rollout VMDistributed changes", func(operatorVersion string, mod func(*vmv1alpha1.VMDistributed)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)

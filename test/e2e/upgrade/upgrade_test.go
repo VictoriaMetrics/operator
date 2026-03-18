@@ -76,6 +76,11 @@ var (
 	vlsingleUseProxyProtocolFunc = func(cr *vmv1.VLSingle) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
+	vlsingleLicenseFunc = func(cr *vmv1.VLSingle) {
+		cr.Spec.License = &vmv1beta1.License{
+			Key: ptr.To("my-key"),
+		}
+	}
 	vmauthUseProxyProtocolFunc = func(cr *vmv1beta1.VMAuth) {
 		cr.Spec.UseProxyProtocol = true
 	}
@@ -1170,6 +1175,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlsingleUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlsingleUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlsingleUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
+		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
+		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
 	)
 
 	//nolint:dupl

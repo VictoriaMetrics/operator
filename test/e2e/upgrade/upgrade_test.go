@@ -59,6 +59,10 @@ var (
 	vlagentUseProxyProtocolFunc = func(cr *vmv1.VLAgent) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
+	vlagentK8sCollectorFieldsFunc = func(cr *vmv1.VLAgent) {
+		cr.Spec.K8sCollector.TenantID = "1:0"
+		cr.Spec.K8sCollector.MsgFields = []string{"msg", "message"}
+	}
 	vtclusterUseProxyProtocolFunc = func(cr *vmv1.VTCluster) {
 		cr.Spec.Select.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 		cr.Spec.Insert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
@@ -361,13 +365,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("snapshotting child Deployment specs")
+		By("snapshotting child StatefulSet spec")
 		resourceNSN := types.NamespacedName{
 			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
 			Namespace: namespace,
 		}
 
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
 
 		restartManagerAndCleanup(ctx, k8sClient, namespace)
 
@@ -377,9 +381,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
 		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
 
-		By("verifying deployment spec remains stable over time")
+		By("verifying StatefulSet spec remains stable over time")
 		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
+			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -406,6 +410,75 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlagentUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlagentUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlagentUseProxyProtocolFunc),
+	)
+
+	//nolint:dupl
+	DescribeTable("should not rollout VLAgent changes (K8sCollector)", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
+
+		cr := &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vlagentName,
+				Namespace: namespace,
+			},
+			Spec: vmv1.VLAgentSpec{
+				K8sCollector: vmv1.VLAgentK8sCollector{
+					Enabled: true,
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vlagent",
+						Tag:        "v0.4.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+		}
+		if mod != nil {
+			mod(cr)
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+
+		By("waiting for VLAgent to become operational")
+		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("snapshotting child DaemonSet spec")
+		resourceNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
+			Namespace: namespace,
+		}
+		expectedDaemonSetSpec := snapshotDaemonSet(ctx, k8sClient, resourceNSN)
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VLAgent")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, 90*time.Second, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying DaemonSet spec remains stable over time")
+		Consistently(func() string {
+			return verifyDaemonSet(ctx, k8sClient, resourceNSN, expectedDaemonSetSpec)
+		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
+	},
+		Entry("from v0.67.0", "v0.67.0", nil),
+		Entry("from v0.68.0", "v0.68.0", nil),
+		Entry("from v0.68.1", "v0.68.1", nil),
+		Entry("from v0.68.2", "v0.68.2", nil),
+		Entry("from v0.68.3", "v0.68.3", nil),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1755
+		Entry("from v0.67.0 with K8sCollector fields", "v0.67.0", vlagentK8sCollectorFieldsFunc),
+		Entry("from v0.68.0 with K8sCollector fields", "v0.68.0", vlagentK8sCollectorFieldsFunc),
+		Entry("from v0.68.1 with K8sCollector fields", "v0.68.1", vlagentK8sCollectorFieldsFunc),
+		Entry("from v0.68.2 with K8sCollector fields", "v0.68.2", vlagentK8sCollectorFieldsFunc),
+		Entry("from v0.68.3 with K8sCollector fields", "v0.68.3", vlagentK8sCollectorFieldsFunc),
 	)
 
 	//nolint:dupl

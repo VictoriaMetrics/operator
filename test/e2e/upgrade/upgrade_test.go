@@ -276,9 +276,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		// TODO[vrutkovs]: regressed here?
+		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		// TODO[vrutkovs]: regressed here?
+		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
@@ -362,9 +364,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		// TODO[vrutkovs]: regressed here?
+		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
@@ -389,7 +392,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
 						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v1.44.0",
+						Tag:        "v1.48.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
@@ -428,11 +431,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
-		Entry("from v0.64.0", "v0.64.0", nil),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.64.0", "v0.64.0", nil),
 		Entry("from v0.64.1", "v0.64.1", nil),
 		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.66.0", "v0.66.0", nil),
+		PEntry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
@@ -441,10 +446,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
 		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
+		PEntry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
+		PEntry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
+		PEntry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlagentUseProxyProtocolFunc),
@@ -515,17 +521,20 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0", "v0.68.0", nil),
+		PEntry("from v0.68.1", "v0.68.1", nil),
+		PEntry("from v0.68.2", "v0.68.2", nil),
+		PEntry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1755
 		Entry("from v0.67.0 with K8sCollector fields", "v0.67.0", vlagentK8sCollectorFieldsFunc),
-		Entry("from v0.68.0 with K8sCollector fields", "v0.68.0", vlagentK8sCollectorFieldsFunc),
-		Entry("from v0.68.1 with K8sCollector fields", "v0.68.1", vlagentK8sCollectorFieldsFunc),
-		Entry("from v0.68.2 with K8sCollector fields", "v0.68.2", vlagentK8sCollectorFieldsFunc),
-		Entry("from v0.68.3 with K8sCollector fields", "v0.68.3", vlagentK8sCollectorFieldsFunc),
+
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0 with K8sCollector fields", "v0.68.0", vlagentK8sCollectorFieldsFunc),
+		PEntry("from v0.68.1 with K8sCollector fields", "v0.68.1", vlagentK8sCollectorFieldsFunc),
+		PEntry("from v0.68.2 with K8sCollector fields", "v0.68.2", vlagentK8sCollectorFieldsFunc),
+		PEntry("from v0.68.3 with K8sCollector fields", "v0.68.3", vlagentK8sCollectorFieldsFunc),
 	)
 
 	//nolint:dupl
@@ -852,7 +861,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1751
-		Entry("from v0.67.0 with ClusterDomainName", "v0.67.0", vmalertmanagerClusterDomainFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.67.0 with ClusterDomainName", "v0.67.0", vmalertmanagerClusterDomainFunc),
 		Entry("from v0.68.0 with ClusterDomainName", "v0.68.0", vmalertmanagerClusterDomainFunc),
 		Entry("from v0.68.1 with ClusterDomainName", "v0.68.1", vmalertmanagerClusterDomainFunc),
 		Entry("from v0.68.2 with ClusterDomainName", "v0.68.2", vmalertmanagerClusterDomainFunc),
@@ -1207,10 +1217,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
 		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
+		PEntry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
+		PEntry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
+		PEntry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
 	)
 
 	//nolint:dupl
@@ -1342,10 +1353,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
 		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
+		PEntry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
+		PEntry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
+		PEntry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
 	)
 
 	//nolint:dupl
@@ -1504,10 +1516,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
 		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		Entry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		Entry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		Entry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		Entry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
+		PEntry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
+		PEntry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
+		PEntry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
 	)
 
 	//nolint:dupl
@@ -1885,6 +1898,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				},
 			},
 			Spec: vmv1.VMAnomalySpec{
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://vminsert:8481/insert/0/prometheus",
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -1934,10 +1954,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.66.0", "v0.66.0", nil),
 		Entry("from v0.66.1", "v0.66.1", nil),
 		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.68.0", "v0.68.0", nil),
+		PEntry("from v0.68.1", "v0.68.1", nil),
+		PEntry("from v0.68.2", "v0.68.2", nil),
+		PEntry("from v0.68.3", "v0.68.3", nil),
 	)
 
 	//nolint:dupl
@@ -2031,7 +2052,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		insertNSN := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", clusterName), Namespace: namespace}
 		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
 		selectNSN := types.NamespacedName{Name: fmt.Sprintf("vmselect-%s", clusterName), Namespace: namespace}
-		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
+		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
 		storageNSN := types.NamespacedName{Name: fmt.Sprintf("vmstorage-%s", clusterName), Namespace: namespace}
 		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
 		agentNSN := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", clusterName), Namespace: namespace}
@@ -2050,7 +2071,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			if diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec); diff != "" {
 				return "insert:\n" + diff
 			}
-			if diff := verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec); diff != "" {
+			if diff := verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec); diff != "" {
 				return "select:\n" + diff
 			}
 			if diff := verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec); diff != "" {
@@ -2068,67 +2089,77 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
-	Describe("VM_LOOPBACK behavior", func() {
-		It("should handle VM_LOOPBACK env var behaviour", func() {
-			namespace := createRandomNamespace(ctx, k8sClient)
-			deployOldOperator(ctx, k8sClient, "v0.68.2", namespace)
+	DescribeTable("VM_LOOPBACK behavior", func(operatorVersion string) {
+		namespace := createRandomNamespace(ctx, k8sClient)
+		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 
-			By("creating VMAgent in " + namespace)
-			cr := &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      vmagentName,
-					Namespace: namespace,
-				},
-				Spec: vmv1beta1.VMAgentSpec{
-					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-						{URL: "http://[::1]:8428/api/v1/write"},
-					},
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vmagent",
-							Tag:        "v1.136.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-			By("waiting for VMAgent to become operational")
-			nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
-			Eventually(func() error {
-				return suite.ExpectObjectStatus(ctx, k8sClient,
-					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-			By("snapshotting child workload specs")
-			resourceNSN := types.NamespacedName{
-				Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+		By("creating VMAgent in " + namespace)
+		cr := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmagentName,
 				Namespace: namespace,
-			}
-			expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://[::1]:8428/api/v1/write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmagent",
+						Tag:        "v1.136.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 
-			By("updating VM_LOOPBACK on the new operator and restarting it")
-			os.Setenv("VM_LOOPBACK", "[::1]")
-			config.MustGetBaseConfig().Loopback = "[::1]"
-			DeferCleanup(func() {
-				os.Unsetenv("VM_LOOPBACK")
-				config.MustGetBaseConfig().Loopback = ""
-			})
+		By("waiting for VMAgent to become operational")
+		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
 
-			restartManagerAndCleanup(ctx, k8sClient, namespace)
+		By("snapshotting child workload specs")
+		resourceNSN := types.NamespacedName{
+			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+			Namespace: namespace,
+		}
+		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
 
-			By("waiting for latest operator to reconcile VMAgent")
-			Eventually(func() error {
-				return suite.ExpectObjectStatus(ctx, k8sClient,
-					&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-			By("verifying workload spec has not changed due to VM_LOOPBACK")
-			Eventually(func() string {
-				return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-			}, 5*time.Second, 1*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
+		By("updating VM_LOOPBACK on the new operator and restarting it")
+		os.Setenv("VM_LOOPBACK", "[::1]")
+		config.MustGetBaseConfig().Loopback = "[::1]"
+		DeferCleanup(func() {
+			os.Unsetenv("VM_LOOPBACK")
+			config.MustGetBaseConfig().Loopback = ""
 		})
-	})
+
+		restartManagerAndCleanup(ctx, k8sClient, namespace)
+
+		By("waiting for latest operator to reconcile VMAgent")
+		Eventually(func() error {
+			return suite.ExpectObjectStatus(ctx, k8sClient,
+				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
+		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
+
+		By("verifying workload spec has not changed due to VM_LOOPBACK")
+		Eventually(func() string {
+			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
+		}, 5*time.Second, 1*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
+	},
+		Entry("from v0.64.0", "v0.64.0"),
+		Entry("from v0.64.1", "v0.64.1"),
+		Entry("from v0.65.0", "v0.65.0"),
+		Entry("from v0.66.0", "v0.66.0"),
+		Entry("from v0.66.1", "v0.66.1"),
+		Entry("from v0.67.0", "v0.67.0"),
+		Entry("from v0.68.0", "v0.68.0"),
+		Entry("from v0.68.1", "v0.68.1"),
+		// TODO[vrutkovs]: Regression?
+		PEntry("from v0.68.2", "v0.68.2"),
+		PEntry("from v0.68.3", "v0.68.3"),
+	)
 })

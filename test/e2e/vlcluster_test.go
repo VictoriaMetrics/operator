@@ -62,7 +62,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 				if verify != nil {
 					var created vmv1.VLCluster
 					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -149,7 +149,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
 				Eventually(func() error {
 					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 
 				for _, step := range steps {
 					if step.setup != nil {
@@ -162,7 +162,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+					}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 
 					var updated vmv1.VLCluster
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())

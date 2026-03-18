@@ -18,12 +18,8 @@ type parsedObjects struct {
 }
 
 func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []byte, ac *build.AssetsCache) ([]byte, error) {
-	if len(pos.configs.All()) == 0 {
+	if len(pos.configs.All()) == 0 && cr.Spec.TracingConfig == nil {
 		return baseCfg, nil
-	}
-	var globalConfigOpts globalAlertmanagerConfig
-	if err := yaml.Unmarshal(baseCfg, &globalConfigOpts); err != nil {
-		return nil, fmt.Errorf("cannot parse global config options: %w", err)
 	}
 	var baseYAMLCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMLCfg); err != nil {
@@ -63,49 +59,56 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 			})
 		}
 	}
-	var subRoutes []yaml.MapSlice
-	var timeIntervals []yaml.MapSlice
-	pos.configs.ForEachCollectSkipInvalid(func(cfg *vmv1beta1.VMAlertmanagerConfig) error {
-		if !build.MustSkipRuntimeValidation() {
-			if err := cfg.Validate(); err != nil {
-				return err
-			}
+
+	if len(pos.configs.All()) > 0 {
+		var globalConfigOpts globalAlertmanagerConfig
+		if err := yaml.Unmarshal(baseCfg, &globalConfigOpts); err != nil {
+			return nil, fmt.Errorf("cannot parse global config options: %w", err)
 		}
-		var receiverCfgs []yaml.MapSlice
-		for _, receiver := range cfg.Spec.Receivers {
-			receiverCfg, err := buildReceiver(cfg, receiver, &globalConfigOpts, ac)
+		var subRoutes []yaml.MapSlice
+		var timeIntervals []yaml.MapSlice
+		pos.configs.ForEachCollectSkipInvalid(func(cfg *vmv1beta1.VMAlertmanagerConfig) error {
+			if !build.MustSkipRuntimeValidation() {
+				if err := cfg.Validate(); err != nil {
+					return err
+				}
+			}
+			var receiverCfgs []yaml.MapSlice
+			for _, receiver := range cfg.Spec.Receivers {
+				receiverCfg, err := buildReceiver(cfg, receiver, &globalConfigOpts, ac)
+				if err != nil {
+					return err
+				}
+				if len(receiverCfg) > 0 {
+					receiverCfgs = append(receiverCfgs, receiverCfg)
+				}
+			}
+			mtis, err := buildGlobalTimeIntervals(cfg)
 			if err != nil {
 				return err
 			}
-			if len(receiverCfg) > 0 {
-				receiverCfgs = append(receiverCfgs, receiverCfg)
+			if cfg.Spec.Route != nil {
+				route, err := buildRoute(cfg, cfg.Spec.Route, true, cr)
+				if err != nil {
+					return err
+				}
+				subRoutes = append(subRoutes, route)
 			}
-		}
-		mtis, err := buildGlobalTimeIntervals(cfg)
-		if err != nil {
-			return err
-		}
-		if cfg.Spec.Route != nil {
-			route, err := buildRoute(cfg, cfg.Spec.Route, true, cr)
-			if err != nil {
-				return err
+			baseYAMLCfg.Receivers = append(baseYAMLCfg.Receivers, receiverCfgs...)
+			for _, rule := range cfg.Spec.InhibitRules {
+				baseYAMLCfg.InhibitRules = append(baseYAMLCfg.InhibitRules, buildInhibitRule(cfg.Namespace, rule, !cr.Spec.DisableNamespaceMatcher))
 			}
-			subRoutes = append(subRoutes, route)
+			if len(mtis) > 0 {
+				timeIntervals = append(timeIntervals, mtis...)
+			}
+			return nil
+		})
+		if len(subRoutes) > 0 {
+			baseYAMLCfg.Route.Routes = append(baseYAMLCfg.Route.Routes, subRoutes...)
 		}
-		baseYAMLCfg.Receivers = append(baseYAMLCfg.Receivers, receiverCfgs...)
-		for _, rule := range cfg.Spec.InhibitRules {
-			baseYAMLCfg.InhibitRules = append(baseYAMLCfg.InhibitRules, buildInhibitRule(cfg.Namespace, rule, !cr.Spec.DisableNamespaceMatcher))
+		if len(timeIntervals) > 0 {
+			baseYAMLCfg.TimeIntervals = append(baseYAMLCfg.TimeIntervals, timeIntervals...)
 		}
-		if len(mtis) > 0 {
-			timeIntervals = append(timeIntervals, mtis...)
-		}
-		return nil
-	})
-	if len(subRoutes) > 0 {
-		baseYAMLCfg.Route.Routes = append(baseYAMLCfg.Route.Routes, subRoutes...)
-	}
-	if len(timeIntervals) > 0 {
-		baseYAMLCfg.TimeIntervals = append(baseYAMLCfg.TimeIntervals, timeIntervals...)
 	}
 	if cr.Spec.TracingConfig != nil {
 		tracingCfg, err := buildTracingConfig(cr, ac)

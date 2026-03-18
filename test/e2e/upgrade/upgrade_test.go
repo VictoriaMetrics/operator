@@ -374,11 +374,16 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{
+						URL: "http://vlogs:9428/insert/loki/api/v1/push",
+					},
+				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
 						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
+						Tag:        "v1.44.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
@@ -454,13 +459,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				Namespace: namespace,
 			},
 			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{
+						URL: "http://vlogs:9428/insert/loki/api/v1/push",
+					},
+				},
 				K8sCollector: vmv1.VLAgentK8sCollector{
 					Enabled: true,
 				},
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v0.4.0",
+						Tag:        "v1.48.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},

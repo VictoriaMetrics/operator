@@ -47,6 +47,9 @@ var (
 	vmalertmanagerUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlertmanager) {
 		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 	}
+	vmalertmanagerClusterDomainFunc = func(cr *vmv1beta1.VMAlertmanager) {
+		cr.Spec.ClusterDomainName = "cluster.local"
+	}
 	vmclusterUseProxyProtocolFunc = func(cr *vmv1beta1.VMCluster) {
 		cr.Spec.VMSelect.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
 		cr.Spec.VMInsert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
@@ -815,6 +818,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1751
+		Entry("from v0.67.0 with ClusterDomainName", "v0.67.0", vmalertmanagerClusterDomainFunc),
+		Entry("from v0.68.0 with ClusterDomainName", "v0.68.0", vmalertmanagerClusterDomainFunc),
+		Entry("from v0.68.1 with ClusterDomainName", "v0.68.1", vmalertmanagerClusterDomainFunc),
+		Entry("from v0.68.2 with ClusterDomainName", "v0.68.2", vmalertmanagerClusterDomainFunc),
+		Entry("from v0.68.3 with ClusterDomainName", "v0.68.3", vmalertmanagerClusterDomainFunc),
 	)
 
 	//nolint:dupl

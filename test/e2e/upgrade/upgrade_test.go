@@ -72,6 +72,12 @@ var (
 	vmauthUseProxyProtocolFunc = func(cr *vmv1beta1.VMAuth) {
 		cr.Spec.UseProxyProtocol = true
 	}
+	vmagentIngestOnlyWithRelabelFunc = func(cr *vmv1beta1.VMAgent) {
+		cr.Spec.IngestOnlyMode = ptr.To(true)
+		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
+			{TargetLabel: "env", Replacement: ptr.To("prod")},
+		}
+	}
 )
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
@@ -147,6 +153,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
+		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
 
 	//nolint:dupl
@@ -223,6 +236,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
+		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
 
 	//nolint:dupl
@@ -299,6 +319,13 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
 		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
+
+		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
+		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
+		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
 
 	//nolint:dupl

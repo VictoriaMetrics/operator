@@ -185,11 +185,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+		// Broken on 0.68
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
 		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
@@ -268,11 +269,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
 		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
@@ -446,11 +447,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlagentUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlagentUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlagentUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlagentUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlagentUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlagentUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlagentUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlagentUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlagentUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlagentUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -597,11 +598,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
 
 		Entry("from v0.68.3 IngestOnly", "v0.68.3", vmsingleIngestOnlyFunc),
 		Entry("from v0.68.3 IngestOnly with UseProxyProtocol", "v0.68.3", vmsingleIngestOnlyWithProxyProtocolFunc),
@@ -686,11 +687,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmauthUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmauthUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmauthUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmauthUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmauthUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmauthUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmauthUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmauthUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmauthUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmauthUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -844,11 +845,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1751
 		Entry("from v0.67.0 with ClusterDomainName", "v0.67.0", vmalertmanagerClusterDomainFunc),
@@ -1199,10 +1200,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
 		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlsingleUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
 		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
@@ -1326,12 +1327,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
 		// Fails on latest master
-		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
+		Entry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
+		Entry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
+		Entry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
+		// This was broken again
+		Entry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlclusterUseProxyProtocolFunc),
+		// Broken on 0.68
 		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlclusterUseProxyProtocolFunc),
@@ -1578,11 +1581,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vtsingleUseProxyProtocolFunc),
 		Entry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
+		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
+		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
 	)
 
 	//nolint:dupl
@@ -1853,13 +1856,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		// Fails on latest master
+		// Probe changed
 		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
+		// Broken on 0.68
 		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
 		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),

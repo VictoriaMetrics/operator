@@ -1933,6 +1933,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	//nolint:dupl
+	// TODO[vrutkovs]: snapshot created VMClusters?
 	DescribeTable("should not rollout VMDistributed changes", func(operatorVersion string, mod func(*vmv1alpha1.VMDistributed)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
@@ -2022,7 +2023,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		insertNSN := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", clusterName), Namespace: namespace}
 		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
 		selectNSN := types.NamespacedName{Name: fmt.Sprintf("vmselect-%s", clusterName), Namespace: namespace}
-		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
+		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
 		storageNSN := types.NamespacedName{Name: fmt.Sprintf("vmstorage-%s", clusterName), Namespace: namespace}
 		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
 		agentNSN := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", clusterName), Namespace: namespace}
@@ -2041,7 +2042,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			if diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec); diff != "" {
 				return "insert:\n" + diff
 			}
-			if diff := verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec); diff != "" {
+			if diff := verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec); diff != "" {
 				return "select:\n" + diff
 			}
 			if diff := verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec); diff != "" {

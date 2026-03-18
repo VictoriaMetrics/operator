@@ -153,6 +153,23 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("unused"))
 
 					}),
+				Entry("with UseProxyProtocol", "proxy-protocol",
+					&vmv1.VLSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1.VLSingleSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+							RetentionPeriod: "1",
+						},
+					},
+					func(cr *vmv1.VLSingle) {},
+				),
 			)
 
 			baseVLSingle := &vmv1.VLSingle{

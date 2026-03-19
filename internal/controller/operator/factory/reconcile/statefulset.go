@@ -29,14 +29,12 @@ import (
 
 const podRevisionLabel = "controller-revision-hash"
 
-// STSOptions options for StatefulSet update
+// StatefulSetOpts options for StatefulSet update
 // HPA and UpdateReplicaCount optional
-type STSOptions struct {
-	HasClaim           bool
-	SelectorLabels     func() map[string]string
-	HPA                *vmv1beta1.EmbeddedHPA
-	UpdateReplicaCount func(count *int32)
-	UpdateBehavior     *vmv1beta1.StatefulSetUpdateStrategyBehavior
+type StatefulSetOpts struct {
+	SelectorLabels map[string]string
+	PatchSpec      func(existingSpec, newSpec *appsv1.StatefulSetSpec)
+	UpdateBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
@@ -69,7 +67,7 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 }
 
 // StatefulSet performs create and update operations for given statefulSet with STSOptions
-func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newObj, prevObj *appsv1.StatefulSet, owner *metav1.OwnerReference) error {
+func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.StatefulSet, owner *metav1.OwnerReference, o *StatefulSetOpts) error {
 	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
@@ -87,6 +85,9 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
+	if o == nil {
+		o = new(StatefulSetOpts)
+	}
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -104,16 +105,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			return err
 		}
 
-		spec := &newObj.Spec
-		// will update the original cr replicaCount to propagate right num,
-		// for now, it's only used in vmselect
-		if cr.UpdateReplicaCount != nil {
-			cr.UpdateReplicaCount(existingObj.Spec.Replicas)
-		}
-
-		// do not change replicas count.
-		if cr.HPA != nil {
-			spec.Replicas = existingObj.Spec.Replicas
+		if o.PatchSpec != nil {
+			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
 		}
 
 		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
@@ -132,7 +125,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		}
 
 		// check if pvcs need to resize
-		if cr.HasClaim {
+		if len(newObj.Spec.VolumeClaimTemplates) > 0 {
 			if err := updateSTSPVC(ctx, rclient, &existingObj, prevVCTs); err != nil {
 				return err
 			}
@@ -143,7 +136,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
@@ -165,14 +158,14 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 	case appsv1.OnDeleteStatefulSetStrategyType:
 		opts := rollingUpdateOpts{
 			recreate:       recreatePod,
-			selector:       cr.SelectorLabels(),
+			selector:       o.SelectorLabels,
 			maxUnavailable: 1,
 		}
-		if cr.UpdateBehavior != nil {
-			if cr.UpdateBehavior.MaxUnavailable.String() == "100%" {
+		if o.UpdateBehavior != nil {
+			if o.UpdateBehavior.MaxUnavailable.String() == "100%" {
 				opts.delete = true
 			}
-			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
+			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(o.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
 			if err != nil {
 				return err
 			}

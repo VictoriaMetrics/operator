@@ -182,7 +182,14 @@ func createOrUpdateVLSelectDeployment(ctx context.Context, rclient client.Client
 		return err
 	}
 	owner := cr.AsOwner()
-	return reconcile.Deployment(ctx, rclient, newDep, prevDep, cr.Spec.VLSelect.HPA != nil, &owner)
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.VLSelect.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	return reconcile.Deployment(ctx, rclient, newDep, prevDep, &owner, &o)
 }
 
 func buildVLSelectDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {

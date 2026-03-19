@@ -3,7 +3,6 @@ package build
 import (
 	"fmt"
 	"iter"
-	"strconv"
 
 	policyv1 "k8s.io/api/policy/v1"
 
@@ -74,7 +73,7 @@ func ShardPodLabels(cr shardOpts) map[string]string {
 // RenderShard replaces resource's shard number placeholder with a given shard number
 func RenderShard[T any](resource *T, num int32) (*T, error) {
 	placeholders := map[string]string{
-		shardNumPlaceholder: strconv.FormatInt(int64(num), 32),
+		shardNumPlaceholder: fmt.Sprintf("%d", num),
 	}
 	return k8stools.RenderPlaceholders(resource, placeholders)
 }
@@ -84,7 +83,7 @@ func ShardPodDisruptionBudget(cr shardOpts, spec *vmv1beta1.EmbeddedPodDisruptio
 	pdb := PodDisruptionBudget(cr, spec)
 	if cr.IsSharded() {
 		pdb.Name = fmt.Sprintf("%s-%d", pdb.Name, num)
-		pdb.Spec.Selector.MatchLabels[shardLabelName] = strconv.FormatInt(int64(num), 32)
+		pdb.Spec.Selector.MatchLabels[shardLabelName] = fmt.Sprintf("%d", num)
 	}
 	return pdb
 }

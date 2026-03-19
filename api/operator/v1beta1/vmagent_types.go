@@ -97,6 +97,10 @@ type VMAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	StatefulRollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -160,8 +164,15 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
-		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+	if cr.Spec.StatefulMode {
+		if cr.Spec.DaemonSetMode {
+			return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+		}
+		if cr.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+			if err := cr.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+				return fmt.Errorf("vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", err)
+			}
+		}
 	}
 	if cr.Spec.DaemonSetMode {
 		if cr.Spec.HPA != nil {

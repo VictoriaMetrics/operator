@@ -113,7 +113,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil, &owner); err != nil {
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, &o); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
 	if prevCR != nil {

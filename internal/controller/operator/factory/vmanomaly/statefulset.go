@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"strconv"
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -108,11 +107,11 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 		envs = append(envs, []corev1.EnvVar{
 			{
 				Name:  "VMANOMALY_MEMBERS_COUNT",
-				Value: strconv.FormatInt(int64(shardCount), 32),
+				Value: fmt.Sprintf("%d", shardCount),
 			},
 			{
 				Name:  "VMANOMALY_MEMBER_NUM",
-				Value: strconv.FormatInt(int64(shardNum), 32),
+				Value: fmt.Sprintf("%d", shardNum),
 			},
 		}...)
 		container.Env = envs
@@ -236,13 +235,10 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			return
 		}
 		selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-		opts := reconcile.STSOptions{
-			HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-			SelectorLabels: func() map[string]string {
-				return selectorLabels
-			},
+		o := reconcile.StatefulSetOpts{
+			SelectorLabels: selectorLabels,
 		}
-		if err := reconcile.StatefulSet(shardCtx, rclient, opts, newApp, prevApp, &owner); err != nil {
+		if err := reconcile.StatefulSet(shardCtx, rclient, newApp, prevApp, &owner, &o); err != nil {
 			rv.err = err
 			return
 		}

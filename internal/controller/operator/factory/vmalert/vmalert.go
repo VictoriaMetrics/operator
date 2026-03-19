@@ -157,7 +157,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 // newDeploy returns a busybox pod with the same name/namespace as the cr

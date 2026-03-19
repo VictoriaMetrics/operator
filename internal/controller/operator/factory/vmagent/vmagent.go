@@ -261,8 +261,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
-
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false, &owner); err != nil {
+			o := reconcile.DeploymentOpts{
+				PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+					if cr.Spec.HPA != nil {
+						newSpec.Replicas = existingSpec.Replicas
+					}
+				},
+			}
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -300,18 +306,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 			selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-			opts := reconcile.STSOptions{
-				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: func() map[string]string {
-					return selectorLabels
-				},
-				UpdateReplicaCount: func(count *int32) {
-					if cr.Spec.HPA != nil && count != nil {
-						cr.Spec.ShardCount = count
-					}
-				},
+			o := reconcile.StatefulSetOpts{
+				SelectorLabels: selectorLabels,
+				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -1322,6 +1321,8 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	kind := "Deployment"
 	if cr.Spec.StatefulMode {
 		kind = "StatefulSet"
+	} else if cr.Spec.DaemonSetMode {
+		return nil
 	}
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       cr.PrefixedName(),

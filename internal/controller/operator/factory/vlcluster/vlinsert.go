@@ -75,7 +75,14 @@ func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client
 		return err
 	}
 	owner := cr.AsOwner()
-	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VLInsert.HPA != nil, &owner)
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.VLInsert.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, &owner, &o)
 }
 
 func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {

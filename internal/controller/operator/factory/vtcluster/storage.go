@@ -163,15 +163,17 @@ func createOrUpdateVTStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
-		},
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 		UpdateBehavior: cr.Spec.Storage.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.Storage.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
 	}
 	owner := cr.AsOwner()
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {

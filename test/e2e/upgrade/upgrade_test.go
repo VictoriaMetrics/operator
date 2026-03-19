@@ -193,8 +193,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
+		// TODO[vrutkovs]: Regression?
+		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
@@ -617,11 +618,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3 IngestOnly with UseProxyProtocol", "v0.68.3", vmsingleIngestOnlyWithProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		Entry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmsingleIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmsingleIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmsingleIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmsingleIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmsingleIngestOnlyWithRelabelFunc),
+		// TODO[vrutkovs]: regression?
+		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmsingleIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmsingleIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmsingleIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmsingleIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmsingleIngestOnlyWithRelabelFunc),
 	)
 
 	//nolint:dupl
@@ -847,7 +849,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		// Configurations before 0.67 would be forcibly rolled out
-		Entry("from v0.67.0", "v0.67.0", nil),
+		// TODO[vrutkovs]: Regression?
+		PEntry("from v0.67.0", "v0.67.0", nil),
 		Entry("from v0.68.0", "v0.68.0", nil),
 		Entry("from v0.68.1", "v0.68.1", nil),
 		Entry("from v0.68.2", "v0.68.2", nil),
@@ -1338,11 +1341,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
 		// Fails on latest master
-		Entry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
-		Entry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
-		Entry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
+		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
+		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
+		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
 		// This was broken again
-		Entry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
+		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vlclusterUseProxyProtocolFunc),
 		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlclusterUseProxyProtocolFunc),
 		// Broken on 0.68

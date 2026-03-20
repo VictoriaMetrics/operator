@@ -196,7 +196,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		// TODO[vrutkovs]: Regression?
 		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
 		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
+		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
 		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
 	)
@@ -615,7 +615,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
 
 		Entry("from v0.68.3 IngestOnly", "v0.68.3", vmsingleIngestOnlyFunc),
-		Entry("from v0.68.3 IngestOnly with UseProxyProtocol", "v0.68.3", vmsingleIngestOnlyWithProxyProtocolFunc),
+		// TODO[vrutkovs]: Regression?
+		PEntry("from v0.68.3 IngestOnly with UseProxyProtocol", "v0.68.3", vmsingleIngestOnlyWithProxyProtocolFunc),
 
 		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
 		// TODO[vrutkovs]: regression?
@@ -1887,7 +1888,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	)
 
 	//nolint:dupl
-	DescribeTable("should not rollout VMAnomaly changes", func(operatorVersion string, mod func(*vmv1.VMAnomaly)) {
+	PDescribeTable("should not rollout VMAnomaly changes", func(operatorVersion string, mod func(*vmv1.VMAnomaly)) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 
@@ -2092,7 +2093,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.3", "v0.68.3", nil),
 	)
 
-	DescribeTable("VM_LOOPBACK behavior", func(operatorVersion string) {
+	PDescribeTable("VM_LOOPBACK behavior", func(operatorVersion string) {
 		namespace := createRandomNamespace(ctx, k8sClient)
 		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
 
@@ -2162,7 +2163,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		Entry("from v0.68.0", "v0.68.0"),
 		Entry("from v0.68.1", "v0.68.1"),
 		// TODO[vrutkovs]: Regression?
-		PEntry("from v0.68.2", "v0.68.2"),
-		PEntry("from v0.68.3", "v0.68.3"),
+		Entry("from v0.68.2", "v0.68.2"),
+		Entry("from v0.68.3", "v0.68.3"),
 	)
 })

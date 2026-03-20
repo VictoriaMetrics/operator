@@ -992,8 +992,7 @@ type VMAuthLoadBalancerSpec struct {
 	// LogLevel for vmauth container.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
-	LogLevel         string `json:"logLevel,omitempty"`
-	CommonAppsParams `json:",inline"`
+	LogLevel string `json:"logLevel,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
@@ -1009,8 +1008,8 @@ type VMAuthLoadBalancerSpec struct {
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// License configures enterprise features license key
 	// +optional
-	License                    *License `json:"license,omitempty"`
-	CommonConfigReloaderParams `json:",inline,omitempty"`
+	License          *License `json:"license,omitempty"`
+	CommonAppsParams `json:",inline"`
 }
 
 // ProbePort returns port for probe requests

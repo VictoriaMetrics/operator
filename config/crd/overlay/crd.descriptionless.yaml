@@ -6079,6 +6079,7 @@ spec:
                 - spec
                 type: object
               shardCount:
+                format: int32
                 type: integer
               startupProbe:
                 type: object
@@ -12326,6 +12327,7 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               shardCount:
+                format: int32
                 type: integer
               startupProbe:
                 type: object

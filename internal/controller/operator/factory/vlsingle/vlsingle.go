@@ -108,7 +108,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 		return fmt.Errorf("cannot generate new deploy for vlsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {

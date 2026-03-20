@@ -543,7 +543,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) {
 						cr.Spec.ReplicaCount = ptr.To[int32](1)
-						cr.Spec.ShardCount = ptr.To(2)
+						cr.Spec.ShardCount = ptr.To[int32](2)
 						cr.Spec.StatefulMode = true
 						cr.Spec.IngestOnlyMode = ptr.To(true)
 					},

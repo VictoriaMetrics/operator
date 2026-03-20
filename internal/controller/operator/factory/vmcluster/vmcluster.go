@@ -165,20 +165,16 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	owner := cr.AsOwner()
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentSelect)
-		},
-		HPA: cr.Spec.VMSelect.HPA,
-		UpdateReplicaCount: func(count *int32) {
-			if cr.Spec.VMSelect.HPA != nil && count != nil {
-				cr.Spec.VMSelect.ReplicaCount = count
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
+		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.VMSelect.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
 			}
 		},
-		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -316,7 +312,14 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	owner := cr.AsOwner()
-	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VMInsert.HPA != nil, &owner)
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.VMInsert.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, &owner, &o)
 }
 
 func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -414,15 +417,17 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
-		},
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.VMStorage.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
 	}
 	owner := cr.AsOwner()
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -1624,7 +1629,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false, &owner); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, &owner, nil); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {

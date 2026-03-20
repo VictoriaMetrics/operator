@@ -1213,7 +1213,7 @@ func (in *VMAnomalySpec) DeepCopyInto(out *VMAnomalySpec) {
 	}
 	if in.ShardCount != nil {
 		in, out := &in.ShardCount, &out.ShardCount
-		*out = new(int)
+		*out = new(int32)
 		**out = **in
 	}
 	if in.PodDisruptionBudget != nil {

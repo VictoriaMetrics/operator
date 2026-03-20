@@ -66,7 +66,7 @@ type VMAgentSpec struct {
 	// replicas count according to spec.replicas,
 	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
 	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
+	ShardCount *int32 `json:"shardCount,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// works only for deployments, statefulset always use OnDelete.
@@ -155,7 +155,7 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
+	if cr.Spec.StatefulMode && cr.Spec.DaemonSetMode {
 		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
 	}
 	if cr.Spec.DaemonSetMode {
@@ -202,7 +202,7 @@ func (cr *VMAgent) IsSharded() bool {
 }
 
 // GetShardCount returns shard count for vmagent
-func (cr *VMAgent) GetShardCount() int {
+func (cr *VMAgent) GetShardCount() int32 {
 	if !cr.IsSharded() {
 		return 1
 	}
@@ -481,7 +481,7 @@ func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 	}
 	var shardCnt int32
 	if cr.IsSharded() {
-		shardCnt = int32(*cr.Spec.ShardCount)
+		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Replicas = replicaCount
 	vs.Shards = shardCnt

@@ -203,7 +203,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 	owner := cr.AsOwner()
-	updateShard := func(shardNum int) {
+	updateShard := func(shardNum int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -255,8 +255,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
-
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false, &owner); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, nil); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -294,13 +293,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 			selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-			opts := reconcile.STSOptions{
-				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: func() map[string]string {
-					return selectorLabels
-				},
+			o := reconcile.StatefulSetOpts{
+				SelectorLabels: selectorLabels,
+				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -726,7 +723,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}, nil
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name == "vmagent" {

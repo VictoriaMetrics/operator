@@ -197,6 +197,10 @@ type VMDistributedZoneAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	StatefulRollingUpdateStrategyBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -457,6 +461,13 @@ func (cr *VMDistributed) Validate() error {
 				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
 			}
 			agents[agentName] = struct{}{}
+		}
+		if zone.VMAgent.Spec.StatefulMode {
+			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+				if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
+				}
+			}
 		}
 		if zone.VMCluster.Spec.VMInsert == nil && !hasCommonVMInsert {
 			return fmt.Errorf("either zoneCommon.vmcluster.spec.vminsert or spec.zones[%d].vmcluster.spec.vminsert is required", i)

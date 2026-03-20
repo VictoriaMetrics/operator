@@ -225,6 +225,11 @@ func (in *VMDistributedZoneAgentSpec) DeepCopyInto(out *VMDistributedZoneAgentSp
 		*out = new(v1beta1.StorageSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StatefulRollingUpdateStrategyBehavior != nil {
+		in, out := &in.StatefulRollingUpdateStrategyBehavior, &out.StatefulRollingUpdateStrategyBehavior
+		*out = new(v1beta1.StatefulSetUpdateStrategyBehavior)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PersistentVolumeClaimRetentionPolicy != nil {
 		in, out := &in.PersistentVolumeClaimRetentionPolicy, &out.PersistentVolumeClaimRetentionPolicy
 		*out = new(appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy)

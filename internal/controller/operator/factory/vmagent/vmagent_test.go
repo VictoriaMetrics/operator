@@ -134,7 +134,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ShardCount: func() *int { i := 2; return &i }(),
+				ShardCount: func() *int32 { i := int32(2); return &i }(),
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -455,7 +455,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](2),
 				},
-				ShardCount: ptr.To(3),
+				ShardCount: ptr.To[int32](3),
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 					MinAvailable: ptr.To(intstr.FromInt(1)),
 				},

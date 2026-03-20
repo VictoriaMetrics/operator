@@ -307,13 +307,6 @@ spec:
       kind: VMCluster
       name: vmclusters.operator.victoriametrics.com
       specDescriptors:
-      - description: |-
-          ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-          if not defined default resources from operator config will be used
-        displayName: Resources
-        path: requestsLoadBalancer.spec.configReloaderResources
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: ReplicaCount is the expected size of the Application.
         displayName: Number of pods
         path: requestsLoadBalancer.spec.replicaCount

@@ -506,8 +506,8 @@ func Test_updateSTSPVC(t *testing.T) {
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
-			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
 		expected: []corev1.PersistentVolumeClaim{

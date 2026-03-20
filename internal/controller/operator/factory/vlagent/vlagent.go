@@ -161,11 +161,10 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 		if prevAppObj != nil {
 			prevApp, _ = prevAppObj.(*appsv1.StatefulSet)
 		}
-		stsOpts := reconcile.STSOptions{
-			HasClaim:       len(newApp.Spec.VolumeClaimTemplates) > 0,
-			SelectorLabels: cr.SelectorLabels,
+		o := reconcile.StatefulSetOpts{
+			SelectorLabels: cr.SelectorLabels(),
 		}
-		if err := reconcile.StatefulSet(ctx, rclient, stsOpts, newApp, prevApp, &owner); err != nil {
+		if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 			return fmt.Errorf("cannot reconcile statefulset for vlagent: %w", err)
 		}
 		return nil

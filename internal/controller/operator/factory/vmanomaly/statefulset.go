@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"strconv"
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -92,7 +91,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name != "vmanomaly" {
@@ -108,11 +107,11 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 		envs = append(envs, []corev1.EnvVar{
 			{
 				Name:  "VMANOMALY_MEMBERS_COUNT",
-				Value: strconv.Itoa(shardCount),
+				Value: fmt.Sprintf("%d", shardCount),
 			},
 			{
 				Name:  "VMANOMALY_MEMBER_NUM",
-				Value: strconv.Itoa(shardNum),
+				Value: fmt.Sprintf("%d", shardNum),
 			},
 		}...)
 		container.Env = envs
@@ -208,7 +207,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
 	owner := cr.AsOwner()
-	updateShard := func(num int) {
+	updateShard := func(num int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -236,13 +235,10 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			return
 		}
 		selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-		opts := reconcile.STSOptions{
-			HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-			SelectorLabels: func() map[string]string {
-				return selectorLabels
-			},
+		o := reconcile.StatefulSetOpts{
+			SelectorLabels: selectorLabels,
 		}
-		if err := reconcile.StatefulSet(shardCtx, rclient, opts, newApp, prevApp, &owner); err != nil {
+		if err := reconcile.StatefulSet(shardCtx, rclient, newApp, prevApp, &owner, &o); err != nil {
 			rv.err = err
 			return
 		}
@@ -282,7 +278,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return nil
 }
 
-func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int) (*appsv1.StatefulSet, error) {
+func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int32) (*appsv1.StatefulSet, error) {
 	if appTpl == nil || !cr.IsSharded() {
 		return appTpl, nil
 	}

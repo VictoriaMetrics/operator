@@ -4,6 +4,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -51,6 +52,7 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 		}},
 		&appsv1.DaemonSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+		&autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta},
 		&corev1.Secret{ObjectMeta: objMeta},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 			Name:      build.ResourceName(build.TLSAssetsResourceKind, cr),

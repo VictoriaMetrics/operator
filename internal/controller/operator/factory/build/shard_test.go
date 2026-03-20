@@ -8,10 +8,10 @@ import (
 )
 
 func TestShardNumIter(t *testing.T) {
-	f := func(backward bool, upperBound int) {
+	f := func(backward bool, upperBound int32) {
 		output := slices.Collect(ShardNumIter(backward, upperBound))
-		assert.Equal(t, upperBound, len(output), "invalid ShardNumIter() items count")
-		var lowerBound int
+		assert.Len(t, output, int(upperBound), "invalid ShardNumIter() items count")
+		var lowerBound int32
 		if backward {
 			lowerBound = upperBound - 1
 			upperBound = 0

@@ -360,7 +360,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				testStep{
 					modify: func(cr *vmv1.VMAnomaly) {
 						cr.Spec.ReplicaCount = ptr.To[int32](1)
-						cr.Spec.ShardCount = ptr.To(2)
+						cr.Spec.ShardCount = ptr.To[int32](2)
 					},
 					verify: func(cr *vmv1.VMAnomaly) {
 						var createdSts appsv1.StatefulSet

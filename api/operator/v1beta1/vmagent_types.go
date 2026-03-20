@@ -67,7 +67,7 @@ type VMAgentSpec struct {
 	// replicas count according to spec.replicas,
 	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
 	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
+	ShardCount *int32 `json:"shardCount,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// works only for deployments, statefulset always use OnDelete.
@@ -97,6 +97,10 @@ type VMAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	StatefulRollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -118,6 +122,10 @@ type VMAgentSpec struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
+
+	// Configures horizontal pod autoscaling.
+	// +optional
+	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
@@ -156,15 +164,30 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
-		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+	if cr.Spec.StatefulMode {
+		if cr.Spec.DaemonSetMode {
+			return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+		}
+		if cr.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+			if err := cr.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+				return fmt.Errorf("vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", err)
+			}
+		}
 	}
 	if cr.Spec.DaemonSetMode {
+		if cr.Spec.HPA != nil {
+			return fmt.Errorf("hpa cannot be used with daemonSetMode")
+		}
 		if cr.Spec.PodDisruptionBudget != nil {
 			return fmt.Errorf("podDisruptionBudget cannot be used with daemonSetMode")
 		}
 		if cr.Spec.EnableKubernetesAPISelectors {
 			return fmt.Errorf("enableKubernetesAPISelectors cannot be used with daemonSetMode")
+		}
+	}
+	if cr.Spec.HPA != nil {
+		if err := cr.Spec.HPA.Validate(); err != nil {
+			return err
 		}
 	}
 	scrapeClassNames := make(map[string]struct{})
@@ -203,7 +226,7 @@ func (cr *VMAgent) IsSharded() bool {
 }
 
 // GetShardCount returns shard count for vmagent
-func (cr *VMAgent) GetShardCount() int {
+func (cr *VMAgent) GetShardCount() int32 {
 	if !cr.IsSharded() {
 		return 1
 	}
@@ -470,7 +493,7 @@ func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 	}
 	var shardCnt int32
 	if cr.IsSharded() {
-		shardCnt = int32(*cr.Spec.ShardCount)
+		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Replicas = replicaCount
 	vs.Shards = shardCnt

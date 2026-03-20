@@ -60,14 +60,14 @@ jobs:
           SAVED=$((AFTER-BEFORE))
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Prepare binary cache
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
           path: ./bin
           key: binary
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
         with:
           go-version-file: "go.mod"
           check-latest: true
@@ -75,7 +75,7 @@ jobs:
         id: go
 
       - name: Run Trivy vulnerability scanner in repo mode
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         with:
           scan-type: "fs"
           ignore-unfixed: true
@@ -83,7 +83,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c6f931105cb2c34c8f901cc885ba1e2e259cf745
         with:
           sarif_file: "trivy-results.sarif"
 
@@ -111,7 +111,7 @@ jobs:
           make test
           TAG=${TAG} make test-e2e
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v6
+        uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4
         if: success() || failure()
         with:
           report_paths: 'report.xml'
@@ -120,7 +120,7 @@ jobs:
         run: make allure-report
       - name: Archive Allure report
         if: github.event.pull_request.draft == false && failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: allure-report
           path: ./allure-report

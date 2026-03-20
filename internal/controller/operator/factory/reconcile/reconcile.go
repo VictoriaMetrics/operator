@@ -18,23 +18,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 var (
-	podWaitReadyIntervalCheck = 50 * time.Millisecond
-	appWaitReadyDeadline      = 5 * time.Second
-	podWaitReadyTimeout       = 5 * time.Second
-	vmStatusInterval          = 5 * time.Second
+	pvcWaitReadyInterval = 1 * time.Second
+	pvcWaitReadyTimeout  = 5 * time.Second
+
+	podWaitReadyInterval = 1 * time.Second
+	podWaitReadyTimeout  = 5 * time.Second
+
+	appWaitReadyTimeout = 5 * time.Second
+	vmWaitReadyInterval = 5 * time.Second
 )
 
 // Init sets package defaults
-func Init(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval, statusUpdate time.Duration) {
-	podWaitReadyIntervalCheck = intervalCheck
-	appWaitReadyDeadline = appWaitDeadline
-	podWaitReadyTimeout = podReadyDeadline
-	vmStatusInterval = statusInterval
+func Init(cfg *config.BaseOperatorConf, statusUpdate time.Duration) {
+	podWaitReadyInterval = cfg.PodWaitReadyInterval
+	podWaitReadyTimeout = cfg.PodWaitReadyTimeout
+
+	pvcWaitReadyInterval = cfg.PVCWaitReadyInterval
+	pvcWaitReadyTimeout = cfg.PVCWaitReadyTimeout
+
+	appWaitReadyTimeout = cfg.AppWaitReadyTimeout
+	vmWaitReadyInterval = cfg.VMWaitReadyInterval
 	statusUpdateTTL = statusUpdate
 }
 

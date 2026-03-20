@@ -121,6 +121,11 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, prevVCT, nil); err != nil {
 			return err
 		}
+		nsnPvc := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
+		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		if err := waitForPVCReady(ctx, rclient, nsnPvc, size); err != nil {
+			return err
+		}
 	}
 	return nil
 }

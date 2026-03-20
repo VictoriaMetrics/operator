@@ -4,6 +4,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -12,80 +13,55 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object) error {
+	switch v := obj.(type) {
+	case *appsv1.StatefulSet:
+		v.Status.ObservedGeneration = v.Generation
+		v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+		v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+		v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
+		v.Status.UpdateRevision = "v1"
+		v.Status.CurrentRevision = "v1"
+	case *appsv1.Deployment:
+		v.Status.ObservedGeneration = v.Generation
+		v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
+			Type:   appsv1.DeploymentProgressing,
+			Reason: "NewReplicaSetAvailable",
+			Status: "True",
+		})
+		v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
+		v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
+	case *vmv1beta1.VMAgent:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *vmv1beta1.VMCluster:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *vmv1beta1.VMAuth:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *corev1.PersistentVolumeClaim:
+		v.Status.Capacity = v.Spec.Resources.Requests
+	default:
+		return nil
+	}
+	return cl.Status().Update(ctx, obj)
+}
+
 // GetInterceptorsWithObjects returns interceptors for objects
 func GetInterceptorsWithObjects() interceptor.Funcs {
 	return interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation + 1
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdateRevision = "v1"
-				v.Status.CurrentRevision = "v1"
-			case *appsv1.Deployment:
-				v.Status.ObservedGeneration = v.Generation + 1
-				v.Status.Conditions = append(v.Status.Conditions, appsv1.DeploymentCondition{
-					Type:   appsv1.DeploymentProgressing,
-					Reason: "NewReplicaSetAvailable",
-					Status: "True",
-				})
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
 			if err := cl.Create(ctx, obj, opts...); err != nil {
 				return err
 			}
-			switch v := obj.(type) {
-			case *vmv1beta1.VMAgent:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMCluster:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMAuth:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			}
-			return nil
+			return updateStatus(ctx, cl, obj)
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			switch v := obj.(type) {
-			case *appsv1.StatefulSet:
-				v.Status.ObservedGeneration = v.Generation + 1
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.CurrentReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.UpdateRevision = "v1"
-				v.Status.CurrentRevision = "v1"
-			case *appsv1.Deployment:
-				v.Status.ObservedGeneration = v.Generation + 1
-				v.Status.UpdatedReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.ReadyReplicas = ptr.Deref(v.Spec.Replicas, 0)
-				v.Status.Replicas = ptr.Deref(v.Spec.Replicas, 0)
-			}
 			if err := cl.Update(ctx, obj, opts...); err != nil {
 				return err
 			}
-			switch v := obj.(type) {
-			case *vmv1beta1.VMAgent:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMCluster:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			case *vmv1beta1.VMAuth:
-				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
-				v.Status.ObservedGeneration = v.Generation
-				return cl.Status().Update(ctx, v)
-			}
-			return nil
+			return updateStatus(ctx, cl, obj)
 		},
 	}
 }

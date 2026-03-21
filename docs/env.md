@@ -8,6 +8,7 @@
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |
 | VM_VPA_API_ENABLED: `false` <a href="#variables-vm-vpa-api-enabled" id="variables-vm-vpa-api-enabled">#</a> |
 | WATCH_NAMESPACE: `-` <a href="#variables-watch-namespace" id="variables-watch-namespace">#</a><br>Defines a list of namespaces to be watched by operator. Operator don't perform any cluster wide API calls if namespaces not empty. In case of empty list it performs only clusterwide api calls. |
+| EXCLUDE_NAMESPACE: `-` <a href="#variables-exclude-namespace" id="variables-exclude-namespace">#</a><br>Defines a list of namespaces to exclude from being watched by operator. |
 | VM_CONTAINERREGISTRY: `-` <a href="#variables-vm-containerregistry" id="variables-vm-containerregistry">#</a><br>container registry name prefix, e.g. docker.io |
 | VM_CUSTOMCONFIGRELOADERIMAGE: `-` <a href="#variables-vm-customconfigreloaderimage" id="variables-vm-customconfigreloaderimage">#</a><br>Deprecated: use VM_CONFIG_RELOADER_IMAGE instead |
 | VM_PSPAUTOCREATEENABLED: `false` <a href="#variables-vm-pspautocreateenabled" id="variables-vm-pspautocreateenabled">#</a> |

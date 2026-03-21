@@ -102,7 +102,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				},
 				nil,
 			),
-			Entry("with RequestsLoadBalancer enabled", "with-lb",
+			PEntry("with RequestsLoadBalancer enabled", "with-lb",
 				&vmv1.VLCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,

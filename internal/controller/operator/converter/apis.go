@@ -549,3 +549,12 @@ func FilterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 	}
 	return dst
 }
+
+func ConvertProxyConfig(prom *promv1.ProxyConfig) vmv1beta1.ProxyConfig {
+	return vmv1beta1.ProxyConfig{
+		ProxyURL:             ptr.Deref(prom.ProxyURL, ""),
+		NoProxy:              ptr.Deref(prom.NoProxy, ""),
+		ProxyFromEnvironment: ptr.Deref(prom.ProxyFromEnvironment, false),
+		ProxyConnectHeader:   prom.ProxyConnectHeader,
+	}
+}

@@ -52,10 +52,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
 				Storage: &vmv1beta1.StorageSpec{
 					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 						Spec: corev1.PersistentVolumeClaimSpec{
@@ -111,7 +110,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
 				},
 				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -191,7 +190,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				Storage: &vmv1beta1.StorageSpec{
@@ -249,7 +248,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
 				},
 				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -752,7 +751,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
 					Repository: "vm-repo",
 					Tag:        "v1.97.1",
@@ -826,7 +825,7 @@ serviceaccountname: vlagent-agent
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
 					Tag: "v1.97.1",
 				},
@@ -879,7 +878,7 @@ serviceaccountname: vlagent-agent
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
 					Tag: "v1.97.1",
 				},
@@ -948,9 +947,9 @@ serviceaccountname: vlagent-agent
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
-					Tag: "v1.47.0",
+					Tag: "v1.48.0",
 				},
 				UseDefaultResources: ptr.To(false),
 				Port:                "9425",
@@ -976,7 +975,7 @@ serviceaccountname: vlagent-agent
 	}, []runtime.Object{}, `
 containers:
   - name: vlagent
-    image: victoriametrics/vlagent:v1.47.0
+    image: victoriametrics/vlagent:v1.48.0
     args:
       - -httpListenAddr=:9425
       - -kubernetesCollector
@@ -1043,7 +1042,7 @@ volumes:
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
 					Tag: "v1.97.1",
 				},
@@ -1114,14 +1113,12 @@ serviceaccountname: vlagent-agent
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VLAgentSpec{
-			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
 					Tag: "v0.0.1",
 				},
 				UseDefaultResources: ptr.To(false),
 				Port:                "9425",
-			},
-			CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 				ExtraArgs: map[string]string{
 					"remoteWrite.maxDiskUsagePerURL": "35GiB",
 				},
@@ -1186,5 +1183,4 @@ containers:
 serviceaccountname: vlagent-agent
 
     `)
-
 }

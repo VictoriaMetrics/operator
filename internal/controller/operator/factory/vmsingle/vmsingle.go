@@ -110,7 +110,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
@@ -139,7 +139,7 @@ func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment,
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -249,7 +249,6 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
@@ -265,10 +264,10 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 
-	vmsingleContainer = build.Probe(vmsingleContainer, cr)
+	build.Probe(&vmsingleContainer, cr, &cr.Spec.CommonAppsParams)
 
-	operatorContainers := []corev1.Container{vmsingleContainer}
-	var initContainers []corev1.Container
+	containers := []corev1.Container{vmsingleContainer}
+	var ic []corev1.Container
 
 	if cr.Spec.VMBackup != nil {
 		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, commonMounts, cr.Spec.ExtraArgs, false, cr.Spec.License)
@@ -276,7 +275,7 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 			return nil, err
 		}
 		if vmBackupManagerContainer != nil {
-			operatorContainers = append(operatorContainers, *vmBackupManagerContainer)
+			containers = append(containers, *vmBackupManagerContainer)
 		}
 		if cr.Spec.VMBackup.Restore != nil &&
 			cr.Spec.VMBackup.Restore.OnStart != nil &&
@@ -286,19 +285,19 @@ func makeSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateS
 				return nil, err
 			}
 			if vmRestore != nil {
-				initContainers = append(initContainers, *vmRestore)
+				ic = append(ic, *vmRestore)
 			}
 		}
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
-	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
+	build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
+	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot apply initContainer patch: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
-	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
+	build.AddStrictSecuritySettingsToContainers(containers, &cr.Spec.CommonAppsParams)
+	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}

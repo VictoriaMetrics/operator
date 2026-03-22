@@ -92,6 +92,7 @@ type ApplicationDefaults struct {
 			EphemeralStorage string
 		}
 	}
+	TerminationGracePeriodSeconds int64
 }
 
 //genvars:true
@@ -159,6 +160,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VLOGSDEFAULT_"`
 
 	VLAgent struct {
@@ -178,6 +180,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VLAGENTDEFAULT_"`
 
 	VLSingle struct {
@@ -197,6 +200,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VLSINGLEDEFAULT_"`
 
 	VTSingle struct {
@@ -216,6 +220,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VTSINGLEDEFAULT_"`
 
 	VMAlert struct {
@@ -235,6 +240,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMALERTDEFAULT_"`
 
 	VMServiceScrape struct {
@@ -260,6 +266,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMAGENTDEFAULT_"`
 
 	VMAnomaly struct {
@@ -279,6 +286,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
 
 	VMSingle struct {
@@ -298,15 +306,17 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMSINGLEDEFAULT_"`
 
 	VMCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
 		Select              struct {
-			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
-			Port     string `default:"8481"`
-			Resource struct {
+			Image               string `default:"victoriametrics/vmselect"`
+			Version             string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+			Port                string `default:"8481"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"1000Mi"`
 					Cpu              string `default:"500m"`
@@ -318,31 +328,37 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"VMSELECTDEFAULT_"`
 		Storage struct {
-			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
 			VMInsertPort string `default:"8400" env:"VMINSERTPORT"`
 			VMSelectPort string `default:"8401" env:"VMSELECTPORT"`
-			Port         string `default:"8482"`
-			Resource     struct {
-				Limit struct {
-					Mem              string `default:"1500Mi"`
-					Cpu              string `default:"1000m"`
-					EphemeralStorage string `default:"unlimited"`
-				} `prefix:"LIMIT_"`
-				Request struct {
-					Mem              string `default:"500Mi"`
-					Cpu              string `default:"250m"`
-					EphemeralStorage string `default:"unlimited"`
-				} `prefix:"REQUEST_"`
-			} `prefix:"RESOURCE_"`
+			Common       struct {
+				Image               string `default:"victoriametrics/vmstorage"`
+				Version             string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+				Port                string `default:"8482"`
+				UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+				Resource            struct {
+					Limit struct {
+						Mem              string `default:"1500Mi"`
+						Cpu              string `default:"1000m"`
+						EphemeralStorage string `default:"unlimited"`
+					} `prefix:"LIMIT_"`
+					Request struct {
+						Mem              string `default:"500Mi"`
+						Cpu              string `default:"250m"`
+						EphemeralStorage string `default:"unlimited"`
+					} `prefix:"REQUEST_"`
+				} `prefix:"RESOURCE_"`
+				TerminationGracePeriodSeconds int64 `default:"30"`
+			}
 		} `prefix:"VMSTORAGEDEFAULT_"`
 		Insert struct {
-			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
-			Port     string `default:"8480"`
-			Resource struct {
+			Image               string `default:"victoriametrics/vminsert"`
+			Version             string `env:",expand" default:"${VM_METRICS_VERSION}-cluster"`
+			Port                string `default:"8480"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"500Mi"`
 					Cpu              string `default:"500m"`
@@ -354,6 +370,7 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"VMINSERTDEFAULT_"`
 	} `prefix:"VM_VMCLUSTERDEFAULT_"`
 
@@ -374,6 +391,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"120"`
 	} `prefix:"VM_VMALERTMANAGER_"`
 
 	DisableSelfServiceScrapeCreation bool `default:"false" env:"VM_DISABLESELFSERVICESCRAPECREATION"`
@@ -394,6 +412,7 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMBACKUP_"`
 	VMAuth struct {
 		Image               string `default:"victoriametrics/vmauth"`
@@ -412,15 +431,17 @@ type BaseOperatorConf struct {
 				EphemeralStorage string `default:"unlimited"`
 			} `prefix:"REQUEST_"`
 		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMAUTHDEFAULT_"`
 
 	VLCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
 		Select              struct {
-			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
-			Port     string `default:"9471"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-logs"`
+			Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
+			Port                string `default:"9471"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"1024Mi"`
 					Cpu              string `default:"1000m"`
@@ -432,12 +453,14 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"VLSELECTDEFAULT_"`
 		Storage struct {
-			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
-			Port     string `default:"9491"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-logs"`
+			Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
+			Port                string `default:"9491"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"2048Mi"`
 					Cpu              string `default:"1000m"`
@@ -449,12 +472,14 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"VLSTORAGEDEFAULT_"`
 		Insert struct {
-			Image    string `default:"victoriametrics/victoria-logs"`
-			Version  string `env:",expand" default:"${VM_LOGS_VERSION}"`
-			Port     string `default:"9481"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-logs"`
+			Version             string `env:",expand" default:"${VM_LOGS_VERSION}"`
+			Port                string `default:"9481"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VLCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"1024Mi"`
 					Cpu              string `default:"1000m"`
@@ -466,16 +491,18 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"VLINSERTDEFAULT_"`
 	} `prefix:"VM_VLCLUSTERDEFAULT_"`
 
 	VTCluster struct {
 		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
 		Select              struct {
-			Image    string `default:"victoriametrics/victoria-traces"`
-			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
-			Port     string `default:"10471"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-traces"`
+			Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port                string `default:"10471"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VTCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"1024Mi"`
 					Cpu              string `default:"1000m"`
@@ -487,12 +514,14 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"SELECT_"`
 		Storage struct {
-			Image    string `default:"victoriametrics/victoria-traces"`
-			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
-			Port     string `default:"10491"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-traces"`
+			Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port                string `default:"10491"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VTCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"2048Mi"`
 					Cpu              string `default:"1000m"`
@@ -504,12 +533,14 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"STORAGE_"`
 		Insert struct {
-			Image    string `default:"victoriametrics/victoria-traces"`
-			Version  string `env:",expand" default:"${VM_TRACES_VERSION}"`
-			Port     string `default:"10481"`
-			Resource struct {
+			Image               string `default:"victoriametrics/victoria-traces"`
+			Version             string `env:",expand" default:"${VM_TRACES_VERSION}"`
+			Port                string `default:"10481"`
+			UseDefaultResources bool   `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VTCLUSTERDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
 				Limit struct {
 					Mem              string `default:"1024Mi"`
 					Cpu              string `default:"1000m"`
@@ -521,6 +552,7 @@ type BaseOperatorConf struct {
 					EphemeralStorage string `default:"unlimited"`
 				} `prefix:"REQUEST_"`
 			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
 		} `prefix:"INSERT_"`
 	} `prefix:"VM_VTCLUSTERDEFAULT_"`
 
@@ -546,13 +578,19 @@ type BaseOperatorConf struct {
 	// Defines deadline for deployment/statefulset
 	// to transit into ready state
 	// to wait for transition to ready state
-	AppReadyTimeout time.Duration `default:"80s" env:"VM_APPREADYTIMEOUT"`
+	AppWaitReadyTimeout time.Duration `default:"80s" env:"VM_APPREADYTIMEOUT"`
+	// Defines poll interval for pods ready check
+	// at statefulset rollout update
+	PodWaitReadyInterval time.Duration `default:"5s" env:"VM_PODWAITREADYINTERVALCHECK"`
 	// Defines single pod deadline
 	// to wait for transition to ready state
 	PodWaitReadyTimeout time.Duration `default:"80s" env:"VM_PODWAITREADYTIMEOUT"`
-	// Defines poll interval for pods ready check
-	// at statefulset rollout update
-	PodWaitReadyIntervalCheck time.Duration `default:"5s" env:"VM_PODWAITREADYINTERVALCHECK"`
+	// Defines poll interval for PVC ready check
+	PVCWaitReadyInterval time.Duration `default:"5s" env:"VM_PVC_WAIT_READY_INTERVAL"`
+	// Defines poll timeout for PVC ready check
+	PVCWaitReadyTimeout time.Duration `default:"80s" env:"VM_PVC_WAIT_READY_TIMEOUT"`
+	// Defines poll interval for VM CRs
+	VMWaitReadyInterval time.Duration `default:"5s" env:"VM_WAIT_READY_INTERVAL"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s" env:"VM_FORCERESYNCINTERVAL"`
 	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
@@ -651,7 +689,7 @@ func (boc BaseOperatorConf) validate() error {
 	if err := validateResource("vminsert", Resource(boc.VMCluster.Insert.Resource)); err != nil {
 		return err
 	}
-	if err := validateResource("vmstorage", Resource(boc.VMCluster.Storage.Resource)); err != nil {
+	if err := validateResource("vmstorage", Resource(boc.VMCluster.Storage.Common.Resource)); err != nil {
 		return err
 	}
 	if err := validateResource("vmsingle", Resource(boc.VMSingle.Resource)); err != nil {
@@ -772,8 +810,14 @@ func (labels *Labels) Set(value string) error {
 // ConfigAsMetrics exposes major configuration params as prometheus metrics
 func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 	opts := getEnvOpts()
-	mapper := func(v string) string {
-		return opts.Environment[v]
+	rawEnvVars := make(map[string]string)
+	var mapper func(v string) string
+	mapper = func(v string) string {
+		val := rawEnvVars[v]
+		if val == "" {
+			val = opts.Environment[v]
+		}
+		return os.Expand(val, mapper)
 	}
 	params, err := env.GetFieldParamsWithOptions(cfg, opts)
 	if err != nil {
@@ -788,6 +832,7 @@ func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 		} else if p.Expand {
 			value = os.Expand(value, mapper)
 		}
+		rawEnvVars[p.Key] = value
 		ms.WithLabelValues(p.Key, strconv.FormatBool(isSet), value).Set(1)
 	}
 	r.MustRegister(ms)

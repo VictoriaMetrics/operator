@@ -62,11 +62,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-				StatefulMode:            true,
+				StatefulMode: true,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
@@ -129,13 +128,13 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ShardCount: func() *int { i := 2; return &i }(),
+				ShardCount: func() *int32 { i := int32(2); return &i }(),
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -414,7 +413,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				StatefulMode: true,
@@ -453,10 +452,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](2),
 				},
-				ShardCount: ptr.To(3),
+				ShardCount: ptr.To[int32](3),
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 					MinAvailable: ptr.To(intstr.FromInt(1)),
 				},
@@ -519,7 +518,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				StatefulMode: true,
@@ -582,7 +581,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
 				},
 				StatefulMode: true,
@@ -2077,7 +2076,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "vm-repo",
 						Tag:        "v1.97.1",
@@ -2165,7 +2164,7 @@ serviceaccountname: vmagent-agent`,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "vm-repo",
 						Tag:        "v1.97.1",
@@ -2318,7 +2317,7 @@ serviceaccountname: vmagent-agent`,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(false),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2459,7 +2458,7 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2542,7 +2541,7 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2628,21 +2627,19 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
 					UseDefaultResources: ptr.To(false),
 					Port:                "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
-				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ExtraArgs: map[string]string{
 						"remoteWrite.maxDiskUsagePerURL": "35GiB",
 						"remoteWrite.forceVMProto":       "false",
 					},
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{

@@ -13,7 +13,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -145,10 +144,7 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 
 	var initContainers []corev1.Container
 
-	cfg := config.MustGetBaseConfig()
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, cfg.EnableStrictSecurity)
-
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
 
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
 	if err != nil {
@@ -182,9 +178,9 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
-	container = build.Probe(container, cr)
+	build.Probe(&container, cr, &cr.Spec.CommonAppsParams)
 	containers := []corev1.Container{container}
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, containers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(containers, &cr.Spec.CommonAppsParams)
 	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to merge containers spec: %w", err)

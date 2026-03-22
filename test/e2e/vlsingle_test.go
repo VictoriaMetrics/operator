@@ -61,10 +61,8 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(true),
 							},
 							RetentionPeriod: "1",
@@ -93,10 +91,8 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-								ReplicaCount: ptr.To[int32](1),
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:      ptr.To[int32](1),
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -117,7 +113,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VLSingleSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								Volumes: []corev1.Volume{
 									{
@@ -139,8 +135,6 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 										MountPath: "/opt/unused/mountpoint",
 									},
 								},
-							},
-							CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
 								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
@@ -159,6 +153,23 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 						Expect(ts.Containers[0].VolumeMounts[1].Name).To(Equal("unused"))
 
 					}),
+				Entry("with UseProxyProtocol", "proxy-protocol",
+					&vmv1.VLSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1.VLSingleSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
+							},
+							RetentionPeriod: "1",
+						},
+					},
+					func(cr *vmv1.VLSingle) {},
+				),
 			)
 
 			baseVLSingle := &vmv1.VLSingle{
@@ -167,7 +178,7 @@ var _ = Describe("test vlsingle Controller", Label("vl", "single", "vlsingle"), 
 				},
 				Spec: vmv1.VLSingleSpec{
 					RetentionPeriod: "10",
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},

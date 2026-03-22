@@ -231,8 +231,7 @@ type VTInsert struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -248,13 +247,12 @@ type VTInsert struct {
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
-// Probe implements build.probeCRD interface
-func (cr *VTInsert) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTInsert) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ProbePath implements build.probeCRD interface
@@ -328,8 +326,7 @@ type VTSelect struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -348,8 +345,7 @@ type VTSelect struct {
 	// ExtraStorageNodes - defines additional storage nodes to VTSelect
 	ExtraStorageNodes []VTStorageNode `json:"extraStorageNodes,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -358,6 +354,11 @@ func (cr *VTSelect) GetMetricsPath() string {
 		return healthPath
 	}
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTSelect) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -373,11 +374,6 @@ func (cr *VTSelect) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VTSelect) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VTSelect) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface
@@ -447,8 +443,7 @@ type VTStorage struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
@@ -484,8 +479,7 @@ type VTStorage struct {
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 
 	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
 	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
@@ -499,6 +493,11 @@ func (cr *VTStorage) GetStorageVolumeName() string {
 		return cr.Storage.VolumeClaimTemplate.Name
 	}
 	return "vtstorage-db"
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTStorage) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -522,11 +521,6 @@ func (cr *VTStorage) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VTStorage) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VTStorage) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface

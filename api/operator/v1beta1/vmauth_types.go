@@ -70,8 +70,6 @@ type VMAuthSpec struct {
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// HTTPRoute enables httproute configuration for VMAuth.
 	HTTPRoute *EmbeddedHTTPRoute `json:"httpRoute,omitempty"`
-	// LivenessProbe that will be added to VMAuth pod
-	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -114,9 +112,8 @@ type VMAuthSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
-	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
+	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v0.56.0 operator
 	// and v1.111.0 vmauth version
@@ -580,10 +577,6 @@ func (cr *VMAuth) GetStatus() *VMAuthStatus {
 func (cr *VMAuth) DefaultStatusFields(vs *VMAuthStatus) {
 }
 
-func (cr *VMAuth) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
-}
-
 func (cr *VMAuth) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
@@ -730,13 +723,13 @@ func (cr *VMAuth) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAuth) UseProxyProtocol() bool {
 	hasInternalPorts := len(cr.Spec.InternalListenPort) == 0
 	if cr.Spec.UseProxyProtocol {
 		return hasInternalPorts
 	}
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+	if UseProxyProtocol(cr.Spec.ExtraArgs) {
 		return hasInternalPorts
 	}
 	return false

@@ -154,7 +154,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 // newDeploy returns a busybox pod with the same name/namespace as the cr
@@ -175,7 +175,7 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		},
 		Spec: *generatedSpec,
 	}
-	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(deploy, &cr.Spec.CommonAppsParams)
 	return deploy, nil
 }
 
@@ -298,7 +298,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
-	vmalertContainer = build.Probe(vmalertContainer, cr)
+	build.Probe(&vmalertContainer, cr, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
@@ -307,9 +307,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		vmalertContainers = append(vmalertContainers, crc)
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, vmalertContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(vmalertContainers, &cr.Spec.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
@@ -522,8 +520,8 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	}
 
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+
 	sort.Strings(args)
 	return args, nil
 }

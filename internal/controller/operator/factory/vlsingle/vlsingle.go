@@ -108,7 +108,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 		return fmt.Errorf("cannot generate new deploy for vlsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
@@ -137,7 +137,7 @@ func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &r.Spec.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -254,11 +254,11 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          r.Spec.Image.PullPolicy,
 	}
 
-	vlsingleContainer = build.Probe(vlsingleContainer, r)
+	build.Probe(&vlsingleContainer, r, &r.Spec.CommonAppsParams)
 
 	operatorContainers := []corev1.Container{vlsingleContainer}
 
-	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &r.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {

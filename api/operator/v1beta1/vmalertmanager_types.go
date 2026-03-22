@@ -143,7 +143,6 @@ type VMAlertmanagerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector.
 	// with selectAllByDefault: true and undefined ConfigSelector and ConfigNamespaceSelector
 	// Operator selects all exist alertManagerConfigs
@@ -210,9 +209,8 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -235,11 +233,8 @@ func (cr *VMAlertmanager) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAlertmanager) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
 	return false
 }
 
@@ -459,10 +454,6 @@ func (cr *VMAlertmanager) GetVolumeName() string {
 		return cr.Spec.Storage.VolumeClaimTemplate.Name
 	}
 	return fmt.Sprintf("vmalertmanager-%s-db", cr.Name)
-}
-
-func (cr *VMAlertmanager) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VMAlertmanager) ProbePath() string {

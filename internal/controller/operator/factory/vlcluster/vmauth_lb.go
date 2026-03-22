@@ -44,7 +44,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false, &owner); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, &owner, nil); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
@@ -180,13 +180,13 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		ImagePullPolicy: spec.Image.PullPolicy,
 		VolumeMounts:    vmMounts,
 	}
-	vmauthLBCnt = build.Probe(vmauthLBCnt, &spec)
+	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(containers, &spec.CommonAppsParams)
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -225,7 +225,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, &spec.CommonAppsParams)
 
 	return lbDep, nil
 

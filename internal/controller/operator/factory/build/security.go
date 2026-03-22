@@ -53,24 +53,24 @@ var (
 )
 
 // AddStrictSecuritySettingsToContainers conditionally adds Security settings to given containers
-func AddStrictSecuritySettingsToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) {
-	if !enableStrictSecurity && p == nil {
+func AddStrictSecuritySettingsToContainers(containers []corev1.Container, params *vmv1beta1.CommonAppsParams) {
+	if !ptr.Deref(params.UseStrictSecurity, false) && (params == nil || params.SecurityContext == nil) {
 		return
 	}
 	for idx := range containers {
 		container := &containers[idx]
-		container.SecurityContext = containerSecurityContext(p, false)
+		container.SecurityContext = containerSecurityContext(params.SecurityContext, false)
 	}
 }
 
 // AddStrictSecuritySettingsWithRootToContainers conditionally adds Security settings to given containers
-func AddStrictSecuritySettingsWithRootToContainers(p *vmv1beta1.SecurityContext, containers []corev1.Container, enableStrictSecurity bool) {
-	if !enableStrictSecurity && p == nil {
+func AddStrictSecuritySettingsWithRootToContainers(containers []corev1.Container, params *vmv1beta1.CommonAppsParams) {
+	if !ptr.Deref(params.UseStrictSecurity, false) && (params == nil || params.SecurityContext == nil) {
 		return
 	}
 	for idx := range containers {
 		container := &containers[idx]
-		container.SecurityContext = containerSecurityContext(p, true)
+		container.SecurityContext = containerSecurityContext(params.SecurityContext, true)
 	}
 }
 
@@ -97,12 +97,12 @@ func containerSecurityContext(p *vmv1beta1.SecurityContext, requireRoot bool) *c
 	return &sc
 }
 
-// AddStrictSecuritySettingsToPod conditionally creates security context for pod or returns predefined one
-func AddStrictSecuritySettingsToPod(p *vmv1beta1.SecurityContext, enableStrictSecurity bool) *corev1.PodSecurityContext {
-	if p != nil {
-		return p.PodSecurityContext
+// addStrictSecuritySettingsToPod conditionally creates security context for pod or returns predefined one
+func addStrictSecuritySettingsToPod(params *vmv1beta1.CommonAppsParams) *corev1.PodSecurityContext {
+	if params != nil && params.SecurityContext != nil {
+		return params.SecurityContext.PodSecurityContext
 	}
-	if !enableStrictSecurity {
+	if !ptr.Deref(params.UseStrictSecurity, false) {
 		return nil
 	}
 	securityContext := getDefaultPodSecurityContext(false)
@@ -113,12 +113,12 @@ func AddStrictSecuritySettingsToPod(p *vmv1beta1.SecurityContext, enableStrictSe
 	return securityContext
 }
 
-// AddStrictSecuritySettingsWithRootToPod conditionally creates security context for pod or returns predefined one
-func AddStrictSecuritySettingsWithRootToPod(p *vmv1beta1.SecurityContext, enableStrictSecurity bool) *corev1.PodSecurityContext {
-	if p != nil {
-		return p.PodSecurityContext
+// addStrictSecuritySettingsWithRootToPod conditionally creates security context for pod or returns predefined one
+func addStrictSecuritySettingsWithRootToPod(params *vmv1beta1.CommonAppsParams) *corev1.PodSecurityContext {
+	if params != nil && params.SecurityContext != nil {
+		return params.SecurityContext.PodSecurityContext
 	}
-	if !enableStrictSecurity {
+	if !ptr.Deref(params.UseStrictSecurity, false) {
 		return nil
 	}
 	securityContext := getDefaultPodSecurityContext(true)

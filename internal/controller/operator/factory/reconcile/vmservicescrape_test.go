@@ -48,7 +48,7 @@ func TestVMServiceScrape(t *testing.T) {
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		synctest.Test(t, func(t *testing.T) {
-			assert.NoError(t, VMServiceScrape(ctx, cl, o.new, o.prev, nil))
+			assert.NoError(t, VMServiceScrape(ctx, cl, o.new, o.prev, nil, false))
 			assert.Equal(t, o.actions, cl.Actions)
 		})
 	}

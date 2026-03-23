@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/VictoriaMetrics/operator/internal/logging"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,7 @@ var (
 
 	appWaitReadyTimeout = 5 * time.Second
 	vmWaitReadyInterval = 5 * time.Second
+	vmWaitLogInterval   = 60 * time.Second
 )
 
 // Init sets package defaults
@@ -154,10 +156,12 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	rclient client.Client,
 	obj ObjectWithDeepCopyAndStatus[T, ST, STC],
 	interval time.Duration,
+	logInterval time.Duration,
 	status vmv1beta1.UpdateStatus,
 ) error {
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
+	lastLogged := time.Now()
 	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -167,6 +171,11 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			return
 		}
 		lastStatus = obj.GetStatusMetadata()
+
+		if time.Now().After(lastLogged.Add(logInterval)) {
+			logger.WithContext(ctx).V(logging.LevelDebug).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
+			lastLogged = time.Now()
+		}
 		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {

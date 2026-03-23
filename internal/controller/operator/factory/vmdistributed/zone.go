@@ -366,7 +366,9 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	}
 	wg.Wait()
 
-	logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster)
+	if ctx.Err() == nil {
+		logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster)
+	}
 }
 
 func newManager(ctx context.Context) *manager {

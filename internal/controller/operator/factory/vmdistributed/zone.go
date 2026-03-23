@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/operator/internal/logging"
 	"github.com/cespare/xxhash/v2"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -295,6 +296,9 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	vmCluster := zs.vmclusters[clusterIdx]
 	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
 
+	nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
+	logger.WithContext(ctx).Info("ensuring persistent queues are drained...", "name", nsnCluster)
+
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
@@ -315,11 +319,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					continue
 				}
 				if v > 0 {
-					logger.WithContext(ctx).Info("persistent queue on VMAgent instance is not ready", "url", addr, "name", nsn.String(), "size", v)
+					logger.WithContext(ctx).V(logging.LevelDebug).Info("persistent queue on VMAgent instance is not ready", "url", addr, "name", nsn.String(), "size", v)
 					return false, nil
 				}
 			}
-			logger.WithContext(ctx).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
+			logger.WithContext(ctx).V(logging.LevelDebug).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
 			return true, nil
 		})
 	}
@@ -342,7 +346,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					if m.has(addr) {
 						continue
 					}
-					logger.WithContext(ctx).Info("start polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
+					logger.WithContext(ctx).V(logging.LevelDebug).Info("start polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
 					pctx := m.add(addr)
 					wg.Go(func() {
 						if err := pollMetrics(pctx, nsn, addr); err != nil {
@@ -353,7 +357,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 				}
 				for _, addr := range m.ids() {
 					if _, ok := addrs[addr]; !ok {
-						logger.WithContext(ctx).Info("stop polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
+						logger.WithContext(ctx).V(logging.LevelDebug).Info("stop polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
 						m.delete(addr)
 					}
 				}
@@ -361,6 +365,8 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		})
 	}
 	wg.Wait()
+
+	logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster)
 }
 
 func newManager(ctx context.Context) *manager {

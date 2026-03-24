@@ -56,29 +56,29 @@ func TestGenerateScrapeConfig(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMScrapeConfigSpec{
-				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-					MaxScrapeSize:  "60KB",
-					ScrapeInterval: "10s",
-				},
 				StaticConfigs: []vmv1beta1.StaticConfig{
 					{
 						Targets: []string{"http://test1.com", "http://test2.com"},
 						Labels:  map[string]string{"bar": "baz"},
 					},
 				},
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "ba-secret",
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					MaxScrapeSize:  "60KB",
+					ScrapeInterval: "10s",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+								Key: "username",
 							},
-							Key: "username",
-						},
-						Password: corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "ba-secret",
+							Password: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+								Key: "password",
 							},
-							Key: "password",
 						},
 					},
 				},
@@ -133,19 +133,19 @@ static_configs:
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMScrapeConfigSpec{
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							Key: "username",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "ba-secret",
-							},
-						},
-						PasswordFile: "/var/run/secrets/password",
-					},
-				},
 				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 					ScrapeInterval: "10m",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+							},
+							PasswordFile: "/var/run/secrets/password",
+						},
+					},
 				},
 				FileSDConfigs: []vmv1beta1.FileSDConfig{
 					{

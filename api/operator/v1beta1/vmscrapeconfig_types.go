@@ -103,7 +103,6 @@ type VMScrapeConfigSpec struct {
 	EurekaSDConfigs      []EurekaSDConfig `json:"eurekaSDConfigs,omitempty"`
 	EndpointScrapeParams `json:",inline"`
 	EndpointRelabelings  `json:",inline"`
-	EndpointAuth         `json:",inline"`
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
@@ -160,7 +159,7 @@ type HTTPSDOptions struct {
 	// ProxyClientConfig configures proxy auth settings for scraping
 	// See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy)
 	// +optional
-	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+	ProxyClientConfig *ProxyClientConfig `json:"proxy_client_config,omitempty"`
 	// Configure whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
 	FollowRedirects *bool `json:"followRedirects,omitempty"`

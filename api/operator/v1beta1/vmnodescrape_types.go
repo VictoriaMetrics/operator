@@ -23,7 +23,6 @@ type VMNodeScrapeSpec struct {
 	// +optional
 	Port                 string `json:"port,omitempty"`
 	EndpointRelabelings  `json:",inline"`
-	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
 
 	// Selector to select kubernetes Nodes.

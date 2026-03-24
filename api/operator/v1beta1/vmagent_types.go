@@ -309,31 +309,6 @@ type VMAgentRemoteWriteSettings struct {
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
 }
 
-type ScrapeClass struct {
-	// name of the scrape class.
-	//
-	// +kubebuilder:validation:MinLength=1
-	// +required
-	Name string `json:"name"`
-
-	// default defines that the scrape applies to all scrape objects that
-	// don't configure an explicit scrape class name.
-	//
-	// Only one scrape class can be set as the default.
-	//
-	// +optional
-	Default *bool `json:"default,omitempty"`
-
-	EndpointAuth        `json:",inline"`
-	EndpointRelabelings `json:",inline"`
-
-	// AttachMetadata defines additional metadata to the discovered targets.
-	// When the scrape object defines its own configuration, it takes
-	// precedence over the scrape class configuration.
-	// +optional
-	AttachMetadata *AttachMetadata `json:"attachMetadata,omitempty"`
-}
-
 // AWS defines AWS cloud auth specific params
 type AWS struct {
 	// EC2Endpoint is an optional AWS EC2 API endpoint to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set

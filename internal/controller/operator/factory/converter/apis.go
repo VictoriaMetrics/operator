@@ -216,18 +216,18 @@ func convertEndpoint(ctx context.Context, promEndpoint []promv1.Endpoint) []vmv1
 				HonorTimestamps: endpoint.HonorTimestamps,
 				ProxyURL:        endpoint.ProxyURL,
 				FollowRedirects: endpoint.FollowRedirects,
-			},
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				BasicAuth:     ConvertBasicAuth(endpoint.BasicAuth),
-				TLSConfig:     ConvertTLSConfig(endpoint.TLSConfig),
-				OAuth2:        ConvertOAuth(endpoint.OAuth2),
-				Authorization: ConvertAuthorization(endpoint.Authorization, nil),
-				// Unless prometheus deletes BearerTokenFile, we have to support it for backward compatibility
-				//nolint:staticcheck
-				BearerTokenFile: ReplacePromDirPath(endpoint.BearerTokenFile),
-				// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
-				//nolint:staticcheck
-				BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BasicAuth:     ConvertBasicAuth(endpoint.BasicAuth),
+					TLSConfig:     ConvertTLSConfig(endpoint.TLSConfig),
+					OAuth2:        ConvertOAuth(endpoint.OAuth2),
+					Authorization: ConvertAuthorization(endpoint.Authorization, nil),
+					// Unless prometheus deletes BearerTokenFile, we have to support it for backward compatibility
+					//nolint:staticcheck
+					BearerTokenFile: ReplacePromDirPath(endpoint.BearerTokenFile),
+					// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
+					//nolint:staticcheck
+					BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
+				},
 			},
 			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
 				MetricRelabelConfigs: ConvertRelabelConfig(ctx, endpoint.MetricRelabelConfigs),
@@ -361,19 +361,18 @@ func convertPodEndpoints(ctx context.Context, promPodEnpoints []promv1.PodMetric
 				HonorTimestamps: promEndPoint.HonorTimestamps,
 				ProxyURL:        promEndPoint.ProxyURL,
 				FollowRedirects: promEndPoint.FollowRedirects,
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BasicAuth: ConvertBasicAuth(promEndPoint.BasicAuth),
+					//nolint:staticcheck
+					BearerTokenSecret: convertBearerToken(promEndPoint.BearerTokenSecret),
+					TLSConfig:         ConvertSafeTLSConfig(safeTLS),
+					OAuth2:            ConvertOAuth(promEndPoint.OAuth2),
+					Authorization:     ConvertAuthorization(promEndPoint.Authorization, nil),
+				},
 			},
 			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
 				RelabelConfigs:       ConvertRelabelConfig(ctx, promEndPoint.RelabelConfigs),
 				MetricRelabelConfigs: ConvertRelabelConfig(ctx, promEndPoint.MetricRelabelConfigs),
-			},
-
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				BasicAuth: ConvertBasicAuth(promEndPoint.BasicAuth),
-				//nolint:staticcheck
-				BearerTokenSecret: convertBearerToken(promEndPoint.BearerTokenSecret),
-				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
-				OAuth2:            ConvertOAuth(promEndPoint.OAuth2),
-				Authorization:     ConvertAuthorization(promEndPoint.Authorization, nil),
 			},
 			FilterRunning: promEndPoint.FilterRunning,
 		}
@@ -477,16 +476,16 @@ func Probe(ctx context.Context, probe *promv1.Probe, conf *config.BaseOperatorCo
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Interval:      string(probe.Spec.Interval),
 				ScrapeTimeout: string(probe.Spec.ScrapeTimeout),
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
+					BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret), //nolint:staticcheck
+					TLSConfig:         ConvertSafeTLSConfig(safeTLS),
+					OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
+					Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
+				},
 			},
 			MetricRelabelConfigs: ConvertRelabelConfig(ctx, probe.Spec.MetricRelabelConfigs),
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
-				BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret), //nolint:staticcheck
-				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
-				OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
-				Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
-			},
-			ScrapeClassName: probe.Spec.ScrapeClassName,
+			ScrapeClassName:      probe.Spec.ScrapeClassName,
 		},
 	}
 	if probe.Spec.ProberSpec.ProxyURL != nil {

@@ -865,6 +865,22 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"-"`
 }
 
+func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
+	if c == nil {
+		return nil
+	}
+	if c.CAFile != "" {
+		props = append(props, "tlsConfig.caFile")
+	}
+	if c.CertFile != "" {
+		props = append(props, "tlsConfig.certFile")
+	}
+	if c.KeyFile != "" {
+		props = append(props, "tlsConfig.keyFile")
+	}
+	return props
+}
+
 // UnmarshalJSON implements json.Unmarshaller interface
 func (c *TLSConfig) UnmarshalJSON(data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))

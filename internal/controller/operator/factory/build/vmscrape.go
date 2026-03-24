@@ -175,14 +175,12 @@ func VMPodScrape(b podScrapeBuilder, portName string) *vmv1beta1.VMPodScrape {
 	if serviceScrapeSpec != nil {
 		for _, e := range serviceScrapeSpec.Endpoints {
 			if e.Port == *endpoint.Port {
-				endpoint.EndpointAuth = e.EndpointAuth
 				endpoint.EndpointScrapeParams = e.EndpointScrapeParams
 				endpoint.EndpointRelabelings = e.EndpointRelabelings
 				continue
 			}
 			scrape.Spec.PodMetricsEndpoints = append(scrape.Spec.PodMetricsEndpoints, vmv1beta1.PodMetricsEndpoint{
 				Port:                 ptr.To(e.Port),
-				EndpointAuth:         e.EndpointAuth,
 				EndpointRelabelings:  e.EndpointRelabelings,
 				EndpointScrapeParams: e.EndpointScrapeParams,
 			})

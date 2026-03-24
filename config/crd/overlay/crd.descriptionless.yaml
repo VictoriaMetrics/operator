@@ -9708,6 +9708,11 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              arbitraryFSAccessThroughSMs:
+                properties:
+                  deny:
+                    type: boolean
+                type: object
               claimTemplates:
                 items:
                   properties:
@@ -21360,6 +21365,26 @@ spec:
                                       type: boolean
                                     proxy_client_config:
                                       properties:
+                                        authorization:
+                                          properties:
+                                            credentials:
+                                              properties:
+                                                key:
+                                                  type: string
+                                                name:
+                                                  default: ""
+                                                  type: string
+                                                optional:
+                                                  type: boolean
+                                              required:
+                                              - key
+                                              type: object
+                                              x-kubernetes-map-type: atomic
+                                            credentialsFile:
+                                              type: string
+                                            type:
+                                              type: string
+                                          type: object
                                         basic_auth:
                                           properties:
                                             password:
@@ -21392,6 +21417,7 @@ spec:
                                               x-kubernetes-map-type: atomic
                                           type: object
                                         bearer_token:
+                                          nullable: true
                                           properties:
                                             key:
                                               type: string
@@ -21406,6 +21432,71 @@ spec:
                                           x-kubernetes-map-type: atomic
                                         bearer_token_file:
                                           type: string
+                                        oauth2:
+                                          properties:
+                                            client_id:
+                                              properties:
+                                                configMap:
+                                                  properties:
+                                                    key:
+                                                      type: string
+                                                    name:
+                                                      default: ""
+                                                      type: string
+                                                    optional:
+                                                      type: boolean
+                                                  required:
+                                                  - key
+                                                  type: object
+                                                  x-kubernetes-map-type: atomic
+                                                secret:
+                                                  properties:
+                                                    key:
+                                                      type: string
+                                                    name:
+                                                      default: ""
+                                                      type: string
+                                                    optional:
+                                                      type: boolean
+                                                  required:
+                                                  - key
+                                                  type: object
+                                                  x-kubernetes-map-type: atomic
+                                              type: object
+                                            client_secret:
+                                              properties:
+                                                key:
+                                                  type: string
+                                                name:
+                                                  default: ""
+                                                  type: string
+                                                optional:
+                                                  type: boolean
+                                              required:
+                                              - key
+                                              type: object
+                                              x-kubernetes-map-type: atomic
+                                            client_secret_file:
+                                              type: string
+                                            endpoint_params:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                            proxy_url:
+                                              type: string
+                                            scopes:
+                                              items:
+                                                type: string
+                                              type: array
+                                            tls_config:
+                                              x-kubernetes-preserve-unknown-fields: true
+                                            token_url:
+                                              minLength: 1
+                                              type: string
+                                          required:
+                                          - client_id
+                                          - token_url
+                                          type: object
                                         tls_config:
                                           x-kubernetes-preserve-unknown-fields: true
                                       type: object
@@ -32041,6 +32132,26 @@ spec:
                     type: boolean
                   proxy_client_config:
                     properties:
+                      authorization:
+                        properties:
+                          credentials:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          credentialsFile:
+                            type: string
+                          type:
+                            type: string
+                        type: object
                       basic_auth:
                         properties:
                           password:
@@ -32073,6 +32184,7 @@ spec:
                             x-kubernetes-map-type: atomic
                         type: object
                       bearer_token:
+                        nullable: true
                         properties:
                           key:
                             type: string
@@ -32087,6 +32199,71 @@ spec:
                         x-kubernetes-map-type: atomic
                       bearer_token_file:
                         type: string
+                      oauth2:
+                        properties:
+                          client_id:
+                            properties:
+                              configMap:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              secret:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            type: object
+                          client_secret:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          client_secret_file:
+                            type: string
+                          endpoint_params:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          proxy_url:
+                            type: string
+                          scopes:
+                            items:
+                              type: string
+                            type: array
+                          tls_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          token_url:
+                            minLength: 1
+                            type: string
+                        required:
+                        - client_id
+                        - token_url
+                        type: object
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
@@ -32570,6 +32747,26 @@ spec:
                           type: boolean
                         proxy_client_config:
                           properties:
+                            authorization:
+                              properties:
+                                credentials:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                credentialsFile:
+                                  type: string
+                                type:
+                                  type: string
+                              type: object
                             basic_auth:
                               properties:
                                 password:
@@ -32602,6 +32799,7 @@ spec:
                                   x-kubernetes-map-type: atomic
                               type: object
                             bearer_token:
+                              nullable: true
                               properties:
                                 key:
                                   type: string
@@ -32616,6 +32814,71 @@ spec:
                               x-kubernetes-map-type: atomic
                             bearer_token_file:
                               type: string
+                            oauth2:
+                              properties:
+                                client_id:
+                                  properties:
+                                    configMap:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    secret:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                  type: object
+                                client_secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                client_secret_file:
+                                  type: string
+                                endpoint_params:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                proxy_url:
+                                  type: string
+                                scopes:
+                                  items:
+                                    type: string
+                                  type: array
+                                tls_config:
+                                  x-kubernetes-preserve-unknown-fields: true
+                                token_url:
+                                  minLength: 1
+                                  type: string
+                              required:
+                              - client_id
+                              - token_url
+                              type: object
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
@@ -33332,6 +33595,26 @@ spec:
                     type: boolean
                   proxy_client_config:
                     properties:
+                      authorization:
+                        properties:
+                          credentials:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          credentialsFile:
+                            type: string
+                          type:
+                            type: string
+                        type: object
                       basic_auth:
                         properties:
                           password:
@@ -33364,6 +33647,7 @@ spec:
                             x-kubernetes-map-type: atomic
                         type: object
                       bearer_token:
+                        nullable: true
                         properties:
                           key:
                             type: string
@@ -33378,6 +33662,71 @@ spec:
                         x-kubernetes-map-type: atomic
                       bearer_token_file:
                         type: string
+                      oauth2:
+                        properties:
+                          client_id:
+                            properties:
+                              configMap:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              secret:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            type: object
+                          client_secret:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          client_secret_file:
+                            type: string
+                          endpoint_params:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          proxy_url:
+                            type: string
+                          scopes:
+                            items:
+                              type: string
+                            type: array
+                          tls_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          token_url:
+                            minLength: 1
+                            type: string
+                        required:
+                        - client_id
+                        - token_url
+                        type: object
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
@@ -33837,6 +34186,26 @@ spec:
                       type: integer
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -33869,6 +34238,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -33883,6 +34253,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -34168,6 +34603,26 @@ spec:
                       type: string
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -34200,6 +34655,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -34214,6 +34670,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -34466,6 +34987,26 @@ spec:
                       type: integer
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -34498,6 +35039,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -34512,6 +35054,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -34802,6 +35409,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -34834,6 +35461,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -34848,6 +35476,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -35101,6 +35794,26 @@ spec:
                       type: integer
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -35133,6 +35846,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -35147,6 +35861,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -35374,6 +36153,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -35406,6 +36205,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -35420,6 +36220,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -35660,6 +36525,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -35692,6 +36577,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -35706,6 +36592,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -35956,6 +36907,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -35988,6 +36959,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -36002,6 +36974,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -36263,6 +37300,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -36295,6 +37352,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -36309,6 +37367,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -36788,6 +37911,26 @@ spec:
                       type: object
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -36820,6 +37963,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -36834,6 +37978,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -37075,6 +38284,26 @@ spec:
                       type: integer
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -37107,6 +38336,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -37121,6 +38351,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -37384,6 +38679,26 @@ spec:
                     type: boolean
                   proxy_client_config:
                     properties:
+                      authorization:
+                        properties:
+                          credentials:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          credentialsFile:
+                            type: string
+                          type:
+                            type: string
+                        type: object
                       basic_auth:
                         properties:
                           password:
@@ -37416,6 +38731,7 @@ spec:
                             x-kubernetes-map-type: atomic
                         type: object
                       bearer_token:
+                        nullable: true
                         properties:
                           key:
                             type: string
@@ -37430,6 +38746,71 @@ spec:
                         x-kubernetes-map-type: atomic
                       bearer_token_file:
                         type: string
+                      oauth2:
+                        properties:
+                          client_id:
+                            properties:
+                              configMap:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              secret:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    default: ""
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            type: object
+                          client_secret:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          client_secret_file:
+                            type: string
+                          endpoint_params:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          proxy_url:
+                            type: string
+                          scopes:
+                            items:
+                              type: string
+                            type: array
+                          tls_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          token_url:
+                            minLength: 1
+                            type: string
+                        required:
+                        - client_id
+                        - token_url
+                        type: object
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
@@ -37574,6 +38955,26 @@ spec:
                       type: integer
                     proxy_client_config:
                       properties:
+                        authorization:
+                          properties:
+                            credentials:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            credentialsFile:
+                              type: string
+                            type:
+                              type: string
+                          type: object
                         basic_auth:
                           properties:
                             password:
@@ -37606,6 +39007,7 @@ spec:
                               x-kubernetes-map-type: atomic
                           type: object
                         bearer_token:
+                          nullable: true
                           properties:
                             key:
                               type: string
@@ -37620,6 +39022,71 @@ spec:
                           x-kubernetes-map-type: atomic
                         bearer_token_file:
                           type: string
+                        oauth2:
+                          properties:
+                            client_id:
+                              properties:
+                                configMap:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                              type: object
+                            client_secret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            client_secret_file:
+                              type: string
+                            endpoint_params:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            proxy_url:
+                              type: string
+                            scopes:
+                              items:
+                                type: string
+                              type: array
+                            tls_config:
+                              x-kubernetes-preserve-unknown-fields: true
+                            token_url:
+                              minLength: 1
+                              type: string
+                          required:
+                          - client_id
+                          - token_url
+                          type: object
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -38175,6 +39642,26 @@ spec:
                           type: boolean
                         proxy_client_config:
                           properties:
+                            authorization:
+                              properties:
+                                credentials:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                credentialsFile:
+                                  type: string
+                                type:
+                                  type: string
+                              type: object
                             basic_auth:
                               properties:
                                 password:
@@ -38207,6 +39694,7 @@ spec:
                                   x-kubernetes-map-type: atomic
                               type: object
                             bearer_token:
+                              nullable: true
                               properties:
                                 key:
                                   type: string
@@ -38221,6 +39709,71 @@ spec:
                               x-kubernetes-map-type: atomic
                             bearer_token_file:
                               type: string
+                            oauth2:
+                              properties:
+                                client_id:
+                                  properties:
+                                    configMap:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    secret:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                  type: object
+                                client_secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                client_secret_file:
+                                  type: string
+                                endpoint_params:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                proxy_url:
+                                  type: string
+                                scopes:
+                                  items:
+                                    type: string
+                                  type: array
+                                tls_config:
+                                  x-kubernetes-preserve-unknown-fields: true
+                                token_url:
+                                  minLength: 1
+                                  type: string
+                              required:
+                              - client_id
+                              - token_url
+                              type: object
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
@@ -40931,6 +42484,26 @@ spec:
                           type: boolean
                         proxy_client_config:
                           properties:
+                            authorization:
+                              properties:
+                                credentials:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                credentialsFile:
+                                  type: string
+                                type:
+                                  type: string
+                              type: object
                             basic_auth:
                               properties:
                                 password:
@@ -40963,6 +42536,7 @@ spec:
                                   x-kubernetes-map-type: atomic
                               type: object
                             bearer_token:
+                              nullable: true
                               properties:
                                 key:
                                   type: string
@@ -40977,6 +42551,71 @@ spec:
                               x-kubernetes-map-type: atomic
                             bearer_token_file:
                               type: string
+                            oauth2:
+                              properties:
+                                client_id:
+                                  properties:
+                                    configMap:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                    secret:
+                                      properties:
+                                        key:
+                                          type: string
+                                        name:
+                                          default: ""
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                      required:
+                                      - key
+                                      type: object
+                                      x-kubernetes-map-type: atomic
+                                  type: object
+                                client_secret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                client_secret_file:
+                                  type: string
+                                endpoint_params:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                proxy_url:
+                                  type: string
+                                scopes:
+                                  items:
+                                    type: string
+                                  type: array
+                                tls_config:
+                                  x-kubernetes-preserve-unknown-fields: true
+                                token_url:
+                                  minLength: 1
+                                  type: string
+                              required:
+                              - client_id
+                              - token_url
+                              type: object
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object

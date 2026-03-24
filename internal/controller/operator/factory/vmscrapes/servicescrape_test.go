@@ -73,18 +73,20 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 							Node: ptr.To(true),
 						},
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
 										},
-										Key: "ca",
 									},
 								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -175,22 +177,22 @@ bearer_token_file: /var/run/token
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								Cert: vmv1beta1.SecretOrConfigMap{},
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
-										},
-										Key: "ca",
-									},
-								},
-							},
-							BearerTokenFile: "/var/run/token",
-						},
 						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 							ScrapeInterval: "60m",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									Cert: vmv1beta1.SecretOrConfigMap{},
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/token",
+							},
 						},
 					},
 				},
@@ -282,20 +284,20 @@ bearer_token_file: /var/run/token
 						Port: "8080",
 						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 							ScrapeInterval: "10s",
-						},
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								Cert: vmv1beta1.SecretOrConfigMap{},
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									Cert: vmv1beta1.SecretOrConfigMap{},
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
 										},
-										Key: "ca",
 									},
 								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -381,19 +383,21 @@ bearer_token_file: /var/run/token
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								Cert: vmv1beta1.SecretOrConfigMap{},
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									Cert: vmv1beta1.SecretOrConfigMap{},
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
 										},
-										Key: "ca",
 									},
 								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -482,19 +486,21 @@ bearer_token_file: /var/run/token
 							Namespace: ptr.To(true),
 						},
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								Cert: vmv1beta1.SecretOrConfigMap{},
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									Cert: vmv1beta1.SecretOrConfigMap{},
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
 										},
-										Key: "ca",
 									},
 								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -607,11 +613,13 @@ relabel_configs:
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -665,67 +673,6 @@ bearer_token_file: /var/run/token
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									Key:                  "username",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-								},
-								Password: corev1.SecretKeySelector{
-									Key:                  "password",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
-								},
-							},
-							BearerTokenFile: "/var/run/token",
-							BearerTokenSecret: &corev1.SecretKeySelector{
-								Key:                  "bearer",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
-							},
-							OAuth2: &vmv1beta1.OAuth2{
-								Scopes:         []string{"scope-1"},
-								TokenURL:       "http://some-token-url",
-								EndpointParams: map[string]string{"timeout": "5s"},
-								ClientID: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										Key:                  "id",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
-									},
-								},
-								ClientSecret: &corev1.SecretKeySelector{
-									Key:                  "secret",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
-								},
-								ProxyURL: "http://oauth2-access-proxy",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-									CA: vmv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{
-											Key: "ca",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-cm",
-											},
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "key",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls",
-											},
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
-										Key: "cert",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls",
-										},
-									},
-								},
-							},
-						},
 						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 							Params:          map[string][]string{"module": {"base"}},
 							ScrapeInterval:  "10s",
@@ -739,9 +686,70 @@ bearer_token_file: /var/run/token
 
 							VMScrapeParams: &vmv1beta1.VMScrapeParams{
 								StreamParse: ptr.To(true),
-								ProxyClientConfig: &vmv1beta1.ProxyAuth{
+								ProxyClientConfig: &vmv1beta1.ProxyClientConfig{
 									TLSConfig:       &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
 									BearerTokenFile: "/tmp/some-file",
+								},
+							},
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+								BasicAuth: &vmv1beta1.BasicAuth{
+									Username: corev1.SecretKeySelector{
+										Key:                  "username",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+									},
+									Password: corev1.SecretKeySelector{
+										Key:                  "password",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+									},
+								},
+								BearerTokenFile: "/var/run/token",
+								BearerTokenSecret: &corev1.SecretKeySelector{
+									Key:                  "bearer",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+								},
+								OAuth2: &vmv1beta1.OAuth2{
+									Scopes:         []string{"scope-1"},
+									TokenURL:       "http://some-token-url",
+									EndpointParams: map[string]string{"timeout": "5s"},
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key:                  "id",
+											LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+										},
+									},
+									ClientSecret: &corev1.SecretKeySelector{
+										Key:                  "secret",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+									},
+									ProxyURL: "http://oauth2-access-proxy",
+									TLSConfig: &vmv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+										CA: vmv1beta1.SecretOrConfigMap{
+											ConfigMap: &corev1.ConfigMapKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-cm",
+												},
+											},
+										},
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "key",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls",
+												},
+											},
+										},
+										KeySecret: &corev1.SecretKeySelector{
+											Key: "cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls",
+											},
+										},
+									},
 								},
 							},
 						},
@@ -884,19 +892,21 @@ oauth2:
 				Endpoints: []vmv1beta1.Endpoint{
 					{
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								Cert: vmv1beta1.SecretOrConfigMap{},
-								CA: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									Cert: vmv1beta1.SecretOrConfigMap{},
+									CA: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
 										},
-										Key: "ca",
 									},
 								},
+								BearerTokenFile: "/var/run/token",
 							},
-							BearerTokenFile: "/var/run/token",
 						},
 					},
 				},
@@ -1860,13 +1870,15 @@ relabel_configs:
 							Node: ptr.To(true),
 						},
 						Port: "8080",
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							OAuth2: &vmv1beta1.OAuth2{
-								ProxyURL: "http://expected",
-								ClientID: vmv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{
-										Key:                  "some",
-										LocalObjectReference: corev1.LocalObjectReference{Name: "cm"},
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								OAuth2: &vmv1beta1.OAuth2{
+									ProxyURL: "http://expected",
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{
+											Key:                  "some",
+											LocalObjectReference: corev1.LocalObjectReference{Name: "cm"},
+										},
 									},
 								},
 							},

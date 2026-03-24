@@ -45,7 +45,6 @@ type VMProbeSpec struct {
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
 
-	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
 	// ScrapeClass defined scrape class to apply
 	// +optional

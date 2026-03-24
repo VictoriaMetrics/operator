@@ -920,7 +920,7 @@ func generateHTTPSDOptions(config vmv1beta1.HTTPSDOptions, namespace string, ac 
 		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 	}
 	if config.ProxyClientConfig != nil {
-		if c, err := ac.ProxyAuthToYAML(namespace, config.ProxyClientConfig); err != nil {
+		if c, err := ac.ProxyClientConfigToYAML(namespace, config.ProxyClientConfig); err != nil {
 			return nil, err
 		} else {
 			cfg = append(cfg, c...)

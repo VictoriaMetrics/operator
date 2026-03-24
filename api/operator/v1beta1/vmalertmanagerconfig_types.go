@@ -117,6 +117,97 @@ func (cr *VMAlertmanagerConfig) GetStatus() *VMAlertmanagerConfigStatus {
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAlertmanagerConfig) DefaultStatusFields(vs *VMAlertmanagerConfigStatus) {}
 
+func (cr *VMAlertmanagerConfig) ValidateArbitraryFSAccess() error {
+	for i, r := range cr.Spec.Receivers {
+		for j, rc := range r.EmailConfigs {
+			if err := rc.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].email_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.PagerDutyConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].pagerduty_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.PushoverConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].pushover_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.SlackConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].slack_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.OpsGenieConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].opsgenie_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WebhookConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].webhook_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.VictorOpsConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].victorops_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WeChatConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].wechat_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.TelegramConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].telegram_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.MSTeamsConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].msteams_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.DiscordConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].discord_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.SNSConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].sns_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WebexConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].webex_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.JiraConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].jira_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.IncidentIOConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].incidentio_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.RocketchatConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].rocketchat_configs[%d]: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.MSTeamsV2Configs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("found prohibited properties at spec.receivers[%d].msteamsv2_configs[%d]: %w", i, j, err)
+			}
+		}
+	}
+	return nil
+}
+
 func (r *VMAlertmanagerConfig) Validate() error {
 	if MustSkipCRValidation(r) {
 		return nil
@@ -510,6 +601,15 @@ type EmailConfig struct {
 	// TLS configuration
 	// +optional
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
+}
+
+func (c *EmailConfig) validateArbitraryFSAccess() error {
+	var props []string
+	props = c.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
 }
 
 // VictorOpsConfig configures notifications via VictorOps.
@@ -1208,6 +1308,27 @@ type HTTPConfig struct {
 	FollowRedirects *bool `json:"follow_redirects,omitempty"`
 	// +optional
 	ProxyConfig `json:",inline"`
+}
+
+func (c *HTTPConfig) validateArbitraryFSAccess() error {
+	var props []string
+	if c.BearerTokenFile != "" {
+		props = append(props, "bearerTokenFile")
+	}
+	if c.BasicAuth != nil && c.BasicAuth.PasswordFile != "" {
+		props = append(props, "basicAuth.passwordFile")
+	}
+	if c.OAuth2 != nil && c.OAuth2.ClientSecretFile != "" {
+		props = append(props, "oauth2.clientSecretFile")
+	}
+	if c.Authorization != nil && c.Authorization.CredentialsFile != "" {
+		props = append(props, "authorization.credentialsFile")
+	}
+	props = c.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
 }
 
 // ProxyConfig defines proxy configs

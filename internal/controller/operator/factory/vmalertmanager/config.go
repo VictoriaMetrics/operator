@@ -73,6 +73,11 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, baseCfg []by
 					return err
 				}
 			}
+			if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+				if err := cfg.ValidateArbitraryFSAccess(); err != nil {
+					return err
+				}
+			}
 			var receiverCfgs []yaml.MapSlice
 			for _, receiver := range cfg.Spec.Receivers {
 				receiverCfg, err := buildReceiver(cfg, receiver, &globalConfigOpts, ac)

@@ -98,7 +98,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1.PrometheusRuleList](ctx, rclient, "prometheus_rules", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1.PrometheusRuleList](ctx, rclient, "prometheus_rules", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1.PrometheusRule{},
@@ -126,7 +126,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1.PodMonitorList](ctx, rclient, "pod_monitors", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1.PodMonitorList](ctx, rclient, "pod_monitors", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1.PodMonitor{},
@@ -154,7 +154,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1.ServiceMonitorList](ctx, rclient, "service_monitors", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1.ServiceMonitorList](ctx, rclient, "service_monitors", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1.ServiceMonitor{},
@@ -182,7 +182,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1alpha1.AlertmanagerConfig{},
@@ -211,7 +211,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1.ProbeList](ctx, rclient, "probes", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1.ProbeList](ctx, rclient, "probes", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1.Probe{},
@@ -239,7 +239,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 					return &objects, nil
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", baseConf.WatchNamespaces)
+					return k8stools.NewObjectWatcherForNamespaces[promv1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", baseConf.WatchNamespaces, options)
 				},
 			}, rclient),
 			&promv1alpha1.ScrapeConfig{},
@@ -734,10 +734,20 @@ func isMetaEqual(left, right metav1.Object) bool {
 		equality.Semantic.DeepEqual(left.GetOwnerReferences(), right.GetOwnerReferences())
 }
 
+// discoveryClient is the subset of the Kubernetes discovery interface used by sharedAPIDiscoverer.
+// The real implementation is *kubernetes.Clientset; tests use a fake.
+type discoveryClient interface {
+	ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error)
+}
+
 // sharedAPIDiscoverer must reduce GET API calls for kubernetes api server
 // it will perform 1 single GET request per group
 type sharedAPIDiscoverer struct {
-	baseClient *kubernetes.Clientset
+	baseClient discoveryClient
+	// pollInterval controls how often API discovery is retried.
+	// Zero means the default of 5 seconds, which is used in production.
+	// Tests may set a shorter interval to avoid slow test runs.
+	pollInterval time.Duration
 
 	mu               sync.Mutex
 	kindReadyByGroup map[string]map[string]chan struct{}
@@ -775,7 +785,12 @@ func (s *sharedAPIDiscoverer) subscribeForGroupKind(ctx context.Context, group, 
 }
 
 func (s *sharedAPIDiscoverer) startPollFor(ctx context.Context, group string) {
-	tick := time.NewTicker(time.Second * 5)
+	interval := s.pollInterval
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+	tick := time.NewTicker(interval)
+	defer tick.Stop()
 	for {
 		select {
 		case <-tick.C:
@@ -786,24 +801,40 @@ func (s *sharedAPIDiscoverer) startPollFor(ctx context.Context, group string) {
 				}
 				continue
 			}
+			// Collect channels to notify while holding the mutex, then send
+			// outside the lock. Sending while holding the lock would block any
+			// goroutine that calls subscribeForGroupKind concurrently, which
+			// could cause a late subscriber to miss its notification.
 			s.mu.Lock()
+			var toNotify []chan struct{}
 			for _, r := range api.APIResources {
 				notify, ok := s.kindReadyByGroup[group][r.Kind]
 				if ok {
-					notify <- struct{}{}
+					toNotify = append(toNotify, notify)
 					delete(s.kindReadyByGroup[group], r.Kind)
 				}
 			}
 			l := len(s.kindReadyByGroup[group])
+			if l == 0 {
+				// Remove the group entry so that any subscriber arriving after
+				// this goroutine exits will see the group as absent and start a
+				// fresh polling goroutine instead of waiting forever.
+				delete(s.kindReadyByGroup, group)
+			}
 			s.mu.Unlock()
+			for _, ch := range toNotify {
+				select {
+				case ch <- struct{}{}:
+				case <-ctx.Done():
+					return
+				}
+			}
 			if l == 0 {
 				// no subscribers left
-				// exit
 				return
 			}
 		case <-ctx.Done():
 			return
 		}
 	}
-
 }

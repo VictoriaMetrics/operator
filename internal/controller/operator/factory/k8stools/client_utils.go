@@ -11,6 +11,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -151,8 +152,10 @@ type ObjectWatcherForNamespaces struct {
 }
 
 // NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces for given object
-// in case of empty namespaces, performs cluster wide watch
-func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
+// in case of empty namespaces, performs cluster wide watch.
+// An optional metav1.ListOptions may be passed to forward watch options (e.g. ResourceVersion,
+// SendInitialEvents, TimeoutSeconds) to the underlying watch requests.
+func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string, opts ...metav1.ListOptions) (watch.Interface, error) {
 	initMetrics.Do(func() {
 		metrics.Registry.MustRegister(activeWatchers, watchEventsTotalByType)
 	})
@@ -167,7 +170,13 @@ func NewObjectWatcherForNamespaces[T any, PT listing[T]](ctx context.Context, rc
 
 	addWatcher := func(ns string) error {
 		dst := PT(new(T))
-		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
+		listOpt := &client.ListOptions{Namespace: ns}
+		if len(opts) > 0 {
+			// copy to avoid aliasing across multiple addWatcher calls
+			rawOpts := opts[0]
+			listOpt.Raw = &rawOpts
+		}
+		w, err := rclient.Watch(localCtx, dst, listOpt)
 		if err != nil {
 			cancel()
 			return err

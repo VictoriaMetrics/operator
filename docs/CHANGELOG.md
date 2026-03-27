@@ -35,6 +35,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): recreate STS if immutable fields changed.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): ignore VMAuth update/delete operations if controller is disabled.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): render %SHARD_NUM% placeholder when shard count is greater than 0. See [#2001](https://github.com/VictoriaMetrics/operator/issues/2001).
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

@@ -379,6 +379,10 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 	}
 
 	if cr.Spec.DaemonSetMode {
+		strategyType := appsv1.RollingUpdateDaemonSetStrategyType
+		if cr.Spec.DaemonSetUpdateStrategy != nil {
+			strategyType = *cr.Spec.DaemonSetUpdateStrategy
+		}
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            cr.PrefixedName(),
@@ -390,6 +394,10 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			Spec: appsv1.DaemonSetSpec{
 				Selector: &metav1.LabelSelector{
 					MatchLabels: cr.SelectorLabels(),
+				},
+				UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
+					Type:          strategyType,
+					RollingUpdate: cr.Spec.DaemonSetRollingUpdateStrategyBehavior,
 				},
 				MinReadySeconds: cr.Spec.MinReadySeconds,
 				Template: corev1.PodTemplateSpec{

@@ -4396,6 +4396,16 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DaemonSetUpdateStrategy != nil {
+		in, out := &in.DaemonSetUpdateStrategy, &out.DaemonSetUpdateStrategy
+		*out = new(appsv1.DaemonSetUpdateStrategyType)
+		**out = **in
+	}
+	if in.DaemonSetRollingUpdateStrategyBehavior != nil {
+		in, out := &in.DaemonSetRollingUpdateStrategyBehavior, &out.DaemonSetRollingUpdateStrategyBehavior
+		*out = new(appsv1.RollingUpdateDaemonSet)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.StatefulStorage != nil {
 		in, out := &in.StatefulStorage, &out.StatefulStorage
 		*out = new(StorageSpec)

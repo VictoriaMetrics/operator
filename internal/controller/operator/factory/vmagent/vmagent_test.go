@@ -27,7 +27,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
 		validate          func(set *appsv1.StatefulSet)
+		validateDS        func(ds *appsv1.DaemonSet)
 		statefulsetMode   bool
+		daemonSetMode     bool
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -48,6 +50,11 @@ func TestCreateOrUpdate(t *testing.T) {
 			var got appsv1.StatefulSet
 			assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
 			o.validate(&got)
+		}
+		if o.daemonSetMode {
+			var got appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+			o.validateDS(&got)
 		}
 	}
 
@@ -634,6 +641,86 @@ func TestCreateOrUpdate(t *testing.T) {
 				}
 			}
 			assert.True(t, hasClientSecretArg)
+		},
+	})
+
+	// generate vmagent daemonset with custom update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:           true,
+				DaemonSetUpdateStrategy: ptr.To(appsv1.RollingUpdateDaemonSetStrategyType),
+				DaemonSetRollingUpdateStrategyBehavior: &appsv1.RollingUpdateDaemonSet{
+					MaxUnavailable: ptr.To(intstr.FromString("20%")),
+				},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		daemonSetMode: true,
+		validateDS: func(got *appsv1.DaemonSet) {
+			assert.Equal(t, appsv1.RollingUpdateDaemonSetStrategyType, got.Spec.UpdateStrategy.Type)
+			assert.NotNil(t, got.Spec.UpdateStrategy.RollingUpdate)
+			assert.Equal(t, ptr.To(intstr.FromString("20%")), got.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
+		},
+	})
+
+	// generate vmagent daemonset with default update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:                          true,
+				DaemonSetUpdateStrategy:                nil,
+				DaemonSetRollingUpdateStrategyBehavior: nil,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		daemonSetMode: true,
+		validateDS: func(got *appsv1.DaemonSet) {
+			assert.Equal(t, appsv1.RollingUpdateDaemonSetStrategyType, got.Spec.UpdateStrategy.Type)
+			assert.Nil(t, got.Spec.UpdateStrategy.RollingUpdate)
+		},
+	})
+
+	// generate vmagent daemonset with ondelete update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:           true,
+				DaemonSetUpdateStrategy: ptr.To(appsv1.OnDeleteDaemonSetStrategyType),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		daemonSetMode: true,
+		validateDS: func(got *appsv1.DaemonSet) {
+			assert.Equal(t, appsv1.OnDeleteDaemonSetStrategyType, got.Spec.UpdateStrategy.Type)
+			assert.Nil(t, got.Spec.UpdateStrategy.RollingUpdate)
 		},
 	})
 }
@@ -2709,5 +2796,4 @@ serviceaccountname: vmagent-agent
 
     `,
 	})
-
 }

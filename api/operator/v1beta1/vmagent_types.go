@@ -86,6 +86,13 @@ type VMAgentSpec struct {
 	// Cannot be used with statefulMode
 	// +optional
 	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
+	// DaemonSetUpdateStrategy allows configuration for the DaemonSet update strategy type.
+	// +optional
+	DaemonSetUpdateStrategy *appsv1.DaemonSetUpdateStrategyType `json:"daemonSetUpdateStrategy,omitempty"`
+	// DaemonSetRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the DaemonSetUpdateStrategy is set to RollingUpdate, which is the default.
+	// +optional
+	DaemonSetRollingUpdateStrategyBehavior *appsv1.RollingUpdateDaemonSet `json:"daemonSetRollingUpdateStrategyBehavior,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional

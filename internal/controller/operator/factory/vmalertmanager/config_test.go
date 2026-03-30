@@ -67,6 +67,66 @@ func TestBuildConfig(t *testing.T) {
 		assert.Equal(t, o.want, string(data))
 	}
 
+	// tracing without discovered objects
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EnforcedNamespaceLabel:  "alert-namespace",
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				TracingConfig: &vmv1beta1.VMAlertmanagerTracingConfig{
+					Endpoint: "http://example.com",
+					TLSConfig: &vmv1beta1.TLSClientConfig{
+						CASecretRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "ca",
+							},
+							Key: "key",
+						},
+					},
+					Compression: "gzip",
+					HTTPHeaders: map[string]string{
+						"name": "value",
+					},
+				},
+			},
+		},
+		baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ca",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"key": []byte("value"),
+				},
+			},
+		},
+		want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+receivers:
+- name: blackhole
+templates: []
+tracing:
+  tls_config:
+    ca_file: /etc/alertmanager/tls_assets/default_ca_key
+  compression: gzip
+  http_headers:
+    name: value
+  endpoint: http://example.com
+`,
+	})
+
 	// override the top namespace matcher
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{

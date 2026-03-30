@@ -207,6 +207,79 @@ func TestConfigMapReconcile(t *testing.T) {
 		},
 	})
 
+	// data key added
+	f(opts{
+		new: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
+			},
+			Data: map[string]string{
+				"rule-a.yaml": "groups: []",
+				"rule-b.yaml": "groups: []",
+			},
+		},
+		prevMeta: &metav1.ObjectMeta{
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
+				},
+				Data: map[string]string{
+					"rule-a.yaml": "groups: []",
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
+		validate: func(c *corev1.ConfigMap) {
+			assert.Contains(t, c.Data, "rule-b.yaml")
+		},
+	})
+
+	// data key removed
+	f(opts{
+		new: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
+			},
+			Data: map[string]string{
+				"rule-a.yaml": "groups: []",
+			},
+		},
+		prevMeta: &metav1.ObjectMeta{
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
+				},
+				Data: map[string]string{
+					"rule-a.yaml": "groups: []",
+					"rule-b.yaml": "groups: []",
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
+		validate: func(c *corev1.ConfigMap) {
+			_, exists := c.Data["rule-b.yaml"]
+			assert.False(t, exists, "rule-b.yaml should have been removed from configmap")
+		},
+	})
+
 	// no update with 3-rd party annotations
 	f(opts{
 		new: &corev1.ConfigMap{

@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -256,6 +257,63 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		},
 		want: []string{"vm-base-vmalert-rulefiles-0"},
 	})
+}
+
+func TestRuleRebalance(t *testing.T) {
+	ctx := context.Background()
+
+	// Each rule's serialized YAML is ~76 bytes.
+	origLimit := vmv1beta1.MaxConfigMapDataSize
+	vmv1beta1.MaxConfigMapDataSize = 80
+	defer func() { vmv1beta1.MaxConfigMapDataSize = origLimit }()
+
+	mkRule := func(ns, name, recordName string) *vmv1beta1.VMRule {
+		return &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: vmv1beta1.VMRuleSpec{
+				Groups: []vmv1beta1.RuleGroup{{
+					Name:  name,
+					Rules: []vmv1beta1.Rule{{Record: recordName, Expr: "vector(1)"}},
+				}},
+			},
+		}
+	}
+
+	ns := "default"
+	cr := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{Name: "recording", Namespace: ns},
+		Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
+	}
+
+	ruleB := mkRule(ns, "rule-b", "job:b:total")
+
+	firstRuleCM := "vm-recording-rulefiles-0"
+	secondRuleCM := "vm-recording-rulefiles-1"
+
+	// One rule fits the configmap
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ruleB})
+	names, err := CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{firstRuleCM}, names)
+
+	var cm0 corev1.ConfigMap
+	var cm1 corev1.ConfigMap
+	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0))
+	assert.Contains(t, cm0.Data, "default-rule-b.yaml", "rule-b should be in cm-0 initially")
+
+	// Bin-packing puts rule-a in cm-0 and spills rule-b to cm-1.
+	ruleA := mkRule(ns, "rule-a", "job:a:total")
+	assert.NoError(t, fclient.Create(ctx, ruleA))
+
+	names, err = CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{firstRuleCM, secondRuleCM}, names)
+	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0))
+	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: secondRuleCM, Namespace: ns}, &cm1))
+
+	assert.Contains(t, cm0.Data, "default-rule-a.yaml")
+	assert.NotContains(t, cm0.Data, "default-rule-b.yaml", "rule-b must be removed from cm-0 after moving to cm-1")
+	assert.Contains(t, cm1.Data, "default-rule-b.yaml")
 }
 
 func Test_deduplicateRules(t *testing.T) {

@@ -18,23 +18,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 var (
-	podWaitReadyIntervalCheck = 50 * time.Millisecond
-	appWaitReadyDeadline      = 5 * time.Second
-	podWaitReadyTimeout       = 5 * time.Second
-	vmStatusInterval          = 5 * time.Second
+	pvcWaitReadyInterval = 1 * time.Second
+	pvcWaitReadyTimeout  = 5 * time.Second
+
+	podWaitReadyInterval = 1 * time.Second
+	podWaitReadyTimeout  = 5 * time.Second
+
+	appWaitReadyTimeout = 5 * time.Second
+	vmWaitReadyInterval = 5 * time.Second
 )
 
-// InitFromConfig sets package configuration from config
-func InitDeadlines(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval time.Duration) {
-	podWaitReadyIntervalCheck = intervalCheck
-	appWaitReadyDeadline = appWaitDeadline
-	podWaitReadyTimeout = podReadyDeadline
-	vmStatusInterval = statusInterval
+// Init sets package defaults
+func Init(cfg *config.BaseOperatorConf, statusUpdate time.Duration) {
+	podWaitReadyInterval = cfg.PodWaitReadyInterval
+	podWaitReadyTimeout = cfg.PodWaitReadyTimeout
+
+	pvcWaitReadyInterval = cfg.PVCWaitReadyInterval
+	pvcWaitReadyTimeout = cfg.PVCWaitReadyTimeout
+
+	appWaitReadyTimeout = cfg.AppWaitReadyTimeout
+	vmWaitReadyInterval = cfg.VMWaitReadyInterval
+	statusUpdateTTL = statusUpdate
 }
 
 // mergeMaps performs 3-way merge for labels and annotations
@@ -107,7 +117,10 @@ type errRecreate struct {
 
 func newErrRecreate(ctx context.Context, r client.Object) *errRecreate {
 	finalizers := strings.Join(r.GetFinalizers(), ",")
-	msg := fmt.Sprintf("waiting for %s=%s/%s (finalizers=[%s]) to be removed", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
+	if len(finalizers) > 0 {
+		finalizers = fmt.Sprintf("(finalizers=[%s])", finalizers)
+	}
+	msg := fmt.Sprintf("waiting for %s=%s/%s to be removed %s", r.GetObjectKind().GroupVersionKind().Kind, r.GetNamespace(), r.GetName(), finalizers)
 	logger.WithContext(ctx).Info(msg)
 	return &errRecreate{
 		msg: msg,
@@ -143,17 +156,17 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	interval time.Duration,
 	status vmv1beta1.UpdateStatus,
 ) error {
-	lastStatus := obj.GetStatus().GetStatusMetadata()
+	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
 			}
-			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn, err)
+			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn.String(), err)
 			return
 		}
-		lastStatus = obj.GetStatus().GetStatusMetadata()
+		lastStatus = obj.GetStatusMetadata()
 		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {
@@ -161,7 +174,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil {
 			updateStatus = string(lastStatus.UpdateStatus)
 		}
-		return fmt.Errorf("failed to wait for %T %s to be ready: %w, current status: %s", obj, nsn, err, updateStatus)
+		return fmt.Errorf("failed to wait for %T=%s to be ready: %w, current status: %s", obj, nsn.String(), err, updateStatus)
 	}
 	return nil
 }
@@ -187,13 +200,15 @@ func addOwnerReferenceIfAbsent(obj client.Object, owner *metav1.OwnerReference) 
 }
 
 // collectGarbage checks if resource must be freed from finalizer and prepares it for garbage collection by kubernetes
-func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object) error {
+func collectGarbage(ctx context.Context, rclient client.Client, obj client.Object, removeFinalizer bool) error {
 	if obj.GetDeletionTimestamp().IsZero() {
 		// fast path
 		return nil
 	}
-	if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
-		return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+	if removeFinalizer {
+		if err := finalize.RemoveFinalizer(ctx, rclient, obj); err != nil {
+			return fmt.Errorf("cannot remove finalizer from %s=%s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+		}
 	}
 	return newErrRecreate(ctx, obj)
 }

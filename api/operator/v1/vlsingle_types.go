@@ -43,8 +43,7 @@ type VLSingleSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -96,12 +95,15 @@ type VLSingleSpec struct {
 	// ServiceScrapeSpec that will be added to vlsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VLSingle pod
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 
 	// SyslogSpec defines syslog listener configuration
 	// +optional
@@ -117,8 +119,8 @@ type VLSingleStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLSingleStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLSingle) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLSingle is fast, cost-effective and scalable logs database.
@@ -146,6 +148,11 @@ type VLSingle struct {
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VLSingle) GetStatus() *VLSingleStatus {
 	return &cr.Status
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLSingle) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
@@ -191,10 +198,6 @@ func (cr *VLSingleSpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
-}
-
-func (cr *VLSingle) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VLSingle) ProbePath() string {

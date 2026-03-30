@@ -42,6 +42,9 @@ const (
 
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 
 	var prevCR *vmv1beta1.VMAuth
 	if cr.Status.LastAppliedSpec != nil {
@@ -110,7 +113,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, cr.Spec.HPA != nil, &owner); err != nil {
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, &o); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth deployment: %w", err)
 	}
 	if prevCR != nil {
@@ -172,7 +182,7 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
 
 	return depSpec, nil
 }
@@ -221,8 +231,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			ContainerPort: intstr.Parse(cr.Spec.InternalListenPort).IntVal,
 		})
 	}
-
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -319,7 +327,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
+		build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
 	}
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
 	if err != nil {
@@ -341,19 +349,19 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
-	vmauthContainer = addVMAuthProbes(cr, vmauthContainer)
+	build.Probe(&vmauthContainer, cr, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	// move vmauth container to the 0 index
 	operatorContainers = append([]corev1.Container{vmauthContainer}, operatorContainers...)
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 
-	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	volumes = build.AddServiceAccountTokenVolume(volumes, &cr.Spec.CommonAppsParams)
 	volumes = build.AddConfigReloadAuthKeyVolume(volumes, &cr.Spec.CommonConfigReloaderParams)
 
 	return &corev1.PodTemplateSpec{
@@ -676,28 +684,4 @@ func buildScrape(cr *vmv1beta1.VMAuth, svc *corev1.Service) *vmv1beta1.VMService
 		}
 	}
 	return b
-}
-
-func addVMAuthProbes(cr *vmv1beta1.VMAuth, vmauthContainer corev1.Container) corev1.Container {
-	if cr.UseProxyProtocol() && cr.Spec.EmbeddedProbes == nil {
-		probePort := intstr.Parse(cr.ProbePort())
-		cr.Spec.EmbeddedProbes = &vmv1beta1.EmbeddedProbes{
-			ReadinessProbe: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: probePort,
-					},
-				},
-			},
-			LivenessProbe: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: probePort,
-					},
-				},
-			},
-		}
-	}
-	vmauthContainer = build.Probe(vmauthContainer, cr)
-	return vmauthContainer
 }

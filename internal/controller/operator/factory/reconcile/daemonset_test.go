@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -60,12 +61,14 @@ func TestDaemonSetReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
-		if o.wantErr {
-			assert.Error(t, DaemonSet(ctx, cl, o.new, o.prev, nil))
-		} else {
-			assert.NoError(t, DaemonSet(ctx, cl, o.new, o.prev, nil))
-		}
-		assert.Equal(t, o.actions, cl.Actions)
+		synctest.Test(t, func(t *testing.T) {
+			if o.wantErr {
+				assert.Error(t, DaemonSet(ctx, cl, o.new, o.prev, nil))
+			} else {
+				assert.NoError(t, DaemonSet(ctx, cl, o.new, o.prev, nil))
+			}
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-ds", Namespace: "default"}

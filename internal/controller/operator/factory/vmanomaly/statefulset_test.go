@@ -56,7 +56,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Labels:      map[string]string{"main": "system"},
 			},
 			Spec: vmv1.VMAnomalySpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				License: &vmv1beta1.License{
@@ -121,8 +121,11 @@ schedulers:
 				Labels:      map[string]string{"main": "system"},
 			},
 			Spec: vmv1.VMAnomalySpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
+					LivenessProbe: &corev1.Probe{
+						TimeoutSeconds: 20,
+					},
 				},
 				License: &vmv1beta1.License{
 					Key: ptr.To("test"),
@@ -144,11 +147,6 @@ schedulers:
     fit_every: 2m
     fit_window: 3h
 `,
-				EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
-					LivenessProbe: &corev1.Probe{
-						TimeoutSeconds: 20,
-					},
-				},
 				Reader: &vmv1.VMAnomalyReadersSpec{
 					DatasourceURL:  "http://test.com",
 					SamplingPeriod: "1m",
@@ -178,7 +176,7 @@ schedulers:
 				Labels:      map[string]string{"main": "system"},
 			},
 			Spec: vmv1.VMAnomalySpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				License: &vmv1beta1.License{

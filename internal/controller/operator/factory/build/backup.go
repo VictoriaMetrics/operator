@@ -34,7 +34,7 @@ func VMBackupManager(
 		return nil, nil
 	}
 	snapshotCreateURL := cr.SnapshotCreateURL
-	snapshotDeleteURL := cr.SnapShotDeleteURL
+	snapshotDeleteURL := cr.SnapshotDeleteURL
 	if snapshotCreateURL == "" {
 		// http://localhost:port/snapshot/create
 		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(config.GetLocalhost(), port, extraArgs)

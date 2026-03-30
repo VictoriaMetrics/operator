@@ -2,27 +2,27 @@ module github.com/VictoriaMetrics/operator/api
 
 // NOTE: modify go version only if it's really needed
 // and api package is no longer compatible with previous go versions.
-go 1.26.0
+go 1.26.1
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.137.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.138.0
 	github.com/prometheus/alertmanager v0.31.1
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.35.1
-	k8s.io/apiextensions-apiserver v0.35.1
-	k8s.io/apimachinery v0.35.1
+	k8s.io/api v0.35.3
+	k8s.io/apiextensions-apiserver v0.35.3
+	k8s.io/apimachinery v0.35.3
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.6.0
-	k8s.io/client-go v0.35.1
+	k8s.io/client-go v0.35.3
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
-	sigs.k8s.io/controller-runtime v0.23.1
-	sigs.k8s.io/gateway-api v1.5.0
+	sigs.k8s.io/controller-runtime v0.23.3
+	sigs.k8s.io/gateway-api v1.5.1
 )
 
 require (
 	github.com/VictoriaMetrics/VictoriaLogs v1.43.1 // indirect
 	github.com/VictoriaMetrics/easyproto v1.2.0 // indirect
-	github.com/VictoriaMetrics/metrics v1.41.2 // indirect
+	github.com/VictoriaMetrics/metrics v1.42.0 // indirect
 	github.com/VictoriaMetrics/metricsql v0.85.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.8 // indirect

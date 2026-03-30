@@ -35,6 +35,9 @@ import (
 // needed in update checked by revision status
 // its controlled by k8s controller-manager
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	if !build.MustSkipRuntimeValidation() {
 		if err := cr.Validate(); err != nil {
 			return err
@@ -165,20 +168,16 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	owner := cr.AsOwner()
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentSelect)
-		},
-		HPA: cr.Spec.VMSelect.HPA,
-		UpdateReplicaCount: func(count *int32) {
-			if cr.Spec.VMSelect.HPA != nil && count != nil {
-				cr.Spec.VMSelect.ReplicaCount = count
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
+		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.VMSelect.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
 			}
 		},
-		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
 	}
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -316,7 +315,14 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	owner := cr.AsOwner()
-	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, cr.Spec.VMInsert.HPA != nil, &owner)
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.VMInsert.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, &owner, &o)
 }
 
 func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -414,15 +420,17 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
-		},
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.VMStorage.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
 	}
 	owner := cr.AsOwner()
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
@@ -526,7 +534,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMSelect.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false), &cr.Spec.VMSelect.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMSelect.CommonAppsParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
 	}
@@ -673,10 +681,10 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmselectContainer = build.Probe(vmselectContainer, cr.Spec.VMSelect)
+	build.Probe(&vmselectContainer, cr.Spec.VMSelect, &cr.Spec.VMSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMSelect.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMSelect.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMSelect.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
 		return nil, err
@@ -753,7 +761,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false), &cr.Spec.VMInsert.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(stsSpec, &cr.Spec.VMInsert.CommonAppsParams)
 	return stsSpec, nil
 }
 
@@ -877,10 +885,10 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	vminsertContainer = build.Probe(vminsertContainer, cr.Spec.VMInsert)
+	build.Probe(&vminsertContainer, cr.Spec.VMInsert, &cr.Spec.VMInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMInsert.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.VMInsert.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMInsert.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
 		return nil, err
@@ -952,7 +960,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	if cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.VMStorage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1097,8 +1105,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = build.Probe(vmstorageContainer, cr.Spec.VMStorage)
-
+	build.Probe(&vmstorageContainer, cr.Spec.VMStorage, &cr.Spec.VMStorage.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
@@ -1122,14 +1129,13 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			}
 		}
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.VMStorage.CommonAppsParams)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.VMStorage.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage init containers: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.VMStorage.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMStorage.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch vmstorage containers: %w", err)
@@ -1527,13 +1533,13 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		ImagePullPolicy: spec.Image.PullPolicy,
 		VolumeMounts:    vmounts,
 	}
-	vmauthLBCnt = build.Probe(vmauthLBCnt, &spec)
+	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}
 	var err error
 
-	build.AddStrictSecuritySettingsToContainers(spec.SecurityContext, containers, ptr.Deref(spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(containers, &spec.CommonAppsParams)
 	containers, err = k8stools.MergePatchContainers(containers, spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch containers: %w", err)
@@ -1572,7 +1578,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(lbDep, ptr.Deref(cr.Spec.RequestsLoadBalancer.Spec.UseStrictSecurity, false), &spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(lbDep, &spec.CommonAppsParams)
 
 	return lbDep, nil
 }
@@ -1626,7 +1632,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, false, &owner); err != nil {
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, &owner, nil); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {

@@ -37,6 +37,11 @@ import (
 type VMAnomalySpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmanomaly pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -55,11 +60,10 @@ type VMAnomalySpec struct {
 	// in this case operator will use 1 sts per shard with
 	// replicas count according to spec.replicas.
 	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
+	ShardCount *int32 `json:"shardCount,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// ConfigRawYaml - raw configuration for anomaly,
 	// it helps it to start without secret.
 	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
@@ -105,9 +109,8 @@ type VMAnomalySpec struct {
 	License *vmv1beta1.License `json:"license,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName                          string `json:"serviceAccountName,omitempty"`
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 // VMAnomalyWritersSpec defines writer configuration for VMAnomaly
@@ -186,8 +189,8 @@ type VMAnomalyStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAnomalyStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAnomaly) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAnomaly is the Schema for the vmanomalies API.
@@ -303,7 +306,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 	var shardCnt int32
 	if cr.IsSharded() {
-		shardCnt = int32(*cr.Spec.ShardCount)
+		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Shards = shardCnt
 }
@@ -398,11 +401,6 @@ func (cr *VMAnomaly) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return nil
 }
 
-// Probe implements build.probeCRD interface
-func (cr *VMAnomaly) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
-}
-
 // ProbePath implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePath() string {
 	if cr.Spec.Server != nil && cr.Spec.Server.PathPrefix != "" {
@@ -443,7 +441,7 @@ func (cr *VMAnomaly) IsSharded() bool {
 }
 
 // GetShardCount returns shard count for vmanomaly
-func (cr *VMAnomaly) GetShardCount() int {
+func (cr *VMAnomaly) GetShardCount() int32 {
 	if !cr.IsSharded() {
 		return 1
 	}
@@ -460,6 +458,11 @@ func (cr *VMAnomaly) LastSpecUpdated() bool {
 // Paused checks if given component reconcile loop should be stopped
 func (cr *VMAnomaly) Paused() bool {
 	return cr.Spec.Paused
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMAnomaly) UseProxyProtocol() bool {
+	return false
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

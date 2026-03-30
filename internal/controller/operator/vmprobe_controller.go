@@ -57,25 +57,27 @@ func (r *VMProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmprobe", req.Name, "namespace", req.Namespace)
-	instance := &vmv1beta1.VMProbe{}
+	var instance vmv1beta1.VMProbe
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMPodScrape instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmprobescrape", req}
-	}
-
-	RegisterObjectStat(instance, "vmprobescrape")
-	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
-	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmprobescrape", req}
 		return
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+
+	RegisterObjectStat(&instance, "vmprobescrape")
+	if instance.Spec.ParsingError != "" {
+		err = &parsingError{instance.Spec.ParsingError, "vmprobescrape"}
+		return
+	}
+	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
+		return
+	}
+	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
 		return
 	}
 	return

@@ -62,11 +62,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{},
-				StatefulMode:            true,
+				StatefulMode: true,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
@@ -129,13 +128,13 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ShardCount: func() *int { i := 2; return &i }(),
+				ShardCount: func() *int32 { i := int32(2); return &i }(),
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -414,7 +413,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				StatefulMode: true,
@@ -453,10 +452,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](2),
 				},
-				ShardCount: ptr.To(3),
+				ShardCount: ptr.To[int32](3),
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 					MinAvailable: ptr.To(intstr.FromInt(1)),
 				},
@@ -519,7 +518,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 				StatefulMode: true,
@@ -582,7 +581,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
 				},
 				StatefulMode: true,
@@ -2067,6 +2066,8 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
+
+	// ingest only mode
 	f(opts{
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
@@ -2074,7 +2075,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "vm-repo",
 						Tag:        "v1.97.1",
@@ -2115,46 +2116,199 @@ containers:
           protocol: TCP
       resources:
         limits:
-            cpu:
-                format: DecimalSI
-            memory:
-                format: BinarySI
+          cpu:
+            format: DecimalSI
+          memory:
+            format: BinarySI
         requests:
-            cpu:
-                format: DecimalSI
-            memory:
-                format: BinarySI
-        claims: []
+          cpu:
+            format: DecimalSI
+          memory:
+            format: BinarySI
       volumemounts:
         - name: persistent-queue-data
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
-serviceaccountname: vmagent-agent
+serviceaccountname: vmagent-agent`,
+	})
 
-    `})
+	// ingest only mode with relabelling
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						},
+					},
+					Port: "8425",
+				},
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "localhost:8429",
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+						InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
+							{TargetLabel: "rw-1", Replacement: ptr.To("present")},
+						},
+					},
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
+				},
+			},
+		},
+		wantYaml: `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir: {}
+    - name: relabelings-assets
+      volumesource:
+        configmap:
+          localobjectreference:
+            name: relabelings-assets-vmagent-agent
+initcontainers: []
+containers:
+    - name: vmagent
+      image: vm-repo:v1.97.1
+      args:
+        - -httpListenAddr=:8425
+        - -remoteWrite.maxDiskUsagePerURL=1073741824
+        - -remoteWrite.tlsInsecureSkipVerify=true
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+        - -remoteWrite.url=localhost:8429
+        - -remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabeling-0.yaml
+      ports:
+        - name: http
+          containerport: 8425
+          protocol: TCP
+      resources:
+        limits:
+          cpu:
+            format: DecimalSI
+          memory:
+            format: BinarySI
+        requests:
+          cpu:
+            format: DecimalSI
+          memory:
+            format: BinarySI
+      volumemounts:
+        - name: persistent-queue-data
+          mountpath: /tmp/vmagent-remotewrite-data
+        - name: relabelings-assets
+          readonly: true
+          mountpath: /etc/vm/relabeling
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+    - name: config-reloader
+      image: vmcustom:config-reloader-v0.35.0
+      args:
+        - --reload-url=http://127.0.0.1:8425/-/reload
+        - --watched-dir=/etc/vm/relabeling
+        - --webhook-method=POST
+      ports:
+        - name: reloader-http
+          containerport: 8435
+          protocol: TCP
+      resources:
+        requests:
+          cpu:
+            format: DecimalSI
+          memory:
+            format: BinarySI
+      volumemounts:
+        - name: relabelings-assets
+          readonly: true
+          mountpath: /etc/vm/relabeling
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        initialdelayseconds: 5
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      terminationmessagepolicy: FallbackToLogsOnError
+serviceaccountname: vmagent-agent`,
+	})
+
 	f(opts{
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
@@ -2162,7 +2316,7 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(false),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2229,22 +2383,22 @@ containers:
           mountpath: /etc/vmagent/config
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8429
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8429
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8429
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8429
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2268,22 +2422,22 @@ containers:
           mountpath: /etc/vmagent/config_out
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
         timeoutseconds: 1
         periodseconds: 10
         successthreshold: 1
         failurethreshold: 3
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8435
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
         initialdelayseconds: 5
         timeoutseconds: 1
         periodseconds: 10
@@ -2303,7 +2457,7 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2351,22 +2505,22 @@ containers:
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2386,7 +2540,7 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
@@ -2437,22 +2591,22 @@ containers:
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
@@ -2472,21 +2626,19 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Tag: "v1.97.1",
 					},
 					UseDefaultResources: ptr.To(false),
 					Port:                "8425",
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
-				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
 					ExtraArgs: map[string]string{
 						"remoteWrite.maxDiskUsagePerURL": "35GiB",
 						"remoteWrite.forceVMProto":       "false",
 					},
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2531,22 +2683,22 @@ containers:
           mountpath: /tmp/vmagent-remotewrite-data
       livenessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
       readinessprobe:
         probehandler:
-            httpget:
-                path: /health
-                port:
-                    intval: 8425
-                scheme: HTTP
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
         timeoutseconds: 5
         periodseconds: 5
         successthreshold: 1

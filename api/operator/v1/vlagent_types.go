@@ -20,6 +20,11 @@ import (
 type VLAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vlagent pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -89,11 +94,8 @@ type VLAgentSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
-	*vmv1beta1.EmbeddedProbes                   `json:",inline"`
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 type VLAgentK8sCollector struct {
@@ -179,6 +181,11 @@ func (cr *VLAgent) Validate() error {
 		}
 	}
 	return nil
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLAgent) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -272,8 +279,8 @@ type VLAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLAgentStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLAgent) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // +genclient
@@ -442,11 +449,6 @@ func (cr *VLAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLAgent) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface

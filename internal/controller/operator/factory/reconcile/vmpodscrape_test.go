@@ -3,10 +3,10 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -16,9 +16,9 @@ import (
 
 func TestVMPodScrape(t *testing.T) {
 	type opts struct {
-		new, prev         *vmv1beta1.VMPodScrape
-		predefinedObjects []runtime.Object
-		actions           []k8stools.ClientAction
+		new, prev *vmv1beta1.VMPodScrape
+		preRun    func(c *k8stools.ClientWithActions)
+		actions   []k8stools.ClientAction
 	}
 	getVMPodScrape := func(fns ...func(v *vmv1beta1.VMPodScrape)) *vmv1beta1.VMPodScrape {
 		v := &vmv1beta1.VMPodScrape{
@@ -46,9 +46,15 @@ func TestVMPodScrape(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil))
-		assert.Equal(t, o.actions, cl.Actions)
+		cl := k8stools.GetTestClientWithActionsAndObjects(nil)
+		if o.preRun != nil {
+			o.preRun(cl)
+			cl.Actions = nil
+		}
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, VMPodScrape(ctx, cl, o.new, o.prev, nil))
+			assert.Equal(t, o.actions, cl.Actions)
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-vmpodscrape", Namespace: "default"}
@@ -66,8 +72,22 @@ func TestVMPodScrape(t *testing.T) {
 	f(opts{
 		new:  getVMPodScrape(),
 		prev: getVMPodScrape(),
-		predefinedObjects: []runtime.Object{
-			getVMPodScrape(),
+		preRun: func(c *k8stools.ClientWithActions) {
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape()))
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
+		},
+	})
+
+	// no update on status change
+	f(opts{
+		new:  getVMPodScrape(),
+		prev: getVMPodScrape(),
+		preRun: func(c *k8stools.ClientWithActions) {
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape(func(v *vmv1beta1.VMPodScrape) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			})))
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},
@@ -80,8 +100,8 @@ func TestVMPodScrape(t *testing.T) {
 			v.Spec.PodMetricsEndpoints[0].Port = ptr.To("metrics")
 		}),
 		prev: getVMPodScrape(),
-		predefinedObjects: []runtime.Object{
-			getVMPodScrape(),
+		preRun: func(c *k8stools.ClientWithActions) {
+			assert.NoError(t, c.Create(context.Background(), getVMPodScrape()))
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMPodScrape", Resource: nn},

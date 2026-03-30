@@ -6,15 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -23,8 +19,8 @@ import (
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
-		cr                *vmv1beta1.VMAuth
-		predefinedObjects []runtime.Object
+		cr     *vmv1beta1.VMAuth
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -34,25 +30,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(&vmv1beta1.VMAuth{}).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(ctx, fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, args.cr, fclient)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -60,19 +46,19 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
+		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+			for i, action := range fclient.Actions {
 				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
 			}
 		}
 
 		for i, action := range want.actions {
-			if i >= len(actions) {
+			if i >= len(fclient.Actions) {
 				break
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
+			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
 
@@ -81,7 +67,14 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	vmauthName := types.NamespacedName{Namespace: namespace, Name: "vmauth-" + name}
 	configSecretName := types.NamespacedName{Namespace: namespace, Name: "vmauth-config-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
-	childObjectMeta := metav1.ObjectMeta{Name: vmauthName.Name, Namespace: namespace}
+
+	setupReadyVMAuth := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+		// clear actions
+		c.Actions = nil
+	}
 
 	// create vmauth with default config
 	f(args{
@@ -112,92 +105,103 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
-	// update vmauth
+	// update vmauth with no changes
 	f(args{
 		cr: &vmv1beta1.VMAuth{
 			ObjectMeta: objectMeta,
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
 		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: childObjectMeta},
-			&rbacv1.Role{ObjectMeta: childObjectMeta},
-			&rbacv1.RoleBinding{ObjectMeta: childObjectMeta},
-			&corev1.Service{
-				ObjectMeta: childObjectMeta,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "10.0.0.1",
-					Selector: map[string]string{
-						"app.kubernetes.io/name":      "vmauth",
-						"app.kubernetes.io/instance":  name,
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-					},
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   "TCP",
-							Port:       8427,
-							TargetPort: intstr.Parse("8427"),
-						},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: childObjectMeta},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: configSecretName.Name, Namespace: namespace}},
-			&appsv1.Deployment{
-				ObjectMeta: childObjectMeta,
-				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app.kubernetes.io/name":      "vmauth",
-							"app.kubernetes.io/instance":  name,
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/name":      "vmauth",
-								"app.kubernetes.io/instance":  name,
-								"app.kubernetes.io/component": "monitoring",
-								"managed-by":                  "vm-operator",
-							},
-						},
-					},
-				},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
-				},
-			},
-		},
+		preRun: setupReadyVMAuth,
 	},
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmauthName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: vmauthName},
 				{Verb: "Get", Kind: "Role", Resource: vmauthName},
-				{Verb: "Update", Kind: "Role", Resource: vmauthName},
 				{Verb: "Get", Kind: "RoleBinding", Resource: vmauthName},
-				{Verb: "Update", Kind: "RoleBinding", Resource: vmauthName},
 				{Verb: "Get", Kind: "Service", Resource: vmauthName},
-				{Verb: "Update", Kind: "Service", Resource: vmauthName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmauthName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vmauthName},
 				{Verb: "Get", Kind: "Secret", Resource: configSecretName},
-				{Verb: "Update", Kind: "Secret", Resource: configSecretName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
-				{Verb: "Update", Kind: "Deployment", Resource: vmauthName},
 				{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
 			},
 		})
+
+	// no update on status change
+	f(args{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: objectMeta,
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAuth) {
+			setupReadyVMAuth(ctx, c, cr)
+			// Update status to simulate consistency
+			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ServiceAccount", Resource: vmauthName},
+			{Verb: "Get", Kind: "Role", Resource: vmauthName},
+			{Verb: "Get", Kind: "RoleBinding", Resource: vmauthName},
+			{Verb: "Get", Kind: "Service", Resource: vmauthName},
+			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmauthName},
+			{Verb: "Get", Kind: "Secret", Resource: configSecretName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
+			{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
+			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmauthName},
+			{Verb: "Get", Kind: "Ingress", Resource: vmauthName},
+			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmauthName},
+		},
+	})
+}
+
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	// Create a paused VMAuth CR and test that it is not reconciled
+	cr := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmauth",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To(int32(1)),
+				Paused:       true,
+			},
+		},
+	}
+	nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var deploy appsv1.Deployment
+	err := fclient.Get(ctx, nsn, &deploy)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, nsn, &deploy)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, nsn, &deploy)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *deploy.Spec.Replicas)
 }

@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ func TestVMAgentReconcile(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -44,18 +45,20 @@ func TestVMAgentReconcile(t *testing.T) {
 		t.Helper()
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		err := VMAgent(ctx, cl, o.new, o.prev, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		assert.Equal(t, o.actions, cl.Actions)
-		if o.validate != nil {
-			var got vmv1beta1.VMAgent
-			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}, &got))
-			o.validate(&got)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := VMAgent(ctx, cl, o.new, o.prev, nil)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, o.actions, cl.Actions)
+			if o.validate != nil {
+				var got vmv1beta1.VMAgent
+				assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.new.Name, Namespace: o.new.Namespace}, &got))
+				o.validate(&got)
+			}
+		})
 	}
 
 	nn := types.NamespacedName{Name: "test-vmagent", Namespace: "default"}
@@ -119,24 +122,6 @@ func TestVMAgentReconcile(t *testing.T) {
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-		},
-	})
-
-	// recreate on deletion
-	f(opts{
-		new: getVMAgent(),
-		predefinedObjects: []runtime.Object{
-			getVMAgent(func(v *vmv1beta1.VMAgent) {
-				v.Finalizers = []string{vmv1beta1.FinalizerName}
-				v.DeletionTimestamp = ptr.To(metav1.Now())
-			}),
-		},
-		actions: []k8stools.ClientAction{
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Patch", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Create", Kind: "VMAgent", Resource: nn},
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})

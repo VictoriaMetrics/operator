@@ -2,12 +2,16 @@ package operator
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -312,5 +316,52 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			},
 		},
 		isMatch: true,
+	})
+}
+
+func TestHandleReconcileErr(t *testing.T) {
+	type opts struct {
+		ctx        context.Context
+		err        error
+		origin     ctrl.Result
+		wantResult ctrl.Result
+		wantErr    error
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		if o.ctx == nil {
+			o.ctx = context.Background()
+		}
+		got, err := handleReconcileErr(o.ctx, nil, (*vmv1beta1.VMCluster)(nil), o.origin, o.err)
+		assert.Equal(t, o.wantErr, err)
+		assert.Equal(t, o.wantResult, got)
+	}
+
+	// no error
+	f(opts{
+		err:        nil,
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    nil,
+	})
+
+	// context canceled
+	f(opts{
+		err:        context.Canceled,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{RequeueAfter: time.Second * 5},
+		wantErr:    nil,
+	})
+
+	// context canceled with ErrShutdown
+	shutdownCtx, shutdownCancel := context.WithCancelCause(context.Background())
+	shutdownCancel(ErrShutdown)
+	f(opts{
+		ctx:        shutdownCtx,
+		err:        fmt.Errorf("wrapped: %w", errors.Join(context.Canceled, ErrShutdown)),
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    nil,
 	})
 }

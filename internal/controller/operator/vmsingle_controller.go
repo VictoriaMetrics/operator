@@ -89,33 +89,33 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmsingle", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMSingle{}
+	var instance vmv1beta1.VMSingle
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmsingle", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmsingle", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vmsingle")
+	RegisterObjectStat(&instance, "vmsingle")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMSingleDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVMSingleDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmsingle"}
+		err = &parsingError{instance.Spec.ParsingError, "vmsingle"}
+		return
 	}
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmsingle.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vmsingle.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("failed create or update vmsingle: %w", err)
 		}
 		return result, nil
@@ -143,7 +143,7 @@ func (*VMSingleReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[str
 	return false
 }
 
-func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) error {
+func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
 	if build.IsControllerDisabled("VMSingle") && vmsingleReconcileLimit.MustThrottleReconcile() {
 		return nil
 	}
@@ -151,10 +151,11 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 	defer vmsingleSync.Unlock()
 
 	var objects vmv1beta1.VMSingleList
-	if err := k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMSingleList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMSingleList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return fmt.Errorf("cannot list VMSingles for %T: %w", instance, err)
+		err = fmt.Errorf("cannot list VMSingles for %T: %w", instance, err)
+		return
 	}
 
 	for i := range objects.Items {
@@ -184,9 +185,10 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 			}
 		}
 
-		if err := vmsingle.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); err != nil {
-			continue
+		if configErr := vmsingle.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); configErr != nil {
+			l.Error(configErr, "cannot update VMSingle scrape configuration")
+			err = configErr
 		}
 	}
-	return nil
+	return
 }

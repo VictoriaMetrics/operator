@@ -3,14 +3,14 @@ package vmdistributed
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -20,8 +20,8 @@ import (
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
-		cr                *vmv1alpha1.VMDistributed
-		predefinedObjects []runtime.Object
+		cr     *vmv1alpha1.VMDistributed
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
@@ -31,52 +31,38 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	f := func(args args, want want) {
 		t.Helper()
 
-		// Use local scheme to avoid global scheme pollution
-		s := runtime.NewScheme()
-		_ = scheme.AddToScheme(s)
-		_ = vmv1alpha1.AddToScheme(s)
-		_ = vmv1beta1.AddToScheme(s)
-		build.AddDefaults(s)
-		s.Default(args.cr)
-
-		var actions []k8stools.ClientAction
-		objInterceptors := k8stools.GetInterceptorsWithObjects()
-		actionInterceptor := k8stools.NewActionRecordingInterceptor(&actions, &objInterceptors)
-
-		fclient := fake.NewClientBuilder().
-			WithScheme(s).
-			WithStatusSubresource(
-				&vmv1alpha1.VMDistributed{},
-				&vmv1beta1.VMCluster{},
-				&vmv1beta1.VMAgent{},
-				&vmv1beta1.VMAuth{},
-			).
-			WithRuntimeObjects(args.predefinedObjects...).
-			WithInterceptorFuncs(actionInterceptor).
-			Build()
-
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
-		err := CreateOrUpdate(ctx, args.cr, fclient)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(args.cr)
 
-		if !assert.Equal(t, len(want.actions), len(actions)) {
-			for i, action := range actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			if args.preRun != nil {
+				args.preRun(ctx, fclient, args.cr)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(actions) {
-				break
+			err := CreateOrUpdate(ctx, args.cr, fclient)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			assert.Equal(t, action.Verb, actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, actions[i].Resource, "idx %d resource", i)
-		}
+
+			if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+				for i, action := range fclient.Actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
+			}
+
+			for i, action := range want.actions {
+				if i >= len(fclient.Actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	name := "test-dist"
@@ -100,17 +86,17 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 							Spec: vmv1beta1.VMClusterSpec{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
 								VMSelect: &vmv1beta1.VMSelect{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
 								VMInsert: &vmv1beta1.VMInsert{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
@@ -125,7 +111,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 				VMAuth: vmv1alpha1.VMDistributedAuth{
 					Spec: vmv1beta1.VMAuthSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To(int32(1)),
 						},
 					},
@@ -156,6 +142,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			},
 		})
 
+	// create vmagent
 	f(args{
 		cr: &vmv1alpha1.VMDistributed{
 			ObjectMeta: objectMeta,
@@ -167,17 +154,17 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 							Spec: vmv1beta1.VMClusterSpec{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
 								VMSelect: &vmv1beta1.VMSelect{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
 								VMInsert: &vmv1beta1.VMInsert{
-									CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
 										ReplicaCount: ptr.To(int32(1)),
 									},
 								},
@@ -213,4 +200,144 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 			},
 		})
+
+	// no change on status update
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: zoneName,
+						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+							Spec: vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "1",
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMSelect: &vmv1beta1.VMSelect{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMInsert: &vmv1beta1.VMInsert{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+							},
+						},
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmv1alpha1.VMDistributedAuth{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+					},
+				},
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
+			// Create objects first
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+			// clear actions
+			c.Actions = nil
+
+			// Update status to simulate consistency
+			cr.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		},
+	},
+		want{
+			actions: []k8stools.ClientAction{
+				// getZones
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+				// reconcile VMCluster
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+				// reconcile VMAgent
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+				// reconcile VMAuth
+				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			},
+		})
+}
+
+func Test_CreateOrUpdate_Paused(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-dist-paused",
+			Namespace: "default",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			Paused: true,
+			Zones: []vmv1alpha1.VMDistributedZone{
+				{
+					Name: "zone-1",
+					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+						Spec: vmv1beta1.VMClusterSpec{
+							RetentionPeriod: "1",
+							VMStorage: &vmv1beta1.VMStorage{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+							VMSelect: &vmv1beta1.VMSelect{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+							VMInsert: &vmv1beta1.VMInsert{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To(int32(1)),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that child objects are not created
+	var vmCluster vmv1beta1.VMCluster
+	err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.NoError(t, err)
+
+	// pause and update retention
+	cr.Spec.Paused = true
+	cr.Spec.Zones[0].VMCluster.Spec.RetentionPeriod = "2"
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that retention is not updated
+	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
+	assert.NoError(t, err)
+	assert.Equal(t, "1", vmCluster.Spec.RetentionPeriod)
 }

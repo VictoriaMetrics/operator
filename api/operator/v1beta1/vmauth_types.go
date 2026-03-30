@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -23,6 +24,11 @@ var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 type VMAuthSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty" yaml:"podMetadata,omitempty"`
@@ -70,8 +76,6 @@ type VMAuthSpec struct {
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// HTTPRoute enables httproute configuration for VMAuth.
 	HTTPRoute *EmbeddedHTTPRoute `json:"httpRoute,omitempty"`
-	// LivenessProbe that will be added to VMAuth pod
-	*EmbeddedProbes `json:",inline"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -82,7 +86,8 @@ type VMAuthSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	VMUserConfigOptions `json:",inline" yaml:",inline"`
-
+	// DefaultTargetRefs list of named targetRefs, which may be referenced by VMUser and at unauthorizedUserAccessSpec.
+	DefaultTargetRefs []TargetRef `json:"defaultTargetRefs,omitempty" yaml:"-"`
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
 	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
@@ -114,9 +119,8 @@ type VMAuthSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty" yaml:",inline"`
-	CommonConfigReloaderParams        `json:",inline,omitempty" yaml:",inline"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
+	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v0.56.0 operator
 	// and v1.111.0 vmauth version
@@ -175,7 +179,7 @@ func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 	}
 	isRetryCodesSet := len(s.RetryStatusCodes) > 0
 	for _, r := range s.TargetRefs {
-		if err := r.validate(isRetryCodesSet); err != nil {
+		if err := r.Validate(false, isRetryCodesSet); err != nil {
 			return fmt.Errorf("%w for unauthorized_user", err)
 		}
 	}
@@ -449,6 +453,18 @@ func (cr *VMAuth) Validate() error {
 		}
 	}
 
+	refs := sets.New[string]()
+	for i, ref := range cr.Spec.DefaultTargetRefs {
+		if refs.Has(ref.Name) {
+			return fmt.Errorf("spec.defaultTargetRefs[%d] contains duplicated targets with name=%s", i, ref.Name)
+		} else {
+			refs.Insert(ref.Name)
+		}
+		if err := ref.Validate(true, false); err != nil {
+			return fmt.Errorf("spec.defaultTargetRefs[%d]: %w", i, err)
+		}
+	}
+
 	if cr.Spec.HPA != nil {
 		if err := cr.Spec.HPA.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.hpa syntax: %w", err)
@@ -532,8 +548,8 @@ type VMAuthStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAuthStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAuth) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAuth is the Schema for the vmauths API
@@ -560,10 +576,6 @@ func (cr *VMAuth) GetStatus() *VMAuthStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAuth) DefaultStatusFields(vs *VMAuthStatus) {
-}
-
-func (cr *VMAuth) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VMAuth) ProbePath() string {
@@ -712,13 +724,13 @@ func (cr *VMAuth) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAuth) UseProxyProtocol() bool {
 	hasInternalPorts := len(cr.Spec.InternalListenPort) == 0
 	if cr.Spec.UseProxyProtocol {
 		return hasInternalPorts
 	}
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+	if UseProxyProtocol(cr.Spec.ExtraArgs) {
 		return hasInternalPorts
 	}
 	return false

@@ -32,13 +32,14 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
 var (
 	testEnv       *envtest.Environment
-	cancelManager context.CancelFunc
+	cancelManager context.CancelCauseFunc
 	stopped       = make(chan struct{})
 )
 
@@ -86,6 +87,8 @@ func GetClient(data []byte) client.WithWatch {
 				envs[envName] = rv
 			}
 		}
+		envName := fmt.Sprintf("VM_%s_TERMINATION_GRACE_PERIOD_SECONDS", prefix)
+		envs[envName] = "5"
 	}
 
 	for en, ev := range envs {
@@ -171,7 +174,7 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		"--health-probe-bind-address", "0",
 		"--controller.maxConcurrentReconciles", "30",
 	)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	go func(ctx context.Context) {
 		defer GinkgoRecover()
 		err := manager.RunManager(ctx)
@@ -186,7 +189,7 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 // and cleanup resources
 func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
-	cancelManager()
+	cancelManager(operator.ErrShutdown)
 	Eventually(stopped, 60, 2).Should(BeClosed())
 	Expect(testEnv.Stop()).ToNot(HaveOccurred())
 

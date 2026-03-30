@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout operator
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: VictoriaMetrics/operator
           ref: ${{ github.event.inputs.branch }}
@@ -40,7 +40,7 @@ jobs:
           TAG=$IMAGE_TAG make docker-push
 
       - name: Checkout ops
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: VictoriaMetrics/ops
           ref: main
@@ -48,7 +48,7 @@ jobs:
           path: __vm-ops-repo
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd
         id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -66,7 +66,7 @@ jobs:
         working-directory: __vm-ops-repo
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         with:
           add-paths: ${{ steps.update.outputs.OPERATOR_PATH }}
           commit-message: Automatic update operator version on sandbox from ${{ github.repository }}@${{ env.IMAGE_TAG }}

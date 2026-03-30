@@ -39,7 +39,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1))},
 			},
 		},
@@ -67,7 +67,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					GraphitePort:     "8053",
 					OpenTSDBPort:     "8054",
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1))},
 			},
 		},
@@ -102,7 +102,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
 		assert.Equal(t, got.Name, o.want.Name)
-		assert.ElementsMatch(t, got.Spec.Ports, o.want.Spec.Ports)
+		assert.Equal(t, got.Spec.Ports, o.want.Spec.Ports)
 	}
 
 	// base service test

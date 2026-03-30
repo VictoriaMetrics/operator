@@ -6,12 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -21,21 +19,65 @@ import (
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
-		cr                *vmv1beta1.VMAgent
-		predefinedObjects []runtime.Object
+		cr     *vmv1beta1.VMAgent
+		preRun func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent)
 	}
 	type want struct {
 		actions []k8stools.ClientAction
 		err     error
 	}
 
+	vmagentName := types.NamespacedName{Namespace: "default", Name: "vmagent-vmagent"}
+	clusterRoleName := types.NamespacedName{Name: "monitoring:default:vmagent-vmagent"}
+	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmagent-vmagent"}
+
+	defaultCR := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vmagent",
+			Namespace: "default",
+			UID:       "123",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: "http://remote-write"},
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+		},
+		Status: vmv1beta1.VMAgentStatus{
+			LastAppliedSpec: &vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+	}
+
+	crWithoutStatus := defaultCR.DeepCopy()
+	crWithoutStatus.Status = vmv1beta1.VMAgentStatus{}
+
+	setupReadyVMAgent := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
+		// Create objects first
+		assert.NoError(t, CreateOrUpdate(ctx, cr, c))
+		// clear actions
+		c.Actions = nil
+	}
+
 	f := func(args args, want want) {
 		t.Helper()
-		// Use shared helper instead of custom interceptors
-		fclient := k8stools.GetTestClientWithActionsAndObjects(args.predefinedObjects)
+		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(args.cr)
+
+		if args.preRun != nil {
+			args.preRun(ctx, fclient, args.cr)
+		}
+
 		err := CreateOrUpdate(ctx, args.cr, fclient)
 		if want.err != nil {
 			assert.Error(t, err)
@@ -58,10 +100,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
 		}
 	}
-
-	vmagentName := types.NamespacedName{Namespace: "default", Name: "vmagent-vmagent"}
-	clusterRoleName := types.NamespacedName{Name: "monitoring:default:vmagent-vmagent"}
-	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmagent-vmagent"}
 
 	// create vmagent with default config (Deployment mode)
 	f(args{
@@ -101,76 +139,59 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	// update vmagent (Deployment mode)
 	f(args{
+		cr:     crWithoutStatus,
+		preRun: setupReadyVMAgent,
+	},
+		want{
+			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
+				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Service", Resource: vmagentName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
+				{Verb: "Get", Kind: "Secret", Resource: vmagentName},
+				{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
+			},
+		})
+
+	// no update on status change
+	f(args{
+		cr: defaultCR.DeepCopy(),
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMAgent) {
+			setupReadyVMAgent(ctx, c, cr)
+			// Change status
+			cr.Status.Replicas = 1
+		},
+	},
+		want{
+			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
+				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentName},
+				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
+				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Service", Resource: vmagentName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
+				{Verb: "Get", Kind: "Secret", Resource: vmagentName},
+				{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
+				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
+			},
+		})
+
+	// daemonset mode
+	f(args{
 		cr: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "vmagent",
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
+				DaemonSetMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
-				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-					ReplicaCount: ptr.To(int32(1)),
-				},
-			},
-		},
-		predefinedObjects: []runtime.Object{
-			&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: vmagentName.Name, Namespace: vmagentName.Namespace}},
-			&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName.Name}},
-			&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName.Name}},
-			&corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: vmagentName.Name, Namespace: vmagentName.Namespace},
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "10.0.0.1",
-					Selector: map[string]string{
-						"app.kubernetes.io/name":      "vmagent",
-						"app.kubernetes.io/instance":  "vmagent",
-						"app.kubernetes.io/component": "monitoring",
-						"managed-by":                  "vm-operator",
-					},
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   "TCP",
-							Port:       8429,
-							TargetPort: intstr.Parse("8429"),
-						},
-					},
-				},
-			},
-			&vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: vmagentName.Name, Namespace: vmagentName.Namespace}},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: vmagentName.Name, Namespace: vmagentName.Namespace}},
-			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: tlsAssetsName.Name, Namespace: tlsAssetsName.Namespace}},
-			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: vmagentName.Name, Namespace: vmagentName.Namespace},
-				Spec: appsv1.DeploymentSpec{
-					Replicas: ptr.To(int32(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app.kubernetes.io/name":      "vmagent",
-							"app.kubernetes.io/instance":  "vmagent",
-							"app.kubernetes.io/component": "monitoring",
-							"managed-by":                  "vm-operator",
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/name":      "vmagent",
-								"app.kubernetes.io/instance":  "vmagent",
-								"app.kubernetes.io/component": "monitoring",
-								"managed-by":                  "vm-operator",
-							},
-						},
-					},
-				},
-				Status: appsv1.DeploymentStatus{
-					Replicas:           1,
-					ReadyReplicas:      1,
-					UpdatedReplicas:    1,
-					ObservedGeneration: 1,
 				},
 			},
 		},
@@ -178,22 +199,68 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
-				{Verb: "Update", Kind: "ServiceAccount", Resource: vmagentName},
+				{Verb: "Create", Kind: "ServiceAccount", Resource: vmagentName},
 				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
-				{Verb: "Update", Kind: "ClusterRole", Resource: clusterRoleName},
+				{Verb: "Create", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
-				{Verb: "Update", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Create", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "Service", Resource: vmagentName},
-				{Verb: "Update", Kind: "Service", Resource: vmagentName},
-				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
-				{Verb: "Update", Kind: "VMServiceScrape", Resource: vmagentName},
+				{Verb: "Create", Kind: "Service", Resource: vmagentName},
+				{Verb: "Get", Kind: "VMPodScrape", Resource: vmagentName},
+				{Verb: "Create", Kind: "VMPodScrape", Resource: vmagentName},
 				{Verb: "Get", Kind: "Secret", Resource: vmagentName},
-				{Verb: "Update", Kind: "Secret", Resource: vmagentName},
+				{Verb: "Create", Kind: "Secret", Resource: vmagentName},
 				{Verb: "Get", Kind: "Secret", Resource: tlsAssetsName},
-				{Verb: "Update", Kind: "Secret", Resource: tlsAssetsName},
-				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
-				{Verb: "Update", Kind: "Deployment", Resource: vmagentName},
-				{Verb: "Get", Kind: "Deployment", Resource: vmagentName},
+				{Verb: "Create", Kind: "Secret", Resource: tlsAssetsName},
+				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
+				{Verb: "Create", Kind: "DaemonSet", Resource: vmagentName},
+				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
 			},
 		})
+}
+
+func TestCreateOrUpdate_Paused(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmagent",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: "http://remote-write"},
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To(int32(1)),
+				Paused:       true,
+			},
+		},
+	}
+	nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var dep appsv1.Deployment
+	err := fclient.Get(ctx, nsn, &dep)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	// unpause and verify reconciliation
+	cr.Spec.Paused = false
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err = fclient.Get(ctx, nsn, &dep)
+	assert.NoError(t, err)
+
+	// pause and update replica count
+	cr.Spec.Paused = true
+	cr.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// check that replicas count is not updated
+	err = fclient.Get(ctx, nsn, &dep)
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), *dep.Spec.Replicas)
 }

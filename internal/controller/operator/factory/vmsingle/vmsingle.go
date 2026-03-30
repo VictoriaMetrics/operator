@@ -39,10 +39,14 @@ const (
 	configFilename        = "scrape.yaml"
 )
 
+func isStorageEmpty(pvc *corev1.PersistentVolumeClaimSpec) bool {
+	return pvc == nil || pvc.Resources.Requests.Storage().IsZero()
+}
+
 func createStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	newPvc := makePvc(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
+	if prevCR != nil && !isStorageEmpty(prevCR.Spec.Storage) {
 		prevPVC = makePvc(prevCR)
 	}
 	owner := cr.AsOwner()
@@ -70,6 +74,9 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for single node resource
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 
 	var prevCR *vmv1beta1.VMSingle
 	if cr.Status.LastAppliedSpec != nil {
@@ -95,7 +102,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
@@ -128,7 +135,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
@@ -157,7 +164,7 @@ func newDeploy(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment,
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -200,7 +207,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	var crMounts []corev1.VolumeMount
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: cr.PrefixedName(),
 		}
@@ -329,7 +336,6 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
@@ -345,25 +351,25 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 
-	vmsingleContainer = build.Probe(vmsingleContainer, cr)
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	build.Probe(&vmsingleContainer, cr, &cr.Spec.CommonAppsParams)
 
 	containers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		ss := &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: cr.PrefixedName(),
-			},
-			Key: configFilename,
+		var ss *corev1.SecretKeySelector
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+			ss = &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: cr.PrefixedName(),
+				},
+				Key: configFilename,
+			}
+			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		containers = append(containers, configReloader)
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
-		}
 	}
 
 	if cr.Spec.VMBackup != nil {
@@ -387,13 +393,13 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 		}
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot apply initContainer patch: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, containers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(containers, &cr.Spec.CommonAppsParams)
 	containers, err = k8stools.MergePatchContainers(containers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err

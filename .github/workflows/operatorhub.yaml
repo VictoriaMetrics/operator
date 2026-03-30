@@ -33,7 +33,7 @@ jobs:
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Check out OperatorHub operators repo fork
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: ${{ matrix.repo.upstream }}
           ref: main
@@ -41,7 +41,7 @@ jobs:
           path: __k8s-operatorhub-repo
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd
         id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -50,7 +50,7 @@ jobs:
           git_commit_gpgsign: true
           workdir: __k8s-operatorhub-repo
 
-      - uses: dawidd6/action-download-artifact@v16
+      - uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f
         with:
           name: olm
           workflow: main.yaml
@@ -93,7 +93,7 @@ jobs:
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         with:
           add-paths: operators/victoriametrics-operator,catalogs
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'

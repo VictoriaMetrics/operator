@@ -19,29 +19,29 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 const podRevisionLabel = "controller-revision-hash"
 
-// STSOptions options for StatefulSet update
+// StatefulSetOpts options for StatefulSet update
 // HPA and UpdateReplicaCount optional
-type STSOptions struct {
-	HasClaim           bool
-	SelectorLabels     func() map[string]string
-	HPA                *vmv1beta1.EmbeddedHPA
-	UpdateReplicaCount func(count *int32)
-	UpdateBehavior     *vmv1beta1.StatefulSetUpdateStrategyBehavior
+type StatefulSetOpts struct {
+	SelectorLabels map[string]string
+	PatchSpec      func(existingSpec, newSpec *appsv1.StatefulSetSpec)
+	UpdateBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
 	if newObj.Spec.Replicas == nil {
 		return nil
 	}
-	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -67,22 +67,27 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 }
 
 // StatefulSet performs create and update operations for given statefulSet with STSOptions
-func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newObj, prevObj *appsv1.StatefulSet, owner *metav1.OwnerReference) error {
+func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.StatefulSet, owner *metav1.OwnerReference, o *StatefulSetOpts) error {
 	if err := validateStatefulSet(newObj); err != nil {
 		return err
 	}
-	var mustRecreatePod bool
+	var recreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
+	var prevVCTs []corev1.PersistentVolumeClaim
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
+		prevVCTs = prevObj.Spec.VolumeClaimTemplates
 	}
 
 	rclient.Scheme().Default(newObj)
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
-	var recreateSTS func() error
+	removeFinalizer := true
+	if o == nil {
+		o = new(StatefulSetOpts)
+	}
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -96,50 +101,51 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 			}
 			return fmt.Errorf("cannot get StatefulSet=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
 
-		spec := &newObj.Spec
-		// will update the original cr replicaCount to propagate right num,
-		// for now, it's only used in vmselect
-		if cr.UpdateReplicaCount != nil {
-			cr.UpdateReplicaCount(existingObj.Spec.Replicas)
+		if o.PatchSpec != nil {
+			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
 		}
 
-		// do not change replicas count.
-		if cr.HPA != nil {
-			spec.Replicas = existingObj.Spec.Replicas
-		}
-
-		var mustRecreateSTS bool
-		mustRecreateSTS, mustRecreatePod = isSTSRecreateRequired(ctx, newObj, &existingObj)
+		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {
-			recreateSTS = func() error {
-				return removeStatefulSetKeepPods(ctx, rclient, newObj, &existingObj)
+			recreatePod = mustRecreatePod
+			if err := finalize.RemoveFinalizer(ctx, rclient, &existingObj); err != nil {
+				return fmt.Errorf("failed to remove finalizer from StatefulSet=%s: %w", nsn.String(), err)
 			}
-			return nil
+			opts := client.DeleteOptions{
+				PropagationPolicy: ptr.To(metav1.DeletePropagationOrphan),
+			}
+			if err := rclient.Delete(ctx, &existingObj, &opts); err != nil {
+				return err
+			}
+			return newErrRecreate(ctx, &existingObj)
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+
+		// check if pvcs need to resize
+		if len(newObj.Spec.VolumeClaimTemplates) > 0 {
+			if err := updateSTSPVC(ctx, rclient, &existingObj, prevVCTs); err != nil {
+				return err
+			}
+		}
+
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec)
+		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
-		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("spec_diff=%s", specDiff))
 		if !needsUpdate {
 			return nil
 		}
 		existingObj.Spec = newObj.Spec
-		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")))
+		logger.WithContext(ctx).Info(fmt.Sprintf("updating Statefulset %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot perform update on StatefulSet=%s: %w", nsn.String(), err)
-		}
-		// check if pvcs need to resize
-		if cr.HasClaim {
-			return updateSTSPVC(ctx, rclient, &existingObj, owner)
 		}
 		return nil
 	})
@@ -147,25 +153,19 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 		return err
 	}
 
-	if recreateSTS != nil {
-		if err = recreateSTS(); err != nil {
-			return err
-		}
-	}
-
 	// perform manual update only with OnDelete policy, which is default.
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
 		opts := rollingUpdateOpts{
-			recreate:       mustRecreatePod,
-			selector:       cr.SelectorLabels(),
+			recreate:       recreatePod,
+			selector:       o.SelectorLabels,
 			maxUnavailable: 1,
 		}
-		if cr.UpdateBehavior != nil {
-			if cr.UpdateBehavior.MaxUnavailable.String() == "100%" {
+		if o.UpdateBehavior != nil {
+			if o.UpdateBehavior.MaxUnavailable.String() == "100%" {
 				opts.delete = true
 			}
-			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(cr.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
+			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(o.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
 			if err != nil {
 				return err
 			}
@@ -188,8 +188,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, cr STSOptions, newO
 // if ObservedGeneration matches current generation
 func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS types.NamespacedName) (*appsv1.StatefulSet, error) {
 	var sts appsv1.StatefulSet
-	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck,
-		appWaitReadyDeadline, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval,
+		appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 			if err := rclient.Get(ctx, targetSTS, &sts); err != nil {
 				return true, err
 			}
@@ -220,7 +220,7 @@ type rollingUpdateOpts struct {
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
 func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
-	time.Sleep(podWaitReadyIntervalCheck)
+	time.Sleep(podWaitReadyInterval)
 	nsn := types.NamespacedName{
 		Name:      obj.Name,
 		Namespace: obj.Namespace,
@@ -296,6 +296,10 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 	}
 
 	// perform update for not updated pods in batches according to podMaxUnavailable
+	// clamp to 1 to avoid an infinite loop when percentage-based maxUnavailable rounds to 0
+	if o.maxUnavailable == 0 {
+		o.maxUnavailable = 1
+	}
 	for batchStart := 0; batchStart < len(podsForUpdate); batchStart += o.maxUnavailable {
 		var batch []corev1.Pod
 
@@ -309,7 +313,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 				l.Info(fmt.Sprintf("updating pod=%s revision label=%q", pod.Name, pod.Labels[podRevisionLabel]))
 				// eviction may fail due to podDisruption budget and it's unexpected
 				// so retry pod eviction
-				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 					if o.delete {
 						if err := rclient.Delete(ctx, &pod); err != nil {
 							if k8serrors.IsNotFound(err) {
@@ -323,7 +327,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 					// evict pod to trigger re-creation
 					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
-						// retry distruption interrupt error:
+						// retry disruption interrupt error:
 						// https://github.com/kubernetes/kubernetes/blob/9a50e306361ea936e57fb6eb8c635f971e7bb707/pkg/registry/core/pod/storage/eviction.go#L418
 						if strings.Contains(err.Error(), "Cannot evict pod as it would violate the pod's disruption budget") {
 							return false, nil
@@ -372,7 +376,7 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 
 func waitForPodReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, desiredRevision string, minReadySeconds int32) error {
 	var pod corev1.Pod
-	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, nsn, &pod); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil

@@ -7,6 +7,10 @@ spec:
     name: global-vmauth
     spec:
       replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
   zoneCommon:
     readyTimeout: 10m
     updatePause: 1m

@@ -1,11 +1,11 @@
 module github.com/VictoriaMetrics/operator
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.137.0
-	github.com/VictoriaMetrics/metrics v1.41.2
+	github.com/VictoriaMetrics/VictoriaMetrics v1.138.0
+	github.com/VictoriaMetrics/metrics v1.42.0
 	github.com/VictoriaMetrics/metricsql v0.85.0
 	github.com/VictoriaMetrics/operator/api v0.66.1
 	github.com/caarlos0/env/v11 v11.4.0
@@ -21,17 +21,17 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.1
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.35.1
-	k8s.io/apiextensions-apiserver v0.35.1
-	k8s.io/apimachinery v0.35.1
+	k8s.io/api v0.35.3
+	k8s.io/apiextensions-apiserver v0.35.3
+	k8s.io/apimachinery v0.35.3
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.6.0
-	k8s.io/client-go v0.35.1
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/client-go v0.35.3
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
-	sigs.k8s.io/controller-runtime v0.23.1
-	sigs.k8s.io/gateway-api v1.5.0
+	sigs.k8s.io/controller-runtime v0.23.3
+	sigs.k8s.io/gateway-api v1.5.1
 )
 
 require (
@@ -123,3 +123,5 @@ require (
 )
 
 replace github.com/VictoriaMetrics/operator/api => ./api
+
+replace github.com/caarlos0/env/v11 => github.com/AndrewChubatiuk/env/v11 v11.0.0-20260302065400-14d0354881b6

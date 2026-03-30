@@ -12,6 +12,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -116,6 +117,9 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 // CreateOrUpdate creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1beta1.VMAgent
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -141,6 +145,10 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	}
 
 	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
+		return err
+	}
+
+	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
 
@@ -201,7 +209,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 	owner := cr.AsOwner()
-	updateShard := func(shardNum int) {
+	updateShard := func(shardNum int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -253,8 +261,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
-
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false, &owner); err != nil {
+			o := reconcile.DeploymentOpts{
+				PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+					if cr.Spec.HPA != nil {
+						newSpec.Replicas = existingSpec.Replicas
+					}
+				},
+			}
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -292,13 +306,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 			selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-			opts := reconcile.STSOptions{
-				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: func() map[string]string {
-					return selectorLabels
-				},
+			o := reconcile.StatefulSetOpts{
+				SelectorLabels: selectorLabels,
+				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -366,8 +378,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
 	if cr.Spec.DaemonSetMode {
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -391,8 +401,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.DaemonSetAddCommonParams(dsSpec, &cr.Spec.CommonAppsParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 		return dsSpec, nil
 	}
@@ -427,8 +437,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 			stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 		}
-		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
+		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
@@ -463,8 +473,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
+	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 	return depSpec, nil
 }
@@ -673,28 +683,26 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, cr.AutomountServiceAccountToken())
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vmagentContainer = build.Probe(vmagentContainer, cr)
-
+	build.Probe(&vmagentContainer, cr, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		ss := &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: cr.PrefixedName(),
-			},
-			Key: configFilename,
+		var ss *corev1.SecretKeySelector
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+			ss = &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: cr.PrefixedName(),
+				},
+				Key: configFilename,
+			}
+			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
-		}
 	}
 	var err error
 	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
@@ -704,7 +712,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	operatorContainers = append([]corev1.Container{vmagentContainer}, operatorContainers...)
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -728,7 +736,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}, nil
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name == "vmagent" {
@@ -1174,6 +1182,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.Spec.DaemonSetMode {
 		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
 	}
+	if cr.Spec.HPA == nil {
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
+	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
@@ -1301,4 +1312,28 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	return nil
+}
+
+func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+	if cr.Spec.HPA == nil {
+		return nil
+	}
+	kind := "Deployment"
+	if cr.Spec.StatefulMode {
+		kind = "StatefulSet"
+	} else if cr.Spec.DaemonSetMode {
+		return nil
+	}
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       kind,
+		APIVersion: "apps/v1",
+	}
+	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.HPA != nil {
+		prevHPA = build.HPA(prevCR, targetRef, prevCR.Spec.HPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }

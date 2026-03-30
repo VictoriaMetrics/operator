@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +49,7 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -82,11 +83,9 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			},
 			Spec: vmv1.VLSingleSpec{
 
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
-				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Port: "8435",
+					Port:         "8435",
 				},
 			},
 		},
@@ -118,11 +117,9 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
-				},
-				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-					Port: "8435",
+					Port:         "8435",
 				},
 				SyslogSpec: &vmv1.SyslogServerSpec{
 					TCPListeners: []*vmv1.SyslogTCPListener{
@@ -180,6 +177,29 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 
 		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
 	})
+}
+
+func TestCreateOrUpdateVLSingle_Paused(t *testing.T) {
+	cr := &vmv1.VLSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "base",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Paused: true,
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	err := CreateOrUpdate(context.TODO(), fclient, cr)
+	assert.NoError(t, err)
+
+	// check that no deployment was created
+	var deploy appsv1.Deployment
+	err = fclient.Get(context.TODO(), types.NamespacedName{Name: "vlsingle-base", Namespace: "default"}, &deploy)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
 }
 
 func TestCreateOrUpdateVLSingleService(t *testing.T) {

@@ -22,22 +22,22 @@ import (
 )
 
 func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) vmv1beta1.VMClusterSpec {
-	commonApplicationDeploymentParams := vmv1beta1.CommonApplicationDeploymentParams{
+	commonAppsParams := vmv1beta1.CommonAppsParams{
 		ReplicaCount: ptr.To[int32](1),
 	}
-	noReplicas := vmv1beta1.CommonApplicationDeploymentParams{
+	noReplicas := vmv1beta1.CommonAppsParams{
 		ReplicaCount: ptr.To[int32](0),
 	}
 
 	s := vmv1beta1.VMClusterSpec{
 		VMSelect: &vmv1beta1.VMSelect{
-			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonAppsParams: commonAppsParams,
 		},
 		VMInsert: &vmv1beta1.VMInsert{
-			CommonApplicationDeploymentParams: noReplicas,
+			CommonAppsParams: noReplicas,
 		},
 		VMStorage: &vmv1beta1.VMStorage{
-			CommonApplicationDeploymentParams: commonApplicationDeploymentParams,
+			CommonAppsParams: commonAppsParams,
 		},
 	}
 	for _, opt := range opts {
@@ -67,7 +67,7 @@ func createVMClusters(ctx context.Context, wg *sync.WaitGroup, k8sClient client.
 
 func genVMAgentSpec() vmv1beta1.VMAgentSpec {
 	return vmv1beta1.VMAgentSpec{
-		CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{
 			ReplicaCount: ptr.To[int32](1),
 		},
 		RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -103,13 +103,16 @@ func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Clie
 				Name:      name,
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 				},
 				UserSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						"vmd-users": name,
 					},
+				},
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{{Name: "read"}, {Name: "write"}},
 				},
 			},
 		}
@@ -190,7 +193,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
 						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
 							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
-								CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									ReplicaCount: ptr.To[int32](2),
 								},
 							},
@@ -373,7 +376,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},
@@ -395,7 +398,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			var createdVMAuth vmv1beta1.VMAuth
 			nsn = types.NamespacedName{Name: nsn.Name, Namespace: namespace}
 			Expect(k8sClient.Get(ctx, nsn, &createdVMAuth)).ToNot(HaveOccurred())
-			Expect(createdVMAuth.Spec.CommonApplicationDeploymentParams.ReplicaCount).To(HaveValue(Equal(int32(1))))
+			Expect(createdVMAuth.Spec.CommonAppsParams.ReplicaCount).To(HaveValue(Equal(int32(1))))
 
 			By("verifying VMAuth has correct owner reference")
 			Expect(createdVMAuth.GetOwnerReferences()).To(HaveLen(1))
@@ -819,7 +822,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMInsert: cr.Spec.Zones[0].VMCluster.Spec.VMInsert,
 					VMSelect: cr.Spec.Zones[0].VMCluster.Spec.VMSelect,
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](initialReplicas + 1),
 						},
 					},
@@ -1114,7 +1117,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 							},
 						},

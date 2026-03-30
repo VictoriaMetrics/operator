@@ -23,7 +23,7 @@ LOCAL_REGISTRY_PORT ?= 5001
 LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.35.1
+ENVTEST_K8S_VERSION = 1.35.3
 PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -85,8 +85,10 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.descriptionless.yaml
 	$(KUSTOMIZE) build config/crd-specless > config/crd/overlay/crd.specless.yaml
 
 .PHONY: generate
@@ -163,8 +165,8 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo crust-gather
-	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) mirrord exec -f ./mirrord.json -- $(GINKGO_BIN) \
+test-e2e: load-kind ginkgo crust-gather mirrord
+	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-timeout=30m \
@@ -392,20 +394,22 @@ YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
+MIRRORD_BIN ?= $(LOCALBIN)/mirrord-$(MIRRORD_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.20.1
 ENVTEST_VERSION ?= release-0.23
-GOLANGCI_LINT_VERSION ?= v2.10.1
-CODEGENERATOR_VERSION ?= v0.35.1
+GOLANGCI_LINT_VERSION ?= v2.11.3
+CODEGENERATOR_VERSION ?= v0.35.3
 KIND_VERSION ?= v0.31.0
-OLM_VERSION ?= 0.40.0
-OPERATOR_SDK_VERSION ?= v1.42.0
+OLM_VERSION ?= 0.41.0
+OPERATOR_SDK_VERSION ?= v1.42.1
 OPM_VERSION ?= v1.64.0
 YQ_VERSION ?= v4.52.4
 GINKGO_VERSION ?= v2.28.1
 CRUST_GATHER_VERSION ?= v0.12.1
+MIRRORD_VERSION ?= 3.196.0
 
 CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
 
@@ -481,10 +485,17 @@ $(YQ): $(LOCALBIN)
 UNAME_S=$(shell uname -s 2>/dev/null)
 OS=$(shell echo $(UNAME_S) | tr A-Z a-z)
 ARCH=$(if $(filter x86_64,$(shell uname -m 2>/dev/null)),amd64,arm64)
+MIRRORD_OS=$(if $(filter darwin,$(OS)),mac,linux)
+MIRRORD_ARCH=$(if $(filter mac,$(MIRRORD_OS)),universal,$(if $(filter x86_64,$(shell uname -m 2>/dev/null)),x86_64,aarch64))
 .PHONY: crust-gather
 crust-gather: $(CRUST_GATHER_BIN)
 $(CRUST_GATHER_BIN): $(LOCALBIN)
 	$(call download-github-release,$(CRUST_GATHER_BIN),crust-gather/crust-gather,$(CRUST_GATHER_VERSION),kubectl-crust-gather_$(CRUST_GATHER_VERSION)_$(OS)_$(ARCH).tar.gz,kubectl-crust-gather)
+
+.PHONY: mirrord
+mirrord: $(MIRRORD_BIN)
+$(MIRRORD_BIN): $(LOCALBIN)
+	$(call download-github-release,$(MIRRORD_BIN),metalbear-co/mirrord,$(MIRRORD_VERSION),mirrord_$(MIRRORD_OS)_$(MIRRORD_ARCH).zip,mirrord)
 
 .PHONY: allure-report
 allure-report:
@@ -519,6 +530,12 @@ if echo "$(4)" | grep -q ".tar.gz$$"; then \
 curl -sL $${url} -o $(LOCALBIN)/$(4); \
 tar -xzf $(LOCALBIN)/$(4) -C $(LOCALBIN); \
 mv $(LOCALBIN)/$(5) $(1); \
+rm $(LOCALBIN)/$(4); \
+elif echo "$(4)" | grep -q ".zip$$"; then \
+curl -sL $${url} -o $(LOCALBIN)/$(4); \
+unzip -o $(LOCALBIN)/$(4) $(5) -d $(LOCALBIN); \
+mv $(LOCALBIN)/$(5) $(1); \
+chmod +x $(1); \
 rm $(LOCALBIN)/$(4); \
 else \
 curl -sL $${url} -o $(1); \

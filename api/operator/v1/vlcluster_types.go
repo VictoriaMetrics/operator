@@ -214,12 +214,16 @@ type VLClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLCluster) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLInsert defines vlinsert component configuration at victoria-logs cluster
 type VLInsert struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSelect pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VLSelect to be configured with.
@@ -240,8 +244,7 @@ type VLInsert struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -260,18 +263,17 @@ type VLInsert struct {
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLInsert) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // ProbePath implements build.probeCRD interface
 func (cr *VLInsert) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLInsert) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ProbeScheme implements build.probeCRD interface
@@ -405,6 +407,10 @@ type VLStorageNode struct {
 
 // VLSelect defines vlselect component configuration at victoria-logs cluster
 type VLSelect struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSelect pods.
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VLSelect to be configured with.
@@ -425,8 +431,7 @@ type VLSelect struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -445,8 +450,7 @@ type VLSelect struct {
 	// ExtraStorageNodes - defines additional storage nodes to VLSelect
 	ExtraStorageNodes []VLStorageNode `json:"extraStorageNodes,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -455,6 +459,11 @@ func (cr *VLSelect) GetMetricsPath() string {
 		return healthPath
 	}
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLSelect) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -470,11 +479,6 @@ func (cr *VLSelect) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VLSelect) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLSelect) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface
@@ -499,6 +503,10 @@ func (*VLSelect) ProbeNeedLiveness() bool {
 
 // VLStorage defines vlstorage component configuration at victoria-logs cluster
 type VLStorage struct {
+	// ComponentVersion defines default images tag for this component.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 	// RetentionPeriod for the stored logs
 	// https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
@@ -541,8 +549,7 @@ type VLStorage struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
@@ -578,8 +585,7 @@ type VLStorage struct {
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 
 	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
 	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
@@ -593,6 +599,11 @@ func (cr *VLStorage) GetStorageVolumeName() string {
 		return cr.Storage.VolumeClaimTemplate.Name
 	}
 	return "vlstorage-db"
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLStorage) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -616,11 +627,6 @@ func (cr *VLStorage) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VLStorage) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLStorage) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface

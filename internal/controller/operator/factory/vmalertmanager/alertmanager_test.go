@@ -58,7 +58,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					Annotations: map[string]string{"not": "touch"},
 					Labels:      map[string]string{"main": "system"},
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -95,10 +95,8 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				Labels:      map[string]string{"main": "system"},
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
-				},
-				EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
 					LivenessProbe: &corev1.Probe{
 						TimeoutSeconds: 20,
 					},
@@ -176,7 +174,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				Labels:      map[string]string{"main": "system"},
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(3)),
 				},
 			},
@@ -192,7 +190,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				}
 			}
 
-			assert.ElementsMatch(t, clusterPeers, []string{
+			assert.Equal(t, clusterPeers, []string{
 				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring:9094",
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring:9094",
@@ -211,7 +209,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			},
 			Spec: vmv1beta1.VMAlertmanagerSpec{
 				ClusterDomainName: "example.com",
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(3)),
 				},
 			},
@@ -227,7 +225,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				}
 			}
 
-			assert.ElementsMatch(t, clusterPeers, []string{
+			assert.Equal(t, clusterPeers, []string{
 				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring.svc.example.com.:9094",
 				"--cluster.peer=vmalertmanager-test-am-2.vmalertmanager-test-am.monitoring.svc.example.com.:9094",

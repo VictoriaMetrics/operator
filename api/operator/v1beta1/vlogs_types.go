@@ -44,8 +44,7 @@ type VLogsSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonAppsParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -86,12 +85,15 @@ type VLogsSpec struct {
 	// ServiceScrapeSpec that will be added to vlogs VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VLogs pod
-	*EmbeddedProbes `json:",inline"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// ComponentVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	// +optional
+	ComponentVersion string `json:"componentVersion,omitempty"`
 }
 
 // VLogsStatus defines the observed state of VLogs
@@ -103,8 +105,8 @@ type VLogsStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLogsStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLogs) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VLogs is fast, cost-effective and scalable logs database.
@@ -177,10 +179,6 @@ func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
-}
-
-func (cr *VLogs) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VLogs) ProbePath() string {

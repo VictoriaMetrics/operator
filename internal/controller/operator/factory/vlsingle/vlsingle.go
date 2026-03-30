@@ -25,14 +25,18 @@ import (
 )
 
 const (
-	dataDataDir              = "/victoria-logs-data"
+	dataDir                  = "/victoria-logs-data"
 	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
+
+func isStorageEmpty(pvc *corev1.PersistentVolumeClaimSpec) bool {
+	return pvc == nil || pvc.Resources.Requests.Storage().IsZero()
+}
 
 func createOrUpdatePVC(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLSingle) error {
 	newPvc := newPVC(cr)
 	var prevPVC *corev1.PersistentVolumeClaim
-	if prevCR != nil && prevCR.Spec.Storage != nil {
+	if prevCR != nil && !isStorageEmpty(prevCR.Spec.Storage) {
 		prevPVC = newPVC(prevCR)
 	}
 	owner := cr.AsOwner()
@@ -61,6 +65,9 @@ func newPVC(r *vmv1.VLSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for vlsingle resource
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1.VLSingle
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -69,7 +76,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 			return err
 		}
 	}
-	if cr.Spec.Storage != nil {
+	if !isStorageEmpty(cr.Spec.Storage) {
 		if err := createOrUpdatePVC(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
@@ -104,7 +111,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLSingl
 		return fmt.Errorf("cannot generate new deploy for vlsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
@@ -133,7 +140,7 @@ func newDeployment(r *vmv1.VLSingle) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &r.Spec.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -147,7 +154,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%s", r.Spec.RetentionMaxDiskSpaceUsageBytes))
 	}
 
-	storagePath := dataDataDir
+	storagePath := dataDir
 	if r.Spec.StorageDataPath != "" {
 		storagePath = r.Spec.StorageDataPath
 	}
@@ -183,7 +190,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
-	if r.Spec.Storage != nil {
+	if !isStorageEmpty(r.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: r.PrefixedName(),
 		}
@@ -250,11 +257,11 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          r.Spec.Image.PullPolicy,
 	}
 
-	vlsingleContainer = build.Probe(vlsingleContainer, r)
+	build.Probe(&vlsingleContainer, r, &r.Spec.CommonAppsParams)
 
 	operatorContainers := []corev1.Container{vlsingleContainer}
 
-	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &r.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {

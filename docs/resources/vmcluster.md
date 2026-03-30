@@ -30,8 +30,8 @@ There is a strict order for these objects creation and reconciliation:
 1. Then it syncs `VMSelect` with the same manner;
 1. `VMInsert` is the last object to sync.
 
-All [statefulsets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) are created 
-with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) update type. 
+All [statefulsets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) are created
+with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) update type.
 It allows to manually manage the rolling update process for Operator by deleting pods one by one and waiting for the ready status.
 
 Rolling update process may be configured by the operator env variables.
@@ -88,10 +88,10 @@ spec:
  Network scheme with load-balancing:
  ![CR](vmcluster_with_balancer.webp)
 
-The `requestsLoadBalancer` feature works transparently and is managed entirely by the `VMCluster` operator, 
-with no direct access to the underlying [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration. 
-If you need more control over load balancing behavior, 
-or want to combine request routing with authentication or (m)TLS, 
+The `requestsLoadBalancer` feature works transparently and is managed entirely by the `VMCluster` operator,
+with no direct access to the underlying [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration.
+If you need more control over load balancing behavior,
+or want to combine request routing with authentication or (m)TLS,
 consider deploying a standalone [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) resource instead of enabling `requestsLoadBalancer`.
 
 ## High availability
@@ -126,7 +126,7 @@ kind: VMCluster
 metadata:
   name: example-persistent
 spec:
-  replicationFactor: 2       
+  replicationFactor: 2
   vmstorage:
     replicaCount: 10
     storageDataPath: "/vm-data"
@@ -232,7 +232,7 @@ spec:
   clusterVersion: v1.110.13-cluster
 ```
 
-Also, you can specify `imagePullSecrets` if you are pulling images from private repo, 
+Also, you can specify `imagePullSecrets` if you are pulling images from private repo,
 but `imagePullSecrets` is global setting for all `VMCluster` specification:
 
 ```yaml
@@ -334,7 +334,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMCluster supports following features 
+VMCluster supports following features
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise):
 
 - [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling)
@@ -343,7 +343,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 - [mTLS for cluster components](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#mtls-protection)
 - [Backup automation](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
-VMCluster doesn't support yet feature 
+VMCluster doesn't support yet feature
 [Automatic discovery for vmstorage nodes](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery).
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
@@ -416,8 +416,8 @@ spec:
 ### Advanced per-tenant statistic
 
 For using [Advanced per-tenant statistic](https://docs.victoriametrics.com/victoriametrics/pertenantstatistic/)
-you only need to [enable Enterprise version of vmcluster components](https://docs.victoriametrics.com/operator/resources/vmcluster/#enterprise-features) 
-and operator will automatically create 
+you only need to [enable Enterprise version of vmcluster components](https://docs.victoriametrics.com/operator/resources/vmcluster/#enterprise-features)
+and operator will automatically create
 [Scrape objects](https://docs.victoriametrics.com/operator/resources/vmagent/#scraping) for cluster components.
 
 ```yaml
@@ -474,7 +474,7 @@ spec:
     extraVolumeMounts:
       - name: mtls
         mountPath: /etc/mtls
-      
+
   vminsert:
     extraArgs:
       # using enterprise features: mTLS protection
@@ -490,7 +490,7 @@ spec:
     extraVolumeMounts:
       - name: mtls
         mountPath: /etc/mtls
-      
+
   vmstorage:
     extraEnvs:
       - name: POD
@@ -561,13 +561,13 @@ stringData:
 
 ```
 
-Example commands for generating certificates you can read 
+Example commands for generating certificates you can read
 on [this page](https://gist.github.com/f41gh7/76ed8e5fb1ebb9737fe746bae9175ee6#generate-self-signed-ca-with-key).
 
 ### Backup automation
 
 You can check [vmbackupmanager documentation](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/) for backup automation.
-It contains a description of the service and its features. This section covers vmbackumanager integration in vmoperator.
+It contains a description of the service and its features. This section covers vmbackupmanager integration in vmoperator.
 
 `VMCluster` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
 It supports incremental backups (hourly, daily, weekly, monthly) with popular object storages (aws s3, google cloud storage).

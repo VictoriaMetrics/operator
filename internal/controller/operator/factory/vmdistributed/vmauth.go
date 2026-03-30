@@ -9,10 +9,11 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vmv1beta1.TargetRef {
-	var crds []vmv1beta1.CRDRef
+	var nsns []vmv1beta1.NamespacedName
 	for i := range vmClusters {
 		if slices.Contains(excludeIds, i) {
 			continue
@@ -21,24 +22,30 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vm
 		if vmCluster.CreationTimestamp.IsZero() {
 			continue
 		}
-		crds = append(crds, vmv1beta1.CRDRef{
-			Kind:      "VMCluster/vmselect",
+		nsns = append(nsns, vmv1beta1.NamespacedName{
 			Name:      vmCluster.Name,
 			Namespace: vmCluster.Namespace,
 		})
 	}
+	slices.SortFunc(nsns, func(a, b vmv1beta1.NamespacedName) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	return vmv1beta1.TargetRef{
+		Name: "read",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
 		Paths: []string{"/select/.+", "/admin/tenants"},
-		CRDs:  crds,
+		CRD: &vmv1beta1.CRDRef{
+			Kind:    "VMCluster/vmselect",
+			Objects: nsns,
+		},
 	}
 }
 
 func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, excludeIds ...int) vmv1beta1.TargetRef {
-	var crds []vmv1beta1.CRDRef
+	var nsns []vmv1beta1.NamespacedName
 	for i := range vmAgents {
 		if slices.Contains(excludeIds, i) {
 			continue
@@ -47,24 +54,30 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, excludeIds ...int) vmv1beta
 		if vmAgent.CreationTimestamp.IsZero() {
 			continue
 		}
-		crds = append(crds, vmv1beta1.CRDRef{
-			Kind:      "VMAgent",
+		nsns = append(nsns, vmv1beta1.NamespacedName{
 			Name:      vmAgent.Name,
 			Namespace: vmAgent.Namespace,
 		})
 	}
+	slices.SortFunc(nsns, func(a, b vmv1beta1.NamespacedName) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	return vmv1beta1.TargetRef{
+		Name: "write",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
 		Paths: []string{"/insert/.+", "/api/v1/write"},
-		CRDs:  crds,
+		CRD: &vmv1beta1.CRDRef{
+			Kind:    "VMAgent",
+			Objects: nsns,
+		},
 	}
 }
 
 func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) *vmv1beta1.VMAuth {
-	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
+	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) || build.IsControllerDisabled("VMAuth") {
 		return nil
 	}
 	vmAuth := vmv1beta1.VMAuth{
@@ -75,20 +88,9 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 		},
 		Spec: *cr.Spec.VMAuth.Spec.DeepCopy(),
 	}
-	if vmAuth.Spec.UnauthorizedUserAccessSpec == nil {
-		vmAuth.Spec.UnauthorizedUserAccessSpec = &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{}
-	}
 	var targetRefs []vmv1beta1.TargetRef
 	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, excludeIds...))
 	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, excludeIds...))
-	for i := range targetRefs {
-		targetRef := &targetRefs[i]
-		slices.SortFunc(targetRef.CRDs, func(a, b vmv1beta1.CRDRef) int {
-			return cmp.Compare(a.Name, b.Name)
-		})
-	}
-	vmAuth.Spec.UnauthorizedUserAccessSpec.URLMap = nil
-	vmAuth.Spec.UnauthorizedUserAccessSpec.URLPrefix = nil
-	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = targetRefs
+	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

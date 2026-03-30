@@ -186,8 +186,7 @@ type VMDistributedZoneAgentSpec struct {
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional
@@ -199,6 +198,10 @@ type VMDistributedZoneAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	StatefulRollingUpdateStrategyBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -215,8 +218,11 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	// Configures horizontal pod autoscaling.
+	// +optional
+	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
+
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {
@@ -399,8 +405,8 @@ func (cr *VMDistributed) DefaultStatusFields(vs *VMDistributedStatus) {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMDistributedStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMDistributed) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -460,6 +466,13 @@ func (cr *VMDistributed) Validate() error {
 				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
 			}
 			agents[agentName] = struct{}{}
+		}
+		if zone.VMAgent.Spec.StatefulMode {
+			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+				if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
+				}
+			}
 		}
 		if zone.VMCluster.Spec.VMInsert == nil && !hasCommonVMInsert {
 			return fmt.Errorf("either zoneCommon.vmcluster.spec.vminsert or spec.zones[%d].vmcluster.spec.vminsert is required", i)

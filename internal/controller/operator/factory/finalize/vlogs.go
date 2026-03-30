@@ -25,7 +25,6 @@ func OnVLogsDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VLo
 			Name:      cr.GetServiceAccountName(),
 			Namespace: ns,
 		}},
-		&corev1.PersistentVolumeClaim{ObjectMeta: objMeta},
 	}
 	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{

@@ -50,10 +50,16 @@ func (s *server) validate() error {
 	return nil
 }
 
+type retention struct {
+	TTL           duration `yaml:"ttl,omitempty"`
+	CheckInterval duration `yaml:"check_interval,omitempty"`
+}
+
 type settings struct {
-	Workers           int     `yaml:"n_workers,omitempty"`
-	ScoreOutsideRange float64 `yaml:"anomaly_score_outside_data_range,omitempty"`
-	RestoreState      bool    `yaml:"restore_state,omitempty"`
+	Workers           int        `yaml:"n_workers,omitempty"`
+	ScoreOutsideRange float64    `yaml:"anomaly_score_outside_data_range,omitempty"`
+	RestoreState      bool       `yaml:"restore_state,omitempty"`
+	Retention         *retention `yaml:"retention,omitempty"`
 }
 
 func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {

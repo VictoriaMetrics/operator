@@ -129,6 +129,30 @@ spec:
 
 ## Examples
 
+Bearer token
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: example
+spec:
+  bearerToken: token-abc
+  # For use with kubernetes secrets
+  # tokenRef:
+  #   name: token
+  #   key: token
+  targetRefs:
+    - crd:
+        kind: VMSingle
+        name: example
+        namespace: default
+      paths: ["/.*"]
+    - static:
+        url: http://vmalert-example.default.svc:8080
+      paths: ["/api/v1/groups","/api/v1/alerts"]
+```
+
+Username and password based
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
@@ -137,6 +161,11 @@ metadata:
 spec:
   username: simple-user
   password: simple-password
+  # For use with kubernetes secrets
+  # username: simple-user
+  # passwordRef:
+  #   name: simple-user-secret
+  #   key: password
   targetRefs:
     - crd:
         kind: VMSingle

@@ -6,6 +6,10 @@ spec:
   vmauth:
     name: global-vmauth
     spec:
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
       replicaCount: 1
   zoneCommon:
     vmagent:

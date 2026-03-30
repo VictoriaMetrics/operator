@@ -16,15 +16,14 @@ jobs:
       name: docs
     steps:
       - name: Check out operator code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: VictoriaMetrics/operator
-          ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator-repo
 
       - name: Check out VM code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           repository: VictoriaMetrics/helm-charts
           ref: master
@@ -32,7 +31,7 @@ jobs:
           path: __vm-charts-repo
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd
         id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -44,7 +43,7 @@ jobs:
       - name: Update crd yaml in chart repo
         id: update
         run: |
-          cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
+          cp ../__vm-operator-repo/config/crd/overlay/crd.descriptionless.yaml charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
           cp ../__vm-operator-repo/config/crd/overlay/crd.specless.yaml charts/victoria-metrics-operator/crd.yaml
           bzip2 -k charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
           mv charts/victoria-metrics-operator/charts/crds/crds/crd.yaml.bz2 charts/victoria-metrics-operator/charts/crds/files/crd.yaml.bz2
@@ -53,7 +52,7 @@ jobs:
         working-directory: __vm-charts-repo
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         with:
           add-paths: charts
           commit-message: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}

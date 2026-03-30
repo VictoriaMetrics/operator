@@ -84,6 +84,9 @@ func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
 // CreateOrUpdate creates deployment for vlagent and configures it
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VLAgent, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1.VLAgent
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -161,11 +164,10 @@ func createOrUpdateDeploy(ctx context.Context, rclient client.Client, cr, prevCR
 		if prevAppObj != nil {
 			prevApp, _ = prevAppObj.(*appsv1.StatefulSet)
 		}
-		stsOpts := reconcile.STSOptions{
-			HasClaim:       len(newApp.Spec.VolumeClaimTemplates) > 0,
-			SelectorLabels: cr.SelectorLabels,
+		o := reconcile.StatefulSetOpts{
+			SelectorLabels: cr.SelectorLabels(),
 		}
-		if err := reconcile.StatefulSet(ctx, rclient, stsOpts, newApp, prevApp, &owner); err != nil {
+		if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 			return fmt.Errorf("cannot reconcile statefulset for vlagent: %w", err)
 		}
 		return nil
@@ -179,8 +181,6 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
 	if cr.Spec.K8sCollector.Enabled {
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -204,8 +204,8 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.DaemonSetAddCommonParams(dsSpec, &cr.Spec.CommonAppsParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 		return dsSpec, nil
 	}
 	stsSpec := &appsv1.StatefulSet{
@@ -238,7 +238,7 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
 
 	if cr.Spec.TmpDataPath == nil {
 		cr.Spec.Storage.IntoSTSVolume(tmpDataVolumeName, &stsSpec.Spec)
@@ -441,9 +441,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vlagentContainer = build.Probe(vlagentContainer, cr)
+	build.Probe(&vlagentContainer, cr, &cr.Spec.CommonAppsParams)
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	var err error
@@ -454,9 +452,9 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	operatorContainers = append(operatorContainers, vlagentContainer)
 	if cr.Spec.K8sCollector.Enabled {
-		build.AddStrictSecuritySettingsWithRootToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+		build.AddStrictSecuritySettingsWithRootToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	} else {
-		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+		build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	}
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -544,7 +542,8 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 	var storageLimit int64
 
 	if cr.Spec.Storage != nil {
-		if storage, ok := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+		storage := cr.Spec.Storage.VolumeClaimTemplate.Spec.Resources.Requests.Storage()
+		if !storage.IsZero() {
 			storageInt, ok := storage.AsInt64()
 			if ok {
 				storageLimit = storageInt

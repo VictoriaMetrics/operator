@@ -22,6 +22,9 @@ const templatesDir = "/etc/vm/templates"
 
 // CreateOrUpdateAlertManager creates alertmanager and builds config for it
 func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -70,11 +73,10 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: cr.SelectorLabels,
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(),
 	}
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {

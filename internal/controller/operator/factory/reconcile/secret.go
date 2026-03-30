@@ -18,6 +18,7 @@ import (
 // Secret reconciles secret object
 func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
+	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj corev1.Secret
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -27,10 +28,10 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 			}
 			return fmt.Errorf("cannot get existing Secret=%s: %w", nsn.String(), err)
 		}
-		if err := collectGarbage(ctx, rclient, &existingObj); err != nil {
+		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, true)
+		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}

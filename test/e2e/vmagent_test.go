@@ -53,7 +53,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://localhost:8429/api/v1/write"},
 					},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 				},
@@ -154,7 +154,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -179,10 +179,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseDefaultResources: ptr.To(false),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseDefaultResources:                 ptr.To(false),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -209,7 +207,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -246,7 +244,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -328,10 +326,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
-							UseStrictSecurity: ptr.To(true),
-						},
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseStrictSecurity:                   ptr.To(true),
 							ReplicaCount:                        ptr.To[int32](1),
 							DisableAutomountServiceAccountToken: true,
 						},
@@ -391,6 +387,65 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Expect(vmc.VolumeMounts).To(HaveLen(5))
 					Expect(hasVolumeMount(vmc.VolumeMounts, "/var/run/secrets/kubernetes.io/serviceaccount")).ToNot(HaveOccurred())
 				}),
+			Entry("with UseProxyProtocol in deployment mode", "proxy-protocol-deploy",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
+			Entry("with UseProxyProtocol in statefulset mode", "proxy-protocol-sts",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						StatefulMode: true,
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
+			Entry("with UseProxyProtocol in daemonset mode", "proxy-protocol-ds",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							ExtraArgs: map[string]string{
+								"httpListenAddr.useProxyProtocol": "true",
+							},
+						},
+						DaemonSetMode: true,
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
 		)
 		type testStep struct {
 			setup  func(*vmv1beta1.VMAgent)
@@ -428,7 +483,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by scaling replicas to 2", "update-replicas-2",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -453,7 +508,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by changing revisionHistoryLimit to 3", "update-revision",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount:              ptr.To[int32](1),
 							RevisionHistoryLimitCount: ptr.To[int32](11),
 						},
@@ -482,7 +537,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by switching to statefulMode with shard", "stateful-shard",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -493,7 +548,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				testStep{
 					modify: func(cr *vmv1beta1.VMAgent) {
 						cr.Spec.ReplicaCount = ptr.To[int32](1)
-						cr.Spec.ShardCount = ptr.To(2)
+						cr.Spec.ShardCount = ptr.To[int32](2)
 						cr.Spec.StatefulMode = true
 						cr.Spec.IngestOnlyMode = ptr.To(true)
 					},
@@ -515,7 +570,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by transition into statefulMode and back", "stateful-transition",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -542,9 +597,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 			Entry("by deleting and restoring PodDisruptionBudget and serviceScrape", "pdb-mutations-scrape",
 				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{UseDefaultResources: ptr.To(false)},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
-						ReplicaCount: ptr.To[int32](2),
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						UseDefaultResources: ptr.To(false),
+						ReplicaCount:        ptr.To[int32](2),
 					},
 					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						SelectAllByDefault: true,
@@ -587,7 +642,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 			Entry("by transition into daemonSet and back", "daemonset-transition",
 				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -636,7 +691,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://localhost:8428/api/v1/write"},
 					},
-					CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: &initialReplicas,
 					},
 				},

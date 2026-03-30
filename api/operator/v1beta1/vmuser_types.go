@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -8,11 +9,33 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// VMUserOIDC defines configuration for OIDC
+type VMUserOIDC struct {
+	// Issuer defines issuer URL for OIDC
+	// +required
+	Issuer string `json:"issuer"`
+}
+
+// VMUserJWT defines configuration for JWT
+type VMUserJWT struct {
+	// SkipVerify skips signature verification for testing purposes
+	SkipVerify bool `json:"skipVerify,omitempty"`
+	// PublicKeys defines a list of public keys that are used for signature verification
+	PublicKeys []string `json:"publicKeys,omitempty"`
+	// PublicKeyRefs defines a list of Secret selectors that reference public keys
+	PublicKeyRefs []corev1.SecretKeySelector `json:"publicKeyRefs,omitempty"`
+	// MatchClaims enables claim based routing
+	MatchClaims map[string]string `json:"matchClaims,omitempty"`
+	// OIDC defines OIDC configuration section
+	OIDC *VMUserOIDC `json:"oidc,omitempty"`
+}
 
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-" yaml:"-"`
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
@@ -20,6 +43,8 @@ type VMUserSpec struct {
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional
 	Username *string `json:"username,omitempty"`
+	// JWT defines JWT based auth for a user
+	JWT *VMUserJWT `json:"jwt,omitempty"`
 	// Password basic auth password for accessing protected endpoint.
 	// +optional
 	Password *string `json:"password,omitempty"`
@@ -55,17 +80,16 @@ type VMUserSpec struct {
 
 // TargetRef describes target for user traffic forwarding.
 // one of target types can be chosen:
-// crds or static per targetRef.
+// crd or static per targetRef.
 // user can define multiple targetRefs with different ref Types.
 type TargetRef struct {
+	// Name references item at VMAuths spec.defaultTargetRefs map, with name set other attributes are skipped
+	// +optional
+	Name string `json:"name,omitempty"`
 	// CRD describes exist operator's CRD object,
 	// operator generates access url based on CRD params.
 	// +optional
 	CRD *CRDRef `json:"crd,omitempty"`
-	// CRD describes existing operator's CRD objects,
-	// operator generates access url based on CRD params.
-	// +optional
-	CRDs []CRDRef `json:"crds,omitempty"`
 	// Static - user defined url for traffic forward,
 	// for instance http://vmsingle:8428
 	// +optional
@@ -90,21 +114,26 @@ type TargetRef struct {
 	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`
 }
 
-func (r *TargetRef) validate(isRetryCodesSet bool) error {
+func (r *TargetRef) Validate(isDefault, isRetryCodesSet bool) error {
 	var refs []string
+	if isDefault && len(r.Name) == 0 {
+		return fmt.Errorf("default targetRef items should contain name")
+	}
 	if r.CRD != nil {
 		refs = append(refs, "crd")
-	}
-	if len(r.CRDs) > 0 {
-		refs = append(refs, "crds")
 	}
 	if r.Static != nil {
 		refs = append(refs, "static")
 	}
 	if len(refs) != 1 {
-		return fmt.Errorf("targetRef validation failed, exactly one of `crd`, `crds` or `static` must be configured, found: [%s]", strings.Join(refs, ","))
+		if len(r.Name) == 0 {
+			return fmt.Errorf("targetRef validation failed, exactly one of `crd` or `static` must be configured if `name` is not set, found: [%s]", strings.Join(refs, ","))
+		} else if len(refs) > 1 {
+			return fmt.Errorf("targetRef validation failed, both `crd` and `static` cannot be configured")
+		}
 	}
-	if r.Static != nil {
+	switch {
+	case r.Static != nil:
 		if r.Static.URL == "" && len(r.Static.URLs) == 0 {
 			return fmt.Errorf("for targetRef.static url or urls option must be set")
 		}
@@ -118,15 +147,14 @@ func (r *TargetRef) validate(isRetryCodesSet bool) error {
 				return fmt.Errorf("incorrect value at static.urls: %w", err)
 			}
 		}
-	}
-	if r.CRD != nil {
-		if r.CRD.Namespace == "" || r.CRD.Name == "" {
+	case r.CRD != nil:
+		if len(r.CRD.Objects) == 0 && (r.CRD.Namespace == "" || r.CRD.Name == "") {
 			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 		}
-	}
-	for i, crd := range r.CRDs {
-		if crd.Namespace == "" || crd.Name == "" {
-			return fmt.Errorf("crds[%d].name and crds[%d].namespace cannot be empty", i, i)
+		for i, crd := range r.CRD.Objects {
+			if crd.Namespace == "" || crd.Name == "" {
+				return fmt.Errorf("crd.objects[%d].name and crd.objects[%d].namespace cannot be empty", i, i)
+			}
 		}
 	}
 	if err := validateHTTPHeaders(r.ResponseHeaders); err != nil {
@@ -156,28 +184,29 @@ type QueryArg struct {
 	Values []string `json:"values"`
 }
 
+// NamespacedName defines name and namespace pairs to reference k8s object
+type NamespacedName struct {
+	// Name of the target Kubernetes object
+	Name string `json:"name"`
+	// Namespace of the target Kubernetes object
+	Namespace string `json:"namespace"`
+}
+
 // CRDRef describe CRD target reference.
 type CRDRef struct {
 	// Kind one of:
 	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent
 	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle
-	Kind string `json:"kind"`
-	// Name target CRD object name
-	Name string `json:"name"`
-	// Namespace target CRD object namespace.
-	Namespace string `json:"namespace"`
-}
-
-// AddRefToObj adds reference to given object and return it.
-func (cr *CRDRef) AddRefToObj(obj client.Object) client.Object {
-	obj.SetName(cr.Name)
-	obj.SetNamespace(cr.Namespace)
-	return obj
+	Kind           string `json:"kind"`
+	NamespacedName `json:",inline"`
+	// Objects defines list of name/namespace pairs that define existing k8s object
+	// +optional
+	Objects []NamespacedName `json:"objects,omitempty"`
 }
 
 // AsKey returns unique key for object
-func (cr *CRDRef) AsKey() string {
-	return fmt.Sprintf("%s/%s/%s", cr.Kind, cr.Namespace, cr.Name)
+func (cr *CRDRef) AsKey(nsn NamespacedName) string {
+	return fmt.Sprintf("%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name)
 }
 
 // StaticRef - user-defined routing host address.
@@ -275,6 +304,16 @@ func (cr *VMUser) SelectorLabels() map[string]string {
 	}
 }
 
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMUserSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMUserSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmuserspec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
+}
+
 // FinalLabels returns combination of selector and managed labels
 func (cr *VMUser) FinalLabels() map[string]string {
 	v := cr.SelectorLabels()
@@ -288,6 +327,14 @@ func (cr *VMUser) FinalLabels() map[string]string {
 func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }
+
+// GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMUser) GetStatus() *VMUserStatus {
+	return &cr.Status
+}
+
+// DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
+func (cr *VMUser) DefaultStatusFields(vs *VMUserStatus) {}
 
 func (cr *VMUser) AsKey(hide bool) string {
 	var id string
@@ -317,8 +364,34 @@ func (cr *VMUser) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.Username != nil && cr.Spec.BearerToken != nil {
-		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
+	var authMechanisms []string
+	if len(ptr.Deref(cr.Spec.Username, "")) > 0 {
+		authMechanisms = append(authMechanisms, "username")
+	}
+	if len(ptr.Deref(cr.Spec.BearerToken, "")) > 0 {
+		authMechanisms = append(authMechanisms, "bearerToken")
+	}
+	if cr.Spec.JWT != nil {
+		authMechanisms = append(authMechanisms, "jwt")
+		var jwtVerification []string
+		if cr.Spec.JWT.SkipVerify {
+			jwtVerification = append(jwtVerification, "skip_verify")
+		}
+		if len(cr.Spec.JWT.PublicKeys) > 0 || len(cr.Spec.JWT.PublicKeyRefs) > 0 {
+			jwtVerification = append(jwtVerification, "public_keys")
+		}
+		if cr.Spec.JWT.OIDC != nil {
+			jwtVerification = append(jwtVerification, "oidc")
+			if len(cr.Spec.JWT.OIDC.Issuer) == 0 {
+				return fmt.Errorf("jwt.oidc.issuer is required if OIDC is set")
+			}
+		}
+		if len(jwtVerification) != 1 {
+			return fmt.Errorf("exactly one spec.jwt.{skipVerify,publicKeys|publicKeyRefs,oidc} JWT verification mechanism is expected, got: [%s]", strings.Join(jwtVerification, ","))
+		}
+	}
+	if len(authMechanisms) > 1 {
+		return fmt.Errorf("one of spec.{username,bearerToken,jwt} must be defined for user, got: [%s]", strings.Join(authMechanisms, ","))
 	}
 	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
@@ -329,7 +402,7 @@ func (cr *VMUser) Validate() error {
 	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
 	for i := range cr.Spec.TargetRefs {
 		targetRef := &cr.Spec.TargetRefs[i]
-		if err := targetRef.validate(isRetryCodesSet); err != nil {
+		if err := targetRef.Validate(false, isRetryCodesSet); err != nil {
 			return fmt.Errorf("%w for users[%d]", err, i)
 		}
 	}

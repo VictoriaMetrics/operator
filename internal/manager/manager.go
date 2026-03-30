@@ -232,8 +232,7 @@ func RunManager(ctx context.Context) error {
 		}
 	}
 
-	reconcile.InitDeadlines(baseConfig.PodWaitReadyIntervalCheck, baseConfig.AppReadyTimeout, baseConfig.PodWaitReadyTimeout, 5*time.Second)
-	reconcile.SetStatusUpdateTTL(*statusUpdateTTL)
+	reconcile.Init(baseConfig, *statusUpdateTTL)
 	config := ctrl.GetConfigOrDie()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 

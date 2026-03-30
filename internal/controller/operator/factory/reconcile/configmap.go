@@ -37,10 +37,10 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
-		dataDiff := diffDeepDerivative(newObj.Data, existingObj.Data, "data")
+		dataDiff := diffDeep(newObj.Data, existingObj.Data, "data")
 		needsUpdate := metaChanged || len(dataDiff) > 0
 
-		binDataDiff := diffDeepDerivative(newObj.BinaryData, existingObj.BinaryData, "binaryData")
+		binDataDiff := diffDeep(newObj.BinaryData, existingObj.BinaryData, "binaryData")
 		needsUpdate = needsUpdate || len(binDataDiff) > 0
 
 		if !needsUpdate {

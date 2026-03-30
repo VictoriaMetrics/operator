@@ -83,4 +83,34 @@ func TestSecretReconcile(t *testing.T) {
 			{Verb: "Update", Kind: "Secret", Resource: nn},
 		},
 	})
+
+	// data key added
+	f(opts{
+		new: getSecret(func(s *corev1.Secret) {
+			s.Data["key2"] = []byte("value2")
+		}),
+		prevMeta: &getSecret().ObjectMeta,
+		predefinedObjects: []runtime.Object{
+			getSecret(),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Secret", Resource: nn},
+			{Verb: "Update", Kind: "Secret", Resource: nn},
+		},
+	})
+
+	// data key removed
+	f(opts{
+		new: getSecret(func(s *corev1.Secret) {
+			delete(s.Data, "key")
+		}),
+		prevMeta: &getSecret().ObjectMeta,
+		predefinedObjects: []runtime.Object{
+			getSecret(),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Secret", Resource: nn},
+			{Verb: "Update", Kind: "Secret", Resource: nn},
+		},
+	})
 }

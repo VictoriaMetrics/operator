@@ -125,4 +125,77 @@ func TestVMAgentReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
 	})
+
+	// configmaps added
+	f(opts{
+		new: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		prev: getVMAgent(),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+		},
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Equal(t, []string{"cm1"}, v.Spec.ConfigMaps)
+		},
+	})
+
+	// configmaps changed
+	f(opts{
+		new: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm2"}
+		}),
+		prev: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Spec.ConfigMaps = []string{"cm1"}
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+		},
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Equal(t, []string{"cm2"}, v.Spec.ConfigMaps)
+		},
+	})
+
+	// configmaps removed
+	f(opts{
+		new: getVMAgent(),
+		prev: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Spec.ConfigMaps = []string{"cm1"}
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+		},
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Empty(t, v.Spec.ConfigMaps)
+		},
+	})
 }

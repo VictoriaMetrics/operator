@@ -108,4 +108,45 @@ func TestVMClusterReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "VMCluster", Resource: nn},
 		},
 	})
+
+	// vmselect configmaps added
+	f(opts{
+		new: getVMCluster(func(v *vmv1beta1.VMCluster) {
+			v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+		}),
+		prev: getVMCluster(),
+		predefinedObjects: []runtime.Object{
+			getVMCluster(func(v *vmv1beta1.VMCluster) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Update", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+		},
+	})
+
+	// vmselect configmaps removed
+	f(opts{
+		new: getVMCluster(func(v *vmv1beta1.VMCluster) {
+			v.Spec.VMSelect = &vmv1beta1.VMSelect{}
+		}),
+		prev: getVMCluster(func(v *vmv1beta1.VMCluster) {
+			v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMCluster(func(v *vmv1beta1.VMCluster) {
+				v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+			{Verb: "Update", Kind: "VMCluster", Resource: nn},
+			{Verb: "Get", Kind: "VMCluster", Resource: nn},
+		},
+	})
 }

@@ -207,7 +207,43 @@ func TestConfigMapReconcile(t *testing.T) {
 		},
 	})
 
-	// data key removed - must update to delete the key
+	// data key added
+	f(opts{
+		new: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nn.Name,
+				Namespace: nn.Namespace,
+			},
+			Data: map[string]string{
+				"rule-a.yaml": "groups: []",
+				"rule-b.yaml": "groups: []",
+			},
+		},
+		prevMeta: &metav1.ObjectMeta{
+			Name:      nn.Name,
+			Namespace: nn.Namespace,
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nn.Name,
+					Namespace: nn.Namespace,
+				},
+				Data: map[string]string{
+					"rule-a.yaml": "groups: []",
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "ConfigMap", Resource: nn},
+			{Verb: "Update", Kind: "ConfigMap", Resource: nn},
+		},
+		validate: func(c *corev1.ConfigMap) {
+			assert.Contains(t, c.Data, "rule-b.yaml")
+		},
+	})
+
+	// data key removed
 	f(opts{
 		new: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{

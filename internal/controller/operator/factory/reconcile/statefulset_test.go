@@ -827,12 +827,13 @@ func TestSortPodsByID(t *testing.T) {
 
 func TestStatefulsetReconcile(t *testing.T) {
 	type opts struct {
-		new, prev         *appsv1.StatefulSet
-		predefinedObjects []runtime.Object
-		validate          func(*appsv1.StatefulSet)
-		actions           []k8stools.ClientAction
-		wantErr           bool
-		o                 *StatefulSetOpts
+		new, prev           *appsv1.StatefulSet
+		predefinedObjects   []runtime.Object
+		validate            func(*appsv1.StatefulSet)
+		actions             []k8stools.ClientAction
+		skipPVCStatusUpdate bool
+		wantErr             bool
+		o                   *StatefulSetOpts
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
 		s := &appsv1.StatefulSet{
@@ -879,7 +880,9 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
+		cl := k8stools.GetTestClientWithOptsActionsAndObjects(o.predefinedObjects, &k8stools.ClientOpts{
+			SkipPVCStatusUpdate: o.skipPVCStatusUpdate,
+		})
 		synctest.Test(t, func(t *testing.T) {
 			err := StatefulSet(ctx, cl, o.new, o.prev, nil, o.o)
 			if o.wantErr {
@@ -902,6 +905,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	}
 
 	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
+	pnn := types.NamespacedName{Name: "vmselect-cachedir-test-1-0", Namespace: "default"}
 
 	// create statefulset
 	f(opts{
@@ -1023,6 +1027,20 @@ func TestStatefulsetReconcile(t *testing.T) {
 			}}
 		}),
 		predefinedObjects: []runtime.Object{
+			&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-cachedir-test-1-0",
+					Namespace: "default",
+					Labels:    map[string]string{"label": "value"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+			},
 			getSts(func(s *appsv1.StatefulSet) {
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
 				s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
@@ -1053,8 +1071,95 @@ func TestStatefulsetReconcile(t *testing.T) {
 			{Verb: "Delete", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pnn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pnn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
+	})
+
+	// fail while waiting for PVC expansion
+	f(opts{
+		skipPVCStatusUpdate: true,
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vmselect-cachedir",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "test",
+					},
+					Labels: map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}}
+		}),
+		prev: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vmselect-cachedir",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "test",
+					},
+					Labels: map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+			}}
+		}),
+		predefinedObjects: []runtime.Object{
+			&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-cachedir-test-1-0",
+					Namespace: "default",
+					Labels:    map[string]string{"label": "value"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("4Gi"),
+					},
+				},
+			},
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Finalizers = []string{vmv1beta1.FinalizerName}
+				s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmselect-cachedir",
+						Annotations: map[string]string{
+							"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+							"test": "test",
+						},
+						Labels: map[string]string{"app": "vmselect"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				}}
+			}),
+		},
+		wantErr: true,
 	})
 
 	// context deadline error

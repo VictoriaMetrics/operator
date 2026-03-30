@@ -36,6 +36,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): ignore VMAuth update/delete operations if controller is disabled.
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fixed ignored tracing config, when no alertmanagerconfig CRs collected. See [#1983](https://github.com/VictoriaMetrics/operator/issues/1983).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): apply scrape class relabellings before job ones. See [#1997](https://github.com/VictoriaMetrics/operator/issues/1997).
 * BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): do not ignore ExtraStorageNodes for select, when default storage is disabled. See [#1910](https://github.com/VictoriaMetrics/operator/issues/1910).
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)

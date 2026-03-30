@@ -81,6 +81,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 		prevVCTs = prevObj.Spec.VolumeClaimTemplates
 	}
 
+	logger.WithContext(ctx).Info("before debug", "new", newObj.Spec)
+
 	rclient.Scheme().Default(newObj)
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
@@ -108,6 +110,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 		if o.PatchSpec != nil {
 			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
 		}
+
+		logger.WithContext(ctx).Info("after debug", "existing", existingObj.Spec, "new", newObj.Spec)
 
 		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
 		if mustRecreateSTS {

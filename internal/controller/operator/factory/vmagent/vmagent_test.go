@@ -663,6 +663,89 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, hasClientSecretArg)
 		},
 	})
+
+	// generate vmagent daemonset with custom update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:           true,
+				DaemonSetUpdateStrategy: ptr.To(appsv1.RollingUpdateDaemonSetStrategyType),
+				DaemonSetRollingUpdateStrategyBehavior: &appsv1.RollingUpdateDaemonSet{
+					MaxUnavailable: ptr.To(intstr.FromString("20%")),
+				},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var ds appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
+			assert.Equal(t, appsv1.RollingUpdateDaemonSetStrategyType, ds.Spec.UpdateStrategy.Type)
+			assert.NotNil(t, ds.Spec.UpdateStrategy.RollingUpdate)
+			assert.Equal(t, ptr.To(intstr.FromString("20%")), ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
+		},
+	})
+
+	// generate vmagent daemonset with default update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:                          true,
+				DaemonSetUpdateStrategy:                nil,
+				DaemonSetRollingUpdateStrategyBehavior: nil,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var ds appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
+			assert.Equal(t, appsv1.RollingUpdateDaemonSetStrategyType, ds.Spec.UpdateStrategy.Type)
+			assert.Nil(t, ds.Spec.UpdateStrategy.RollingUpdate)
+		},
+	})
+
+	// generate vmagent daemonset with ondelete update strategy
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode:           true,
+				DaemonSetUpdateStrategy: ptr.To(appsv1.OnDeleteDaemonSetStrategyType),
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var ds appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
+			assert.Equal(t, appsv1.OnDeleteDaemonSetStrategyType, ds.Spec.UpdateStrategy.Type)
+			assert.Nil(t, ds.Spec.UpdateStrategy.RollingUpdate)
+		},
+	})
 }
 
 func TestBuildRemoteWriteArgs(t *testing.T) {
@@ -2736,5 +2819,4 @@ serviceaccountname: vmagent-agent
 
     `,
 	})
-
 }

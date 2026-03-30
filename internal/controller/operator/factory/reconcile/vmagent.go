@@ -44,7 +44,7 @@ func VMAgent(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1be
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
+		specDiff := diffDeep(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
 			return nil

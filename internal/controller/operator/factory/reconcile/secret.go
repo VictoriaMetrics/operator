@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +35,7 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
-		isDataEqual := equality.Semantic.DeepDerivative(newObj.Data, existingObj.Data)
+		isDataEqual := len(diffDeep(newObj.Data, existingObj.Data, "data")) == 0
 		needsUpdate := metaChanged || !isDataEqual
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_changed=%t", !isDataEqual))
 

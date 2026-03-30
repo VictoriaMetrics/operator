@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -696,23 +697,6 @@ func (cr *VLCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.VLSelect != nil {
-		vms := cr.Spec.VLSelect
-		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
-		}
-		if vms.HPA != nil {
-			if err := vms.HPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if vms.VPA != nil {
-			if err := vms.VPA.Validate(); err != nil {
-				return err
-			}
-		}
-	}
 	if cr.Spec.VLInsert != nil {
 		vli := cr.Spec.VLInsert
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
@@ -730,6 +714,7 @@ func (cr *VLCluster) Validate() error {
 			}
 		}
 	}
+	storageNodes := sets.New[string]()
 	if cr.Spec.VLStorage != nil {
 		vls := cr.Spec.VLStorage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
@@ -742,6 +727,40 @@ func (cr *VLCluster) Validate() error {
 		if vls.VPA != nil {
 			if err := vls.VPA.Validate(); err != nil {
 				return err
+			}
+		}
+	}
+	if cr.Spec.VLSelect != nil {
+		vms := cr.Spec.VLSelect
+		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if vms.HPA != nil {
+			if err := vms.HPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if nodes, ok := cr.Spec.VLSelect.ExtraArgs["storageNode"]; ok {
+			for _, node := range strings.Split(nodes, ",") {
+				node = strings.TrimSpace(node)
+				if storageNodes.Has(node) {
+					return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node)
+				} else {
+					storageNodes.Insert(node)
+				}
+			}
+		}
+		for _, node := range cr.Spec.VLSelect.ExtraStorageNodes {
+			if storageNodes.Has(node.Addr) {
+				return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node.Addr)
+			} else {
+				storageNodes.Insert(node.Addr)
 			}
 		}
 	}

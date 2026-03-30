@@ -405,6 +405,49 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 			addVLClusterDefaults(cr)
 			return cr.Spec.VLStorage.Image.Tag
 		},
+	}
+
+	for _, creator := range crCreators {
+		f := func(o opts) {
+			t.Helper()
+			actual := creator(o)
+			if o.expectedTag != "" || o.imageTag != "" || o.clusterVersion != "" || o.componentVersion != "" {
+				assert.Equal(t, o.expectedTag, actual)
+			} else {
+				assert.NotEmpty(t, actual)
+			}
+		}
+
+		// clusterVersion only
+		f(opts{
+			clusterVersion: "v1.0.0",
+			expectedTag:    "v1.0.0",
+		})
+
+		// componentVersion only
+		f(opts{
+			componentVersion: "v1.1.0",
+			expectedTag:      "v1.1.0",
+		})
+
+		// both versions present, component takes precedence
+		f(opts{
+			clusterVersion:   "v1.0.0",
+			componentVersion: "v1.1.0",
+			expectedTag:      "v1.1.0",
+		})
+
+		// image tag takes highest precedence
+		f(opts{
+			clusterVersion:   "v1.0.0",
+			componentVersion: "v1.1.0",
+			imageTag:         "v1.2.0",
+			expectedTag:      "v1.2.0",
+		})
+	}
+
+	cfg := getCfg()
+	crCreators = map[string]func(o opts) string{
 		"VMCluster/RequestsLoadBalancer": func(o opts) string {
 			cr := &vmv1beta1.VMCluster{
 				Spec: vmv1beta1.VMClusterSpec{
@@ -467,44 +510,42 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 		},
 	}
 
-	for name, creator := range crCreators {
-		t.Run(name, func(t *testing.T) {
-			f := func(o opts) {
-				t.Helper()
-				actual := creator(o)
-				if o.expectedTag != "" || o.imageTag != "" || o.clusterVersion != "" || o.componentVersion != "" {
-					assert.Equal(t, o.expectedTag, actual)
-				} else {
-					assert.NotEmpty(t, actual)
-				}
+	for _, creator := range crCreators {
+		f := func(o opts) {
+			t.Helper()
+			actual := creator(o)
+			if o.expectedTag != "" || o.imageTag != "" || o.clusterVersion != "" || o.componentVersion != "" {
+				assert.Equal(t, o.expectedTag, actual)
+			} else {
+				assert.NotEmpty(t, actual)
 			}
+		}
 
-			// clusterVersion only
-			f(opts{
-				clusterVersion: "v1.0.0",
-				expectedTag:    "v1.0.0",
-			})
+		// clusterVersion only
+		f(opts{
+			clusterVersion: "v1.0.0",
+			expectedTag:    cfg.MetricsVersion,
+		})
 
-			// componentVersion only
-			f(opts{
-				componentVersion: "v1.1.0",
-				expectedTag:      "v1.1.0",
-			})
+		// componentVersion only
+		f(opts{
+			componentVersion: "v1.1.0",
+			expectedTag:      "v1.1.0",
+		})
 
-			// both versions present, component takes precedence
-			f(opts{
-				clusterVersion:   "v1.0.0",
-				componentVersion: "v1.1.0",
-				expectedTag:      "v1.1.0",
-			})
+		// both versions present, component takes precedence
+		f(opts{
+			clusterVersion:   "v1.0.0",
+			componentVersion: "v1.1.0",
+			expectedTag:      "v1.1.0",
+		})
 
-			// image tag takes highest precedence
-			f(opts{
-				clusterVersion:   "v1.0.0",
-				componentVersion: "v1.1.0",
-				imageTag:         "v1.2.0",
-				expectedTag:      "v1.2.0",
-			})
+		// image tag takes highest precedence
+		f(opts{
+			clusterVersion:   "v1.0.0",
+			componentVersion: "v1.1.0",
+			imageTag:         "v1.2.0",
+			expectedTag:      "v1.2.0",
 		})
 	}
 }

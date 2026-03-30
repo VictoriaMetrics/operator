@@ -650,8 +650,8 @@ func mergeEndpointRelabelingsWithScrapeClass(ers *vmv1beta1.EndpointRelabelings,
 	if ers == nil {
 		panic("BUG: ers cannot be nil")
 	}
-	ers.RelabelConfigs = append(ers.RelabelConfigs, scrapeClass.RelabelConfigs...)
-	ers.MetricRelabelConfigs = append(ers.MetricRelabelConfigs, scrapeClass.MetricRelabelConfigs...)
+	ers.RelabelConfigs = append(scrapeClass.RelabelConfigs, ers.RelabelConfigs...)
+	ers.MetricRelabelConfigs = append(scrapeClass.MetricRelabelConfigs, ers.MetricRelabelConfigs...)
 }
 
 func mergeAuthorizationWithScrapeClass(authz *vmv1beta1.Authorization, scrapeClass *vmv1beta1.ScrapeClass) *vmv1beta1.Authorization {

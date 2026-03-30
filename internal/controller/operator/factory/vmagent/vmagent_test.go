@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -26,8 +28,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
-		validate          func(set *appsv1.StatefulSet)
-		statefulsetMode   bool
+		validate          func(ctx context.Context, client client.Client, cr *vmv1beta1.VMAgent)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -44,10 +45,8 @@ func TestCreateOrUpdate(t *testing.T) {
 		} else {
 			assert.NoError(t, err)
 		}
-		if o.statefulsetMode && o.cr.Spec.ShardCount == nil {
-			var got appsv1.StatefulSet
-			assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
-			o.validate(&got)
+		if o.validate != nil {
+			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
@@ -98,23 +97,24 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) {
-			assert.Equal(t, 1, len(got.Spec.Template.Spec.Containers))
-			assert.Equal(t, 2, len(got.Spec.VolumeClaimTemplates))
-			assert.Equal(t, "embed-sc", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName)
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &sts))
+			assert.Equal(t, 1, len(sts.Spec.Template.Spec.Containers))
+			assert.Equal(t, 2, len(sts.Spec.VolumeClaimTemplates))
+			assert.Equal(t, "embed-sc", *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName)
+			assert.Equal(t, sts.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			})
-			assert.Equal(t, "default", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName)
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+			assert.Equal(t, "default", *sts.Spec.VolumeClaimTemplates[1].Spec.StorageClassName)
+			assert.Equal(t, sts.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				},
 			})
 		},
-		statefulsetMode: true,
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
 		},
@@ -130,16 +130,36 @@ func TestCreateOrUpdate(t *testing.T) {
 			Spec: vmv1beta1.VMAgentSpec{
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
+					Affinity: &corev1.Affinity{
+						PodAntiAffinity: &corev1.PodAntiAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"shard-num": "%SHARD_NUM%",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							}},
+						},
+					},
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				ShardCount: func() *int32 { i := int32(2); return &i }(),
+				ShardCount: ptr.To[int32](1),
 			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			for i := range *cr.Spec.ShardCount {
+				var dep appsv1.Deployment
+				name := fmt.Sprintf("%s-%d", cr.PrefixedName(), i)
+				assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: name}, &dep))
+				assert.Len(t, dep.Spec.Template.Spec.Containers, 2)
+				assert.Equal(t, dep.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels["shard-num"], strconv.Itoa(int(i)))
+			}
 		},
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmagent-example-agent-0", "default"),
-			k8stools.NewReadyDeployment("vmagent-example-agent-1", "default"),
 		},
 	})
 
@@ -427,10 +447,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) {
-			assert.Equal(t, got.Spec.ServiceName, "my-headless-additional-service")
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &sts))
+			assert.Equal(t, sts.Spec.ServiceName, "my-headless-additional-service")
 		},
-		statefulsetMode: true,
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
 		},
@@ -488,23 +509,27 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) {
-			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
-			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
-			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceStorage: resource.MustParse("10Gi"),
-				},
-			})
-			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceStorage: resource.MustParse("2Gi"),
-				},
-			})
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			for i := range *cr.Spec.ShardCount {
+				var sts appsv1.StatefulSet
+				name := fmt.Sprintf("%s-%d", cr.PrefixedName(), i)
+				assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: name}, &sts))
+				assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
+				assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
+				assert.Equal(t, *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+				assert.Equal(t, sts.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				})
+				assert.Equal(t, *sts.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+				assert.Equal(t, sts.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("2Gi"),
+					},
+				})
+			}
 		},
-		statefulsetMode: true,
 	})
 
 	// generate vmagent statefulset with prevSpec
@@ -554,23 +579,24 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		validate: func(got *appsv1.StatefulSet) {
-			assert.Len(t, got.Spec.Template.Spec.Containers, 1)
-			assert.Len(t, got.Spec.VolumeClaimTemplates, 2)
-			assert.Equal(t, *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &sts))
+			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
+			assert.Len(t, sts.Spec.VolumeClaimTemplates, 2)
+			assert.Equal(t, *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+			assert.Equal(t, sts.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			})
-			assert.Equal(t, *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
-			assert.Equal(t, got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+			assert.Equal(t, *sts.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+			assert.Equal(t, sts.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceStorage: resource.MustParse("2Gi"),
 				},
 			})
 		},
-		statefulsetMode: true,
 	})
 
 	// with oauth2 rw
@@ -622,9 +648,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			},
 		},
-		statefulsetMode: true,
-		validate: func(set *appsv1.StatefulSet) {
-			cnt := set.Spec.Template.Spec.Containers[0]
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &sts))
+			cnt := sts.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Name, "vmagent")
 			hasClientSecretArg := false
 			for _, arg := range cnt.Args {

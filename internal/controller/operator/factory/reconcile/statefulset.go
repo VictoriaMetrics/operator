@@ -88,8 +88,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	if o == nil {
 		o = new(StatefulSetOpts)
 	}
+	var existingObj appsv1.StatefulSet
 	err := retryOnConflict(func() error {
-		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn.String()))
@@ -124,13 +124,6 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 			return newErrRecreate(ctx, &existingObj)
 		}
 
-		// check if pvcs need to resize
-		if len(newObj.Spec.VolumeClaimTemplates) > 0 {
-			if err := updateSTSPVC(ctx, rclient, &existingObj, prevVCTs); err != nil {
-				return err
-			}
-		}
-
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
@@ -151,6 +144,13 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	})
 	if err != nil {
 		return err
+	}
+
+	// check if pvcs need to resize
+	if len(existingObj.Spec.VolumeClaimTemplates) > 0 {
+		if err := updateSTSPVC(ctx, rclient, newObj, prevVCTs); err != nil {
+			return err
+		}
 	}
 
 	// perform manual update only with OnDelete policy, which is default.

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -602,23 +603,6 @@ func (cr *VTCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.Select != nil {
-		vms := cr.Spec.Select
-		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
-		}
-		if vms.HPA != nil {
-			if err := vms.HPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if vms.VPA != nil {
-			if err := vms.VPA.Validate(); err != nil {
-				return err
-			}
-		}
-	}
 	if cr.Spec.Insert != nil {
 		vti := cr.Spec.Insert
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
@@ -636,7 +620,9 @@ func (cr *VTCluster) Validate() error {
 			}
 		}
 	}
+	storageNodes := sets.New[string]()
 	if cr.Spec.Storage != nil {
+		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage))
 		vts := cr.Spec.Storage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
@@ -648,6 +634,40 @@ func (cr *VTCluster) Validate() error {
 		if vts.VPA != nil {
 			if err := vts.VPA.Validate(); err != nil {
 				return err
+			}
+		}
+	}
+	if cr.Spec.Select != nil {
+		vms := cr.Spec.Select
+		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if vms.HPA != nil {
+			if err := vms.HPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if nodes, ok := cr.Spec.Select.ExtraArgs["storageNode"]; ok {
+			for _, node := range strings.Split(nodes, ",") {
+				node = strings.TrimSpace(node)
+				if storageNodes.Has(node) {
+					return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node)
+				} else {
+					storageNodes.Insert(node)
+				}
+			}
+		}
+		for _, node := range cr.Spec.Select.ExtraStorageNodes {
+			if storageNodes.Has(node.Addr) {
+				return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node.Addr)
+			} else {
+				storageNodes.Insert(node.Addr)
 			}
 		}
 	}

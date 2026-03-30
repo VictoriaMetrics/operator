@@ -428,6 +428,7 @@ func addVMClusterDefaults(objI any) {
 		addDefaultsToCommonParams(&cr.Spec.VMSelect.CommonAppsParams, &cp, &cv)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
+		cp.tag = ""
 		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cp)
 	}
 }

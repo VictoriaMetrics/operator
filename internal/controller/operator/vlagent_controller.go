@@ -58,7 +58,7 @@ func (r *VLAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 // +kubebuilder:rbac:groups="",resources=services,verbs=*
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vlagent", req.Name, "namespace", req.Namespace)
@@ -113,7 +113,7 @@ func (r *VLAgentReconciler) Scheme() *runtime.Scheme {
 func (r *VLAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1.VLAgent{}).
-		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.DaemonSet{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).

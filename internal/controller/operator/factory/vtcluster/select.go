@@ -239,20 +239,22 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.Select.LogFormat))
 	}
 
+	storageNodeFlag := build.NewFlag("-storageNode", "")
+	storageNodeIds := cr.AvailableStorageNodeIDs("select")
 	if cr.Spec.Storage != nil && cr.Spec.Storage.ReplicaCount != nil {
 		// TODO: check TLS
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs("select")
 		for idx, i := range storageNodeIds {
 			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName), idx)
 		}
-		if len(cr.Spec.Select.ExtraStorageNodes) > 0 {
-			for i, node := range cr.Spec.Select.ExtraStorageNodes {
-				idx := i + len(storageNodeIds)
-				storageNodeFlag.Add(node.Addr, idx)
-			}
+	}
+	if len(cr.Spec.Select.ExtraStorageNodes) > 0 {
+		for i, node := range cr.Spec.Select.ExtraStorageNodes {
+			idx := i + len(storageNodeIds)
+			storageNodeFlag.Add(node.Addr, idx)
 		}
-		totalNodes := len(cr.Spec.Select.ExtraStorageNodes) + len(storageNodeIds)
+	}
+	totalNodes := len(cr.Spec.Select.ExtraStorageNodes) + len(storageNodeIds)
+	if totalNodes > 0 {
 		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
 

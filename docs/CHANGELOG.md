@@ -15,8 +15,9 @@ aliases:
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce statefulRollingUpdateStrategyBehavior to allow managing VMAgent update strategy in a statefulMode. See [#1987](https://github.com/VictoriaMetrics/operator/issues/1987).
 
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait till PVC resize finished. See [#1970](https://github.com/VictoriaMetrics/operator/issues/1983).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait till PVC resize finished. See [#1970](https://github.com/VictoriaMetrics/operator/issues/1970).
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fixed ignored tracing config, when no alertmanagerconfig CRs collected. See [#1983](https://github.com/VictoriaMetrics/operator/issues/1983).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): apply scrape class relabellings before job ones. See [#1997](https://github.com/VictoriaMetrics/operator/issues/1997).
 
 ## [v0.68.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.3)
 **Release date:** 16 March 2026

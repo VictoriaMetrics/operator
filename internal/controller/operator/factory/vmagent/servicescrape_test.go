@@ -1258,12 +1258,12 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 - source_labels:
-  - __meta_kubernetes_namespace
-  target_label: namespace
-  action: replace
-- source_labels:
   - __meta_kubernetes_pod_app_name
   target_label: app
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
   action: replace
 `,
 	})
@@ -1387,12 +1387,12 @@ relabel_configs:
 - target_label: endpoint
   replacement: "8080"
 - source_labels:
-  - __meta_kubernetes_pod_container_name
-  target_label: container
-  action: replace
-- source_labels:
   - __meta_kubernetes_pod_node_name
   target_label: node
+  action: replace
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
   action: replace
 tls_config:
   ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
@@ -1693,15 +1693,15 @@ relabel_configs:
   replacement: "9090"
 metric_relabel_configs:
 - source_labels:
-  - instance
-  target_label: endpoint_instance
-  action: replace
-- source_labels:
   - __name__
   regex: go_.*
   action: keep
 - target_label: scrape_class
   replacement: metrics-class
+  action: replace
+- source_labels:
+  - instance
+  target_label: endpoint_instance
   action: replace
 `,
 	})

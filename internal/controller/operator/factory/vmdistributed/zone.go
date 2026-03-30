@@ -45,8 +45,10 @@ func (zs *zones) Len() int {
 func (zs *zones) Less(i, j int) bool {
 	statusI := zs.vmclusters[i].Status
 	statusJ := zs.vmclusters[j].Status
-	if statusI.UpdateStatus != statusJ.UpdateStatus {
-		return statusI.UpdateStatus == vmv1beta1.UpdateStatusFailed
+	isNonOperationalI := statusI.UpdateStatus != vmv1beta1.UpdateStatusOperational
+	isNonOperationalJ := statusJ.UpdateStatus != vmv1beta1.UpdateStatusOperational
+	if isNonOperationalI != isNonOperationalJ {
+		return isNonOperationalI
 	}
 	isZeroI := zs.vmclusters[i].CreationTimestamp.IsZero()
 	isZeroJ := zs.vmclusters[j].CreationTimestamp.IsZero()

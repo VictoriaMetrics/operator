@@ -449,7 +449,7 @@ func addVMClusterDefaults(objI any) {
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		cpLB := cp
-		cpLB.tag = setTag(cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion, cp.tag)
+		cpLB.tag = cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion
 		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cpLB)
 	}
 }

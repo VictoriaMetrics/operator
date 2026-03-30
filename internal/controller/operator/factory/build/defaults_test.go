@@ -405,26 +405,6 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 			addVLClusterDefaults(cr)
 			return cr.Spec.VLStorage.Image.Tag
 		},
-		"VMCluster/RequestsLoadBalancer": func(o opts) string {
-			cr := &vmv1beta1.VMCluster{
-				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: o.clusterVersion,
-					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-						Enabled: true,
-						Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-							ComponentVersion: o.componentVersion,
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								Image: vmv1beta1.Image{
-									Tag: o.imageTag,
-								},
-							},
-						},
-					},
-				},
-			}
-			addVMClusterDefaults(cr)
-			return cr.Spec.RequestsLoadBalancer.Spec.Image.Tag
-		},
 	}
 
 	for _, creator := range crCreators {
@@ -468,6 +448,26 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 
 	cfg := getCfg()
 	crCreators = map[string]func(o opts) string{
+		"VMCluster/RequestsLoadBalancer": func(o opts) string {
+			cr := &vmv1beta1.VMCluster{
+				Spec: vmv1beta1.VMClusterSpec{
+					ClusterVersion: o.clusterVersion,
+					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+						Enabled: true,
+						Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+							ComponentVersion: o.componentVersion,
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
+							},
+						},
+					},
+				},
+			}
+			addVMClusterDefaults(cr)
+			return cr.Spec.RequestsLoadBalancer.Spec.Image.Tag
+		},
 		"VLCluster/RequestsLoadBalancer": func(o opts) string {
 			cr := &vmv1.VLCluster{
 				Spec: vmv1.VLClusterSpec{

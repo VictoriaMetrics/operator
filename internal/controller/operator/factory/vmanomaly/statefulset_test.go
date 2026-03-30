@@ -2,6 +2,8 @@ package vmanomaly
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +25,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VMAnomaly
-		validate          func(set *appsv1.StatefulSet)
+		validate          func(sts *appsv1.StatefulSet, idx int)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -40,9 +42,19 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, err)
 		}
 		if o.validate != nil {
-			var got appsv1.StatefulSet
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
-			o.validate(&got)
+			shardCount := ptr.Deref(o.cr.Spec.ShardCount, 0)
+			if shardCount > 0 {
+				for i := range shardCount {
+					var got appsv1.StatefulSet
+					name := fmt.Sprintf("%s-%d", o.cr.PrefixedName(), i)
+					assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: name}, &got))
+					o.validate(&got, int(i))
+				}
+			} else {
+				var got appsv1.StatefulSet
+				assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+				o.validate(&got, 0)
+			}
 		}
 	}
 
@@ -90,7 +102,7 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(set *appsv1.StatefulSet, _ int) {
 			assert.Equal(t, set.Name, "vmanomaly-test-anomaly")
 			assert.Equal(t, set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
@@ -156,7 +168,7 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(set *appsv1.StatefulSet, _ int) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			container := set.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, container.Name, "vmanomaly")
@@ -211,12 +223,80 @@ schedulers:
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(set *appsv1.StatefulSet, _ int) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			container := set.Spec.Template.Spec.Containers[0]
 			expectedPath := "/custom-prefix/health"
 			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, expectedPath)
 			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, expectedPath)
+		},
+	})
+
+	// vmanomaly with shards enabled
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					Affinity: &corev1.Affinity{
+						PodAntiAffinity: &corev1.PodAntiAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"shard-num": "%SHARD_NUM%",
+									},
+								},
+								TopologyKey: "kubernetes.io/hostname",
+							}},
+						},
+					},
+				},
+				ShardCount: ptr.To[int32](1),
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+reader:
+  queries:
+    query_alias2:
+      expr: vm_metric
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['query_alias2']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://test.com",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					PathPrefix: "custom-prefix",
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet, idx int) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
+			container := set.Spec.Template.Spec.Containers[0]
+			expectedPath := "/custom-prefix/health"
+			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, expectedPath)
+			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, expectedPath)
+			assert.Equal(t, set.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels["shard-num"], strconv.Itoa(idx))
 		},
 	})
 }

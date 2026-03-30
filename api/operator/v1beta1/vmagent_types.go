@@ -209,7 +209,7 @@ func (cr *VMAgent) Validate() error {
 
 // IsSharded returns true if sharding is enabled
 func (cr *VMAgent) IsSharded() bool {
-	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 && !cr.Spec.DaemonSetMode
+	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 0 && !cr.Spec.DaemonSetMode
 }
 
 // GetShardCount returns shard count for vmagent

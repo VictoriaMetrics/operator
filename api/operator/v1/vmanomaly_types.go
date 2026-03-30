@@ -437,7 +437,7 @@ func (cr *VMAnomaly) Validate() error {
 
 // IsSharded returns true if sharding is enabled
 func (cr *VMAnomaly) IsSharded() bool {
-	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1
+	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 0
 }
 
 // GetShardCount returns shard count for vmanomaly

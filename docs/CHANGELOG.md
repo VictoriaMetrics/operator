@@ -18,6 +18,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait till PVC resize finished. See [#1970](https://github.com/VictoriaMetrics/operator/issues/1970).
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fixed ignored tracing config, when no alertmanagerconfig CRs collected. See [#1983](https://github.com/VictoriaMetrics/operator/issues/1983).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): apply scrape class relabellings before job ones. See [#1997](https://github.com/VictoriaMetrics/operator/issues/1997).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): render %SHARD_NUM% placeholder when shard count is greater than 0. See [#2001](https://github.com/VictoriaMetrics/operator/issues/2001).
 
 ## [v0.68.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.3)
 **Release date:** 16 March 2026

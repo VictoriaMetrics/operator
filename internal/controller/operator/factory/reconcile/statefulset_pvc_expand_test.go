@@ -392,6 +392,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
@@ -505,8 +506,10 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
@@ -625,6 +628,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
+		wantErr: true,
 	})
 
 	// expand with annotation on non-expandable sc
@@ -675,6 +679,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
@@ -763,6 +768,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},

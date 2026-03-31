@@ -117,12 +117,18 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 			continue
 		}
 		prevVCT := getPVCByName(prevVCTs, stsClaimName)
-		// update PVC size and metadata if it's needed
-		if err := updatePVC(ctx, rclient, &pvc, &stsClaim, prevVCT, nil); err != nil {
+		nsnPvc := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
+		// update PVC size and metadata if it's needed, retrying on conflict
+		if err := retryOnConflict(func() error {
+			var currentPVC corev1.PersistentVolumeClaim
+			if err := rclient.Get(ctx, nsnPvc, &currentPVC); err != nil {
+				return err
+			}
+			return updatePVC(ctx, rclient, &currentPVC, &stsClaim, prevVCT, nil)
+		}); err != nil {
 			return err
 		}
-		nsnPvc := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
-		size := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		size := stsClaim.Spec.Resources.Requests[corev1.ResourceStorage]
 		if err := waitForPVCReady(ctx, rclient, nsnPvc, size); err != nil {
 			return err
 		}

@@ -216,3 +216,31 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 		wantResult: ctrl.Result{Requeue: true},
 	})
 }
+
+// TestVMClusterRemainsExpandingDuringPVCResize verifies that a VMCluster stays
+// in Expanding status when PVC resize is still in progress (waitForPVCReady
+// returns a retryable wait.Interrupted error).
+func TestVMClusterRemainsExpandingDuringPVCResize(t *testing.T) {
+	clusterSpec := vmv1beta1.VMClusterSpec{RetentionPeriod: "1d"}
+	cluster := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-vmcluster", Namespace: "default"},
+		Spec:       clusterSpec,
+		Status: vmv1beta1.VMClusterStatus{
+			StatusMetadata:  vmv1beta1.StatusMetadata{UpdateStatus: vmv1beta1.UpdateStatusOperational},
+			LastAppliedSpec: clusterSpec.DeepCopy(),
+		},
+	}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cluster})
+
+	// Simulate retryable PVC expand error
+	_, err := reconcileAndTrackStatus(context.Background(), fclient, cluster, func() (ctrl.Result, error) {
+		return ctrl.Result{}, wait.ErrorInterrupted(fmt.Errorf("pvc resize still in progress"))
+	})
+	assert.NoError(t, err)
+
+	got := &vmv1beta1.VMCluster{}
+	assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Name: "test-vmcluster", Namespace: "default"}, got))
+	assert.Equal(t, vmv1beta1.UpdateStatusExpanding, got.Status.UpdateStatus,
+		"VMCluster must remain in Expanding while PVC resize is in progress")
+}

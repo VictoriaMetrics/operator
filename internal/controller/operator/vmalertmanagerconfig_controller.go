@@ -75,7 +75,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		err = &parsingError{instance.Spec.ParsingError, "vmalertmanagerconfig"}
 		return
 	}
-	if alertmanagerReconcileLimit.MustThrottleReconcile() {
+	if alertmanagerReconcileLimit.Throttle() {
 		return
 	}
 

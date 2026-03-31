@@ -92,6 +92,6 @@ func SelectedObjects(ctx context.Context, objectName string, selected, broken in
 	if len(namespacedNames) < 250 {
 		formattedNames = strings.Join(namespacedNames, ",")
 	}
-	WithContext(ctx).Info(fmt.Sprintf("selected %s count=%d, invalid rules count=%d, namespaced names %s",
-		objectName, len(namespacedNames), broken, formattedNames))
+	WithContext(ctx).V(1).Info(fmt.Sprintf("selected %s count=%d, invalid %s count=%d, namespaced names %s",
+		objectName, len(namespacedNames), objectName, broken, formattedNames))
 }

@@ -41,7 +41,7 @@ import (
 
 var (
 	agentSync           sync.RWMutex
-	agentReconcileLimit = limiter.NewRateLimiter("vmagent", 5)
+	agentReconcileLimit = limiter.NewReconcileRateLimiter("vmagent", 5)
 )
 
 // VMAgentReconciler reconciles a VMAgent object
@@ -152,7 +152,7 @@ func (*VMAgentReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[stri
 }
 
 func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
-	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.MustThrottleReconcile() {
+	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.Throttle() {
 		return nil
 	}
 	agentSync.Lock()

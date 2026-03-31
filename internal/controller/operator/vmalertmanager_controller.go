@@ -38,7 +38,7 @@ import (
 
 var (
 	alertmanagerSync           sync.RWMutex
-	alertmanagerReconcileLimit = limiter.NewRateLimiter("vmalertmanager", 5)
+	alertmanagerReconcileLimit = limiter.NewReconcileRateLimiter("vmalertmanager", 5)
 )
 
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object

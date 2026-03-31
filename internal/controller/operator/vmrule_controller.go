@@ -78,7 +78,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		err = &parsingError{instance.Spec.ParsingError, "vmrule"}
 		return
 	}
-	if alertReconcileLimit.MustThrottleReconcile() {
+	if alertReconcileLimit.Throttle() {
 		return
 	}
 

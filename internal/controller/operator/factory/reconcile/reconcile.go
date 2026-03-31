@@ -20,6 +20,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -159,7 +160,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 ) error {
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
-	lastLogged := time.Now()
+	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)
 	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -169,10 +170,8 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			return
 		}
 		lastStatus = obj.GetStatusMetadata()
-
-		if lastStatus != nil && time.Now().After(lastLogged.Add(vmWaitLogInterval)) {
+		if lastStatus != nil && !limiter.Throttle() {
 			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
-			lastLogged = time.Now()
 		}
 		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})

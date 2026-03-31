@@ -959,21 +959,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -1104,27 +1094,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
-			if diff != "" {
-				return "lb:\n" + diff
-			}
-
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -1312,21 +1287,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -1471,27 +1436,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
-			if diff != "" {
-				return "lb:\n" + diff
-			}
-
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -1689,21 +1639,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -1838,27 +1778,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying specs remain stable over time")
 		Consistently(func() string {
-			diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec)
-			if diff != "" {
-				return "insert:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, selectNSN, expectedSelectSpec)
-			if diff != "" {
-				return "select:\n" + diff
-			}
-
-			diff = verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec)
-			if diff != "" {
-				return "storage:\n" + diff
-			}
-
-			diff = verifyDeployment(ctx, k8sClient, lbNSN, expectedLBSpec)
-			if diff != "" {
-				return "lb:\n" + diff
-			}
-
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.64.0", "v0.64.0", nil),
@@ -2072,19 +1997,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 
 		By("verifying workload specs remain stable over time")
 		Consistently(func() string {
-			if diff := verifyDeployment(ctx, k8sClient, insertNSN, expectedInsertSpec); diff != "" {
-				return "insert:\n" + diff
-			}
-			if diff := verifyStatefulSet(ctx, k8sClient, selectNSN, expectedSelectSpec); diff != "" {
-				return "select:\n" + diff
-			}
-			if diff := verifyStatefulSet(ctx, k8sClient, storageNSN, expectedStorageSpec); diff != "" {
-				return "storage:\n" + diff
-			}
-			if diff := verifyDeployment(ctx, k8sClient, agentNSN, expectedAgentSpec); diff != "" {
-				return "agent:\n" + diff
-			}
-			return ""
+			return checkWorkloads(ctx, k8sClient, []Verifier{
+				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
+				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
+				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
+				{"agent", agentNSN, expectedAgentSpec, verifyDeployment},
+			})
 		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 	},
 		Entry("from v0.68.0", "v0.68.0", nil),

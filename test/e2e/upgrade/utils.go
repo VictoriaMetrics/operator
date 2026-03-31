@@ -281,7 +281,6 @@ func createRandomNamespace(ctx context.Context, k8sClient client.Client) string 
 	return namespace
 }
 
-// snapshotDeployment snapshots a Deployment spec
 func snapshotDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var dep appsv1.Deployment
 	Eventually(func() error {
@@ -290,7 +289,6 @@ func snapshotDeployment(ctx context.Context, k8sClient client.Client, resource t
 	return dep.Spec.Template.Spec.DeepCopy()
 }
 
-// verifyDeployment verifies a Deployment spec matches expected
 func verifyDeployment(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var d appsv1.Deployment
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
@@ -302,7 +300,6 @@ func verifyDeployment(ctx context.Context, k8sClient client.Client, resource typ
 	return cmp.Diff(*expectedSpec, d.Spec.Template.Spec)
 }
 
-// snapshotStatefulSet snapshots a StatefulSet spec
 func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var sts appsv1.StatefulSet
 	Eventually(func() error {
@@ -313,7 +310,6 @@ func snapshotStatefulSet(ctx context.Context, k8sClient client.Client, resource 
 	return spec
 }
 
-// verifyStatefulSet verifies a StatefulSet spec matches expected
 func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var s appsv1.StatefulSet
 	if err := k8sClient.Get(ctx, resource, &s); err != nil {
@@ -323,7 +319,6 @@ func verifyStatefulSet(ctx context.Context, k8sClient client.Client, resource ty
 	return cmp.Diff(*expected, s.Spec.Template.Spec)
 }
 
-// snapshotDaemonSet snapshots a DaemonSet spec
 func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName) *corev1.PodSpec {
 	var ds appsv1.DaemonSet
 	Eventually(func() error {
@@ -334,7 +329,6 @@ func snapshotDaemonSet(ctx context.Context, k8sClient client.Client, resource ty
 	return spec
 }
 
-// verifyDaemonSet verifies a DaemonSet spec matches expected
 func verifyDaemonSet(ctx context.Context, k8sClient client.Client, resource types.NamespacedName, expected *corev1.PodSpec) string {
 	var d appsv1.DaemonSet
 	if err := k8sClient.Get(ctx, resource, &d); err != nil {
@@ -353,6 +347,22 @@ func restartManagerAndCleanup(ctx context.Context, k8sClient client.Client, name
 		defer GinkgoRecover()
 		cleanupNamespace(ctx, k8sClient, namespace)
 	})
+}
+
+type Verifier struct {
+	label string
+	nsn   types.NamespacedName
+	spec  *corev1.PodSpec
+	fn    func(context.Context, client.Client, types.NamespacedName, *corev1.PodSpec) string
+}
+
+func checkWorkloads(ctx context.Context, k8sClient client.Client, verifier []Verifier) string {
+	for _, v := range verifier {
+		if diff := v.fn(ctx, k8sClient, v.nsn, v.spec); diff != "" {
+			return fmt.Sprintf("%s:\n%s", v.label, diff)
+		}
+	}
+	return ""
 }
 
 // sanitizePodSpec modifies a PodSpec to ensure its containers are sorted in a predictable way.

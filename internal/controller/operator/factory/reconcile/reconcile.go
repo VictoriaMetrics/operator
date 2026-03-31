@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/internal/logging"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -156,7 +155,6 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	rclient client.Client,
 	obj ObjectWithDeepCopyAndStatus[T, ST, STC],
 	interval time.Duration,
-	logInterval time.Duration,
 	status vmv1beta1.UpdateStatus,
 ) error {
 	lastStatus := obj.GetStatusMetadata()
@@ -172,8 +170,8 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		}
 		lastStatus = obj.GetStatusMetadata()
 
-		if time.Now().After(lastLogged.Add(logInterval)) {
-			logger.WithContext(ctx).V(logging.LevelDebug).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
+		if lastStatus != nil && time.Now().After(lastLogged.Add(vmWaitLogInterval)) {
+			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
 			lastLogged = time.Now()
 		}
 		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil

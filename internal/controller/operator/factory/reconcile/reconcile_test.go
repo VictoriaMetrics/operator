@@ -35,7 +35,7 @@ func TestWaitForStatus(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
-			err := waitForStatus(ctx, rclient, vmc.DeepCopy(), 1*time.Second, vmv1beta1.UpdateStatusOperational)
+			err := waitForStatus(ctx, rclient, vmc.DeepCopy(), 1*time.Second, vmv1beta1.UpdateStatusOperational, 0)
 			if isErr {
 				assert.Error(t, err)
 			} else {

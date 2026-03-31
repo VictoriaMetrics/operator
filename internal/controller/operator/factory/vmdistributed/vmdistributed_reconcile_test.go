@@ -2,10 +2,17 @@ package vmdistributed
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"testing"
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,20 +35,66 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		err     error
 	}
 
+	name := "test-dist"
+	namespace := "default"
+	zoneName := "zone-1"
+	vmClusterName := types.NamespacedName{Namespace: namespace, Name: "test-dist-zone-1"}
+	vmAgentName := types.NamespacedName{Namespace: namespace, Name: "test-dist-zone-1"}
+	vmAuthLBName := types.NamespacedName{Namespace: namespace, Name: name}
+
+	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+
 	f := func(args args, want want) {
-		t.Helper()
-
-		fclient := k8stools.GetTestClientWithActionsAndObjects(nil)
-		ctx := context.TODO()
-		build.AddDefaults(fclient.Scheme())
-		fclient.Scheme().Default(args.cr)
-
 		synctest.Test(t, func(t *testing.T) {
+			mux := http.NewServeMux()
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, `%s{path="/tmp/1_19F3EC170A0DA31A"} 0`, vmAgentQueueMetricName)
+			}
+			mux.HandleFunc("/metrics", handler)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			tsURL, err := url.Parse(ts.URL)
+			assert.NoError(t, err)
+			tsHost, tsPortStr, err := net.SplitHostPort(tsURL.Host)
+			if err != nil {
+				assert.NoError(t, err)
+			}
+			tsPort, err := strconv.ParseInt(tsPortStr, 10, 32)
+			if err != nil {
+				assert.NoError(t, err)
+			}
+			endpointSlice := discoveryv1.EndpointSlice{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "random-endpoint-name",
+					Namespace: namespace,
+					Labels:    map[string]string{discoveryv1.LabelServiceName: "vmagent-" + vmAgentName.Name},
+				},
+				Endpoints: []discoveryv1.Endpoint{
+					{
+						Addresses: []string{tsHost},
+						Conditions: discoveryv1.EndpointConditions{
+							Ready: ptr.To(true),
+						},
+					},
+				},
+				Ports: []discoveryv1.EndpointPort{
+					{
+						Name: ptr.To("http"),
+						Port: ptr.To[int32](int32(tsPort)),
+					},
+				},
+			}
+			fclient := k8stools.GetTestClientWithOptsActionsAndObjects([]runtime.Object{&endpointSlice}, &k8stools.ClientOpts{
+				SetCreationTimestamp: true,
+			})
+			ctx := context.TODO()
+			build.AddDefaults(fclient.Scheme())
+			fclient.Scheme().Default(args.cr)
 			if args.preRun != nil {
 				args.preRun(ctx, fclient, args.cr)
 			}
 
-			err := CreateOrUpdate(ctx, args.cr, fclient)
+			err = CreateOrUpdate(ctx, args.cr, fclient)
 			if want.err != nil {
 				assert.Error(t, err)
 			} else {
@@ -64,15 +117,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			}
 		})
 	}
-
-	name := "test-dist"
-	namespace := "default"
-	zoneName := "zone-1"
-	vmClusterName := types.NamespacedName{Namespace: namespace, Name: "test-dist-zone-1"}
-	vmAgentName := types.NamespacedName{Namespace: namespace, Name: "test-dist-zone-1"}
-	vmAuthLBName := types.NamespacedName{Namespace: namespace, Name: name}
-
-	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
 
 	// default
 	f(args{
@@ -118,29 +162,28 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-	},
-		want{
-			actions: []k8stools.ClientAction{
-				// getZones
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
-				// reconcile VMCluster
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Create", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			// reconcile VMCluster
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Create", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
 
-				// reconcile VMAgent
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
-				{Verb: "Create", Kind: "VMAgent", Resource: vmAgentName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			// reconcile VMAgent
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Create", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
-				// reconcile VMAuth
-				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
-				{Verb: "Create", Kind: "VMAuth", Resource: vmAuthLBName},
-				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
-			},
-		})
+			// reconcile VMAuth
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Create", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
 
 	// create vmagent
 	f(args{
@@ -182,24 +225,23 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				},
 			},
 		},
-	},
-		want{
-			actions: []k8stools.ClientAction{
-				// getZones
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
-				// reconcile VMCluster
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Create", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			// reconcile VMCluster
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Create", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
 
-				// reconcile VMAgent
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
-				{Verb: "Create", Kind: "VMAgent", Resource: vmAgentName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
-			},
-		})
+			// reconcile VMAgent
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Create", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+		},
+	})
 
 	// no change on status update
 	f(args{
@@ -255,26 +297,25 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			// Update status to simulate consistency
 			cr.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 		},
-	},
-		want{
-			actions: []k8stools.ClientAction{
-				// getZones
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
-				// reconcile VMCluster
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
-				{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			// reconcile VMCluster
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
 
-				// reconcile VMAgent
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
-				{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			// reconcile VMAgent
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
-				// reconcile VMAuth
-				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
-				{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
-			},
-		})
+			// reconcile VMAuth
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
 }
 
 func Test_CreateOrUpdate_Paused(t *testing.T) {

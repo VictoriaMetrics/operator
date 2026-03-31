@@ -23,6 +23,7 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := false
+	var generation int64
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMCluster
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -31,6 +32,7 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 				if err := rclient.Create(ctx, newObj); err != nil {
 					return fmt.Errorf("cannot create new VMCluster=%s: %w", nsn.String(), err)
 				}
+				generation = newObj.Generation
 				return nil
 			}
 			return fmt.Errorf("cannot get VMCluster=%s: %w", nsn.String(), err)
@@ -53,12 +55,13 @@ func VMCluster(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot update VMCluster=%s: %w", nsn.String(), err)
 		}
+		generation = existingObj.Generation
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	if err := waitForStatus(ctx, rclient, newObj, vmWaitReadyInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := waitForStatus(ctx, rclient, newObj, vmWaitReadyInterval, vmv1beta1.UpdateStatusOperational, generation); err != nil {
 		return fmt.Errorf("failed to wait for VMCluster=%s to be ready: %w", nsn.String(), err)
 	}
 	return nil

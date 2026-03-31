@@ -1071,6 +1071,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 			{Verb: "Delete", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pnn},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pnn},
 			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pnn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},

@@ -280,7 +280,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 
 	updatedNeeded := len(podsForUpdate) != 0 || len(updatedPods) != 0
 	if !updatedNeeded {
-		l.Info("no pod needs to be updated")
+		l.V(1).Info("no pod needs to be updated")
 		return nil
 	}
 

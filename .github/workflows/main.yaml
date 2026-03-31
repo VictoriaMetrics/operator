@@ -60,7 +60,7 @@ jobs:
           SAVED=$((AFTER-BEFORE))
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
       - name: Prepare binary cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:

@@ -287,7 +287,7 @@ func (cr *VLAgent) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 
 // VLAgent - is a tiny but brave agent, which helps you collect logs from various sources and stores them in VictoriaLogs.
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VLAgent App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="DaemonSet,apps"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

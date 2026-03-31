@@ -12,14 +12,24 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
-func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vmv1beta1.TargetRef {
+func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerReference) bool {
+	for i := range owners {
+		o := &owners[i]
+		if o.APIVersion == owner.APIVersion && o.Kind == owner.Kind && o.Name == owner.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
 	var nsns []vmv1beta1.NamespacedName
 	for i := range vmClusters {
 		if slices.Contains(excludeIds, i) {
 			continue
 		}
 		vmCluster := vmClusters[i]
-		if vmCluster.CreationTimestamp.IsZero() {
+		if vmCluster.CreationTimestamp.IsZero() || !hasOwnerReference(vmCluster.OwnerReferences, owner) {
 			continue
 		}
 		nsns = append(nsns, vmv1beta1.NamespacedName{
@@ -44,14 +54,14 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) vm
 	}
 }
 
-func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, excludeIds ...int) vmv1beta1.TargetRef {
+func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
 	var nsns []vmv1beta1.NamespacedName
 	for i := range vmAgents {
 		if slices.Contains(excludeIds, i) {
 			continue
 		}
 		vmAgent := vmAgents[i]
-		if vmAgent.CreationTimestamp.IsZero() {
+		if vmAgent.CreationTimestamp.IsZero() || !hasOwnerReference(vmAgent.OwnerReferences, owner) {
 			continue
 		}
 		nsns = append(nsns, vmv1beta1.NamespacedName{
@@ -89,8 +99,9 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 		Spec: *cr.Spec.VMAuth.Spec.DeepCopy(),
 	}
 	var targetRefs []vmv1beta1.TargetRef
-	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, excludeIds...))
-	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, excludeIds...))
+	owner := cr.AsOwner()
+	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, excludeIds...))
+	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, excludeIds...))
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

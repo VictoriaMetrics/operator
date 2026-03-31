@@ -38,7 +38,7 @@ import (
 
 var (
 	authSync           sync.RWMutex
-	authReconcileLimit = limiter.NewRateLimiter("vmauth", 5)
+	authReconcileLimit = limiter.NewReconcileRateLimiter("vmauth", 5)
 )
 
 // VMAuthReconciler reconciles a VMAuth object

@@ -41,7 +41,7 @@ import (
 
 var (
 	vmsingleSync           sync.Mutex
-	vmsingleReconcileLimit = limiter.NewRateLimiter("vmsingle", 5)
+	vmsingleReconcileLimit = limiter.NewReconcileRateLimiter("vmsingle", 5)
 )
 
 // VMSingleReconciler reconciles a VMSingle object
@@ -144,7 +144,7 @@ func (*VMSingleReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[str
 }
 
 func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
-	if build.IsControllerDisabled("VMSingle") && vmsingleReconcileLimit.MustThrottleReconcile() {
+	if build.IsControllerDisabled("VMSingle") && vmsingleReconcileLimit.Throttle() {
 		return nil
 	}
 	vmsingleSync.Lock()

@@ -33,7 +33,7 @@ jobs:
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Check out OperatorHub operators repo fork
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           repository: ${{ matrix.repo.upstream }}
           ref: main

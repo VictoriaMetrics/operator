@@ -88,8 +88,15 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 	}
 	var targetRefs []vmv1beta1.TargetRef
 	owner := cr.AsOwner()
-	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, excludeIds...))
-	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, excludeIds...))
+	if ref := vmAgentTargetRef(vmAgents, &owner, excludeIds...); len(ref.Static.URLs) > 0 {
+		targetRefs = append(targetRefs, ref)
+	}
+	if ref := vmClusterTargetRef(vmClusters, &owner, excludeIds...); len(ref.Static.URLs) > 0 {
+		targetRefs = append(targetRefs, ref)
+	}
+	if len(targetRefs) == 0 {
+		return nil
+	}
 	vmAuth.Spec.UnauthorizedUserAccessSpec.URLMap = nil
 	vmAuth.Spec.UnauthorizedUserAccessSpec.URLPrefix = nil
 	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = targetRefs

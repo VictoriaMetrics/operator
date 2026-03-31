@@ -57,7 +57,7 @@ func (r *PromAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 }
 
 // Reconcile general reconcile method for controller
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs/status,verbs=get;update;patch
 func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("alertmanagerconfig", req.Name, "namespace", req.Namespace)
@@ -97,5 +97,5 @@ func (r *PromAlertmanagerConfigReconciler) SetupWithManager(mgr ctrl.Manager) er
 
 // IsDisabled returns true if controller should be disabled
 func (*PromAlertmanagerConfigReconciler) IsDisabled(cfg *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
-	return disabledControllers.HasAny("VMAlertmanager", "VMAlertmanagerconfig") || !cfg.EnabledPrometheusConverter.AlertmanagerConfig
+	return disabledControllers.HasAny("VMAlertmanager", "VMAlertmanagerConfig") || !cfg.EnabledPrometheusConverter.AlertmanagerConfig
 }

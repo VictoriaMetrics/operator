@@ -56,7 +56,7 @@ func (r *PromRuleReconciler) Scheme() *runtime.Scheme {
 }
 
 // Reconcile general reconcile method for controller
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules/status,verbs=get;update;patch
 func (r *PromRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("prometheusrule", req.Name, "namespace", req.Namespace)

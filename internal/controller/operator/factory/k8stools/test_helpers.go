@@ -98,7 +98,7 @@ func GetTestClientWithObjectsAndInterceptors(predefinedObjects []runtime.Object,
 
 // GetTestClientWithObjects returns testing client with optional predefined objects
 func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
-	fns := GetInterceptorsWithObjects()
+	fns := GetInterceptorsWithObjects(nil)
 	return getTestClient(predefinedObjects, &fns)
 }
 
@@ -163,7 +163,16 @@ func GetTestClientWithActions(predefinedObjects []runtime.Object) *ClientWithAct
 // GetTestClientWithActionsAndObjects returns a client that tracks actions and updates status/objects
 func GetTestClientWithActionsAndObjects(predefinedObjects []runtime.Object) *ClientWithActions {
 	var cwa ClientWithActions
-	objectInterceptors := GetInterceptorsWithObjects()
+	objectInterceptors := GetInterceptorsWithObjects(nil)
+
+	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, &objectInterceptors))
+	return &cwa
+}
+
+// GetTestClientWithOptsActionsAndObjects returns a client that tracks actions and updates status/objects
+func GetTestClientWithOptsActionsAndObjects(predefinedObjects []runtime.Object, o *ClientOpts) *ClientWithActions {
+	var cwa ClientWithActions
+	objectInterceptors := GetInterceptorsWithObjects(o)
 
 	cwa.Client = GetTestClientWithObjectsAndInterceptors(predefinedObjects, NewActionRecordingInterceptor(&cwa.Actions, &objectInterceptors))
 	return &cwa

@@ -13,7 +13,14 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object) error {
+type ClientOpts struct {
+	SkipPVCStatusUpdate bool
+}
+
+func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object, o *ClientOpts) error {
+	if o == nil {
+		o = new(ClientOpts)
+	}
 	switch v := obj.(type) {
 	case *appsv1.StatefulSet:
 		v.Status.ObservedGeneration = v.Generation
@@ -41,7 +48,9 @@ func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object) e
 		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 		v.Status.ObservedGeneration = v.Generation
 	case *corev1.PersistentVolumeClaim:
-		v.Status.Capacity = v.Spec.Resources.Requests
+		if !o.SkipPVCStatusUpdate {
+			v.Status.Capacity = v.Spec.Resources.Requests
+		}
 	default:
 		return nil
 	}
@@ -49,19 +58,19 @@ func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object) e
 }
 
 // GetInterceptorsWithObjects returns interceptors for objects
-func GetInterceptorsWithObjects() interceptor.Funcs {
+func GetInterceptorsWithObjects(o *ClientOpts) interceptor.Funcs {
 	return interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 			if err := cl.Create(ctx, obj, opts...); err != nil {
 				return err
 			}
-			return updateStatus(ctx, cl, obj)
+			return updateStatus(ctx, cl, obj, o)
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
 			if err := cl.Update(ctx, obj, opts...); err != nil {
 				return err
 			}
-			return updateStatus(ctx, cl, obj)
+			return updateStatus(ctx, cl, obj, o)
 		},
 	}
 }

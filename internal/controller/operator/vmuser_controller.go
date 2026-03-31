@@ -89,7 +89,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return
 	}
 
-	if authReconcileLimit.MustThrottleReconcile() {
+	if authReconcileLimit.Throttle() {
 		return
 	}
 

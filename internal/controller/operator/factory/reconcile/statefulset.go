@@ -244,7 +244,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 		l.Info("sts has 0 replicas configured, nothing to update")
 		return nil
 	}
-	l.Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, o.recreate))
+	l.V(1).Info(fmt.Sprintf("check if pod update needed to desiredVersion=%s, podMustRecreate=%v", stsVersion, o.recreate))
 	var podList corev1.PodList
 	opts := &client.ListOptions{
 		Namespace:     obj.Namespace,

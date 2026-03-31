@@ -20,12 +20,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-func newVMAgent(name, namespace string) *vmv1beta1.VMAgent {
+func newVMAgent(name, namespace string, owner metav1.OwnerReference) *vmv1beta1.VMAgent {
 	return &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         namespace,
 			CreationTimestamp: metav1.Now(),
+			OwnerReferences:   []metav1.OwnerReference{owner},
 		},
 		Spec: vmv1beta1.VMAgentSpec{
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -35,13 +36,14 @@ func newVMAgent(name, namespace string) *vmv1beta1.VMAgent {
 	}
 }
 
-func newVMCluster(name, namespace, version string) *vmv1beta1.VMCluster {
+func newVMCluster(name, namespace, version string, owner metav1.OwnerReference) *vmv1beta1.VMCluster {
 	return &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         namespace,
 			Labels:            map[string]string{"tenant": "default"},
 			CreationTimestamp: metav1.Now(),
+			OwnerReferences:   []metav1.OwnerReference{owner},
 		},
 		Spec: vmv1beta1.VMClusterSpec{
 			ClusterVersion: version,
@@ -84,26 +86,6 @@ func beforeEach(o opts) *testData {
 		vmagents:   make([]*vmv1beta1.VMAgent, 0, zonesCount),
 	}
 	namespace := "default"
-	dzs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
-	var predefinedObjects []runtime.Object
-	for i := range dzs {
-		name := fmt.Sprintf("vmcluster-%d", i+1)
-		vmCluster := newVMCluster(name, namespace, "v1.0.0")
-		vmAgent := newVMAgent(name, namespace)
-		zs.vmclusters = append(zs.vmclusters, vmCluster)
-		zs.vmagents = append(zs.vmagents, vmAgent)
-		predefinedObjects = append(predefinedObjects, vmAgent, vmCluster)
-		dzs[i] = vmv1alpha1.VMDistributedZone{
-			Name: name,
-			VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-				Name: name,
-				Spec: vmCluster.Spec,
-			},
-			VMAgent: vmv1alpha1.VMDistributedZoneAgent{
-				Name: name,
-			},
-		}
-	}
 	cr := &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VMDistributed",
@@ -114,11 +96,31 @@ func beforeEach(o opts) *testData {
 			Namespace: namespace,
 		},
 		Spec: vmv1alpha1.VMDistributedSpec{
-			Zones: dzs,
+			Zones: make([]vmv1alpha1.VMDistributedZone, zonesCount),
 			VMAuth: vmv1alpha1.VMDistributedAuth{
 				Name: "vmauth-proxy",
 			},
 		},
+	}
+	var predefinedObjects []runtime.Object
+	owner := cr.AsOwner()
+	for i := range cr.Spec.Zones {
+		name := fmt.Sprintf("vmcluster-%d", i+1)
+		vmCluster := newVMCluster(name, namespace, "v1.0.0", owner)
+		vmAgent := newVMAgent(name, namespace, owner)
+		zs.vmclusters = append(zs.vmclusters, vmCluster)
+		zs.vmagents = append(zs.vmagents, vmAgent)
+		predefinedObjects = append(predefinedObjects, vmAgent, vmCluster)
+		cr.Spec.Zones[i] = vmv1alpha1.VMDistributedZone{
+			Name: name,
+			VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+				Name: name,
+				Spec: vmCluster.Spec,
+			},
+			VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+				Name: name,
+			},
+		}
 	}
 
 	predefinedObjects = append(predefinedObjects, cr)

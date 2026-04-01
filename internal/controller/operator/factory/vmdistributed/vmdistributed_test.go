@@ -3,6 +3,7 @@ package vmdistributed
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"testing/synctest"
 
@@ -404,6 +405,8 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace: d.zones.vmclusters[i].Namespace,
 				})
 			}
+			// oldest generations are listed first in vmauth
+			slices.Reverse(vmClusterObjs)
 			targetRefs := []vmv1beta1.TargetRef{
 				{
 					Name:  "write",
@@ -537,6 +540,8 @@ func TestCreateOrUpdate(t *testing.T) {
 					Namespace: d.zones.vmclusters[i].Namespace,
 				})
 			}
+			// oldest generations are listed first in vmauth
+			slices.Reverse(vmClusterObjs)
 			targetRefs := []vmv1beta1.TargetRef{
 				{
 					Name:  "write",

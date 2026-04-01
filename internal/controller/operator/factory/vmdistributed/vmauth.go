@@ -1,7 +1,6 @@
 package vmdistributed
 
 import (
-	"cmp"
 	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +23,8 @@ func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerRefere
 
 func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
 	var nsns []vmv1beta1.NamespacedName
-	for i := range vmClusters {
+	// iterate in reverse so that vmauth would be more likely to route requests to older, stable vmClusters
+	for i := len(vmClusters) - 1; i >= 0; i-- {
 		if slices.Contains(excludeIds, i) {
 			continue
 		}
@@ -37,9 +37,6 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerRe
 			Namespace: vmCluster.Namespace,
 		})
 	}
-	slices.SortFunc(nsns, func(a, b vmv1beta1.NamespacedName) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
 	return vmv1beta1.TargetRef{
 		Name: "read",
 		URLMapCommon: vmv1beta1.URLMapCommon{
@@ -69,9 +66,6 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 			Namespace: vmAgent.Namespace,
 		})
 	}
-	slices.SortFunc(nsns, func(a, b vmv1beta1.NamespacedName) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
 	return vmv1beta1.TargetRef{
 		Name: "write",
 		URLMapCommon: vmv1beta1.URLMapCommon{

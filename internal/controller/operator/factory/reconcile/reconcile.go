@@ -196,11 +196,12 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	obj ObjectWithDeepCopyAndStatus[T, ST, STC],
 	interval time.Duration,
 	status vmv1beta1.UpdateStatus,
+	minGeneration int64,
 ) error {
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)
-	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextCancel(ctx, interval, true, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
@@ -212,7 +213,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil && !limiter.Throttle() {
 			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
 		}
-		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
+		return lastStatus != nil && minGeneration <= lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {
 		updateStatus := "unknown"

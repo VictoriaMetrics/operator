@@ -5,6 +5,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -14,13 +15,11 @@ import (
 )
 
 type ClientOpts struct {
-	SkipPVCStatusUpdate bool
+	SkipPVCStatusUpdate  bool
+	SetCreationTimestamp bool
 }
 
 func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object, o *ClientOpts) error {
-	if o == nil {
-		o = new(ClientOpts)
-	}
 	switch v := obj.(type) {
 	case *appsv1.StatefulSet:
 		v.Status.ObservedGeneration = v.Generation
@@ -59,14 +58,24 @@ func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object, o
 
 // GetInterceptorsWithObjects returns interceptors for objects
 func GetInterceptorsWithObjects(o *ClientOpts) interceptor.Funcs {
+	if o == nil {
+		o = new(ClientOpts)
+	}
 	return interceptor.Funcs{
 		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			if o.SetCreationTimestamp {
+				obj.SetCreationTimestamp(metav1.Now())
+			}
 			if err := cl.Create(ctx, obj, opts...); err != nil {
 				return err
 			}
 			return updateStatus(ctx, cl, obj, o)
 		},
 		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			ts := obj.GetCreationTimestamp()
+			if o.SetCreationTimestamp && ts.IsZero() {
+				obj.SetCreationTimestamp(metav1.Now())
+			}
 			if err := cl.Update(ctx, obj, opts...); err != nil {
 				return err
 			}

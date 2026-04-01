@@ -2039,7 +2039,7 @@ Appears in: [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpe
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-Appears in: [DiscordConfig](#discordconfig), [IncidentIOConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
+Appears in: [DiscordConfig](#discordconfig), [IncidentioConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [MattermostConfig](#mattermostconfig), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SNSConfig](#snsconfig), [SlackConfig](#slackconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig), [WechatConfig](#wechatconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2135,9 +2135,9 @@ Appears in: [PagerDutyConfig](#pagerdutyconfig)
 | href<a href="#imageconfig-href" id="imageconfig-href">#</a><br/>_string_ | _(Optional)_<br/> |
 | source<a href="#imageconfig-source" id="imageconfig-source">#</a><br/>_string_ | _(Required)_<br/> |
 
-#### IncidentIOConfig
+#### IncidentioConfig
 
-IncidentIOConfig configures notifications via incident.io.
+IncidentioConfig configures notifications via incident.io.
 https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
 available from v0.66.0 operator version
 and v0.29.0 alertmanager version
@@ -2327,6 +2327,76 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSin
 | --- | --- |
 | annotations<a href="#managedobjectsmetadata-annotations" id="managedobjectsmetadata-annotations">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Annotations is an unstructured key value map stored with a resource that may be<br />set by external tools to store and retrieve arbitrary metadata. They are not<br />queryable and should be preserved when modifying objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations |
 | labels<a href="#managedobjectsmetadata-labels" id="managedobjectsmetadata-labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
+
+#### MattermostAttachment
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| author_icon<a href="#mattermostattachment-author_icon" id="mattermostattachment-author_icon">#</a><br/>_string_ | _(Required)_<br/> |
+| author_link<a href="#mattermostattachment-author_link" id="mattermostattachment-author_link">#</a><br/>_string_ | _(Required)_<br/> |
+| author_name<a href="#mattermostattachment-author_name" id="mattermostattachment-author_name">#</a><br/>_string_ | _(Required)_<br/> |
+| color<a href="#mattermostattachment-color" id="mattermostattachment-color">#</a><br/>_string_ | _(Required)_<br/> |
+| fallback<a href="#mattermostattachment-fallback" id="mattermostattachment-fallback">#</a><br/>_string_ | _(Required)_<br/> |
+| fields<a href="#mattermostattachment-fields" id="mattermostattachment-fields">#</a><br/>_[MattermostField](#mattermostfield) array_ | _(Required)_<br/> |
+| footer<a href="#mattermostattachment-footer" id="mattermostattachment-footer">#</a><br/>_string_ | _(Required)_<br/> |
+| footer_icon<a href="#mattermostattachment-footer_icon" id="mattermostattachment-footer_icon">#</a><br/>_string_ | _(Required)_<br/> |
+| image_url<a href="#mattermostattachment-image_url" id="mattermostattachment-image_url">#</a><br/>_string_ | _(Required)_<br/> |
+| pretext<a href="#mattermostattachment-pretext" id="mattermostattachment-pretext">#</a><br/>_string_ | _(Required)_<br/> |
+| text<a href="#mattermostattachment-text" id="mattermostattachment-text">#</a><br/>_string_ | _(Required)_<br/> |
+| thumb_url<a href="#mattermostattachment-thumb_url" id="mattermostattachment-thumb_url">#</a><br/>_string_ | _(Required)_<br/> |
+| title<a href="#mattermostattachment-title" id="mattermostattachment-title">#</a><br/>_string_ | _(Required)_<br/> |
+| title_link<a href="#mattermostattachment-title_link" id="mattermostattachment-title_link">#</a><br/>_string_ | _(Required)_<br/> |
+
+#### MattermostConfig
+
+MattermostConfig configures notifications via Mattermost.
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| attachments<a href="#mattermostconfig-attachments" id="mattermostconfig-attachments">#</a><br/>_[MattermostAttachment](#mattermostattachment) array_ | _(Optional)_<br/>Attachments defines richer formatting options |
+| channel<a href="#mattermostconfig-channel" id="mattermostconfig-channel">#</a><br/>_string_ | _(Optional)_<br/>Channel overrides the channel the message posts in. |
+| http_config<a href="#mattermostconfig-http_config" id="mattermostconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| icon_emoji<a href="#mattermostconfig-icon_emoji" id="mattermostconfig-icon_emoji">#</a><br/>_string_ | _(Optional)_<br/>IconEmoji overrides the profile picture and icon_url parameter. |
+| icon_url<a href="#mattermostconfig-icon_url" id="mattermostconfig-icon_url">#</a><br/>_string_ | _(Optional)_<br/>IconURL overrides the profile picture the message posts with. |
+| priority<a href="#mattermostconfig-priority" id="mattermostconfig-priority">#</a><br/>_[MattermostPriority](#mattermostpriority)_ | _(Optional)_<br/> |
+| props<a href="#mattermostconfig-props" id="mattermostconfig-props">#</a><br/>_[MattermostProps](#mattermostprops)_ | _(Optional)_<br/> |
+| send_resolved<a href="#mattermostconfig-send_resolved" id="mattermostconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| text<a href="#mattermostconfig-text" id="mattermostconfig-text">#</a><br/>_string_ | _(Required)_<br/>Text defines markdown-formatted message to display in the post. |
+| url<a href="#mattermostconfig-url" id="mattermostconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
+| url_secret<a href="#mattermostconfig-url_secret" id="mattermostconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the Mattermost URL.<br />one of `urlSecret` and `url` must be defined. |
+| username<a href="#mattermostconfig-username" id="mattermostconfig-username">#</a><br/>_string_ | _(Optional)_<br/>Username overrides the username the message posts as |
+
+#### MattermostField
+
+Appears in: [MattermostAttachment](#mattermostattachment)
+
+| Field | Description |
+| --- | --- |
+| short<a href="#mattermostfield-short" id="mattermostfield-short">#</a><br/>_boolean_ | _(Required)_<br/> |
+| title<a href="#mattermostfield-title" id="mattermostfield-title">#</a><br/>_string_ | _(Required)_<br/> |
+| value<a href="#mattermostfield-value" id="mattermostfield-value">#</a><br/>_string_ | _(Required)_<br/> |
+
+#### MattermostPriority
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| persistent_notifications<a href="#mattermostpriority-persistent_notifications" id="mattermostpriority-persistent_notifications">#</a><br/>_boolean_ | _(Required)_<br/> |
+| priority<a href="#mattermostpriority-priority" id="mattermostpriority-priority">#</a><br/>_string_ | _(Required)_<br/> |
+| requested_ack<a href="#mattermostpriority-requested_ack" id="mattermostpriority-requested_ack">#</a><br/>_boolean_ | _(Required)_<br/> |
+
+#### MattermostProps
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| card<a href="#mattermostprops-card" id="mattermostprops-card">#</a><br/>_string_ | _(Required)_<br/> |
 
 #### NamespaceDiscovery
 
@@ -2644,8 +2714,9 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | --- | --- |
 | discord_configs<a href="#receiver-discord_configs" id="receiver-discord_configs">#</a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | email_configs<a href="#receiver-email_configs" id="receiver-email_configs">#</a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
-| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentIOConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
+| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentioConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
 | jira_configs<a href="#receiver-jira_configs" id="receiver-jira_configs">#</a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
+| mattermost_configs<a href="#receiver-mattermost_configs" id="receiver-mattermost_configs">#</a><br/>_[MattermostConfig](#mattermostconfig) array_ | _(Optional)_<br/>MattermostConfigs defines Mattermost notification configurations. |
 | msteams_configs<a href="#receiver-msteams_configs" id="receiver-msteams_configs">#</a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
 | msteamsv2_configs<a href="#receiver-msteamsv2_configs" id="receiver-msteamsv2_configs">#</a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |
 | name<a href="#receiver-name" id="receiver-name">#</a><br/>_string_ | _(Required)_<br/>Name of the receiver. Must be unique across all items from the list. |
@@ -2654,12 +2725,12 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | pushover_configs<a href="#receiver-pushover_configs" id="receiver-pushover_configs">#</a><br/>_[PushoverConfig](#pushoverconfig) array_ | _(Optional)_<br/>PushoverConfigs defines push over notification configurations. |
 | rocketchat_configs<a href="#receiver-rocketchat_configs" id="receiver-rocketchat_configs">#</a><br/>_[RocketchatConfig](#rocketchatconfig) array_ | _(Optional)_<br/> |
 | slack_configs<a href="#receiver-slack_configs" id="receiver-slack_configs">#</a><br/>_[SlackConfig](#slackconfig) array_ | _(Optional)_<br/>SlackConfigs defines slack notification configurations. |
-| sns_configs<a href="#receiver-sns_configs" id="receiver-sns_configs">#</a><br/>_[SnsConfig](#snsconfig) array_ | _(Optional)_<br/> |
+| sns_configs<a href="#receiver-sns_configs" id="receiver-sns_configs">#</a><br/>_[SNSConfig](#snsconfig) array_ | _(Optional)_<br/> |
 | telegram_configs<a href="#receiver-telegram_configs" id="receiver-telegram_configs">#</a><br/>_[TelegramConfig](#telegramconfig) array_ | _(Optional)_<br/> |
 | victorops_configs<a href="#receiver-victorops_configs" id="receiver-victorops_configs">#</a><br/>_[VictorOpsConfig](#victoropsconfig) array_ | _(Optional)_<br/>VictorOpsConfigs defines victor ops notification configurations. |
 | webex_configs<a href="#receiver-webex_configs" id="receiver-webex_configs">#</a><br/>_[WebexConfig](#webexconfig) array_ | _(Optional)_<br/> |
 | webhook_configs<a href="#receiver-webhook_configs" id="receiver-webhook_configs">#</a><br/>_[WebhookConfig](#webhookconfig) array_ | _(Optional)_<br/>WebhookConfigs defines webhook notification configurations. |
-| wechat_configs<a href="#receiver-wechat_configs" id="receiver-wechat_configs">#</a><br/>_[WeChatConfig](#wechatconfig) array_ | _(Optional)_<br/>WeChatConfigs defines wechat notification configurations. |
+| wechat_configs<a href="#receiver-wechat_configs" id="receiver-wechat_configs">#</a><br/>_[WechatConfig](#wechatconfig) array_ | _(Optional)_<br/>WechatConfigs defines wechat notification configurations. |
 
 #### RelabelConfig
 
@@ -2800,6 +2871,23 @@ Appears in: [VMRuleSpec](#vmrulespec)
 | tenant<a href="#rulegroup-tenant" id="rulegroup-tenant">#</a><br/>_string_ | _(Optional)_<br/>Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy). |
 | type<a href="#rulegroup-type" id="rulegroup-type">#</a><br/>_string_ | _(Optional)_<br/>Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite,vlogs |
 
+#### SNSConfig
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| api_url<a href="#snsconfig-api_url" id="snsconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The api URL |
+| attributes<a href="#snsconfig-attributes" id="snsconfig-attributes">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>SNS message attributes |
+| http_config<a href="#snsconfig-http_config" id="snsconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
+| message<a href="#snsconfig-message" id="snsconfig-message">#</a><br/>_string_ | _(Optional)_<br/>The message content of the SNS notification. |
+| phone_number<a href="#snsconfig-phone_number" id="snsconfig-phone_number">#</a><br/>_string_ | _(Required)_<br/>Phone number if message is delivered via SMS<br />Specify this, topic_arn or target_arn |
+| send_resolved<a href="#snsconfig-send_resolved" id="snsconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| sigv4<a href="#snsconfig-sigv4" id="snsconfig-sigv4">#</a><br/>_[Sigv4Config](#sigv4config)_ | _(Required)_<br/>Configure the AWS Signature Verification 4 signing process |
+| subject<a href="#snsconfig-subject" id="snsconfig-subject">#</a><br/>_string_ | _(Optional)_<br/>The subject line if message is delivered to an email endpoint. |
+| target_arn<a href="#snsconfig-target_arn" id="snsconfig-target_arn">#</a><br/>_string_ | _(Optional)_<br/>Mobile platform endpoint ARN if message is delivered via mobile notifications<br />Specify this, topic_arn or phone_number |
+| topic_arn<a href="#snsconfig-topic_arn" id="snsconfig-topic_arn">#</a><br/>_string_ | _(Optional)_<br/>SNS topic ARN, either specify this, phone_number or target_arn |
+
 #### ScrapeClass
 
 Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspec), [VMSingleSpec](#vmsinglespec)
@@ -2838,7 +2926,7 @@ Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), 
 
 #### Sigv4Config
 
-Appears in: [SnsConfig](#snsconfig)
+Appears in: [SNSConfig](#snsconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2930,23 +3018,6 @@ Appears in: [SlackConfig](#slackconfig)
 | short<a href="#slackfield-short" id="slackfield-short">#</a><br/>_boolean_ | _(Optional)_<br/> |
 | title<a href="#slackfield-title" id="slackfield-title">#</a><br/>_string_ | _(Required)_<br/> |
 | value<a href="#slackfield-value" id="slackfield-value">#</a><br/>_string_ | _(Required)_<br/> |
-
-#### SnsConfig
-
-Appears in: [Receiver](#receiver)
-
-| Field | Description |
-| --- | --- |
-| api_url<a href="#snsconfig-api_url" id="snsconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The api URL |
-| attributes<a href="#snsconfig-attributes" id="snsconfig-attributes">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>SNS message attributes |
-| http_config<a href="#snsconfig-http_config" id="snsconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
-| message<a href="#snsconfig-message" id="snsconfig-message">#</a><br/>_string_ | _(Optional)_<br/>The message content of the SNS notification. |
-| phone_number<a href="#snsconfig-phone_number" id="snsconfig-phone_number">#</a><br/>_string_ | _(Required)_<br/>Phone number if message is delivered via SMS<br />Specify this, topic_arn or target_arn |
-| send_resolved<a href="#snsconfig-send_resolved" id="snsconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
-| sigv4<a href="#snsconfig-sigv4" id="snsconfig-sigv4">#</a><br/>_[Sigv4Config](#sigv4config)_ | _(Required)_<br/>Configure the AWS Signature Verification 4 signing process |
-| subject<a href="#snsconfig-subject" id="snsconfig-subject">#</a><br/>_string_ | _(Optional)_<br/>The subject line if message is delivered to an email endpoint. |
-| target_arn<a href="#snsconfig-target_arn" id="snsconfig-target_arn">#</a><br/>_string_ | _(Optional)_<br/>Mobile platform endpoint ARN if message is delivered via mobile notifications<br />Specify this, topic_arn or phone_number |
-| topic_arn<a href="#snsconfig-topic_arn" id="snsconfig-topic_arn">#</a><br/>_string_ | _(Optional)_<br/>SNS topic ARN, either specify this, phone_number or target_arn |
 
 #### StatefulSetUpdateStrategyBehavior
 
@@ -3816,7 +3887,7 @@ Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 | client_type<a href="#vmalertmanagertracingconfig-client_type" id="vmalertmanagertracingconfig-client_type">#</a><br/>_string_ | _(Optional)_<br/>ClientType defines tracing client protocol |
 | compression<a href="#vmalertmanagertracingconfig-compression" id="vmalertmanagertracingconfig-compression">#</a><br/>_string_ | _(Optional)_<br/>Compression defines compression algorithm for tracing |
 | endpoint<a href="#vmalertmanagertracingconfig-endpoint" id="vmalertmanagertracingconfig-endpoint">#</a><br/>_string_ | _(Required)_<br/>Endpoint defines tracing URL where traces will be sent |
-| http_headers<a href="#vmalertmanagertracingconfig-http_headers" id="vmalertmanagertracingconfig-http_headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>HTTPHeaders defines custom HTTP headers for tracing |
+| headers<a href="#vmalertmanagertracingconfig-headers" id="vmalertmanagertracingconfig-headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Headers defines custom HTTP headers for tracing |
 | insecure<a href="#vmalertmanagertracingconfig-insecure" id="vmalertmanagertracingconfig-insecure">#</a><br/>_boolean_ | _(Optional)_<br/>Insecure allows TLS configuration to be omitted |
 | sampling_fraction<a href="#vmalertmanagertracingconfig-sampling_fraction" id="vmalertmanagertracingconfig-sampling_fraction">#</a><br/>_string_ | _(Optional)_<br/>SamplingFraction defines fraction of the requests that should be sampled |
 | timeout<a href="#vmalertmanagertracingconfig-timeout" id="vmalertmanagertracingconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout defines tracing connection timeout |
@@ -4909,27 +4980,6 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | region<a href="#vultrsdconfig-region" id="vultrsdconfig-region">#</a><br/>_string_ | _(Optional)_<br/>Region is an optional query arguments to filter instances by region id. |
 | tlsConfig<a href="#vultrsdconfig-tlsconfig" id="vultrsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
-#### WeChatConfig
-
-WeChatConfig configures notifications via WeChat.
-See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
-
-Appears in: [Receiver](#receiver)
-
-| Field | Description |
-| --- | --- |
-| agent_id<a href="#wechatconfig-agent_id" id="wechatconfig-agent_id">#</a><br/>_string_ | _(Optional)_<br/> |
-| api_secret<a href="#wechatconfig-api_secret" id="wechatconfig-api_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />fallback to global alertmanager setting if empty |
-| api_url<a href="#wechatconfig-api_url" id="wechatconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The WeChat API URL.<br />fallback to global alertmanager setting if empty |
-| corp_id<a href="#wechatconfig-corp_id" id="wechatconfig-corp_id">#</a><br/>_string_ | _(Optional)_<br/>The corp id for authentication.<br />fallback to global alertmanager setting if empty |
-| http_config<a href="#wechatconfig-http_config" id="wechatconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
-| message<a href="#wechatconfig-message" id="wechatconfig-message">#</a><br/>_string_ | _(Required)_<br/>API request data as defined by the WeChat API. |
-| message_type<a href="#wechatconfig-message_type" id="wechatconfig-message_type">#</a><br/>_string_ | _(Optional)_<br/> |
-| send_resolved<a href="#wechatconfig-send_resolved" id="wechatconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
-| to_party<a href="#wechatconfig-to_party" id="wechatconfig-to_party">#</a><br/>_string_ | _(Optional)_<br/> |
-| to_tag<a href="#wechatconfig-to_tag" id="wechatconfig-to_tag">#</a><br/>_string_ | _(Optional)_<br/> |
-| to_user<a href="#wechatconfig-to_user" id="wechatconfig-to_user">#</a><br/>_string_ | _(Optional)_<br/> |
-
 #### WebexConfig
 
 Appears in: [Receiver](#receiver)
@@ -4957,3 +5007,24 @@ Appears in: [Receiver](#receiver)
 | timeout<a href="#webhookconfig-timeout" id="webhookconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke the webhook<br />available since v0.28.0 alertmanager version |
 | url<a href="#webhookconfig-url" id="webhookconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
 | url_secret<a href="#webhookconfig-url_secret" id="webhookconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
+
+#### WechatConfig
+
+WechatConfig configures notifications via Wechat.
+See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| agent_id<a href="#wechatconfig-agent_id" id="wechatconfig-agent_id">#</a><br/>_string_ | _(Optional)_<br/> |
+| api_secret<a href="#wechatconfig-api_secret" id="wechatconfig-api_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />fallback to global alertmanager setting if empty |
+| api_url<a href="#wechatconfig-api_url" id="wechatconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The WeChat API URL.<br />fallback to global alertmanager setting if empty |
+| corp_id<a href="#wechatconfig-corp_id" id="wechatconfig-corp_id">#</a><br/>_string_ | _(Optional)_<br/>The corp id for authentication.<br />fallback to global alertmanager setting if empty |
+| http_config<a href="#wechatconfig-http_config" id="wechatconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
+| message<a href="#wechatconfig-message" id="wechatconfig-message">#</a><br/>_string_ | _(Required)_<br/>API request data as defined by the WeChat API. |
+| message_type<a href="#wechatconfig-message_type" id="wechatconfig-message_type">#</a><br/>_string_ | _(Optional)_<br/> |
+| send_resolved<a href="#wechatconfig-send_resolved" id="wechatconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| to_party<a href="#wechatconfig-to_party" id="wechatconfig-to_party">#</a><br/>_string_ | _(Optional)_<br/> |
+| to_tag<a href="#wechatconfig-to_tag" id="wechatconfig-to_tag">#</a><br/>_string_ | _(Optional)_<br/> |
+| to_user<a href="#wechatconfig-to_user" id="wechatconfig-to_user">#</a><br/>_string_ | _(Optional)_<br/> |

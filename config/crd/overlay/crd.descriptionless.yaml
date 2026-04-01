@@ -7625,6 +7625,98 @@ spec:
                         - project
                         type: object
                       type: array
+                    mattermost_configs:
+                      items:
+                        properties:
+                          attachments:
+                            items:
+                              properties:
+                                author_icon:
+                                  type: string
+                                author_link:
+                                  type: string
+                                author_name:
+                                  type: string
+                                color:
+                                  type: string
+                                fallback:
+                                  type: string
+                                fields:
+                                  items:
+                                    properties:
+                                      short:
+                                        type: boolean
+                                      title:
+                                        type: string
+                                      value:
+                                        type: string
+                                    type: object
+                                  type: array
+                                footer:
+                                  type: string
+                                footer_icon:
+                                  type: string
+                                image_url:
+                                  type: string
+                                pretext:
+                                  type: string
+                                text:
+                                  type: string
+                                thumb_url:
+                                  type: string
+                                title:
+                                  type: string
+                                title_link:
+                                  type: string
+                              type: object
+                            type: array
+                          channel:
+                            type: string
+                          http_config:
+                            x-kubernetes-preserve-unknown-fields: true
+                          icon_emoji:
+                            type: string
+                          icon_url:
+                            type: string
+                          priority:
+                            properties:
+                              persistent_notifications:
+                                type: boolean
+                              priority:
+                                type: string
+                              requested_ack:
+                                type: boolean
+                            type: object
+                          props:
+                            properties:
+                              card:
+                                type: string
+                            type: object
+                          send_resolved:
+                            type: boolean
+                          text:
+                            type: string
+                          url:
+                            type: string
+                          url_secret:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                default: ""
+                                type: string
+                              optional:
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          username:
+                            type: string
+                        required:
+                        - text
+                        type: object
+                      type: array
                     msteams_configs:
                       items:
                         properties:
@@ -10712,7 +10804,7 @@ spec:
                     type: string
                   endpoint:
                     type: string
-                  http_headers:
+                  headers:
                     additionalProperties:
                       type: string
                     type: object

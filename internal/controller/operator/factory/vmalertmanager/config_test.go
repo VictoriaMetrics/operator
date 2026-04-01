@@ -36,7 +36,6 @@ func TestBuildConfig(t *testing.T) {
 		predefinedObjects []runtime.Object
 		want              string
 		parseError        string
-		wantErr           bool
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -55,10 +54,6 @@ func TestBuildConfig(t *testing.T) {
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, testClient, o.cr)
 		got, data, err := buildAlertmanagerConfigWithCRDs(ctx, testClient, o.cr, o.baseCfg, ac)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		}
 		assert.NoError(t, err)
 		broken := got.configs.Broken()
 		if len(broken) > 0 {
@@ -88,7 +83,7 @@ func TestBuildConfig(t *testing.T) {
 						},
 					},
 					Compression: "gzip",
-					HTTPHeaders: map[string]string{
+					Headers: map[string]string{
 						"name": "value",
 					},
 				},
@@ -148,7 +143,7 @@ tracing:
 						},
 					},
 					Compression: "gzip",
-					HTTPHeaders: map[string]string{
+					Headers: map[string]string{
 						"name": "value",
 					},
 				},
@@ -250,6 +245,7 @@ tracing:
 		baseCfg: []byte(`global:
  time_out: 1min
  smtp_smarthost: some:443
+templates: []
 `),
 		predefinedObjects: []runtime.Object{
 			&vmv1beta1.VMAlertmanagerConfig{
@@ -323,12 +319,10 @@ route:
         - pod=dev-env
         group_wait: 10min
         receiver: default-base-email
-        continue: false
       matchers:
       - team=prod
       group_wait: 5min
       receiver: default-base-email-sub-1
-      continue: false
     matchers:
     - env=~{"dev|prod"}
     - pod!=""
@@ -478,6 +472,7 @@ templates: []
 		baseCfg: []byte(`global:
  time_out: 1min
  opsgenie_api_key: some-key
+templates: []
 `),
 		predefinedObjects: []runtime.Object{
 			&vmv1beta1.VMAlertmanagerConfig{
@@ -571,7 +566,6 @@ route:
   routes:
   - routes:
     - receiver: default-base-webhook
-      continue: false
     matchers:
     - namespace = "default"
     group_wait: 1min
@@ -701,6 +695,20 @@ templates: []
 					Receivers: []vmv1beta1.Receiver{
 						{
 							Name: "slack",
+							MattermostConfigs: []vmv1beta1.MattermostConfig{
+								{
+									URL:          ptr.To("http://mattermost:8080"),
+									SendResolved: ptr.To(true),
+									Attachments: []*vmv1beta1.MattermostAttachment{{
+										Text: "test",
+										Fields: []vmv1beta1.MattermostField{{
+											Title: "main",
+											Value: "value",
+											Short: true,
+										}},
+									}},
+								},
+							},
 							SlackConfigs: []vmv1beta1.SlackConfig{
 								{
 									APIURL: &corev1.SecretKeySelector{
@@ -788,6 +796,15 @@ receivers:
     - value: test
       title: fields
       short: true
+  mattermost_configs:
+  - send_resolved: true
+    webhook_url: http://mattermost:8080
+    attachments:
+    - text: test
+      fields:
+      - title: main
+        value: value
+        short: true
 templates: []
 `,
 	})
@@ -1070,9 +1087,9 @@ templates: []
 	// jira section
 	f(opts{
 		baseCfg: []byte(`global:
- time_out: 1min
  smtp_smarthost: some:443
  jira_api_url: "https://jira.cloud"
+ time_out: 1min
 `),
 		predefinedObjects: []runtime.Object{
 			&corev1.Secret{
@@ -1195,8 +1212,8 @@ templates: []
 			},
 		},
 		want: `global:
-  jira_api_url: https://jira.cloud
   smtp_smarthost: some:443
+  jira_api_url: https://jira.cloud
   time_out: 1min
 route:
   receiver: blackhole
@@ -1360,7 +1377,7 @@ templates: []
 					Receivers: []vmv1beta1.Receiver{
 						{
 							Name: "incidentio",
-							IncidentIOConfigs: []vmv1beta1.IncidentIOConfig{
+							IncidentioConfigs: []vmv1beta1.IncidentioConfig{
 								{
 									URL: "http://example.com/",
 									AlertSourceToken: &corev1.SecretKeySelector{
@@ -1487,21 +1504,19 @@ templates: []
 
 func TestAddConfigTemplates(t *testing.T) {
 	type opts struct {
-		config    []byte
+		config    string
 		templates []string
 		want      string
-		wantErr   bool
 	}
 
 	f := func(o opts) {
 		t.Helper()
-		got, err := addConfigTemplates(o.config, o.templates)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		}
+		var baseCfg amConfig
+		assert.NoError(t, yaml.Unmarshal([]byte(o.config), &baseCfg))
+		addConfigTemplates(&baseCfg, o.templates)
+		data, err := yaml.Marshal(&baseCfg)
 		assert.NoError(t, err)
-		assert.Equal(t, o.want, string(got))
+		assert.Equal(t, o.want, string(data))
 	}
 
 	// add templates to empty config
@@ -1514,7 +1529,7 @@ func TestAddConfigTemplates(t *testing.T) {
 
 	// add templates to config without templates
 	f(opts{
-		config: []byte(`global:
+		config: `global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1525,7 +1540,7 @@ receivers:
 - name: webhook
   webhook_configs:
   - url: http://localhost:30500/
-`),
+`,
 		templates: []string{
 			"/etc/vm/templates/test/template1.tmpl",
 			"/etc/vm/templates/test/template2.tmpl",
@@ -1549,7 +1564,7 @@ templates:
 
 	// add templates to config with templates
 	f(opts{
-		config: []byte(`global:
+		config: `global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1563,7 +1578,7 @@ receivers:
 templates:
 - /etc/vm/templates/test/template1.tmpl
 - /etc/vm/templates/test/template2.tmpl
-`),
+`,
 		templates: []string{
 			"/etc/vm/templates/test/template3.tmpl",
 			"/etc/vm/templates/test/template4.tmpl",
@@ -1605,21 +1620,18 @@ templates:
 
 	// add empty templates list
 	f(opts{
-		config:    []byte(`test`),
+		config: `global:
+  test: test`,
 		templates: []string{},
-		want:      `test`,
-	})
-
-	// wrong config
-	f(opts{
-		config:    []byte(`test`),
-		templates: []string{"test"},
-		wantErr:   true,
+		want: `global:
+  test: test
+templates: []
+`,
 	})
 
 	// add template duplicates without path
 	f(opts{
-		config: []byte(`global:
+		config: `global:
   resolve_timeout: 5m
 route:
   receiver: webhook
@@ -1634,7 +1646,7 @@ templates:
 - template1.tmpl
 - template2.tmpl
 - /etc/vm/templates/test/template3.tmpl
-`),
+`,
 		templates: []string{
 			"/etc/vm/templates/test/template1.tmpl",
 			"/etc/vm/templates/test/template2.tmpl",
@@ -1665,7 +1677,6 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 		httpCfg           *vmv1beta1.HTTPConfig
 		predefinedObjects []runtime.Object
 		want              string
-		wantErr           bool
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -1676,15 +1687,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				Namespace: "default",
 			},
 		}
-		cb := &configBuilder{
-			cache:     getAssetsCache(context.Background(), testClient, cr),
-			namespace: cr.Namespace,
-		}
-		gotYAML, err := cb.buildHTTPConfig(o.httpCfg)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		}
+		ac := getAssetsCache(context.Background(), testClient, cr)
+		gotYAML, err := buildHTTPConfig(o.httpCfg, cr.Namespace, ac)
 		assert.NoError(t, err)
 		got, err := yaml.Marshal(gotYAML)
 		assert.NoError(t, err)
@@ -1962,7 +1966,6 @@ authorization:
 func Test_UpdateDefaultAMConfig(t *testing.T) {
 	type opts struct {
 		cr                  *vmv1beta1.VMAlertmanager
-		wantErr             bool
 		predefinedObjects   []runtime.Object
 		secretMustBeMissing bool
 	}
@@ -1973,12 +1976,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		ctx := context.TODO()
 
 		// Create secret with alert manager config
-		err := CreateOrUpdateConfig(ctx, fclient, o.cr, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+		assert.NoError(t, CreateOrUpdateConfig(ctx, fclient, o.cr, nil))
 		var amCfgs []*vmv1beta1.VMAlertmanagerConfig
 		opts := &k8stools.SelectorOpts{
 			SelectAll:         o.cr.Spec.SelectAllByDefault,
@@ -2010,7 +2008,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		// check secret config after creating
 		d, ok := createdSecret.Data[alertmanagerSecretConfigKeyGz]
 		assert.True(t, ok)
-		var secretConfig alertmanagerConfig
+		var secretConfig amConfig
 		data, err := build.GunzipConfig(d)
 		assert.NoError(t, err)
 		assert.NoError(t, yaml.Unmarshal(data, &secretConfig))
@@ -2022,12 +2020,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 		assert.Len(t, secretConfig.Route.Routes, 1)
 		assert.Len(t, secretConfig.Route.Routes[0], len(amc.Spec.Route.Routes)+2)
 		// Update secret with alert manager config
-		err = CreateOrUpdateConfig(ctx, fclient, o.cr, nil)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+		assert.NoError(t, CreateOrUpdateConfig(ctx, fclient, o.cr, nil))
 
 		if err := fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: secretName}, &createdSecret); err != nil {
 			if k8serrors.IsNotFound(err) && o.secretMustBeMissing {
@@ -2120,7 +2113,6 @@ func TestBuildWebConfig(t *testing.T) {
 		cr                *vmv1beta1.VMAlertmanager
 		predefinedObjects []runtime.Object
 		want              string
-		wantErr           bool
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -2128,10 +2120,6 @@ func TestBuildWebConfig(t *testing.T) {
 		ctx := context.TODO()
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		c, err := buildWebServerConfigYAML(o.cr, ac)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		}
 		assert.NoError(t, err)
 		assert.Equal(t, o.want, string(c))
 	}

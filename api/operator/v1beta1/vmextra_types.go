@@ -1040,7 +1040,7 @@ type TLSServerConfig struct {
 	// PreferServerCipherSuites controls whether the server selects the
 	// client's most preferred ciphersuite
 	// +optional
-	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
+	PreferServerCipherSuites *bool `json:"prefer_server_cipher_suites,omitempty"`
 	// Certs defines cert, CA and key for TLS auth
 	Certs `json:",inline"`
 }

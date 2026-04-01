@@ -227,11 +227,11 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 			OpsGenieConfigs:  make([]vmv1beta1.OpsGenieConfig, 0, len(promR.OpsGenieConfigs)),
 			WebhookConfigs:   make([]vmv1beta1.WebhookConfig, 0, len(promR.WebhookConfigs)),
 			VictorOpsConfigs: make([]vmv1beta1.VictorOpsConfig, 0, len(promR.VictorOpsConfigs)),
-			WeChatConfigs:    make([]vmv1beta1.WeChatConfig, 0, len(promR.WeChatConfigs)),
+			WechatConfigs:    make([]vmv1beta1.WechatConfig, 0, len(promR.WeChatConfigs)),
 			TelegramConfigs:  make([]vmv1beta1.TelegramConfig, 0, len(promR.TelegramConfigs)),
 			MSTeamsConfigs:   make([]vmv1beta1.MSTeamsConfig, 0, len(promR.MSTeamsConfigs)),
 			DiscordConfigs:   make([]vmv1beta1.DiscordConfig, 0, len(promR.DiscordConfigs)),
-			SNSConfigs:       make([]vmv1beta1.SnsConfig, 0, len(promR.SNSConfigs)),
+			SNSConfigs:       make([]vmv1beta1.SNSConfig, 0, len(promR.SNSConfigs)),
 			WebexConfigs:     make([]vmv1beta1.WebexConfig, 0, len(promR.WebexConfigs)),
 			MSTeamsV2Configs: make([]vmv1beta1.MSTeamsV2Config, 0, len(promR.MSTeamsV2Configs)),
 		}
@@ -411,7 +411,7 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 			dst.VictorOpsConfigs = append(dst.VictorOpsConfigs, vo)
 		}
 		for _, obj := range promR.WeChatConfigs {
-			vo := vmv1beta1.WeChatConfig{
+			vo := vmv1beta1.WechatConfig{
 				SendResolved: obj.SendResolved,
 				HTTPConfig:   convertHTTPConfig(obj.HTTPConfig),
 				APISecret:    obj.APISecret,
@@ -424,7 +424,7 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				Message:      ptr.Deref(obj.Message, ""),
 				MessageType:  ptr.Deref(obj.MessageType, ""),
 			}
-			dst.WeChatConfigs = append(dst.WeChatConfigs, vo)
+			dst.WechatConfigs = append(dst.WechatConfigs, vo)
 		}
 		for _, obj := range promR.TelegramConfigs {
 			vo := vmv1beta1.TelegramConfig{
@@ -468,7 +468,7 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 			dst.DiscordConfigs = append(dst.DiscordConfigs, vo)
 		}
 		for _, obj := range promR.SNSConfigs {
-			vo := vmv1beta1.SnsConfig{
+			vo := vmv1beta1.SNSConfig{
 				SendResolved: obj.SendResolved,
 				HTTPConfig:   convertHTTPConfig(obj.HTTPConfig),
 				URL:          ptr.Deref(obj.ApiURL, ""),
@@ -519,7 +519,6 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 			}
 			dst.MSTeamsV2Configs = append(dst.MSTeamsV2Configs, vo)
 		}
-
 		vmReceivers = append(vmReceivers, dst)
 	}
 

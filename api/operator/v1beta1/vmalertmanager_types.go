@@ -596,9 +596,9 @@ type VMAlertmanagerTracingConfig struct {
 	// TLSConfig defines tracing TLS config
 	// +optional
 	TLSConfig *TLSClientConfig `json:"tls_config,omitempty"`
-	// HTTPHeaders defines custom HTTP headers for tracing
+	// Headers defines custom HTTP headers for tracing
 	// +optional
-	HTTPHeaders map[string]string `json:"http_headers,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 	// Compression defines compression algorithm for tracing
 	// +optional
 	Compression string `json:"compression,omitempty"`

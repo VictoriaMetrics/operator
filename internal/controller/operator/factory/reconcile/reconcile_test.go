@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -90,6 +92,59 @@ func TestWaitForStatus_MinGeneration(t *testing.T) {
 	f(2, 2, false)
 	// Observed > minGeneration
 	f(3, 2, false)
+}
+
+func TestWaitForStatus_GenerationChangesOnGet(t *testing.T) {
+	minGen := int64(2)
+	vmc := &vmv1beta1.VMCluster{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: vmv1beta1.GroupVersion.String(),
+			Kind:       "VMCluster",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vmc-change",
+			Namespace: "default",
+		},
+		Status: vmv1beta1.VMClusterStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+				ObservedGeneration: 1,
+			},
+		},
+	}
+
+	calls := 0
+	fns := interceptor.Funcs{
+		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			calls++
+			// Return the stored object as-is on the first call
+			if calls == 1 {
+				return cl.Get(ctx, key, obj, opts...)
+			}
+			// Bump generation on every subsequent Get
+			if err := cl.Get(ctx, key, obj, opts...); err != nil {
+				return err
+			}
+			if c, ok := obj.(*vmv1beta1.VMCluster); ok {
+				c.Status.ObservedGeneration = minGen
+				c.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				if err := cl.Status().Update(ctx, c); err != nil {
+					return err
+				}
+			}
+			return cl.Get(ctx, key, obj, opts...)
+		},
+	}
+
+	rclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{vmc}, fns)
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err := waitForStatus(ctx, rclient, vmc.DeepCopy(), 200*time.Millisecond, vmv1beta1.UpdateStatusOperational, minGen)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, calls, 2)
+	})
 }
 
 func TestMergeMapsWithStrategy(t *testing.T) {

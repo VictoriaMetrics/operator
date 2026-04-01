@@ -51,6 +51,47 @@ func TestWaitForStatus(t *testing.T) {
 	f(vmv1beta1.UpdateStatusExpanding, true)
 }
 
+func TestWaitForStatus_MinGeneration(t *testing.T) {
+	f := func(observedGen, minGen int64, isErr bool) {
+		vmc := &vmv1beta1.VMCluster{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: vmv1beta1.GroupVersion.String(),
+				Kind:       "VMCluster",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmc-gen",
+				Namespace: "default",
+			},
+			Status: vmv1beta1.VMClusterStatus{
+				StatusMetadata: vmv1beta1.StatusMetadata{
+					UpdateStatus:       vmv1beta1.UpdateStatusOperational,
+					ObservedGeneration: observedGen,
+				},
+			},
+		}
+
+		rclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmc})
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			err := waitForStatus(ctx, rclient, vmc.DeepCopy(), 1*time.Second, vmv1beta1.UpdateStatusOperational, minGen)
+			if isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
+	// Observed < minGeneration
+	f(1, 2, true)
+	// Observed == minGeneration
+	f(2, 2, false)
+	// Observed > minGeneration
+	f(3, 2, false)
+}
+
 func TestMergeMapsWithStrategy(t *testing.T) {
 	type opts struct {
 		prev, new, existing map[string]string
@@ -60,7 +101,7 @@ func TestMergeMapsWithStrategy(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		got := mergeMapsWithStrategy(o.existing, o.new, o.prev, o.strategy)
-		assert.Equal(t, got, o.want)
+		assert.Equal(t, o.want, got)
 	}
 
 	// delete not existing label

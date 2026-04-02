@@ -46,13 +46,14 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	if err != nil {
 		return nil, fmt.Errorf("cannot start watch for secret: %w", err)
 	}
-	listOpts := &client.ListOptions{
-		Namespace:     namespace,
-		FieldSelector: fields.OneTermEqualSelector("metadata.name", secretName),
-	}
 	inf := cache.NewSharedIndexInformer(&cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			var s corev1.SecretList
+			listOpts := &client.ListOptions{
+				Namespace:     namespace,
+				FieldSelector: fields.OneTermEqualSelector("metadata.name", secretName),
+				Raw:           &options,
+			}
 			if err := c.List(ctx, &s, listOpts); err != nil {
 				k8sAPIWatchErrorsTotal.Inc()
 				return nil, fmt.Errorf("cannot get secret from k8s api: %w", err)
@@ -61,6 +62,11 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 			return &s, nil
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			listOpts := &client.ListOptions{
+				Namespace:     namespace,
+				FieldSelector: fields.OneTermEqualSelector("metadata.name", secretName),
+				Raw:           &options,
+			}
 			wi, err := c.Watch(ctx, &corev1.SecretList{}, listOpts)
 			if err != nil {
 				k8sAPIWatchErrorsTotal.Inc()

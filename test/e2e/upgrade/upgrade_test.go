@@ -1002,9 +1002,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 					Enabled: true,
 					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-						},
 						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 							Image: vmv1beta1.Image{
@@ -1344,9 +1341,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 					Enabled: true,
 					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-						},
 						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 							Image: vmv1beta1.Image{
@@ -1686,9 +1680,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 					Enabled: true,
 					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-							ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-						},
 						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
 							Image: vmv1beta1.Image{

@@ -206,12 +206,9 @@ rules:
   - vmdistributed
   - vmdistributed/finalizers
   - vmdistributed/status
-  - vmanomalymodels
-  - vmanomalymodels/finalizers
-  - vmanomalymodels/status
-  - vmanomalyschedulers
-  - vmanomalyschedulers/finalizers
-  - vmanomalyschedulers/status
+  - vmanomalyconfigs
+  - vmanomalyconfigs/finalizers
+  - vmanomalyconfigs/status
   verbs:
   - '*'
 - apiGroups:

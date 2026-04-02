@@ -702,25 +702,21 @@ schedulers:
 settings:
   restore_state: true
 `,
-				ModelSelector: &vmv1.Selector{
-					ObjectSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "app",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{"prod"},
-							},
+				ConfigSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
 						},
 					},
 				},
-				SchedulerSelector: &vmv1.Selector{
-					ObjectSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "app",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{"prod"},
-							},
+				ConfigNamespaceSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
 						},
 					},
 				},
@@ -749,50 +745,54 @@ settings:
 			},
 		},
 		predefinedObjects: []runtime.Object{
-			&vmv1.VMAnomalyModel{
+			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-anomaly",
+					Name: "default",
 					Labels: map[string]string{
-						"app": "prod",
-					},
-					Namespace: "default",
-				},
-				Spec: vmv1.VMAnomalyModelSpec{
-					Class: "zscore",
-					Params: runtime.RawExtension{
-						Raw: []byte(`{
-  "queries": ["test"],
-  "z_threshold": 2.5
-}`),
+						"env": "prod",
 					},
 				},
 			},
-			&vmv1.VMAnomalyScheduler{
+			&vmv1.VMAnomalyConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-anomaly",
+					Name: "anomaly",
 					Labels: map[string]string{
 						"app": "prod",
 					},
 					Namespace: "default",
 				},
-				Spec: vmv1.VMAnomalySchedulerSpec{
-					Class: "periodic",
-					Params: runtime.RawExtension{
-						Raw: []byte(`{
-  "fit_every": "12m",
-  "fit_window": "13h",
-  "infer_every": "11m"
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "test": {
+      "class": "zscore",
+      "queries": ["test"],
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "test": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  },
+  "queries": {
+    "test": {
+      "expr": "vm_metric"
+    }
+  }
 }`),
-					},
 				},
 			},
 		},
 		expected: `
 models:
-  default-test-anomaly:
+  default-anomaly-test:
     class: zscore
     queries:
-    - test
+    - default-anomaly-test
     z_threshold: 2.5
   model_univariate_1:
     class: zscore
@@ -800,7 +800,7 @@ models:
     - test
     z_threshold: 2.5
 schedulers:
-  default-test-anomaly:
+  default-anomaly-test:
     class: periodic
     fit_every: 12m
     fit_window: 13h
@@ -816,6 +816,8 @@ reader:
   sampling_period: 10s
   query_range_path: /api/v1/query_range
   queries:
+    default-anomaly-test:
+      expr: vm_metric
     test:
       expr: vm_metric
       data_range:

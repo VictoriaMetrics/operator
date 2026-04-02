@@ -17,7 +17,7 @@ import (
 )
 
 // CreateOrUpdateConfig builds configuration for VMAnomaly
-func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig) error {
 	var prevCR *vmv1.VMAnomaly
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -31,7 +31,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.V
 }
 
 // createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject client.Object, ac *build.AssetsCache) (string, error) {
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig, ac *build.AssetsCache) (string, error) {
 	pos, err := config.NewParsedObjects(ctx, rclient, cr)
 	if err != nil {
 		return "", err

@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -13,27 +12,47 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 func NewParsedObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*ParsedObjects, error) {
-	models, err := selectModels(ctx, rclient, cr)
+	configs, err := selectConfigs(ctx, rclient, cr)
 	if err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalyModels failed: %w", err)
-	}
-	schedulers, err := selectSchedulers(ctx, rclient, cr)
-	if err != nil {
-		return nil, fmt.Errorf("selecting VMAnomalySchedulers failed: %w", err)
+		return nil, fmt.Errorf("selecting VMAnomalyConfigs failed: %w", err)
 	}
 	return &ParsedObjects{
-		models:     models,
-		schedulers: schedulers,
+		configs: configs,
 	}, nil
 }
 
+func selectConfigs(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*build.ChildObjects[*vmv1.VMAnomalyConfig], error) {
+	var selectedConfigs []*vmv1.VMAnomalyConfig
+	var nsn []string
+	opts := &k8stools.SelectorOpts{
+		DefaultNamespace:  cr.Namespace,
+		SelectAll:         cr.Spec.SelectAllByDefault,
+		ObjectSelector:    cr.Spec.ConfigSelector,
+		NamespaceSelector: cr.Spec.ConfigNamespaceSelector,
+	}
+	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMAnomalyConfigList) {
+		for i := range list.Items {
+			item := &list.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			rclient.Scheme().Default(item)
+			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
+			selectedConfigs = append(selectedConfigs, item)
+		}
+	}); err != nil {
+		return nil, err
+	}
+	return build.NewChildObjects("vmanomalyconfigs", selectedConfigs, nsn), nil
+}
+
 type ParsedObjects struct {
-	models     *build.ChildObjects[*vmv1.VMAnomalyModel]
-	schedulers *build.ChildObjects[*vmv1.VMAnomalyScheduler]
+	configs *build.ChildObjects[*vmv1.VMAnomalyConfig]
 }
 
 // Load returns vmanomaly config merged with provided secrets
@@ -56,7 +75,7 @@ func (pos *ParsedObjects) Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
 	}
-	if err = c.override(cr, pos, ac); err != nil {
+	if err = c.build(cr, pos, ac); err != nil {
 		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
 	}
 	if err = c.validate(); err != nil {
@@ -69,22 +88,12 @@ func (pos *ParsedObjects) Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byt
 	return data, nil
 }
 
-func (pos *ParsedObjects) UpdateStatusesForChildObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject client.Object) error {
-	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
-	if childObject != nil && !reflect.ValueOf(childObject).IsNil() {
-		// fast path
-		switch obj := childObject.(type) {
-		case *vmv1.VMAnomalyModel:
-			if o := pos.models.Get(obj); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyModel{o})
-			}
-		case *vmv1.VMAnomalyScheduler:
-			if o := pos.schedulers.Get(obj); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyScheduler{o})
-			}
-		}
+func (pos *ParsedObjects) UpdateStatusesForChildObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig) error {
+	if childObject == nil {
+		return nil
 	}
-	return nil
+	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
+	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyConfig{childObject})
 }
 
 type header struct {
@@ -96,9 +105,35 @@ type validatable interface {
 	validate() error
 }
 
+type PartialConfig struct {
+	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*model     `yaml:"models,omitempty"`
+	Queries    map[string]*query     `yaml:"queries,omitempty"`
+}
+
+func (pc *PartialConfig) Validate() error {
+	for name, s := range pc.Schedulers {
+		if s == nil {
+			return fmt.Errorf("scheduler=%q is nil", name)
+		}
+		if err := s.validate(); err != nil {
+			return fmt.Errorf("failed to validate scheduler=%q: %w", name, err)
+		}
+	}
+	for name, m := range pc.Models {
+		if m == nil {
+			return fmt.Errorf("model=%q is nil", name)
+		}
+		if err := m.validate(); err != nil {
+			return fmt.Errorf("failed to validate model=%q: %w", name, err)
+		}
+	}
+	return nil
+}
+
 type config struct {
-	Schedulers map[string]*Scheduler `yaml:"schedulers,omitempty"`
-	Models     map[string]*Model     `yaml:"models,omitempty"`
+	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*model     `yaml:"models,omitempty"`
 	Reader     *reader               `yaml:"reader,omitempty"`
 	Writer     *writer               `yaml:"writer,omitempty"`
 	Monitoring *monitoring           `yaml:"monitoring,omitempty"`
@@ -137,7 +172,7 @@ type settings struct {
 	Retention         *retention `yaml:"retention,omitempty"`
 }
 
-func (c *config) override(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsCache) error {
+func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsCache) error {
 	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
 	if cr.Spec.Server != nil {
 		srv := cr.Spec.Server
@@ -161,12 +196,12 @@ func (c *config) override(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.Asse
 		c.Writer = &writer{
 			Class: "noop",
 		}
-		c.Schedulers = map[string]*Scheduler{
+		c.Schedulers = map[string]*scheduler{
 			"noop": {
 				anomalyScheduler: s,
 			},
 		}
-		c.Models = map[string]*Model{
+		c.Models = map[string]*model{
 			"placeholder": {
 				anomalyModel: &zScoreModel{
 					commonModelParams: commonModelParams{
@@ -248,27 +283,45 @@ func (c *config) override(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.Asse
 		c.Monitoring = &m
 	}
 
-	// override models
-	pos.models.ForEachCollectSkipInvalid(func(m *vmv1.VMAnomalyModel) error {
-		name := fmt.Sprintf("%s-%s", m.Namespace, m.Name)
-		nm, err := modelFromSpec(&m.Spec)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal model=%q: %w", name, err)
+	// override configs
+	pos.configs.ForEachCollectSkipInvalid(func(cfg *vmv1.VMAnomalyConfig) error {
+		var cv PartialConfig
+		if err := yaml.Unmarshal(cfg.Spec.Raw, &cv); err != nil {
+			return fmt.Errorf("failed to unmarshal config=%s/%s: %w", cfg.Namespace, cfg.Name, err)
 		}
-		c.Models[name] = nm
+		prefix := fmt.Sprintf("%s-%s", cfg.Namespace, cfg.Name)
+		for k, v := range cv.Models {
+			name := fmt.Sprintf("%s-%s", prefix, k)
+			if c.Models == nil {
+				c.Models = make(map[string]*model)
+			}
+			if _, ok := c.Models[name]; ok {
+				return fmt.Errorf("failed to add config=%s/%s, model=%s already exists", cfg.Namespace, cfg.Name, name)
+			}
+			v.addPrefix(prefix)
+			c.Models[name] = v
+
+		}
+		for k, v := range cv.Schedulers {
+			name := fmt.Sprintf("%s-%s", prefix, k)
+			if c.Schedulers == nil {
+				c.Schedulers = make(map[string]*scheduler)
+			}
+			if _, ok := c.Schedulers[name]; ok {
+				return fmt.Errorf("failed to add config=%s/%s, scheduler=%s already exists", cfg.Namespace, cfg.Name, name)
+			}
+			c.Schedulers[name] = v
+		}
+		for k, v := range cv.Queries {
+			name := fmt.Sprintf("%s-%s", prefix, k)
+			if _, ok := c.Reader.Queries[name]; ok {
+				return fmt.Errorf("failed to add config=%s/%s, query=%s already exists", cfg.Namespace, cfg.Name, name)
+			}
+			c.Reader.Queries[name] = v
+		}
 		return nil
 	})
 
-	// override schedulers
-	pos.schedulers.ForEachCollectSkipInvalid(func(s *vmv1.VMAnomalyScheduler) error {
-		name := fmt.Sprintf("%s-%s", s.Namespace, s.Name)
-		ns, err := schedulerFromSpec(&s.Spec)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal scheduler=%q: %w", name, err)
-		}
-		c.Schedulers[name] = ns
-		return nil
-	})
 	return nil
 }
 

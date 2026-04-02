@@ -9,18 +9,18 @@ import (
 )
 
 type reader struct {
-	Class                      string                 `yaml:"class"`
-	DatasourceURL              string                 `yaml:"datasource_url"`
-	SamplingPeriod             *duration              `yaml:"sampling_period"`
-	QueryRangePath             string                 `yaml:"query_range_path,omitempty"`
-	ExtraFilters               []string               `yaml:"extra_filters,omitempty"`
-	QueryFromLastSeenTimestamp bool                   `yaml:"query_from_last_seen_timestamp,omitempty"`
-	LatencyOffset              *duration              `yaml:"latency_offset,omitempty"`
-	MaxPointsPerQuery          int                    `yaml:"max_points_per_query,omitempty"`
-	Timezone                   time.Location          `yaml:"tz,omitempty"`
-	DataRange                  []string               `yaml:"data_range,omitempty"`
-	Queries                    map[string]readerQuery `yaml:"queries,omitempty"`
-	ClientConfig               clientConfig           `yaml:",inline"`
+	Class                      string            `yaml:"class"`
+	DatasourceURL              string            `yaml:"datasource_url"`
+	SamplingPeriod             *duration         `yaml:"sampling_period"`
+	QueryRangePath             string            `yaml:"query_range_path,omitempty"`
+	ExtraFilters               []string          `yaml:"extra_filters,omitempty"`
+	QueryFromLastSeenTimestamp bool              `yaml:"query_from_last_seen_timestamp,omitempty"`
+	LatencyOffset              *duration         `yaml:"latency_offset,omitempty"`
+	MaxPointsPerQuery          int               `yaml:"max_points_per_query,omitempty"`
+	Timezone                   time.Location     `yaml:"tz,omitempty"`
+	DataRange                  []string          `yaml:"data_range,omitempty"`
+	Queries                    map[string]*query `yaml:"queries,omitempty"`
+	ClientConfig               clientConfig      `yaml:",inline"`
 }
 
 func (r *reader) validate() error {
@@ -56,7 +56,7 @@ func (r *reader) validate() error {
 	return nil
 }
 
-type readerQuery struct {
+type query struct {
 	Expr              string        `yaml:"expr"`
 	Step              *duration     `yaml:"step,omitempty"`
 	DataRange         []string      `yaml:"data_range,omitempty"`

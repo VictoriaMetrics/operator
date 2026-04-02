@@ -328,41 +328,34 @@ spec:
 
 ## Dynamic configuration
 
-`VMAnomaly` supports discovering of configuration sections:
+`VMAnomaly` supports discovering additional models, schedulers and queries using [VMAnomalyConfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/)
 
-- [VMAnomalyModel](https://docs.victoriametrics.com/operator/resources/vmanomalymodel/) - discovers anomaly detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/).
-- [VMAnomalyScheduler](https://docs.victoriametrics.com/operator/resources/vmanomalyscheduler/) - discovers anomaly detection [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/schedulers/).
-
-For filtering scrape objects `VMAnomaly` uses selectors.
-Selectors are defined with suffixes - `namespaceSelector` and `objectSelector` for each type of configuration objects in spec of `VMAnomaly`:
-
-- `spec.modelSelector.namespaceSelector` and `spec.modelSelector.objectSelector` for selecting [VMAnomalyModel](https://docs.victoriametrics.com/operator/resources/vmanomalymodel/) objects
-- `spec.schedulerSelector.namespaceSelector` and `spec.schedulerSelector.objectSelector` for selecting [VMAnomalyScheduler](https://docs.victoriametrics.com/operator/resources/vmanomalyscheduler/) objects
+For filtering configuration objects `VMAnomaly` uses `configNamespaceSelector` and `configSelector` selectors.
 
 It allows configuring objects access control across namespaces and different environments.
-Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta/).
+Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/).
 
 In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` of `VMAnomaly` spec and environment variable `WATCH_NAMESPACE` for operator.
 
 Following rules are applied:
 
-- If `namespaceSelector` and `objectSelector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all objects of given type.
-- If `namespaceSelector` defined, `objectSelector` undefined, then all objects are matching at namespaces for given `namespaceSelector`.
-- If `namespaceSelector` undefined, `objectSelector` defined, then all objects at `VMAnomaly`'s namespaces are matching for given `objectSelector`.
-- If `namespaceSelector` and `objectSelector` both defined, then only objects at namespaces matched `namespaceSelector` for given `objectSelector` are matching.
+- If `configNamespaceSelector` and `configSelector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all objects of given type.
+- If `configNamespaceSelector` defined, `configSelector` undefined, then all objects are matching at namespaces for given `configNamespaceSelector`.
+- If `configNamespaceSelector` undefined, `configSelector` defined, then all objects at `VMAnomaly`'s namespaces are matching for given `configSelector`.
+- If `configNamespaceSelector` and `configSelector` both defined, then only objects at namespaces matched `configNamespaceSelector` for given `configSelector` are matching.
 
 
 Here's a more visual and more detailed view:
 
-| `namespaceSelector`    | `objectSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
+| `configNamespaceSelector`    | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
 |------------------------|------------------|----------------------|-------------------|-------------------------------------------------------------------------------------------------------------|
 | undefined              | undefined        | false                | undefined         | nothing                                                                                                     |
 | undefined              | undefined        | **true**             | undefined         | all objects of given type (`...`) in the cluster                                                            |
-| **defined**            | undefined        | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `namespaceSelector`                               |
-| undefined              | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at `VMAnomaly`'s namespace are matching for given `objectSelector`   |
-| **defined**            | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `namespaceSelector` for given `objectSelector` |
+| **defined**            | undefined        | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `configNamespaceSelector`                               |
+| undefined              | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at `VMAnomaly`'s namespace are matching for given `configSelector`   |
+| **defined**            | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `configNamespaceSelector` for given `configSelector` |
 | *any*                  | undefined        | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace                                           |
-| *any*                  | **defined**      | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace for given `objectSelector`                |
+| *any*                  | **defined**      | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace for given `configSelector`                |
 
 More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 

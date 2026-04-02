@@ -1,16 +1,10 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"gopkg.in/yaml.v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type anomalyScheduler interface {
@@ -18,17 +12,17 @@ type anomalyScheduler interface {
 	setClass(string)
 }
 
-type Scheduler struct {
+type scheduler struct {
 	anomalyScheduler
 }
 
 var (
-	_ yaml.Marshaler   = (*Scheduler)(nil)
-	_ yaml.Unmarshaler = (*Scheduler)(nil)
+	_ yaml.Marshaler   = (*scheduler)(nil)
+	_ yaml.Unmarshaler = (*scheduler)(nil)
 )
 
 // Validate validates raw config
-func (s *Scheduler) Validate(data []byte) error {
+func (s *scheduler) Validate(data []byte) error {
 	if err := yaml.Unmarshal(data, s); err != nil {
 		return err
 	}
@@ -36,7 +30,7 @@ func (s *Scheduler) Validate(data []byte) error {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler interface
-func (s *Scheduler) UnmarshalYAML(unmarshal func(any) error) error {
+func (s *scheduler) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {
 		return err
@@ -50,7 +44,7 @@ func (s *Scheduler) UnmarshalYAML(unmarshal func(any) error) error {
 	return nil
 }
 
-func (s *Scheduler) init(class string) error {
+func (s *scheduler) init(class string) error {
 	var sch anomalyScheduler
 	switch class {
 	case "scheduler.periodic.PeriodicScheduler", "periodic":
@@ -67,20 +61,8 @@ func (s *Scheduler) init(class string) error {
 }
 
 // MarshalYAML implements yaml.Marshaler interface
-func (s *Scheduler) MarshalYAML() (any, error) {
+func (s *scheduler) MarshalYAML() (any, error) {
 	return s.anomalyScheduler, nil
-}
-
-func schedulerFromSpec(spec *vmv1.VMAnomalySchedulerSpec) (*Scheduler, error) {
-	var s Scheduler
-	if err := s.init(spec.Class); err != nil {
-		return nil, err
-	}
-	if err := yaml.Unmarshal(spec.Params.Raw, s.anomalyScheduler); err != nil {
-		return nil, err
-	}
-	s.setClass(spec.Class)
-	return &s, nil
 }
 
 type commonSchedulerParams struct {
@@ -208,31 +190,4 @@ func (s *backtestingScheduler) validate() error {
 		return fmt.Errorf(`"n_jobs" should be positive`)
 	}
 	return nil
-}
-
-func selectSchedulers(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*build.ChildObjects[*vmv1.VMAnomalyScheduler], error) {
-	var selectedConfigs []*vmv1.VMAnomalyScheduler
-	var nsn []string
-	opts := &k8stools.SelectorOpts{
-		DefaultNamespace: cr.Namespace,
-		SelectAll:        cr.Spec.SelectAllByDefault,
-	}
-	if cr.Spec.SchedulerSelector != nil {
-		opts.ObjectSelector = cr.Spec.SchedulerSelector.ObjectSelector
-		opts.NamespaceSelector = cr.Spec.SchedulerSelector.NamespaceSelector
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMAnomalySchedulerList) {
-		for i := range list.Items {
-			item := &list.Items[i]
-			if !item.DeletionTimestamp.IsZero() {
-				continue
-			}
-			rclient.Scheme().Default(item)
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-			selectedConfigs = append(selectedConfigs, item)
-		}
-	}); err != nil {
-		return nil, err
-	}
-	return build.NewChildObjects("vmanomalyschedulers", selectedConfigs, nsn), nil
 }

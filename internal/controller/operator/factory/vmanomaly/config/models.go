@@ -1,16 +1,10 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"gopkg.in/yaml.v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type modelDetectionDirection string
@@ -38,6 +32,15 @@ func (p commonModelParams) queries() []string {
 	return p.Queries
 }
 
+func (p commonModelParams) addPrefix(prefix string) {
+	for i := range p.Schedulers {
+		p.Schedulers[i] = fmt.Sprintf("%s-%s", prefix, p.Schedulers[i])
+	}
+	for i := range p.Queries {
+		p.Queries[i] = fmt.Sprintf("%s-%s", prefix, p.Queries[i])
+	}
+}
+
 func (p commonModelParams) schedulers() []string {
 	return p.Schedulers
 }
@@ -51,13 +54,14 @@ type anomalyModel interface {
 	setClass(string)
 	schedulers() []string
 	queries() []string
+	addPrefix(string)
 }
 
-type Model struct {
+type model struct {
 	anomalyModel
 }
 
-func (m *Model) init(class string) error {
+func (m *model) init(class string) error {
 	var mdl anomalyModel
 	switch class {
 	case "model.auto.AutoTunedModel", "auto":
@@ -92,37 +96,25 @@ func (m *Model) init(class string) error {
 }
 
 var (
-	_ yaml.Marshaler   = (*Model)(nil)
-	_ yaml.Unmarshaler = (*Model)(nil)
+	_ yaml.Marshaler   = (*model)(nil)
+	_ yaml.Unmarshaler = (*model)(nil)
 )
 
 // Validate validates raw config
-func (m *Model) Validate(data []byte) error {
+func (m *model) Validate(data []byte) error {
 	if err := yaml.Unmarshal(data, m); err != nil {
 		return err
 	}
 	return m.validate()
 }
 
-func modelFromSpec(spec *vmv1.VMAnomalyModelSpec) (*Model, error) {
-	var m Model
-	if err := m.init(spec.Class); err != nil {
-		return nil, err
-	}
-	if err := yaml.Unmarshal(spec.Params.Raw, m.anomalyModel); err != nil {
-		return nil, err
-	}
-	m.setClass(spec.Class)
-	return &m, nil
-}
-
 // MarshalYAML implements yaml.Marshaller interface
-func (m *Model) MarshalYAML() (any, error) {
+func (m *model) MarshalYAML() (any, error) {
 	return m.anomalyModel, nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler interface
-func (m *Model) UnmarshalYAML(unmarshal func(any) error) error {
+func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {
 		return err
@@ -308,31 +300,4 @@ type stdModel struct {
 
 func (m *stdModel) validate() error {
 	return nil
-}
-
-func selectModels(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*build.ChildObjects[*vmv1.VMAnomalyModel], error) {
-	var selectedConfigs []*vmv1.VMAnomalyModel
-	var nsn []string
-	opts := &k8stools.SelectorOpts{
-		DefaultNamespace: cr.Namespace,
-		SelectAll:        cr.Spec.SelectAllByDefault,
-	}
-	if cr.Spec.ModelSelector != nil {
-		opts.ObjectSelector = cr.Spec.ModelSelector.ObjectSelector
-		opts.NamespaceSelector = cr.Spec.ModelSelector.NamespaceSelector
-	}
-	if err := k8stools.VisitSelected(ctx, rclient, opts, func(list *vmv1.VMAnomalyModelList) {
-		for i := range list.Items {
-			item := &list.Items[i]
-			if !item.DeletionTimestamp.IsZero() {
-				continue
-			}
-			rclient.Scheme().Default(item)
-			nsn = append(nsn, fmt.Sprintf("%s/%s", item.Namespace, item.Name))
-			selectedConfigs = append(selectedConfigs, item)
-		}
-	}); err != nil {
-		return nil, err
-	}
-	return build.NewChildObjects("vmanomalymodels", selectedConfigs, nsn), nil
 }

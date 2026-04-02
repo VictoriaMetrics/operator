@@ -163,12 +163,24 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo crust-gather
-	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) mirrord exec -f ./mirrord.json -- $(GINKGO_BIN) \
+BASE_REF ?= origin/master
+SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
+
+test-e2e: load-kind ginkgo crust-gather mirrord
+	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+		-ldflags="-linkmode=external" \
+		$(SKIP_UPGRADE_TESTS) \
+		-procs=$(E2E_TESTS_CONCURRENCY) \
+		-timeout=90m \
+		-junit-report=report.xml ./test/e2e/...
+
+.PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
+test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
+	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-timeout=30m \
-		-junit-report=report.xml ./test/e2e/...
+		-timeout=90m \
+		-junit-report=report.xml ./test/e2e/upgrade/...
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -392,6 +404,7 @@ YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
+MIRRORD_BIN ?= $(LOCALBIN)/mirrord-$(MIRRORD_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.0
@@ -406,6 +419,7 @@ OPM_VERSION ?= v1.62.0
 YQ_VERSION ?= v4.50.1
 GINKGO_VERSION ?= v2.28.1
 CRUST_GATHER_VERSION ?= v0.12.1
+MIRRORD_VERSION ?= 3.199.0
 
 CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
 

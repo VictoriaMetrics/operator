@@ -3,1485 +3,138 @@ package upgrade
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
-const (
-	vmagentName        = "test-agent"
-	vmsingleName       = "test-single"
-	vlsingleName       = "test-vlsingle"
-	vlclusterName      = "test-vlcluster"
-	vmauthName         = "test-auth"
-	vmalertName        = "test-alert"
-	vmclusterName      = "test-cluster"
-	vtsingleName       = "test-vtsingle"
-	vtclusterName      = "test-vtcluster"
-	vmalertmanagerName = "test-am"
-	vlagentName        = "test-vlagent"
-	vmanomalyName      = "test-anomaly"
-	vmdistributedName  = "test-distributed"
-)
-
 var (
-	waitTimeout = 5 * time.Minute
-
-	vmsingleUseProxyProtocolFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vmagentUseProxyProtocolFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vmalertUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlert) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vmalertmanagerUseProxyProtocolFunc = func(cr *vmv1beta1.VMAlertmanager) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vmalertmanagerClusterDomainFunc = func(cr *vmv1beta1.VMAlertmanager) {
-		cr.Spec.ClusterDomainName = "cluster.local"
-	}
-	vmclusterUseProxyProtocolFunc = func(cr *vmv1beta1.VMCluster) {
-		cr.Spec.VMSelect.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-		cr.Spec.VMInsert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vlagentLicenseFunc = func(cr *vmv1.VLAgent) {
-		cr.Spec.License = &vmv1beta1.License{
-			Key: ptr.To("my-key"),
-		}
-	}
-	vlagentUseProxyProtocolFunc = func(cr *vmv1.VLAgent) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vlagentK8sCollectorFieldsFunc = func(cr *vmv1.VLAgent) {
-		cr.Spec.K8sCollector.TenantID = "1:0"
-		cr.Spec.K8sCollector.MsgFields = []string{"msg", "message"}
-	}
-	vtclusterUseProxyProtocolFunc = func(cr *vmv1.VTCluster) {
-		cr.Spec.Select.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-		cr.Spec.Insert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vtsingleUseProxyProtocolFunc = func(cr *vmv1.VTSingle) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vlsingleUseProxyProtocolFunc = func(cr *vmv1.VLSingle) {
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vlsingleLicenseFunc = func(cr *vmv1.VLSingle) {
-		cr.Spec.License = &vmv1beta1.License{
-			Key: ptr.To("my-key"),
-		}
-	}
-	vlclusterUseProxyProtocolFunc = func(cr *vmv1.VLCluster) {
-		cr.Spec.VLInsert.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-		cr.Spec.VLSelect.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-		cr.Spec.VLStorage.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vlclusterLicenseFunc = func(cr *vmv1.VLCluster) {
-		cr.Spec.License = &vmv1beta1.License{
-			Key: ptr.To("my-key"),
-		}
-	}
-	vmauthUseProxyProtocolFunc = func(cr *vmv1beta1.VMAuth) {
-		cr.Spec.UseProxyProtocol = true
-	}
-	vmagentIngestOnlyWithRelabelFunc = func(cr *vmv1beta1.VMAgent) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "env", Replacement: ptr.To("prod")},
-		}
-	}
-	vmsingleIngestOnlyFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-	}
-	vmsingleIngestOnlyWithProxyProtocolFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-		cr.Spec.ExtraArgs = map[string]string{"httpListenAddr.useProxyProtocol": "true"}
-	}
-	vmsingleIngestOnlyWithRelabelFunc = func(cr *vmv1beta1.VMSingle) {
-		cr.Spec.IngestOnlyMode = ptr.To(true)
-		cr.Spec.InlineRelabelConfig = []*vmv1beta1.RelabelConfig{
-			{TargetLabel: "env", Replacement: ptr.To("prod")},
-		}
-	}
-)
-
-var _ = Describe("operator upgrade", Label("upgrade"), func() {
-	DescribeTable("should not rollout VMAgent changes", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAgent in " + namespace)
-		cr := &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmagentName,
-				Namespace: namespace,
+	vmanomaly = &vmv1.VMAnomaly{
+		Spec: vmv1.VMAnomalySpec{
+			Reader: &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://vmsingle-anomaly.svc:8428",
+				SamplingPeriod: "1m",
 			},
-			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-					{URL: "http://localhost:8428/api/v1/write"},
+			Writer: &vmv1.VMAnomalyWritersSpec{
+				DatasourceURL: "http://vmsingle-anomaly.svc:8428",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/vmanomaly",
+					Tag:        "v1.29.0",
 				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmagent",
-						Tag:        "v1.136.0",
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+			License: &vmv1beta1.License{
+				KeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "license",
 					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+					Key: "key",
 				},
 			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAgent to become operational")
-		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		deploymentNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
-			Namespace: namespace,
-		}
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, deploymentNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, deploymentNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// Configurations before 0.67 would be forcibly rolled out
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
-		// Broken on 0.68
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		// TODO[vrutkovs]: Regression?
-		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
-	)
-
+			ConfigRawYaml: "preset: ui",
+		},
+	}
+	vmagent = &vmv1beta1.VMAgent{
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: "http://localhost:8428/api/v1/write"},
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/vmagent",
+					Tag:        "v1.136.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vlagent = &vmv1.VLAgent{
+		Spec: vmv1.VLAgentSpec{
+			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+				{
+					URL: "http://127.0.0.1:9428/insert/loki/api/v1/push",
+				},
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/vlagent",
+					Tag:        "v1.48.0",
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("20m"),
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("20m"),
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+					},
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vmauth = &vmv1beta1.VMAuth{
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/vmauth",
+					Tag:        "v1.136.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+			UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
+				{
+					SrcPaths:  []string{"/api/v1/query"},
+					URLPrefix: vmv1beta1.StringOrArray{"http://localhost:8428"},
+				},
+			},
+		},
+	}
 	//nolint:dupl
-	DescribeTable("should not rollout VMAgent changes (DaemonSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAgent in " + namespace)
-		cr := &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAgentSpec{
-				DaemonSetMode: true,
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-					{URL: "http://localhost:8428/api/v1/write"},
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmagent",
-						Tag:        "v1.136.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAgent to become operational")
-		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		daemonsetNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
-			Namespace: namespace,
-		}
-		expectedDaemonsetSpec := snapshotDaemonSet(ctx, k8sClient, daemonsetNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyDaemonSet(ctx, k8sClient, daemonsetNSN, expectedDaemonsetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// Configurations before 0.67 would be forcibly rolled out
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		// TODO[vrutkovs]: regressed here?
-		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		// TODO[vrutkovs]: regressed here?
-		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMAgent changes (StatefulSet)", func(operatorVersion string, mod func(*vmv1beta1.VMAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAgent in " + namespace)
-		cr := &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAgentSpec{
-				StatefulMode: true,
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-					{URL: "http://localhost:8428/api/v1/write"},
-				},
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmagent",
-						Tag:        "v1.136.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAgent to become operational")
-		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
-			Namespace: namespace,
-		}
-		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// Configurations before 0.67 would be forcibly rolled out
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		// Changes the probe - nothing we can do about it
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmagentUseProxyProtocolFunc),
-
-		// Fails to start
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmagentUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmagentUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		// TODO[vrutkovs]: regressed here?
-		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmagentIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmagentIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmagentIngestOnlyWithRelabelFunc),
-		Entry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmagentIngestOnlyWithRelabelFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VLAgent changes", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-					{
-						URL: "http://vlogs:9428/insert/loki/api/v1/push",
-					},
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v1.49.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child StatefulSet spec")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-
-		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying StatefulSet spec remains stable over time")
-		Consistently(func() string {
-			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.66.0", "v0.66.0", nil),
-		PEntry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlagentLicenseFunc),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0 with License", "v0.68.0", vlagentLicenseFunc),
-		PEntry("from v0.68.1 with License", "v0.68.1", vlagentLicenseFunc),
-		PEntry("from v0.68.2 with License", "v0.68.2", vlagentLicenseFunc),
-		PEntry("from v0.68.3 with License", "v0.68.3", vlagentLicenseFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlagentUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlagentUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlagentUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlagentUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlagentUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VLAgent changes (K8sCollector)", func(operatorVersion string, mod func(*vmv1.VLAgent)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLAgentSpec{
-				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-					{
-						URL: "http://vlogs:9428/insert/loki/api/v1/push",
-					},
-				},
-				K8sCollector: vmv1.VLAgentK8sCollector{
-					Enabled: true,
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v1.49.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLAgent to become operational")
-		nsn := types.NamespacedName{Name: vlagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child DaemonSet spec")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlagent-%s", vlagentName),
-			Namespace: namespace,
-		}
-		expectedDaemonSetSpec := snapshotDaemonSet(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying DaemonSet spec remains stable over time")
-		Consistently(func() string {
-			return verifyDaemonSet(ctx, k8sClient, resourceNSN, expectedDaemonSetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.67.0", "v0.67.0", nil),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0", "v0.68.0", nil),
-		PEntry("from v0.68.1", "v0.68.1", nil),
-		PEntry("from v0.68.2", "v0.68.2", nil),
-		PEntry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1755
-		Entry("from v0.67.0 with K8sCollector fields", "v0.67.0", vlagentK8sCollectorFieldsFunc),
-
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0 with K8sCollector fields", "v0.68.0", vlagentK8sCollectorFieldsFunc),
-		PEntry("from v0.68.1 with K8sCollector fields", "v0.68.1", vlagentK8sCollectorFieldsFunc),
-		PEntry("from v0.68.2 with K8sCollector fields", "v0.68.2", vlagentK8sCollectorFieldsFunc),
-		PEntry("from v0.68.3 with K8sCollector fields", "v0.68.3", vlagentK8sCollectorFieldsFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMSingle changes", func(operatorVersion string, mod func(*vmv1beta1.VMSingle)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMSingle in " + namespace)
-		cr := &vmv1beta1.VMSingle{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmsingleName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMSingleSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/victoria-metrics",
-						Tag:        "v1.136.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMSingle to become operational")
-		nsn := types.NamespacedName{Name: vmsingleName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmsingle-%s", vmsingleName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMSingle")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmsingleUseProxyProtocolFunc),
-
-		Entry("from v0.68.3 IngestOnly", "v0.68.3", vmsingleIngestOnlyFunc),
-		// TODO[vrutkovs]: Regression?
-		PEntry("from v0.68.3 IngestOnly with UseProxyProtocol", "v0.68.3", vmsingleIngestOnlyWithProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1926
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.67.0 with IngestOnly and relabeling", "v0.67.0", vmsingleIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.0 with IngestOnly and relabeling", "v0.68.0", vmsingleIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.1 with IngestOnly and relabeling", "v0.68.1", vmsingleIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.2 with IngestOnly and relabeling", "v0.68.2", vmsingleIngestOnlyWithRelabelFunc),
-		PEntry("from v0.68.3 with IngestOnly and relabeling", "v0.68.3", vmsingleIngestOnlyWithRelabelFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMAuth changes", func(operatorVersion string, mod func(*vmv1beta1.VMAuth)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAuth in " + namespace)
-		cr := &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmauthName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAuthSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmauth",
-						Tag:        "v1.136.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-				UnauthorizedAccessConfig: []vmv1beta1.UnauthorizedAccessConfigURLMap{
-					{
-						SrcPaths:  []string{"/api/v1/query"},
-						URLPrefix: vmv1beta1.StringOrArray{"http://localhost:8428"},
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAuth to become operational")
-		nsn := types.NamespacedName{Name: vmauthName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmauth-%s", vmauthName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAuth")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAuth{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// Configurations before 0.67 would be forcibly rolled out
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmauthUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmauthUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmauthUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmauthUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmauthUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMAlert changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlert)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAlert in " + namespace)
-		cr := &vmv1beta1.VMAlert{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmalertName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAlertSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmalert",
-						Tag:        "v1.136.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-				Datasource: vmv1beta1.VMAlertDatasourceSpec{
-					URL: "http://localhost:8428",
-				},
-				Notifier: &vmv1beta1.VMAlertNotifierSpec{
-					URL: "http://localhost:9093",
-				},
-				EvaluationInterval: "15s",
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAlert to become operational")
-		nsn := types.NamespacedName{Name: vmalertName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmalert-%s", vmalertName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAlert")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAlert{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		// Fails on latest master
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMAlertmanager changes", func(operatorVersion string, mod func(*vmv1beta1.VMAlertmanager)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAlertmanager in " + namespace)
-		cr := &vmv1beta1.VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmalertmanagerName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAlertmanagerSpec{
-				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/prometheus/alertmanager",
-						Tag:        "v0.27.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAlertmanager to become operational")
-		nsn := types.NamespacedName{Name: vmalertmanagerName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmalertmanager-%s", vmalertmanagerName),
-			Namespace: namespace,
-		}
-
-		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAlertmanager")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAlertmanager{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		// Configurations before 0.67 would be forcibly rolled out
-		// TODO[vrutkovs]: Regression?
-		PEntry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmalertmanagerUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmalertmanagerUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmalertmanagerUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmalertmanagerUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmalertmanagerUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1751
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.67.0 with ClusterDomainName", "v0.67.0", vmalertmanagerClusterDomainFunc),
-		Entry("from v0.68.0 with ClusterDomainName", "v0.68.0", vmalertmanagerClusterDomainFunc),
-		Entry("from v0.68.1 with ClusterDomainName", "v0.68.1", vmalertmanagerClusterDomainFunc),
-		Entry("from v0.68.2 with ClusterDomainName", "v0.68.2", vmalertmanagerClusterDomainFunc),
-		Entry("from v0.68.3 with ClusterDomainName", "v0.68.3", vmalertmanagerClusterDomainFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMCluster changes", func(operatorVersion string, mod func(*vmv1beta1.VMCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMCluster in " + namespace)
-		cr := &vmv1beta1.VMCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMClusterSpec{
-				RetentionPeriod: "1",
-				VMSelect: &vmv1beta1.VMSelect{
+	vtcluster = &vmv1.VTCluster{
+		Spec: vmv1.VTClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
 						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vmselect",
-							Tag:        "v1.136.0-cluster",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VMInsert: &vmv1beta1.VMInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vminsert",
-							Tag:        "v1.136.0-cluster",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VMStorage: &vmv1beta1.VMStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vmstorage",
-							Tag:        "v1.136.0-cluster",
+							Repository: "quay.io/victoriametrics/vmauth",
+							Tag:        "v1.136.0",
 						},
 						TerminationGracePeriodSeconds: ptr.To(int64(1)),
 					},
 				},
 			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMCluster to become operational")
-		nsn := types.NamespacedName{Name: vmclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vminsert-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		// Fails on latest master
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VMCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1beta1.VMCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMCluster in " + namespace)
-		cr := &vmv1beta1.VMCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMClusterSpec{
-				RetentionPeriod: "1",
-				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-					Enabled: true,
-					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Image: vmv1beta1.Image{
-								Repository: "quay.io/victoriametrics/vmauth",
-								Tag:        "v1.136.0",
-							},
-							TerminationGracePeriodSeconds: ptr.To(int64(1)),
-						},
-					},
-				},
-				VMSelect: &vmv1beta1.VMSelect{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vmselect",
-							Tag:        "v1.136.0-cluster",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VMInsert: &vmv1beta1.VMInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vminsert",
-							Tag:        "v1.136.0-cluster",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VMStorage: &vmv1beta1.VMStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/vmstorage",
-							Tag:        "v1.136.0-cluster",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMCluster to become operational")
-		nsn := types.NamespacedName{Name: vmclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vminsert-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmselect-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmstorage-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		lbNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmclusterlb-%s", vmclusterName),
-			Namespace: namespace,
-		}
-		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		// Fails on latest master
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vmclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vmclusterUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VLSingle changes", func(operatorVersion string, mod func(*vmv1.VLSingle)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLSingle{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlsingleName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/victoria-logs",
-						Tag:        "v1.44.0",
-					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLSingle to become operational")
-		nsn := types.NamespacedName{Name: vlsingleName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlsingle-%s", vlsingleName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLSingle")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1686
-		Entry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlsingleUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlsingleLicenseFunc),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0 with License", "v0.68.0", vlsingleLicenseFunc),
-		PEntry("from v0.68.1 with License", "v0.68.1", vlsingleLicenseFunc),
-		PEntry("from v0.68.2 with License", "v0.68.2", vlsingleLicenseFunc),
-		PEntry("from v0.68.3 with License", "v0.68.3", vlsingleLicenseFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VLCluster changes", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VLCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLClusterSpec{
-				VLSelect: &vmv1.VLSelect{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VLInsert: &vmv1.VLInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VLStorage: &vmv1.VLStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLCluster to become operational")
-		nsn := types.NamespacedName{Name: vlclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlinsert-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlselect-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlstorage-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		// Fails on latest master
-		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
-		// This was broken again
-		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlclusterUseProxyProtocolFunc),
-		// Broken on 0.68
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		Entry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		PEntry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		PEntry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		PEntry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VLCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VLCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VLCluster in " + namespace)
-		cr := &vmv1.VLCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vlclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VLClusterSpec{
-				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-					Enabled: true,
-					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Image: vmv1beta1.Image{
-								Repository: "quay.io/victoriametrics/vmauth",
-								Tag:        "v1.136.0",
-							},
-							TerminationGracePeriodSeconds: ptr.To(int64(1)),
-						},
-					},
-				},
-				VLSelect: &vmv1.VLSelect{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VLInsert: &vmv1.VLInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				VLStorage: &vmv1.VLStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-logs",
-							Tag:        "v1.44.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VLCluster to become operational")
-		nsn := types.NamespacedName{Name: vlclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlinsert-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlselect-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlstorage-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		lbNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vlclusterlb-%s", vlclusterName),
-			Namespace: namespace,
-		}
-		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VLCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VLCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		// Fails on latest master
-		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vlclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vlclusterUseProxyProtocolFunc),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1722
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.67.0 with License", "v0.67.0", vlclusterLicenseFunc),
-		PEntry("from v0.68.0 with License", "v0.68.0", vlclusterLicenseFunc),
-		PEntry("from v0.68.1 with License", "v0.68.1", vlclusterLicenseFunc),
-		PEntry("from v0.68.2 with License", "v0.68.2", vlclusterLicenseFunc),
-		PEntry("from v0.68.3 with License", "v0.68.3", vlclusterLicenseFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VTSingle changes", func(operatorVersion string, mod func(*vmv1.VTSingle)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VTSingle{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vtsingleName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VTSingleSpec{
+			Select: &vmv1.VTSelect{
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
@@ -1491,588 +144,554 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
 			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VTSingle to become operational")
-		nsn := types.NamespacedName{Name: vtsingleName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtsingle-%s", vtsingleName),
-			Namespace: namespace,
-		}
-
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VTSingle")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTSingle{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying deployment spec remains stable over time")
-		Consistently(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		Entry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vtsingleUseProxyProtocolFunc),
-		Entry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vtsingleUseProxyProtocolFunc),
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtsingleUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtsingleUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VTCluster changes", func(operatorVersion string, mod func(*vmv1.VTCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		cr := &vmv1.VTCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vtclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VTClusterSpec{
-				Select: &vmv1.VTSelect{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				Insert: &vmv1.VTInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				Storage: &vmv1.VTStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VTCluster to become operational")
-		nsn := types.NamespacedName{Name: vtclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtinsert-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtselect-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtstorage-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VTCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		// Fails on latest master
-		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	DescribeTable("should not rollout VTCluster changes (RequestsLoadBalancer)", func(operatorVersion string, mod func(*vmv1.VTCluster)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VTCluster in " + namespace)
-		cr := &vmv1.VTCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vtclusterName,
-				Namespace: namespace,
-			},
-			Spec: vmv1.VTClusterSpec{
-				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-					Enabled: true,
-					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Image: vmv1beta1.Image{
-								Repository: "quay.io/victoriametrics/vmauth",
-								Tag:        "v1.136.0",
-							},
-							TerminationGracePeriodSeconds: ptr.To(int64(1)),
-						},
-					},
-				},
-				Select: &vmv1.VTSelect{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				Insert: &vmv1.VTInsert{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-				Storage: &vmv1.VTStorage{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
-						Image: vmv1beta1.Image{
-							Repository: "quay.io/victoriametrics/victoria-traces",
-							Tag:        "v0.4.0",
-						},
-						TerminationGracePeriodSeconds: ptr.To(int64(1)),
-					},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VTCluster to become operational")
-		nsn := types.NamespacedName{Name: vtclusterName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child Deployment and StatefulSet specs")
-		insertNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtinsert-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-
-		selectNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtselect-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedSelectSpec := snapshotDeployment(ctx, k8sClient, selectNSN)
-
-		storageNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtstorage-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-
-		lbNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vtclusterlb-%s", vtclusterName),
-			Namespace: namespace,
-		}
-		expectedLBSpec := snapshotDeployment(ctx, k8sClient, lbNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VTCluster")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VTCluster{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyDeployment},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-				{"lb", lbNSN, expectedLBSpec, verifyDeployment},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-
-		// introduced in https://github.com/VictoriaMetrics/operator/pull/1916
-		// Probe changed
-		PEntry("from v0.64.0 with UseProxyProtocol", "v0.64.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.64.1 with UseProxyProtocol", "v0.64.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.65.0 with UseProxyProtocol", "v0.65.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.0 with UseProxyProtocol", "v0.66.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.66.1 with UseProxyProtocol", "v0.66.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.67.0 with UseProxyProtocol", "v0.67.0", vtclusterUseProxyProtocolFunc),
-		// Broken on 0.68
-		PEntry("from v0.68.0 with UseProxyProtocol", "v0.68.0", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.1 with UseProxyProtocol", "v0.68.1", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.2 with UseProxyProtocol", "v0.68.2", vtclusterUseProxyProtocolFunc),
-		PEntry("from v0.68.3 with UseProxyProtocol", "v0.68.3", vtclusterUseProxyProtocolFunc),
-	)
-
-	//nolint:dupl
-	PDescribeTable("should not rollout VMAnomaly changes", func(operatorVersion string, mod func(*vmv1.VMAnomaly)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAnomaly in " + namespace)
-		cr := &vmv1.VMAnomaly{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmanomalyName,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					vmv1beta1.SkipValidationAnnotation: vmv1beta1.SkipValidationValue,
-				},
-			},
-			Spec: vmv1.VMAnomalySpec{
-				Reader: &vmv1.VMAnomalyReadersSpec{
-					DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
-					SamplingPeriod: "1m",
-				},
-				Writer: &vmv1.VMAnomalyWritersSpec{
-					DatasourceURL: "http://vminsert:8481/insert/0/prometheus",
-				},
+			Insert: &vmv1.VTInsert{
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmanomaly",
-						Tag:        "v1.21.0",
+						Repository: "quay.io/victoriametrics/victoria-traces",
+						Tag:        "v0.4.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
-				ConfigRawYaml: "preset: ui:demo",
 			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMAnomaly to become operational")
-		nsn := types.NamespacedName{Name: vmanomalyName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VMAnomaly{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child StatefulSet spec")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmanomaly-%s", vmanomalyName),
-			Namespace: namespace,
-		}
-		expectedStatefulSetSpec := snapshotStatefulSet(ctx, k8sClient, resourceNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMAnomaly")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1.VMAnomaly{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload spec remains stable over time")
-		Consistently(func() string {
-			return verifyStatefulSet(ctx, k8sClient, resourceNSN, expectedStatefulSetSpec)
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.64.0", "v0.64.0", nil),
-		Entry("from v0.64.1", "v0.64.1", nil),
-		Entry("from v0.65.0", "v0.65.0", nil),
-		Entry("from v0.66.0", "v0.66.0", nil),
-		Entry("from v0.66.1", "v0.66.1", nil),
-		Entry("from v0.67.0", "v0.67.0", nil),
-		// TODO[vrutkovs]: regression?
-		PEntry("from v0.68.0", "v0.68.0", nil),
-		PEntry("from v0.68.1", "v0.68.1", nil),
-		PEntry("from v0.68.2", "v0.68.2", nil),
-		PEntry("from v0.68.3", "v0.68.3", nil),
-	)
-
-	//nolint:dupl
-	// TODO[vrutkovs]: snapshot created VMClusters?
-	DescribeTable("should not rollout VMDistributed changes", func(operatorVersion string, mod func(*vmv1alpha1.VMDistributed)) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMDistributed in " + namespace)
-		zoneName := "a"
-		cr := &vmv1alpha1.VMDistributed{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmdistributedName,
-				Namespace: namespace,
-			},
-			Spec: vmv1alpha1.VMDistributedSpec{
-				// disable VMAuth to keep the test focused on VMCluster and VMAgent workloads
-				VMAuth: vmv1alpha1.VMDistributedAuth{
-					Enabled: ptr.To(false),
-				},
-				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-					ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-					UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-						Spec: vmv1beta1.VMClusterSpec{
-							RetentionPeriod: "1",
-							VMSelect: &vmv1beta1.VMSelect{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To[int32](1),
-									Image: vmv1beta1.Image{
-										Repository: "quay.io/victoriametrics/vmselect",
-										Tag:        "v1.136.0-cluster",
-									},
-									TerminationGracePeriodSeconds: ptr.To(int64(1)),
-								},
-							},
-							VMInsert: &vmv1beta1.VMInsert{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To[int32](1),
-									Image: vmv1beta1.Image{
-										Repository: "quay.io/victoriametrics/vminsert",
-										Tag:        "v1.136.0-cluster",
-									},
-									TerminationGracePeriodSeconds: ptr.To(int64(1)),
-								},
-							},
-							VMStorage: &vmv1beta1.VMStorage{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To[int32](1),
-									Image: vmv1beta1.Image{
-										Repository: "quay.io/victoriametrics/vmstorage",
-										Tag:        "v1.136.0-cluster",
-									},
-									TerminationGracePeriodSeconds: ptr.To(int64(1)),
-								},
-							},
-						},
+			Storage: &vmv1.VTStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-traces",
+						Tag:        "v0.4.0",
 					},
-					VMAgent: vmv1alpha1.VMDistributedZoneAgent{
-						Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+		},
+	}
+	vtsingle = &vmv1.VTSingle{
+		Spec: vmv1.VTSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/victoria-traces",
+					Tag:        "v0.4.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vmsingle = &vmv1beta1.VMSingle{
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/victoria-metrics",
+					Tag:        "v1.136.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vmalert = &vmv1beta1.VMAlert{
+		Spec: vmv1beta1.VMAlertSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/vmalert",
+					Tag:        "v1.136.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+			Datasource: vmv1beta1.VMAlertDatasourceSpec{
+				URL: "http://localhost:8428",
+			},
+			Notifier: &vmv1beta1.VMAlertNotifierSpec{
+				URL: "http://localhost:9093",
+			},
+			EvaluationInterval: "15s",
+		},
+	}
+	//nolint:dupl
+	vlcluster = &vmv1.VLCluster{
+		Spec: vmv1.VLClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmauth",
+							Tag:        "v1.136.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(1)),
+					},
+				},
+			},
+			VLSelect: &vmv1.VLSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-logs",
+						Tag:        "v1.44.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+			VLInsert: &vmv1.VLInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-logs",
+						Tag:        "v1.44.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+			VLStorage: &vmv1.VLStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/victoria-logs",
+						Tag:        "v1.44.0",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+		},
+	}
+	vmcluster = &vmv1beta1.VMCluster{
+		Spec: vmv1beta1.VMClusterSpec{
+			RetentionPeriod: "1",
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmauth",
+							Tag:        "v1.136.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(1)),
+					},
+				},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmselect",
+						Tag:        "v1.136.0-cluster",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vminsert",
+						Tag:        "v1.136.0-cluster",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+					Image: vmv1beta1.Image{
+						Repository: "quay.io/victoriametrics/vmstorage",
+						Tag:        "v1.136.0-cluster",
+					},
+					TerminationGracePeriodSeconds: ptr.To(int64(1)),
+				},
+			},
+		},
+	}
+	vmalertmanager = &vmv1beta1.VMAlertmanager{
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/prometheus/alertmanager",
+					Tag:        "v0.27.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vlsingle = &vmv1.VLSingle{
+		Spec: vmv1.VLSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+				Image: vmv1beta1.Image{
+					Repository: "quay.io/victoriametrics/victoria-logs",
+					Tag:        "v1.44.0",
+				},
+				TerminationGracePeriodSeconds: ptr.To(int64(1)),
+			},
+		},
+	}
+	vmdistributed = &vmv1alpha1.VMDistributed{
+		Spec: vmv1alpha1.VMDistributedSpec{
+			VMAuth: vmv1alpha1.VMDistributedAuth{
+				Spec: vmv1beta1.VMAuthSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+						Image: vmv1beta1.Image{
+							Repository: "quay.io/victoriametrics/vmauth",
+							Tag:        "v1.136.0",
+						},
+						TerminationGracePeriodSeconds: ptr.To(int64(1)),
+					},
+				},
+			},
+			ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+				ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
+				UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
+				VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+					Spec: vmv1beta1.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMSelect: &vmv1beta1.VMSelect{
 							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](1),
 								Image: vmv1beta1.Image{
-									Repository: "quay.io/victoriametrics/vmagent",
-									Tag:        "v1.136.0",
+									Repository: "quay.io/victoriametrics/vmselect",
+									Tag:        "v1.136.0-cluster",
+								},
+								TerminationGracePeriodSeconds: ptr.To(int64(1)),
+							},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Image: vmv1beta1.Image{
+									Repository: "quay.io/victoriametrics/vminsert",
+									Tag:        "v1.136.0-cluster",
+								},
+								TerminationGracePeriodSeconds: ptr.To(int64(1)),
+							},
+						},
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Image: vmv1beta1.Image{
+									Repository: "quay.io/victoriametrics/vmstorage",
+									Tag:        "v1.136.0-cluster",
 								},
 								TerminationGracePeriodSeconds: ptr.To(int64(1)),
 							},
 						},
 					},
 				},
-				Zones: []vmv1alpha1.VMDistributedZone{
-					{Name: zoneName},
-				},
-			},
-		}
-		if mod != nil {
-			mod(cr)
-		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-
-		By("waiting for VMDistributed to become operational")
-		nsn := types.NamespacedName{Name: vmdistributedName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1alpha1.VMDistributed{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 3*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("snapshotting child workload specs")
-		clusterName := fmt.Sprintf("%s-%s", vmdistributedName, zoneName)
-		insertNSN := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", clusterName), Namespace: namespace}
-		expectedInsertSpec := snapshotDeployment(ctx, k8sClient, insertNSN)
-		selectNSN := types.NamespacedName{Name: fmt.Sprintf("vmselect-%s", clusterName), Namespace: namespace}
-		expectedSelectSpec := snapshotStatefulSet(ctx, k8sClient, selectNSN)
-		storageNSN := types.NamespacedName{Name: fmt.Sprintf("vmstorage-%s", clusterName), Namespace: namespace}
-		expectedStorageSpec := snapshotStatefulSet(ctx, k8sClient, storageNSN)
-		agentNSN := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", clusterName), Namespace: namespace}
-		expectedAgentSpec := snapshotDeployment(ctx, k8sClient, agentNSN)
-
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
-
-		By("waiting for latest operator to reconcile VMDistributed")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1alpha1.VMDistributed{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, 3*time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
-
-		By("verifying workload specs remain stable over time")
-		Consistently(func() string {
-			return checkWorkloads(ctx, k8sClient, []Verifier{
-				{"insert", insertNSN, expectedInsertSpec, verifyDeployment},
-				{"select", selectNSN, expectedSelectSpec, verifyStatefulSet},
-				{"storage", storageNSN, expectedStorageSpec, verifyStatefulSet},
-				{"agent", agentNSN, expectedAgentSpec, verifyDeployment},
-			})
-		}, 5*time.Second, 1*time.Second).Should(BeEmpty())
-	},
-		Entry("from v0.68.0", "v0.68.0", nil),
-		Entry("from v0.68.1", "v0.68.1", nil),
-		Entry("from v0.68.2", "v0.68.2", nil),
-		Entry("from v0.68.3", "v0.68.3", nil),
-	)
-
-	PDescribeTable("VM_LOOPBACK behavior", func(operatorVersion string) {
-		namespace := createRandomNamespace(ctx, k8sClient)
-		deployOldOperator(ctx, k8sClient, operatorVersion, namespace)
-
-		By("creating VMAgent in " + namespace)
-		cr := &vmv1beta1.VMAgent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      vmagentName,
-				Namespace: namespace,
-			},
-			Spec: vmv1beta1.VMAgentSpec{
-				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
-					{URL: "http://[::1]:8428/api/v1/write"},
-				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-					Image: vmv1beta1.Image{
-						Repository: "quay.io/victoriametrics/vmagent",
-						Tag:        "v1.136.0",
+				VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+					Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Image: vmv1beta1.Image{
+								Repository: "quay.io/victoriametrics/vmagent",
+								Tag:        "v1.136.0",
+							},
+							TerminationGracePeriodSeconds: ptr.To(int64(1)),
+						},
 					},
-					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
 			},
+			Zones: []vmv1alpha1.VMDistributedZone{
+				{Name: "a"},
+			},
+		},
+	}
+)
+
+type object[T any] interface {
+	DeepCopy() T
+}
+
+func with[T object[T]](cr T, opts ...func(T)) T {
+	obj := cr.DeepCopy()
+	for _, o := range opts {
+		o(obj)
+	}
+	return obj
+}
+
+var (
+	waitTimeout    = 5 * time.Minute
+	currentVersion = os.Getenv("OPERATOR_TAG")
+	licenseKey     = os.Getenv("LICENSE_KEY")
+)
+
+type entry struct {
+	name     string
+	genDeps  func(string) []client.Object
+	crs      []client.Object
+	versions []string
+	envs     map[string]string
+}
+
+func entries(es []entry) []TableEntry {
+	var result []TableEntry
+	for _, e := range es {
+		for _, v := range e.versions {
+			var objs []client.Object
+			for _, cr := range e.crs {
+				objs = append(objs, cr.DeepCopyObject().(client.Object))
+			}
+			result = append(result, Entry(fmt.Sprintf("from %s: %s", v, e.name), v, e.genDeps, objs, e.envs))
 		}
-		Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+	}
+	return result
+}
 
-		By("waiting for VMAgent to become operational")
-		nsn := types.NamespacedName{Name: vmagentName, Namespace: namespace}
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
+func ensureNoPodRollout(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string) {
+	namespace := createRandomNamespace(ctx, k8sClient)
+	updateOperator(ctx, k8sClient, "quay.io", version, namespace, envs)
+	DeferCleanup(func() {
+		defer GinkgoRecover()
+		removeOperator(ctx, k8sClient, namespace)
+		removeNamespace(ctx, k8sClient, namespace)
+	})
 
-		By("snapshotting child workload specs")
-		resourceNSN := types.NamespacedName{
-			Name:      fmt.Sprintf("vmagent-%s", vmagentName),
+	if genDeps != nil {
+		for _, d := range genDeps(namespace) {
+			Expect(k8sClient.Create(ctx, d)).ToNot(HaveOccurred())
+			DeferCleanup(func() {
+				defer GinkgoRecover()
+				Expect(k8sClient.Delete(ctx, d)).ToNot(HaveOccurred())
+			})
+		}
+	}
+
+	if licenseKey != "" {
+		Expect(k8sClient.Create(ctx,
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "license",
+					Namespace: namespace,
+				},
+				StringData: map[string]string{
+					"key": licenseKey,
+				},
+			},
+		)).ToNot(HaveOccurred())
+	}
+
+	names := make([]string, len(objs))
+	displayNames := make([]string, len(objs))
+	nsns := make([]types.NamespacedName, len(objs))
+
+	for i := range names {
+		names[i] = utilrand.String(10)
+		displayNames[i] = fmt.Sprintf("%T=%s/%s", objs[i], namespace, names[i])
+		nsns[i] = types.NamespacedName{
+			Name:      names[i],
 			Namespace: namespace,
 		}
-		expectedDeploymentSpec := snapshotDeployment(ctx, k8sClient, resourceNSN)
+	}
 
-		By("updating VM_LOOPBACK on the new operator and restarting it")
-		os.Setenv("VM_LOOPBACK", "[::1]")
-		config.MustGetBaseConfig().Loopback = "[::1]"
+	for i, o := range objs {
+		o.SetName(names[i])
+		o.SetNamespace(namespace)
+		By(fmt.Sprintf("creating %s", displayNames[i]))
+		Expect(k8sClient.Create(ctx, o)).ToNot(HaveOccurred())
 		DeferCleanup(func() {
-			os.Unsetenv("VM_LOOPBACK")
-			config.MustGetBaseConfig().Loopback = ""
+			defer GinkgoRecover()
+			nsn := types.NamespacedName{
+				Name:      names[i],
+				Namespace: namespace,
+			}
+			Expect(k8sClient.Delete(ctx, o)).ToNot(HaveOccurred())
+			Eventually(func() bool {
+				return k8serrors.IsNotFound(k8sClient.Get(ctx, nsn, o))
+			}, 30*time.Second, 2*time.Second).Should(BeTrue())
 		})
+	}
 
-		restartManagerAndCleanup(ctx, k8sClient, namespace)
+	var wg sync.WaitGroup
+	for i, o := range objs {
+		By(fmt.Sprintf("waiting for %s to become operational", displayNames[i]))
+		wg.Go(func() {
+			Eventually(func() error {
+				return suite.ExpectObjectStatus(ctx, k8sClient, o, nsns[i], vmv1beta1.UpdateStatusOperational)
+			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
+		})
+	}
+	wg.Wait()
 
-		By("waiting for latest operator to reconcile VMAgent")
-		Eventually(func() error {
-			return suite.ExpectObjectStatus(ctx, k8sClient,
-				&vmv1beta1.VMAgent{}, nsn, vmv1beta1.UpdateStatusOperational)
-		}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
+	By("snapshotting child workload specs")
+	apps := getApplications(objs...)
+	podSpecs := getSnapshots(ctx, k8sClient, apps...)
 
-		By("verifying workload spec has not changed due to VM_LOOPBACK")
-		Eventually(func() string {
-			return verifyDeployment(ctx, k8sClient, resourceNSN, expectedDeploymentSpec)
-		}, 5*time.Second, 1*time.Second).ShouldNot(BeEmpty(), "expected rollout because VM_LOOPBACK changed")
-	},
-		Entry("from v0.64.0", "v0.64.0"),
-		Entry("from v0.64.1", "v0.64.1"),
-		Entry("from v0.65.0", "v0.65.0"),
-		Entry("from v0.66.0", "v0.66.0"),
-		Entry("from v0.66.1", "v0.66.1"),
-		Entry("from v0.67.0", "v0.67.0"),
-		Entry("from v0.68.0", "v0.68.0"),
-		Entry("from v0.68.1", "v0.68.1"),
-		// TODO[vrutkovs]: Regression?
-		Entry("from v0.68.2", "v0.68.2"),
-		Entry("from v0.68.3", "v0.68.3"),
-	)
+	updateOperator(ctx, k8sClient, "docker.io", currentVersion, namespace, envs)
+
+	for i, o := range objs {
+		By(fmt.Sprintf("waiting for latest operator to reconcile %s", displayNames[i]))
+		wg.Go(func() {
+			Eventually(func() error {
+				return suite.ExpectObjectStatus(ctx, k8sClient, o, nsns[i], vmv1beta1.UpdateStatusOperational)
+			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
+		})
+	}
+	wg.Wait()
+
+	By("verifying workload spec remains stable over time")
+	Consistently(func() string {
+		return checkWorkloads(ctx, k8sClient, podSpecs, apps)
+	}, 5*time.Second, 1*time.Second).Should(BeEmpty())
+}
+
+var _ = Describe("operator upgrade", Label("upgrade"), func() {
+	DescribeTable("should not rollout changes", ensureNoPodRollout, entries([]entry{
+		{
+			name: "VMAgent/VLAgent",
+			genDeps: func(ns string) []client.Object {
+				return []client.Object{
+					&corev1.ServiceAccount{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "vlagent-collector",
+							Namespace: ns,
+						},
+					},
+					&rbacv1.ClusterRoleBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("vlagent-collector-%s", ns),
+						},
+						Subjects: []rbacv1.Subject{{
+							Kind:      rbacv1.ServiceAccountKind,
+							Name:      "vlagent-collector",
+							Namespace: ns,
+						}},
+						RoleRef: rbacv1.RoleRef{
+							APIGroup: rbacv1.GroupName,
+							Name:     fmt.Sprintf("vlagent-collector-%s", ns),
+							Kind:     "ClusterRole",
+						},
+					},
+					&rbacv1.ClusterRole{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("vlagent-collector-%s", ns),
+						},
+						Rules: []rbacv1.PolicyRule{{
+							APIGroups: []string{""},
+							Verbs: []string{
+								"get",
+								"list",
+								"watch",
+							},
+							Resources: []string{
+								"pods",
+								"namespaces",
+								"nodes",
+							},
+						}},
+					},
+				}
+			},
+			crs: []client.Object{
+				with(vmagent),
+				with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.DaemonSetMode = true
+				}),
+				with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.StatefulMode = true
+				}),
+				with(vlagent),
+				with(vlagent, func(cr *vmv1.VLAgent) {
+					cr.Spec.K8sCollector.Enabled = true
+					cr.Spec.ServiceAccountName = "vlagent-collector"
+				}),
+			},
+			versions: []string{"v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VMAlert/VMAuth/VMAlertmanager/VMAnomaly",
+			genDeps: func(ns string) []client.Object {
+				return []client.Object{
+					with(vmsingle, func(cr *vmv1beta1.VMSingle) {
+						cr.Name = "anomaly"
+						cr.Namespace = ns
+					}),
+				}
+			},
+			crs: []client.Object{
+				with(vmalert),
+				with(vmauth),
+				with(vmalertmanager),
+				with(vmanomaly),
+			},
+			versions: []string{"v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VM/VL/VTSingle",
+			crs: []client.Object{
+				with(vmsingle),
+				with(vtsingle),
+				with(vlsingle),
+			},
+			versions: []string{"v0.65.0", "v0.67.0", "v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VLCluster",
+			crs: []client.Object{
+				with(vlcluster),
+				with(vlcluster, func(cr *vmv1.VLCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				}),
+			},
+			versions: []string{"v0.65.0", "v0.67.0", "v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VTCluster",
+			crs: []client.Object{
+				with(vtcluster),
+				with(vtcluster, func(cr *vmv1.VTCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				}),
+			},
+			versions: []string{"v0.65.0", "v0.67.0", "v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VMCluster",
+			crs: []client.Object{
+				with(vmcluster),
+			},
+			versions: []string{"v0.65.0", "v0.67.0", "v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		}, {
+			name: "VMCluster with VMBackup",
+			crs: []client.Object{
+				with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
+					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
+						Destination:                 "fs:///tmp",
+						DestinationDisableSuffixAdd: true,
+						Image: vmv1beta1.Image{
+							Tag: "v1.136.0-enterprise",
+						},
+					}
+					cr.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				}),
+			},
+			versions: []string{"v0.65.0", "v0.68.3"},
+			envs: map[string]string{
+				"VM_LOOPBACK": "localhost",
+			},
+		}, {
+			name: "VMDistributed",
+			crs: []client.Object{
+				with(vmdistributed),
+			},
+			versions: []string{"v0.68.0", "v0.68.1", "v0.68.2", "v0.68.3"},
+		},
+	}))
 })

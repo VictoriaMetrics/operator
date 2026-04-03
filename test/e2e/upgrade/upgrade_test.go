@@ -393,7 +393,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					ReplicaCount: ptr.To[int32](1),
 					Image: vmv1beta1.Image{
 						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v1.48.0",
+						Tag:        "v1.49.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
@@ -483,7 +483,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					Image: vmv1beta1.Image{
 						Repository: "quay.io/victoriametrics/vlagent",
-						Tag:        "v1.48.0",
+						Tag:        "v1.49.0",
 					},
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},

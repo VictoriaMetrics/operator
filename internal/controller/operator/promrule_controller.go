@@ -62,6 +62,9 @@ func (r *PromRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	l := r.Log.WithValues("prometheusrule", req.Name, "namespace", req.Namespace)
 	var instance promv1.PrometheusRule
 	ctx = logger.AddToContext(ctx, l)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+	}()
 
 	// Fetch the PrometheusRule instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

@@ -421,9 +421,9 @@ func with[T object[T]](cr T, opts ...func(T)) T {
 }
 
 var (
-	waitTimeout    = 5 * time.Minute
-	currentVersion = os.Getenv("OPERATOR_TAG")
-	licenseKey     = os.Getenv("LICENSE_KEY")
+	waitTimeout         = 5 * time.Minute
+	latestOperatorImage = os.Getenv("OPERATOR_IMAGE")
+	licenseKey          = os.Getenv("LICENSE_KEY")
 )
 
 type entry struct {
@@ -450,7 +450,9 @@ func entries(es []entry) []TableEntry {
 
 func ensureNoPodRollout(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string) {
 	namespace := createRandomNamespace(ctx, k8sClient)
-	updateOperator(ctx, k8sClient, "quay.io", version, namespace, envs)
+
+	previousOperatorImage := fmt.Sprintf("quay.io/%s:%s", operatorImageBase, version)
+	updateOperator(ctx, k8sClient, previousOperatorImage, namespace, envs)
 	DeferCleanup(func() {
 		defer GinkgoRecover()
 		removeOperator(ctx, k8sClient, namespace)
@@ -527,7 +529,7 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 	apps := getApplications(objs...)
 	podSpecs := getSnapshots(ctx, k8sClient, apps...)
 
-	updateOperator(ctx, k8sClient, "docker.io", currentVersion, namespace, envs)
+	updateOperator(ctx, k8sClient, latestOperatorImage, namespace, envs)
 
 	for i, o := range objs {
 		By(fmt.Sprintf("waiting for latest operator to reconcile %s", displayNames[i]))

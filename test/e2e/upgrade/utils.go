@@ -86,7 +86,7 @@ func operatorEnvVars(watchNamespace string, extraEnvs map[string]string) []corev
 	return result
 }
 
-func updateOperator(ctx context.Context, k8sClient client.Client, registry, version, watchNamespace string, envs map[string]string) {
+func updateOperator(ctx context.Context, k8sClient client.Client, operatorImage, watchNamespace string, envs map[string]string) {
 	GinkgoHelper()
 
 	nsn := types.NamespacedName{
@@ -99,14 +99,9 @@ func updateOperator(ctx context.Context, k8sClient client.Client, registry, vers
 		Namespace: watchNamespace,
 	}
 
-	if len(registry) == 0 {
-		registry = "quay.io"
-	}
-	image := registry + "/" + operatorImageBase + ":" + version
-
 	var dep appsv1.Deployment
 	if err := k8sClient.Get(ctx, nsn, &dep); err == nil {
-		dep.Spec.Template.Spec.Containers[0].Image = image
+		dep.Spec.Template.Spec.Containers[0].Image = operatorImage
 		Expect(k8sClient.Update(ctx, &dep)).ToNot(HaveOccurred())
 	} else {
 		By("creating ServiceAccount for operator")
@@ -141,7 +136,7 @@ func updateOperator(ctx context.Context, k8sClient client.Client, registry, vers
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		By(fmt.Sprintf("deploying operator %s", version))
+		By(fmt.Sprintf("deploying operator %s", operatorImage))
 		dep = appsv1.Deployment{
 			ObjectMeta: objMeta,
 			Spec: appsv1.DeploymentSpec{
@@ -159,7 +154,7 @@ func updateOperator(ctx context.Context, k8sClient client.Client, registry, vers
 						Containers: []corev1.Container{
 							{
 								Name:  "manager",
-								Image: image,
+								Image: operatorImage,
 								Args: []string{
 									"--health-probe-bind-address=:8081",
 								},

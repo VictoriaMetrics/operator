@@ -8,6 +8,7 @@ ORG ?= victoriametrics
 TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
 		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+OPERATOR_IMAGE ?= $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
@@ -165,7 +166,7 @@ BASE_REF ?= origin/master
 SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
 
 test-e2e: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_TAG=$(TAG) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		$(SKIP_UPGRADE_TESTS) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
@@ -175,7 +176,7 @@ test-e2e: load-kind ginkgo crust-gather mirrord
 
 .PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
 test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_TAG=$(TAG) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \

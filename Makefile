@@ -281,7 +281,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	$(KUSTOMIZE) build config/crd/overlay > dist/crd.yaml
 
 olm: operator-sdk opm yq docs
-	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG) --format "{{print .Manifest.Digest}}"))
+	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi --format "{{print .Manifest.Digest}}"))
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \

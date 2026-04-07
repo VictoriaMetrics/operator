@@ -198,7 +198,7 @@ func updateOperator(ctx context.Context, k8sClient client.Client, operatorImage,
 		if status.ObservedGeneration < dep.Generation {
 			return false
 		}
-		if status.UpdatedReplicas != replicas || status.AvailableReplicas != replicas || status.ReadyReplicas != replicas {
+		if status.ReadyReplicas != replicas || status.Replicas != replicas {
 			return false
 		}
 		return true

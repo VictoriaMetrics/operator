@@ -10,8 +10,8 @@ github.com/VictoriaMetrics/easyproto v1.2.0 h1:FJT9uNXA2isppFuJErbLqD306KoFlehl7
 github.com/VictoriaMetrics/easyproto v1.2.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/VictoriaMetrics/metrics v1.43.1 h1:j3Ba4l2K1q3pkvzPqt6aSiQ2DBlAEj3VPVeBtpR3t/Y=
 github.com/VictoriaMetrics/metrics v1.43.1/go.mod h1:xDM82ULLYCYdFRgQ2JBxi8Uf1+8En1So9YUwlGTOqTc=
-github.com/VictoriaMetrics/metricsql v0.85.0 h1:xI+EfqsOgY0T2yd7p8hcYQ52LOtf+1i8fQQzQ+RGtZM=
-github.com/VictoriaMetrics/metricsql v0.85.0/go.mod h1:d4EisFO6ONP/HIGDYTAtwrejJBBeKGQYiRl095bS4QQ=
+github.com/VictoriaMetrics/metricsql v0.86.0 h1:IFD08amp+nkW6I+pB3+iyamewkIrbEojkQP4cmEbwkU=
+github.com/VictoriaMetrics/metricsql v0.86.0/go.mod h1:d4EisFO6ONP/HIGDYTAtwrejJBBeKGQYiRl095bS4QQ=
 github.com/aws/aws-sdk-go-v2 v1.41.2 h1:LuT2rzqNQsauaGkPK/7813XxcZ3o3yePY0Iy891T2ls=
 github.com/aws/aws-sdk-go-v2 v1.41.2/go.mod h1:IvvlAZQXvTXznUPfRVfryiG1fbzE2NGK6m9u39YQ+S4=
 github.com/aws/aws-sdk-go-v2/config v1.32.10 h1:9DMthfO6XWZYLfzZglAgW5Fyou2nRI5CuV44sTedKBI=

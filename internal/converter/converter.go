@@ -208,6 +208,17 @@ type VLCollectorSettings struct {
 	LogsPath               string   `yaml:"logsPath,omitempty"`
 }
 
+
+type ServiceValues struct {
+	Annotations              map[string]string `yaml:"annotations,omitempty"`
+	Labels                   map[string]string `yaml:"labels,omitempty"`
+	ClusterIP                string            `yaml:"clusterIP,omitempty"`
+	ExternalIPs              []string          `yaml:"externalIPs,omitempty"`
+	LoadBalancerIP           string            `yaml:"loadBalancerIP,omitempty"`
+	LoadBalancerSourceRanges []string          `yaml:"loadBalancerSourceRanges,omitempty"`
+	Type                     string            `yaml:"type,omitempty"`
+}
+
 type ServerValues struct {
 	Enabled            *bool                               `yaml:"enabled,omitempty"`
 	Name               string                              `yaml:"name,omitempty"`
@@ -226,6 +237,7 @@ type ServerValues struct {
 	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
 	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
 	PersistentVolume   *PersistentVolumeValues             `yaml:"persistentVolume,omitempty"`
+	Service            *ServiceValues                      `yaml:"service,omitempty"`
 }
 
 type ImageValues struct {
@@ -530,6 +542,7 @@ func Convert(name, namespace string, values any) (any, error) {
 
 type commonConfig struct {
 	vmv1beta1.CommonAppsParams
+	ServiceSpec      *vmv1beta1.AdditionalServiceSpec
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata
 	Storage     *corev1.PersistentVolumeClaimSpec
 }
@@ -625,6 +638,42 @@ func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
 	return result
 }
 
+
+func convertService(service *ServiceValues) *vmv1beta1.AdditionalServiceSpec {
+	if service == nil {
+		return nil
+	}
+
+	spec := &vmv1beta1.AdditionalServiceSpec{
+		UseAsDefault: true,
+	}
+
+	if len(service.Annotations) > 0 || len(service.Labels) > 0 {
+		spec.EmbeddedObjectMetadata = vmv1beta1.EmbeddedObjectMetadata{
+			Annotations: service.Annotations,
+			Labels:      service.Labels,
+		}
+	}
+
+	if service.Type != "" {
+		spec.Spec.Type = corev1.ServiceType(service.Type)
+	}
+	if service.ClusterIP != "" {
+		spec.Spec.ClusterIP = service.ClusterIP
+	}
+	if service.LoadBalancerIP != "" {
+		spec.Spec.LoadBalancerIP = service.LoadBalancerIP
+	}
+	if len(service.ExternalIPs) > 0 {
+		spec.Spec.ExternalIPs = service.ExternalIPs
+	}
+	if len(service.LoadBalancerSourceRanges) > 0 {
+		spec.Spec.LoadBalancerSourceRanges = service.LoadBalancerSourceRanges
+	}
+
+	return spec
+}
+
 func convertPersistentVolume(pv *PersistentVolumeValues) (*corev1.PersistentVolumeClaimSpec, error) {
 	if pv == nil || !pv.Enabled {
 		return nil, nil
@@ -673,6 +722,7 @@ func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, e
 	spec.SecurityContext = cfg.SecurityContext
 	spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 	spec.Storage = cfg.Storage
 
 	if values.Server.RetentionPeriod != nil {
@@ -771,6 +821,7 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 	spec.SecurityContext = cfg.SecurityContext
 	spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 	spec.Notifier = values.Server.Notifier
 	spec.Notifiers = values.Server.Notifiers
 	spec.RemoteWrite = values.Server.RemoteWrite
@@ -817,6 +868,7 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 	spec.SecurityContext = cfg.SecurityContext
 	spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 	spec.RemoteWrite = values.RemoteWrite
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -846,6 +898,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		}
 		spec.VMSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMSelect.PodMetadata = cfg.PodMetadata
+		spec.VMSelect.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VMInsert
@@ -857,6 +910,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		}
 		spec.VMInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMInsert.PodMetadata = cfg.PodMetadata
+		spec.VMInsert.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VMStorage
@@ -868,6 +922,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		}
 		spec.VMStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMStorage.PodMetadata = cfg.PodMetadata
+		spec.VMStorage.ServiceSpec = cfg.ServiceSpec
 		if cfg.Storage != nil {
 			spec.VMStorage.Storage = &vmv1beta1.StorageSpec{
 				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
@@ -910,6 +965,7 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 	spec.Tolerations = cfg.Tolerations
 	spec.Affinity = cfg.Affinity
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 	spec.RemoteWrite = values.RemoteWrite
 	spec.SecurityContext = cfg.SecurityContext
 	if cfg.Storage != nil {
@@ -950,6 +1006,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 		spec.VLSelect = &vmv1.VLSelect{}
 		spec.VLSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLSelect.PodMetadata = cfg.PodMetadata
+		spec.VLSelect.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VLInsert
@@ -961,6 +1018,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 		spec.VLInsert = &vmv1.VLInsert{}
 		spec.VLInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLInsert.PodMetadata = cfg.PodMetadata
+		spec.VLInsert.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VLStorage
@@ -972,6 +1030,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 		spec.VLStorage = &vmv1.VLStorage{}
 		spec.VLStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLStorage.PodMetadata = cfg.PodMetadata
+		spec.VLStorage.ServiceSpec = cfg.ServiceSpec
 
 		if cfg.Storage != nil {
 			spec.VLStorage.Storage = &vmv1beta1.StorageSpec{
@@ -1016,6 +1075,7 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 	spec.Tolerations = cfg.Tolerations
 	spec.Affinity = cfg.Affinity
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 	spec.RemoteWrite = values.RemoteWrite
 	spec.SecurityContext = cfg.SecurityContext
 
@@ -1056,6 +1116,7 @@ func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 
 	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
@@ -1080,6 +1141,7 @@ func convertVTSingleSpec(values *VTSingleHelmValues) (*vmv1.VTSingleSpec, error)
 
 	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
@@ -1111,6 +1173,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 		spec.Select = &vmv1.VTSelect{}
 		spec.Select.CommonAppsParams = cfg.CommonAppsParams
 		spec.Select.PodMetadata = cfg.PodMetadata
+		spec.Select.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VTInsert
@@ -1122,6 +1185,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 		spec.Insert = &vmv1.VTInsert{}
 		spec.Insert.CommonAppsParams = cfg.CommonAppsParams
 		spec.Insert.PodMetadata = cfg.PodMetadata
+		spec.Insert.ServiceSpec = cfg.ServiceSpec
 	}
 
 	// VTStorage
@@ -1133,6 +1197,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 		spec.Storage = &vmv1.VTStorage{}
 		spec.Storage.CommonAppsParams = cfg.CommonAppsParams
 		spec.Storage.PodMetadata = cfg.PodMetadata
+		spec.Storage.ServiceSpec = cfg.ServiceSpec
 
 		if cfg.Storage != nil {
 			spec.Storage.Storage = &vmv1beta1.StorageSpec{

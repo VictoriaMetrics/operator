@@ -15,7 +15,7 @@ import (
 func TestConvertVMSingle(t *testing.T) {
 	f := func(values *VMSingleHelmValues, expected func() *vmv1beta1.VMSingle) {
 		t.Helper()
-		actual := ConvertVMSingle("test-name", "test-ns", values)
+		actual := Convert("test-name", "test-ns", values)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -112,6 +112,76 @@ func TestConvertVMSingle(t *testing.T) {
 				Annotations: map[string]string{
 					"prometheus.io/scrape": "true",
 				},
+			}
+			return cr
+		},
+	)
+}
+
+func TestConvertVMCluster(t *testing.T) {
+	f := func(values *VMClusterHelmValues, expected func() *vmv1beta1.VMCluster) {
+		t.Helper()
+		actual := Convert("test-cluster", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	f(
+		&VMClusterHelmValues{
+			VMSelect: ServerValues{
+				ReplicaCount: ptr.To(int32(2)),
+				Image: ImageValues{
+					Repository: "victoriametrics/vmselect",
+					Tag:        "v1.93.0",
+					Variant:    "cluster",
+				},
+			},
+			VMInsert: ServerValues{
+				ReplicaCount: ptr.To(int32(2)),
+				Image: ImageValues{
+					Repository: "victoriametrics/vminsert",
+					Tag:        "v1.93.0",
+					Variant:    "cluster",
+				},
+			},
+			VMStorage: ServerValues{
+				ReplicaCount:    ptr.To(int32(2)),
+				RetentionPeriod: "14d",
+				Image: ImageValues{
+					Repository: "victoriametrics/vmstorage",
+					Tag:        "v1.93.0",
+					Variant:    "cluster",
+				},
+			},
+		},
+		func() *vmv1beta1.VMCluster {
+			cr := &vmv1beta1.VMCluster{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMCluster",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.RetentionPeriod = "14d"
+			cr.Spec.VMSelect = &vmv1beta1.VMSelect{}
+			cr.Spec.VMSelect.ReplicaCount = ptr.To(int32(2))
+			cr.Spec.VMSelect.Image = vmv1beta1.Image{
+				Repository: "victoriametrics/vmselect",
+				Tag:        "v1.93.0-cluster",
+			}
+			cr.Spec.VMInsert = &vmv1beta1.VMInsert{}
+			cr.Spec.VMInsert.ReplicaCount = ptr.To(int32(2))
+			cr.Spec.VMInsert.Image = vmv1beta1.Image{
+				Repository: "victoriametrics/vminsert",
+				Tag:        "v1.93.0-cluster",
+			}
+			cr.Spec.VMStorage = &vmv1beta1.VMStorage{}
+			cr.Spec.VMStorage.ReplicaCount = ptr.To(int32(2))
+			cr.Spec.VMStorage.Image = vmv1beta1.Image{
+				Repository: "victoriametrics/vmstorage",
+				Tag:        "v1.93.0-cluster",
 			}
 			return cr
 		},

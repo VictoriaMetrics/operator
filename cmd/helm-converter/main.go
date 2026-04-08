@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v2"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/VictoriaMetrics/operator/internal/converter"
@@ -14,8 +13,8 @@ import (
 var (
 	inputFile  = flag.String("input", "", "input file with helm values")
 	outputFile = flag.String("output", "", "output file with operator manifests")
-	name       = flag.String("name", "victoria-metrics-single", "name of the generated VMSingle CR")
-	namespace  = flag.String("namespace", "default", "namespace of the generated VMSingle CR")
+	name       = flag.String("name", "victoria-metrics-single", "name of the generated CR")
+	namespace  = flag.String("namespace", "default", "namespace of the generated CR")
 )
 
 func main() {
@@ -37,17 +36,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	var values converter.VMSingleHelmValues
-	if err := yaml.Unmarshal(inputData, &values); err != nil {
+	values, err := converter.UnmarshalValues(inputData)
+	if err != nil {
 		fmt.Printf("cannot unmarshal input file: %v\n", err)
 		os.Exit(1)
 	}
 
-	cr := converter.ConvertVMSingle(*name, *namespace, &values)
+	cr := converter.Convert(*name, *namespace, values)
 
 	outputData, err := k8syaml.Marshal(cr)
 	if err != nil {
-		fmt.Printf("cannot marshal VMSingle CR: %v\n", err)
+		fmt.Printf("cannot marshal CR: %v\n", err)
 		os.Exit(1)
 	}
 

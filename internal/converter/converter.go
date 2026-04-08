@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -52,6 +53,36 @@ type VMAlertHelmValues struct {
 	Global         GlobalValues        `yaml:"global,omitempty"`
 	Server         VMAlertServerValues `yaml:"server"`
 	ServiceAccount *ServiceAccount     `yaml:"serviceAccount,omitempty"`
+}
+
+// VMAnomalyHelmValues represents values from VictoriaMetrics anomaly helm chart
+type VMAnomalyHelmValues struct {
+	Global             GlobalValues                        `yaml:"global,omitempty"`
+	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty"`
+	Image              ImageValues                         `yaml:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty"`
+	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty"`
+	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty"`
+	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty"`
+	Labels             map[string]string                   `yaml:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
+	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	Reader             *VMAnomalyReaderValues              `yaml:"reader,omitempty"`
+	Writer             *VMAnomalyWriterValues              `yaml:"writer,omitempty"`
+	ServiceAccount     *ServiceAccount                     `yaml:"serviceAccount,omitempty"`
+}
+
+type VMAnomalyReaderValues struct {
+	DatasourceURL  string `yaml:"datasourceURL,omitempty"`
+	SamplingPeriod string `yaml:"samplingPeriod,omitempty"`
+}
+
+type VMAnomalyWriterValues struct {
+	DatasourceURL string `yaml:"datasourceURL,omitempty"`
 }
 
 type VMAlertServerValues struct {
@@ -147,6 +178,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-metrics-anomaly":
+		var values VMAnomalyHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	default:
 		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
@@ -212,6 +249,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		alert.Spec = *convertVMAlertSpec(v)
 		cr = alert
+
+	case *VMAnomalyHelmValues:
+		anomaly := &vmv1.VMAnomaly{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VMAnomaly",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		anomaly.Spec = *convertVMAnomalySpec(v)
+		cr = anomaly
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -356,6 +407,55 @@ func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	return spec
+}
+
+func convertVMAnomalySpec(values *VMAnomalyHelmValues) *vmv1.VMAnomalySpec {
+	spec := &vmv1.VMAnomalySpec{}
+
+	cfg := convertCommonConfig(ServerValues{
+		Image:              values.Image,
+		ImagePullSecrets:   values.ImagePullSecrets,
+		ReplicaCount:       values.ReplicaCount,
+		ExtraArgs:          values.ExtraArgs,
+		ExtraEnvs:          values.ExtraEnvs,
+		Resources:          values.Resources,
+		NodeSelector:       values.NodeSelector,
+		Tolerations:        values.Tolerations,
+		Affinity:           values.Affinity,
+		PodAnnotations:     values.PodAnnotations,
+		Labels:             values.Labels,
+		PodSecurityContext: values.PodSecurityContext,
+		SecurityContext:    values.SecurityContext,
+	}, values.Global)
+
+	spec.ReplicaCount = cfg.ReplicaCount
+	spec.Image = cfg.Image
+	spec.ExtraArgs = cfg.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.SecurityContext = cfg.SecurityContext
+	spec.ImagePullSecrets = cfg.ImagePullSecrets
+	spec.PodMetadata = cfg.PodMetadata
+	if values.Reader != nil {
+		spec.Reader = &vmv1.VMAnomalyReadersSpec{
+			DatasourceURL:  values.Reader.DatasourceURL,
+			SamplingPeriod: values.Reader.SamplingPeriod,
+		}
+	}
+	if values.Writer != nil {
+		spec.Writer = &vmv1.VMAnomalyWritersSpec{
+			DatasourceURL: values.Writer.DatasourceURL,
+		}
 	}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {

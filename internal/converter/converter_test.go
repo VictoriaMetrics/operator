@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -268,6 +269,54 @@ func TestConvertVMAlert(t *testing.T) {
 			cr.Spec.Image.Tag = "v1.93.0"
 			cr.Spec.Notifier = &vmv1beta1.VMAlertNotifierSpec{
 				URL: "http://vmalertmanager:9093",
+			}
+			return cr
+		},
+	)
+}
+
+func TestConvertVMAnomaly(t *testing.T) {
+	f := func(values *VMAnomalyHelmValues, expected func() *vmv1.VMAnomaly) {
+		t.Helper()
+		actual := Convert("test-anomaly", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	f(
+		&VMAnomalyHelmValues{
+			ReplicaCount: ptr.To(int32(1)),
+			Image: ImageValues{
+				Repository: "victoriametrics/vmanomaly",
+				Tag:        "v1.13.0",
+			},
+			Reader: &VMAnomalyReaderValues{
+				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
+				SamplingPeriod: "1m",
+			},
+			Writer: &VMAnomalyWriterValues{
+				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
+			},
+		},
+		func() *vmv1.VMAnomaly {
+			cr := &vmv1.VMAnomaly{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VMAnomaly",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-anomaly",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.ReplicaCount = ptr.To(int32(1))
+			cr.Spec.Image.Repository = "victoriametrics/vmanomaly"
+			cr.Spec.Image.Tag = "v1.13.0"
+			cr.Spec.Reader = &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
+				SamplingPeriod: "1m",
+			}
+			cr.Spec.Writer = &vmv1.VMAnomalyWritersSpec{
+				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
 			}
 			return cr
 		},

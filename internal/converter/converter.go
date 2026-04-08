@@ -35,6 +35,13 @@ type VLogsHelmValues struct {
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
 }
 
+// VTSingleHelmValues represents values from VictoriaTraces single helm chart
+type VTSingleHelmValues struct {
+	Global         GlobalValues    `yaml:"global,omitempty"`
+	Server         ServerValues    `yaml:"server"`
+	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
+}
+
 // VLClusterHelmValues represents values from VictoriaLogs cluster helm chart
 type VLClusterHelmValues struct {
 	Global         GlobalValues    `yaml:"global,omitempty"`
@@ -285,6 +292,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-traces-single":
+		var values VTSingleHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	default:
 		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
@@ -420,6 +433,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		vlogs.Spec = *convertVLogsSpec(v)
 		cr = vlogs
+
+	case *VTSingleHelmValues:
+		vtsingle := &vmv1.VTSingle{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VTSingle",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		vtsingle.Spec = *convertVTSingleSpec(v)
+		cr = vtsingle
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -957,6 +984,35 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
 }
 func convertVLogsSpec(values *VLogsHelmValues) *vmv1beta1.VLogsSpec {
 	spec := &vmv1beta1.VLogsSpec{}
+	cfg := convertCommonConfig(values.Server, values.Global)
+
+	spec.Image = cfg.Image
+	spec.ExtraArgs = cfg.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.PodMetadata = cfg.PodMetadata
+	spec.SecurityContext = cfg.SecurityContext
+	spec.ImagePullSecrets = cfg.ImagePullSecrets
+
+	if values.Server.RetentionPeriod != nil {
+		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	if cfg.Storage != nil {
+		spec.Storage = cfg.Storage
+	}
+
+	return spec
+}
+func convertVTSingleSpec(values *VTSingleHelmValues) *vmv1.VTSingleSpec {
+	spec := &vmv1.VTSingleSpec{}
 	cfg := convertCommonConfig(values.Server, values.Global)
 
 	spec.Image = cfg.Image

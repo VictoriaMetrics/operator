@@ -546,3 +546,46 @@ func TestConvertVLogs(t *testing.T) {
 		},
 	)
 }
+func TestConvertVTSingle(t *testing.T) {
+	f := func(values *VTSingleHelmValues, expected func() *vmv1.VTSingle) {
+		t.Helper()
+		actual := Convert("test-name", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VTSingleHelmValues{
+			Server: ServerValues{
+				Image: ImageValues{
+					Repository: "victoriametrics/victoria-traces",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount:    ptr.To(int32(1)),
+				RetentionPeriod: "14d",
+			},
+		},
+		func() *vmv1.VTSingle {
+			return &vmv1.VTSingle{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VTSingle",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VTSingleSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/victoria-traces",
+							Tag:        "v0.3.2",
+						},
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					RetentionPeriod: "14d",
+				},
+			}
+		},
+	)
+}

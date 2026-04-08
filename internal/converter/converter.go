@@ -538,29 +538,7 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 	}
 
 	// Persistent Volume
-	if values.PersistentVolume != nil && values.PersistentVolume.Enabled {
-		cfg.Storage = &corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-		}
-		if values.PersistentVolume.StorageClass != "" {
-			if values.PersistentVolume.StorageClass == "-" {
-				storageClass := ""
-				cfg.Storage.StorageClassName = &storageClass
-			} else {
-				cfg.Storage.StorageClassName = &values.PersistentVolume.StorageClass
-			}
-		}
-		if values.PersistentVolume.Size != "" {
-			q, err := resource.ParseQuantity(values.PersistentVolume.Size)
-			if err == nil {
-				cfg.Storage.Resources = corev1.VolumeResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: q,
-					},
-				}
-			}
-		}
-	}
+	cfg.Storage = convertPersistentVolume(values.PersistentVolume)
 
 	// Common Apps Params
 	if values.Resources != nil {
@@ -599,6 +577,35 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 	}
 
 	return cfg
+}
+
+func convertPersistentVolume(pv *PersistentVolumeValues) *corev1.PersistentVolumeClaimSpec {
+	if pv == nil || !pv.Enabled {
+		return nil
+	}
+
+	storage := &corev1.PersistentVolumeClaimSpec{
+		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+	}
+	if pv.StorageClass != "" {
+		if pv.StorageClass == "-" {
+			storageClass := ""
+			storage.StorageClassName = &storageClass
+		} else {
+			storage.StorageClassName = &pv.StorageClass
+		}
+	}
+	if pv.Size != "" {
+		q, err := resource.ParseQuantity(pv.Size)
+		if err == nil {
+			storage.Resources = corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: q,
+				},
+			}
+		}
+	}
+	return storage
 }
 
 func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {

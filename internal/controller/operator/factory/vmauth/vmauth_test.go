@@ -565,7 +565,7 @@ volumes:
       emptydir: {}
 initcontainers:
   - name: config-init
-    image: victoriametrics/operator:config-reloader-v0.66.1
+    image: victoriametrics/operator:config-reloader-v0.68.3
     args:
       - --config-envsubst-file=/opt/vmauth/config.yaml
       - --config-secret-key=config.yaml.gz
@@ -614,7 +614,7 @@ containers:
       failurethreshold: 10
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
-    image: victoriametrics/operator:config-reloader-v0.66.1
+    image: victoriametrics/operator:config-reloader-v0.68.3
     args:
       - --config-envsubst-file=/opt/vmauth/config.yaml
       - --config-secret-key=config.yaml.gz

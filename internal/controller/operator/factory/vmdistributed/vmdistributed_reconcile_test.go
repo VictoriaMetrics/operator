@@ -316,6 +316,89 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 		},
 	})
+
+	// update VMAuth even, when no healthy zones available
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: zoneName,
+						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+							Spec: vmv1beta1.VMClusterSpec{
+								RetentionPeriod: "1",
+								VMStorage: &vmv1beta1.VMStorage{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMSelect: &vmv1beta1.VMSelect{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+								VMInsert: &vmv1beta1.VMInsert{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
+								},
+							},
+						},
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmv1alpha1.VMDistributedAuth{
+					Spec: vmv1beta1.VMAuthSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+					},
+				},
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
+			// Create objects first
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+
+			// clear actions
+			c.Actions = nil
+
+			// Update status to simulate consistency
+			cr.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+
+			cr.Spec.ZoneCommon.VMCluster.Spec.ClusterVersion = "v1.0.0-cluster"
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// update LB config
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+
+			// reconcile VMCluster
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Update", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+			// reconcile VMAgent
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// reconcile VMAuth
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
 }
 
 func Test_CreateOrUpdate_Paused(t *testing.T) {

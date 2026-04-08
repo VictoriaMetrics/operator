@@ -22,6 +22,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).
 
+* FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): new CLI tool that helps with migration from Helm charts to their corresponding Operator Custom Resources (CRs).
 * FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): VMSingle reuses vmagent implementation to allow scraping and relabelling. See [#1694](https://github.com/VictoriaMetrics/operator/issues/1694)
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support referencing multiple targets of the same kind at `targetRefs[*].crd.objects`.

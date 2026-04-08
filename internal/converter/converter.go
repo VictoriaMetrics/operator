@@ -504,25 +504,7 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 
 	cfg.ReplicaCount = values.ReplicaCount
 
-	// Image
-	repo := values.Image.Repository
-	registry := values.Image.Registry
-	if registry == "" && global.Image.Registry != "" {
-		registry = global.Image.Registry
-	}
-	if registry != "" {
-		repo = fmt.Sprintf("%s/%s", registry, repo)
-	}
-	cfg.Image.Repository = repo
-
-	tag := values.Image.Tag
-	if values.Image.Variant != "" {
-		tag = fmt.Sprintf("%s-%s", tag, values.Image.Variant)
-	}
-	cfg.Image.Tag = tag
-	if values.Image.PullPolicy != "" {
-		cfg.Image.PullPolicy = corev1.PullPolicy(values.Image.PullPolicy)
-	}
+	cfg.Image = convertImage(values.Image, global.Image)
 
 	// ExtraArgs
 	if len(values.ExtraArgs) > 0 {
@@ -577,6 +559,31 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 	}
 
 	return cfg
+}
+
+func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
+	var result vmv1beta1.Image
+
+	repo := image.Repository
+	registry := image.Registry
+	if registry == "" && globalImage.Registry != "" {
+		registry = globalImage.Registry
+	}
+	if registry != "" {
+		repo = fmt.Sprintf("%s/%s", registry, repo)
+	}
+	result.Repository = repo
+
+	tag := image.Tag
+	if image.Variant != "" {
+		tag = fmt.Sprintf("%s-%s", tag, image.Variant)
+	}
+	result.Tag = tag
+	if image.PullPolicy != "" {
+		result.PullPolicy = corev1.PullPolicy(image.PullPolicy)
+	}
+
+	return result
 }
 
 func convertPersistentVolume(pv *PersistentVolumeValues) *corev1.PersistentVolumeClaimSpec {

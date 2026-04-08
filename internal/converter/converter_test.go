@@ -231,3 +231,45 @@ func TestConvertVMAgent(t *testing.T) {
 		},
 	)
 }
+
+func TestConvertVMAlert(t *testing.T) {
+	f := func(values *VMAlertHelmValues, expected func() *vmv1beta1.VMAlert) {
+		t.Helper()
+		actual := Convert("test-alert", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				ReplicaCount: ptr.To(int32(2)),
+				Image: ImageValues{
+					Repository: "victoriametrics/vmalert",
+					Tag:        "v1.93.0",
+				},
+				Notifier: &vmv1beta1.VMAlertNotifierSpec{
+					URL: "http://vmalertmanager:9093",
+				},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			cr := &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.ReplicaCount = ptr.To(int32(2))
+			cr.Spec.Image.Repository = "victoriametrics/vmalert"
+			cr.Spec.Image.Tag = "v1.93.0"
+			cr.Spec.Notifier = &vmv1beta1.VMAlertNotifierSpec{
+				URL: "http://vmalertmanager:9093",
+			}
+			return cr
+		},
+	)
+}

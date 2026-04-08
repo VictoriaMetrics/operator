@@ -47,6 +47,34 @@ type VMAgentHelmValues struct {
 	ServiceAccount     *ServiceAccount                     `yaml:"serviceAccount,omitempty"`
 }
 
+// VMAlertHelmValues represents values from VictoriaMetrics alert helm chart
+type VMAlertHelmValues struct {
+	Global         GlobalValues        `yaml:"global,omitempty"`
+	Server         VMAlertServerValues `yaml:"server"`
+	ServiceAccount *ServiceAccount     `yaml:"serviceAccount,omitempty"`
+}
+
+type VMAlertServerValues struct {
+	Image              ImageValues                         `yaml:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty"`
+	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty"`
+	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty"`
+	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty"`
+	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty"`
+	Labels             map[string]string                   `yaml:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
+	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	Notifier           *vmv1beta1.VMAlertNotifierSpec      `yaml:"notifier,omitempty"`
+	Notifiers          []vmv1beta1.VMAlertNotifierSpec     `yaml:"notifiers,omitempty"`
+	RemoteWrite        *vmv1beta1.VMAlertRemoteWriteSpec   `yaml:"remoteWrite,omitempty"`
+	RemoteRead         *vmv1beta1.VMAlertRemoteReadSpec    `yaml:"remoteRead,omitempty"`
+	Datasource         vmv1beta1.VMAlertDatasourceSpec     `yaml:"datasource,omitempty"`
+}
+
 type GlobalValues struct {
 	ImagePullSecrets []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty"`
 	Image            ImageValues                   `yaml:"image,omitempty"`
@@ -113,6 +141,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-metrics-alert":
+		var values VMAlertHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	default:
 		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
@@ -164,6 +198,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		agent.Spec = *convertVMAgentSpec(v)
 		cr = agent
+
+	case *VMAlertHelmValues:
+		alert := &vmv1beta1.VMAlert{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+				Kind:       "VMAlert",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		alert.Spec = *convertVMAlertSpec(v)
+		cr = alert
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -309,6 +357,49 @@ func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
 	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	return spec
+}
+
+func convertVMAlertSpec(values *VMAlertHelmValues) *vmv1beta1.VMAlertSpec {
+	spec := &vmv1beta1.VMAlertSpec{}
+
+	cfg := convertCommonConfig(ServerValues{
+		Image:              values.Server.Image,
+		ImagePullSecrets:   values.Server.ImagePullSecrets,
+		ReplicaCount:       values.Server.ReplicaCount,
+		ExtraArgs:          values.Server.ExtraArgs,
+		ExtraEnvs:          values.Server.ExtraEnvs,
+		Resources:          values.Server.Resources,
+		NodeSelector:       values.Server.NodeSelector,
+		Tolerations:        values.Server.Tolerations,
+		Affinity:           values.Server.Affinity,
+		PodAnnotations:     values.Server.PodAnnotations,
+		Labels:             values.Server.Labels,
+		PodSecurityContext: values.Server.PodSecurityContext,
+		SecurityContext:    values.Server.SecurityContext,
+	}, values.Global)
+
+	spec.ReplicaCount = cfg.ReplicaCount
+	spec.Image = cfg.Image
+	spec.ExtraArgs = cfg.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.SecurityContext = cfg.SecurityContext
+	spec.ImagePullSecrets = cfg.ImagePullSecrets
+	spec.PodMetadata = cfg.PodMetadata
+	spec.Notifier = values.Server.Notifier
+	spec.Notifiers = values.Server.Notifiers
+	spec.RemoteWrite = values.Server.RemoteWrite
+	spec.RemoteRead = values.Server.RemoteRead
+	spec.Datasource = values.Server.Datasource
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name

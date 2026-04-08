@@ -19,6 +19,7 @@ aliases:
 **Update note 2**: removed `operator_prometheus_converter_watch_events_total` metric since migration of Prometheus object watchers to controllers made this counter obsolete.
 **Update note 3**: made `controller.prometheusCRD.resyncPeriod` command line flag noop, which was relevant to Prometheus object watchers.
 **Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
+**Update note 5**: due to introduction of new flags and sidecar VMAnomaly will be recreated.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).

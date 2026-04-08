@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 	restmetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
@@ -123,6 +124,7 @@ var (
 	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
 		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
 		"Supported fields: ts, level, caller, msg")
+	dryRun          = managerFlags.Bool("dry-run", os.Getenv("DRY_RUN") == "true", "dry run mode for the operator. If enabled, each k8s client mutating call should be logged as debug instance, but not called.")
 	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.conditions fields. "+
 		"It's used to detect stale parent objects on child objects. Like VMAlert->VMRule .status.Conditions.Type")
 )
@@ -260,6 +262,17 @@ func RunManager(ctx context.Context) error {
 		},
 		Client: client.Options{
 			Cache: co,
+		},
+		NewClient: func(config *rest.Config, options client.Options) (client.Client, error) {
+			c, err := client.New(config, options)
+			if err != nil {
+				return nil, err
+			}
+			if *dryRun {
+				setupLog.Info("using custom client - dry-run mode is enabled")
+				return NewDryRunClient(c, setupLog), nil
+			}
+			return c, nil
 		},
 	})
 	if err != nil {

@@ -11,6 +11,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
+const defaultStubAddr = "http://127.0.0.1:9999"
+
 func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerReference) bool {
 	for i := range owners {
 		o := &owners[i]
@@ -37,18 +39,25 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerRe
 			Namespace: vmCluster.Namespace,
 		})
 	}
-	return vmv1beta1.TargetRef{
+	ref := vmv1beta1.TargetRef{
 		Name: "read",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
 		Paths: []string{"/select/.+", "/admin/tenants"},
-		CRD: &vmv1beta1.CRDRef{
+	}
+	if len(nsns) > 0 {
+		ref.CRD = &vmv1beta1.CRDRef{
 			Kind:    "VMCluster/vmselect",
 			Objects: nsns,
-		},
+		}
+	} else {
+		ref.Static = &vmv1beta1.StaticRef{
+			URL: defaultStubAddr,
+		}
 	}
+	return ref
 }
 
 func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
@@ -66,18 +75,25 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 			Namespace: vmAgent.Namespace,
 		})
 	}
-	return vmv1beta1.TargetRef{
+	ref := vmv1beta1.TargetRef{
 		Name: "write",
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
 		Paths: []string{"/insert/.+", "/api/v1/write"},
-		CRD: &vmv1beta1.CRDRef{
+	}
+	if len(nsns) > 0 {
+		ref.CRD = &vmv1beta1.CRDRef{
 			Kind:    "VMAgent",
 			Objects: nsns,
-		},
+		}
+	} else {
+		ref.Static = &vmv1beta1.StaticRef{
+			URL: defaultStubAddr,
+		}
 	}
+	return ref
 }
 
 func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) *vmv1beta1.VMAuth {
@@ -94,15 +110,8 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 	}
 	var targetRefs []vmv1beta1.TargetRef
 	owner := cr.AsOwner()
-	if ref := vmAgentTargetRef(vmAgents, &owner, excludeIds...); len(ref.CRD.Objects) > 0 {
-		targetRefs = append(targetRefs, ref)
-	}
-	if ref := vmClusterTargetRef(vmClusters, &owner, excludeIds...); len(ref.CRD.Objects) > 0 {
-		targetRefs = append(targetRefs, ref)
-	}
-	if len(targetRefs) == 0 {
-		return nil
-	}
+	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, excludeIds...))
+	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, excludeIds...))
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

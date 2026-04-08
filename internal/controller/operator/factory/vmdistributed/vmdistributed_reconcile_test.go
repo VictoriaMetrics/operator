@@ -317,7 +317,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		},
 	})
 
-	// skip VMAuth update, when distributed setup has a single zone
+	// update VMAuth even, when no healthy zones available
 	f(args{
 		cr: &vmv1alpha1.VMDistributed{
 			ObjectMeta: objectMeta,
@@ -379,6 +379,11 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
 			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
 
+			// update LB config
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+
 			// reconcile VMCluster
 			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
 			{Verb: "Update", Kind: "VMCluster", Resource: vmClusterName},
@@ -390,6 +395,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 			// reconcile VMAuth
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 		},
 	})

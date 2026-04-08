@@ -148,6 +148,43 @@ type VLAgentHelmValues struct {
 	PersistentVolume          *PersistentVolumeValues             `yaml:"persistentVolume,omitempty"`
 }
 
+type VLCollectorHelmValues struct {
+	Image                     ImageValues                         `yaml:"image"`
+	Annotations               map[string]string                   `yaml:"annotations,omitempty"`
+	PodAnnotations            map[string]string                   `yaml:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                   `yaml:"podLabels,omitempty"`
+	NodeSelector              map[string]string                   `yaml:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration                 `yaml:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                    `yaml:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint   `yaml:"topologySpreadConstraints,omitempty"`
+	SecurityContext           *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	PodSecurityContext        *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
+	PriorityClassName         string                              `yaml:"priorityClassName,omitempty"`
+	ExtraArgs                 map[string]string                   `yaml:"extraArgs,omitempty"`
+	Env                       []corev1.EnvVar                     `yaml:"env,omitempty"`
+	ExtraVolumes              []corev1.Volume                     `yaml:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount                `yaml:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements        `yaml:"resources,omitempty"`
+	RemoteWrite               []vmv1.VLAgentRemoteWriteSpec       `yaml:"remoteWrite"`
+	Collector                 VLCollectorSettings                 `yaml:"collector"`
+}
+
+type VLCollectorSettings struct {
+	TimeField              []string `yaml:"timeField,omitempty"`
+	MsgField               []string `yaml:"msgField,omitempty"`
+	StreamFields           []string `yaml:"streamFields,omitempty"`
+	ExcludeFilter          string   `yaml:"excludeFilter,omitempty"`
+	IncludePodLabels       *bool    `yaml:"includePodLabels,omitempty"`
+	IncludePodAnnotations  *bool    `yaml:"includePodAnnotations,omitempty"`
+	IncludeNodeLabels      *bool    `yaml:"includeNodeLabels,omitempty"`
+	IncludeNodeAnnotations *bool    `yaml:"includeNodeAnnotations,omitempty"`
+	ExtraFields            string   `yaml:"extraFields,omitempty"`
+	IgnoreFields           []string `yaml:"ignoreFields,omitempty"`
+	TenantID               string   `yaml:"tenantID,omitempty"`
+	CheckpointsPath        *string  `yaml:"checkpointsPath,omitempty"`
+	LogsPath               string   `yaml:"logsPath,omitempty"`
+}
+
 type ServerValues struct {
 	Enabled            *bool                               `yaml:"enabled,omitempty"`
 	Name               string                              `yaml:"name,omitempty"`
@@ -225,6 +262,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		return &values, nil
 	case "victoria-logs-agent":
 		var values VLAgentHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
+	case "victoria-logs-collector":
+		var values VLCollectorHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
@@ -336,6 +379,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		cluster.Spec = *convertVLClusterSpec(v)
 		cr = cluster
+
+	case *VLCollectorHelmValues:
+		agent := &vmv1.VLAgent{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VLAgent",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		agent.Spec = *convertVLCollectorSpec(v)
+		cr = agent
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -807,6 +864,66 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 				},
 			}
 		}
+	}
+
+	return spec
+}
+func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
+	spec := &vmv1.VLAgentSpec{}
+
+	extraArgs := make(map[string]interface{})
+	for k, v := range values.ExtraArgs {
+		extraArgs[k] = v
+	}
+
+	cfg := convertCommonConfig(ServerValues{
+		Image:              values.Image,
+		ExtraArgs:          extraArgs,
+		ExtraEnvs:          values.Env,
+		Resources:          values.Resources,
+		NodeSelector:       values.NodeSelector,
+		Tolerations:        values.Tolerations,
+		Affinity:           values.Affinity,
+		PodAnnotations:     values.PodAnnotations,
+		Labels:             values.PodLabels,
+		PodSecurityContext: values.PodSecurityContext,
+		SecurityContext:    values.SecurityContext,
+	}, GlobalValues{})
+
+	spec.Image = cfg.Image
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.PodMetadata = cfg.PodMetadata
+	spec.RemoteWrite = values.RemoteWrite
+	spec.SecurityContext = cfg.SecurityContext
+
+	spec.TopologySpreadConstraints = values.TopologySpreadConstraints
+	spec.PriorityClassName = values.PriorityClassName
+	spec.Volumes = values.ExtraVolumes
+	spec.VolumeMounts = values.ExtraVolumeMounts
+
+	if len(values.ExtraArgs) > 0 {
+		spec.ExtraArgs = values.ExtraArgs
+	}
+
+	spec.K8sCollector = vmv1.VLAgentK8sCollector{
+		Enabled:                true,
+		TimeFields:             values.Collector.TimeField,
+		MsgFields:              values.Collector.MsgField,
+		StreamFields:           values.Collector.StreamFields,
+		ExcludeFilter:          values.Collector.ExcludeFilter,
+		IncludePodLabels:       values.Collector.IncludePodLabels,
+		IncludePodAnnotations:  values.Collector.IncludePodAnnotations,
+		IncludeNodeLabels:      values.Collector.IncludeNodeLabels,
+		IncludeNodeAnnotations: values.Collector.IncludeNodeAnnotations,
+		ExtraFields:            values.Collector.ExtraFields,
+		IgnoreFields:           values.Collector.IgnoreFields,
+		TenantID:               values.Collector.TenantID,
+		CheckpointsPath:        values.Collector.CheckpointsPath,
+		LogsPath:               values.Collector.LogsPath,
 	}
 
 	return spec

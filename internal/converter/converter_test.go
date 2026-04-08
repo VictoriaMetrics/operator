@@ -449,3 +449,57 @@ func TestConvertVLCluster(t *testing.T) {
 		},
 	)
 }
+func TestConvertVLCollector(t *testing.T) {
+	f := func(values *VLCollectorHelmValues, expected func() *vmv1.VLAgent) {
+		t.Helper()
+		actual := Convert("test-name", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VLCollectorHelmValues{
+			Image: ImageValues{
+				Repository: "victoriametrics/vlagent",
+				Tag:        "v0.3.2",
+			},
+			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+				{URL: "http://victoria-logs:9428"},
+			},
+			Collector: VLCollectorSettings{
+				TimeField:        []string{"time"},
+				ExcludeFilter:    "kubernetes.pod_name:=%{HOSTNAME}",
+				IncludePodLabels: ptr.To(true),
+			},
+		},
+		func() *vmv1.VLAgent {
+			return &vmv1.VLAgent{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VLAgent",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VLAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/vlagent",
+							Tag:        "v0.3.2",
+						},
+					},
+					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+						{URL: "http://victoria-logs:9428"},
+					},
+					K8sCollector: vmv1.VLAgentK8sCollector{
+						Enabled:          true,
+						TimeFields:       []string{"time"},
+						ExcludeFilter:    "kubernetes.pod_name:=%{HOSTNAME}",
+						IncludePodLabels: ptr.To(true),
+					},
+				},
+			}
+		},
+	)
+}

@@ -44,7 +44,7 @@ go run ./cmd/helm-converter -chart <helm-chart-name> -input <path-to-helm-values
 
 *   `-input` (Required): The path to your input Helm `values.yaml` file.
 *   `-output` (Required): The path where the generated Operator CR manifest will be saved.
-*   `-chart` (Required): The name of the Helm chart corresponding to the input values.
+*   `-chart` (Optional): The name of the Helm chart corresponding to the input values. Defaults to `victoria-metrics-single`.
 *   `-name` (Optional): The metadata name for the generated Custom Resource. Defaults to the chart name.
 *   `-namespace` (Optional): The metadata namespace for the generated Custom Resource. Defaults to `default`.
 

@@ -115,6 +115,30 @@ type ServiceAccount struct {
 	Name string `yaml:"name,omitempty"`
 }
 
+// VLAgentHelmValues represents values from VictoriaLogs agent helm chart
+type VLAgentHelmValues struct {
+	Image                     ImageValues                         `yaml:"image"`
+	ReplicaCount              *int32                              `yaml:"replicaCount,omitempty"`
+	Annotations               map[string]string                   `yaml:"annotations,omitempty"`
+	PodAnnotations            map[string]string                   `yaml:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                   `yaml:"podLabels,omitempty"`
+	NodeSelector              map[string]string                   `yaml:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration                 `yaml:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                    `yaml:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint   `yaml:"topologySpreadConstraints,omitempty"`
+	SecurityContext           *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	PodSecurityContext        *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
+	PriorityClassName         string                              `yaml:"priorityClassName,omitempty"`
+	ExtraArgs                 map[string]string                   `yaml:"extraArgs,omitempty"`
+	Env                       []corev1.EnvVar                     `yaml:"env,omitempty"`
+	ExtraVolumes              []corev1.Volume                     `yaml:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount                `yaml:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements        `yaml:"resources,omitempty"`
+	RemoteWrite               []vmv1.VLAgentRemoteWriteSpec       `yaml:"remoteWrite"`
+	MaxDiskUsagePerURL        string                              `yaml:"maxDiskUsagePerURL,omitempty"`
+	PersistentVolume          *PersistentVolumeValues             `yaml:"persistentVolume,omitempty"`
+}
+
 type ServerValues struct {
 	Enabled            *bool                               `yaml:"enabled,omitempty"`
 	Name               string                              `yaml:"name,omitempty"`
@@ -180,6 +204,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		return &values, nil
 	case "victoria-metrics-anomaly":
 		var values VMAnomalyHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
+	case "victoria-logs-agent":
+		var values VLAgentHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
@@ -263,6 +293,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		anomaly.Spec = *convertVMAnomalySpec(v)
 		cr = anomaly
+
+	case *VLAgentHelmValues:
+		agent := &vmv1.VLAgent{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VLAgent",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		agent.Spec = *convertVLAgentSpec(v)
+		cr = agent
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -615,6 +659,58 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 			}
 		}
 	}
+
+	return spec
+}
+func convertVLAgentSpec(values *VLAgentHelmValues) *vmv1.VLAgentSpec {
+	spec := &vmv1.VLAgentSpec{}
+
+	cfg := convertCommonConfig(ServerValues{
+		Image:              values.Image,
+		ReplicaCount:       values.ReplicaCount,
+		ExtraArgs:          nil,
+		ExtraEnvs:          values.Env,
+		Resources:          values.Resources,
+		NodeSelector:       values.NodeSelector,
+		Tolerations:        values.Tolerations,
+		Affinity:           values.Affinity,
+		PodAnnotations:     values.PodAnnotations,
+		Labels:             values.PodLabels,
+		PodSecurityContext: values.PodSecurityContext,
+		SecurityContext:    values.SecurityContext,
+		PersistentVolume:   values.PersistentVolume,
+	}, GlobalValues{})
+
+	spec.Image = cfg.Image
+	spec.ReplicaCount = cfg.ReplicaCount
+	spec.ExtraArgs = values.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.PodMetadata = cfg.PodMetadata
+	spec.RemoteWrite = values.RemoteWrite
+	spec.SecurityContext = cfg.SecurityContext
+	if cfg.Storage != nil {
+		spec.Storage = &vmv1beta1.StorageSpec{
+			VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+				Spec: *cfg.Storage,
+			},
+		}
+	}
+
+	if values.MaxDiskUsagePerURL != "" {
+		if spec.ExtraArgs == nil {
+			spec.ExtraArgs = make(map[string]string)
+		}
+		spec.ExtraArgs["remoteWrite.maxDiskUsagePerURL"] = values.MaxDiskUsagePerURL
+	}
+
+	spec.TopologySpreadConstraints = values.TopologySpreadConstraints
+	spec.PriorityClassName = values.PriorityClassName
+	spec.Volumes = values.ExtraVolumes
+	spec.VolumeMounts = values.ExtraVolumeMounts
 
 	return spec
 }

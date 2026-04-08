@@ -322,3 +322,52 @@ func TestConvertVMAnomaly(t *testing.T) {
 		},
 	)
 }
+func TestConvertVLAgent(t *testing.T) {
+	f := func(values *VLAgentHelmValues, expected func() *vmv1.VLAgent) {
+		t.Helper()
+		actual := Convert("test-name", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VLAgentHelmValues{
+			Image: ImageValues{
+				Repository: "victoriametrics/victoria-logs",
+				Tag:        "v0.3.2",
+			},
+			ReplicaCount: ptr.To(int32(1)),
+			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+				{URL: "http://victoria-logs:9428"},
+			},
+			MaxDiskUsagePerURL: "1GiB",
+		},
+		func() *vmv1.VLAgent {
+			return &vmv1.VLAgent{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VLAgent",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VLAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/victoria-logs",
+							Tag:        "v0.3.2",
+						},
+						ReplicaCount: ptr.To(int32(1)),
+						ExtraArgs: map[string]string{
+							"remoteWrite.maxDiskUsagePerURL": "1GiB",
+						},
+					},
+					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+						{URL: "http://victoria-logs:9428"},
+					},
+				},
+			}
+		},
+	)
+}

@@ -589,3 +589,81 @@ func TestConvertVTSingle(t *testing.T) {
 		},
 	)
 }
+func TestConvertVTCluster(t *testing.T) {
+	f := func(values *VTClusterHelmValues, expected func() *vmv1.VTCluster) {
+		t.Helper()
+		actual := Convert("test-name", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VTClusterHelmValues{
+			VTSelect: ServerValues{
+				Enabled: ptr.To(true),
+				Image: ImageValues{
+					Repository: "victoriametrics/victoria-traces",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount: ptr.To(int32(2)),
+			},
+			VTInsert: ServerValues{
+				Enabled: ptr.To(true),
+				Image: ImageValues{
+					Repository: "victoriametrics/victoria-traces",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount: ptr.To(int32(2)),
+			},
+			VTStorage: ServerValues{
+				Enabled: ptr.To(true),
+				Image: ImageValues{
+					Repository: "victoriametrics/victoria-traces",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount: ptr.To(int32(2)),
+			},
+		},
+		func() *vmv1.VTCluster {
+			return &vmv1.VTCluster{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VTCluster",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VTClusterSpec{
+					Select: &vmv1.VTSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/victoria-traces",
+								Tag:        "v0.3.2",
+							},
+							ReplicaCount: ptr.To(int32(2)),
+						},
+					},
+					Insert: &vmv1.VTInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/victoria-traces",
+								Tag:        "v0.3.2",
+							},
+							ReplicaCount: ptr.To(int32(2)),
+						},
+					},
+					Storage: &vmv1.VTStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/victoria-traces",
+								Tag:        "v0.3.2",
+							},
+							ReplicaCount: ptr.To(int32(2)),
+						},
+					},
+				},
+			}
+		},
+	)
+}

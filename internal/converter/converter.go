@@ -485,18 +485,9 @@ func Convert(name, namespace string, values any) any {
 }
 
 type commonConfig struct {
-	ReplicaCount     *int32
-	Image            vmv1beta1.Image
-	ExtraArgs        map[string]string
-	ExtraEnvs        []corev1.EnvVar
-	Resources        corev1.ResourceRequirements
-	NodeSelector     map[string]string
-	Tolerations      []corev1.Toleration
-	Affinity         *corev1.Affinity
-	SecurityContext  *vmv1beta1.SecurityContext
-	ImagePullSecrets []corev1.LocalObjectReference
-	PodMetadata      *vmv1beta1.EmbeddedObjectMetadata
-	Storage          *corev1.PersistentVolumeClaimSpec
+	vmv1beta1.CommonAppsParams
+	PodMetadata *vmv1beta1.EmbeddedObjectMetadata
+	Storage     *corev1.PersistentVolumeClaimSpec
 }
 
 func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig {
@@ -789,16 +780,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	if values.VMSelect.Enabled == nil || *values.VMSelect.Enabled {
 		spec.VMSelect = &vmv1beta1.VMSelect{}
 		cfg := convertCommonConfig(values.VMSelect, values.Global)
-		spec.VMSelect.ReplicaCount = cfg.ReplicaCount
-		spec.VMSelect.Image = cfg.Image
-		spec.VMSelect.ExtraArgs = cfg.ExtraArgs
-		spec.VMSelect.ExtraEnvs = cfg.ExtraEnvs
-		spec.VMSelect.Resources = cfg.Resources
-		spec.VMSelect.NodeSelector = cfg.NodeSelector
-		spec.VMSelect.Tolerations = cfg.Tolerations
-		spec.VMSelect.Affinity = cfg.Affinity
-		spec.VMSelect.SecurityContext = cfg.SecurityContext
-		spec.VMSelect.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VMSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMSelect.PodMetadata = cfg.PodMetadata
 	}
 
@@ -806,16 +788,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	if values.VMInsert.Enabled == nil || *values.VMInsert.Enabled {
 		spec.VMInsert = &vmv1beta1.VMInsert{}
 		cfg := convertCommonConfig(values.VMInsert, values.Global)
-		spec.VMInsert.ReplicaCount = cfg.ReplicaCount
-		spec.VMInsert.Image = cfg.Image
-		spec.VMInsert.ExtraArgs = cfg.ExtraArgs
-		spec.VMInsert.ExtraEnvs = cfg.ExtraEnvs
-		spec.VMInsert.Resources = cfg.Resources
-		spec.VMInsert.NodeSelector = cfg.NodeSelector
-		spec.VMInsert.Tolerations = cfg.Tolerations
-		spec.VMInsert.Affinity = cfg.Affinity
-		spec.VMInsert.SecurityContext = cfg.SecurityContext
-		spec.VMInsert.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VMInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMInsert.PodMetadata = cfg.PodMetadata
 	}
 
@@ -823,16 +796,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	if values.VMStorage.Enabled == nil || *values.VMStorage.Enabled {
 		spec.VMStorage = &vmv1beta1.VMStorage{}
 		cfg := convertCommonConfig(values.VMStorage, values.Global)
-		spec.VMStorage.ReplicaCount = cfg.ReplicaCount
-		spec.VMStorage.Image = cfg.Image
-		spec.VMStorage.ExtraArgs = cfg.ExtraArgs
-		spec.VMStorage.ExtraEnvs = cfg.ExtraEnvs
-		spec.VMStorage.Resources = cfg.Resources
-		spec.VMStorage.NodeSelector = cfg.NodeSelector
-		spec.VMStorage.Tolerations = cfg.Tolerations
-		spec.VMStorage.Affinity = cfg.Affinity
-		spec.VMStorage.SecurityContext = cfg.SecurityContext
-		spec.VMStorage.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VMStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMStorage.PodMetadata = cfg.PodMetadata
 		if cfg.Storage != nil {
 			spec.VMStorage.Storage = &vmv1beta1.StorageSpec{
@@ -908,16 +872,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 	if values.VLSelect.Enabled == nil || *values.VLSelect.Enabled {
 		cfg := convertCommonConfig(values.VLSelect, values.Global)
 		spec.VLSelect = &vmv1.VLSelect{}
-		spec.VLSelect.ReplicaCount = cfg.ReplicaCount
-		spec.VLSelect.Image = cfg.Image
-		spec.VLSelect.ExtraArgs = cfg.ExtraArgs
-		spec.VLSelect.ExtraEnvs = cfg.ExtraEnvs
-		spec.VLSelect.Resources = cfg.Resources
-		spec.VLSelect.NodeSelector = cfg.NodeSelector
-		spec.VLSelect.Tolerations = cfg.Tolerations
-		spec.VLSelect.Affinity = cfg.Affinity
-		spec.VLSelect.SecurityContext = cfg.SecurityContext
-		spec.VLSelect.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLSelect.PodMetadata = cfg.PodMetadata
 	}
 
@@ -925,16 +880,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 	if values.VLInsert.Enabled == nil || *values.VLInsert.Enabled {
 		cfg := convertCommonConfig(values.VLInsert, values.Global)
 		spec.VLInsert = &vmv1.VLInsert{}
-		spec.VLInsert.ReplicaCount = cfg.ReplicaCount
-		spec.VLInsert.Image = cfg.Image
-		spec.VLInsert.ExtraArgs = cfg.ExtraArgs
-		spec.VLInsert.ExtraEnvs = cfg.ExtraEnvs
-		spec.VLInsert.Resources = cfg.Resources
-		spec.VLInsert.NodeSelector = cfg.NodeSelector
-		spec.VLInsert.Tolerations = cfg.Tolerations
-		spec.VLInsert.Affinity = cfg.Affinity
-		spec.VLInsert.SecurityContext = cfg.SecurityContext
-		spec.VLInsert.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLInsert.PodMetadata = cfg.PodMetadata
 	}
 
@@ -942,16 +888,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 	if values.VLStorage.Enabled == nil || *values.VLStorage.Enabled {
 		cfg := convertCommonConfig(values.VLStorage, values.Global)
 		spec.VLStorage = &vmv1.VLStorage{}
-		spec.VLStorage.ReplicaCount = cfg.ReplicaCount
-		spec.VLStorage.Image = cfg.Image
-		spec.VLStorage.ExtraArgs = cfg.ExtraArgs
-		spec.VLStorage.ExtraEnvs = cfg.ExtraEnvs
-		spec.VLStorage.Resources = cfg.Resources
-		spec.VLStorage.NodeSelector = cfg.NodeSelector
-		spec.VLStorage.Tolerations = cfg.Tolerations
-		spec.VLStorage.Affinity = cfg.Affinity
-		spec.VLStorage.SecurityContext = cfg.SecurityContext
-		spec.VLStorage.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLStorage.PodMetadata = cfg.PodMetadata
 
 		if cfg.Storage != nil {
@@ -1029,16 +966,8 @@ func convertVLogsSpec(values *VLogsHelmValues) *vmv1beta1.VLogsSpec {
 	spec := &vmv1beta1.VLogsSpec{}
 	cfg := convertCommonConfig(values.Server, values.Global)
 
-	spec.Image = cfg.Image
-	spec.ExtraArgs = cfg.ExtraArgs
-	spec.ExtraEnvs = cfg.ExtraEnvs
-	spec.Resources = cfg.Resources
-	spec.NodeSelector = cfg.NodeSelector
-	spec.Tolerations = cfg.Tolerations
-	spec.Affinity = cfg.Affinity
+	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
-	spec.SecurityContext = cfg.SecurityContext
-	spec.ImagePullSecrets = cfg.ImagePullSecrets
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
@@ -1058,16 +987,8 @@ func convertVTSingleSpec(values *VTSingleHelmValues) *vmv1.VTSingleSpec {
 	spec := &vmv1.VTSingleSpec{}
 	cfg := convertCommonConfig(values.Server, values.Global)
 
-	spec.Image = cfg.Image
-	spec.ExtraArgs = cfg.ExtraArgs
-	spec.ExtraEnvs = cfg.ExtraEnvs
-	spec.Resources = cfg.Resources
-	spec.NodeSelector = cfg.NodeSelector
-	spec.Tolerations = cfg.Tolerations
-	spec.Affinity = cfg.Affinity
+	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
-	spec.SecurityContext = cfg.SecurityContext
-	spec.ImagePullSecrets = cfg.ImagePullSecrets
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
@@ -1094,16 +1015,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 	if values.VTSelect.Enabled == nil || *values.VTSelect.Enabled {
 		cfg := convertCommonConfig(values.VTSelect, values.Global)
 		spec.Select = &vmv1.VTSelect{}
-		spec.Select.ReplicaCount = cfg.ReplicaCount
-		spec.Select.Image = cfg.Image
-		spec.Select.ExtraArgs = cfg.ExtraArgs
-		spec.Select.ExtraEnvs = cfg.ExtraEnvs
-		spec.Select.Resources = cfg.Resources
-		spec.Select.NodeSelector = cfg.NodeSelector
-		spec.Select.Tolerations = cfg.Tolerations
-		spec.Select.Affinity = cfg.Affinity
-		spec.Select.SecurityContext = cfg.SecurityContext
-		spec.Select.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.Select.CommonAppsParams = cfg.CommonAppsParams
 		spec.Select.PodMetadata = cfg.PodMetadata
 	}
 
@@ -1111,16 +1023,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 	if values.VTInsert.Enabled == nil || *values.VTInsert.Enabled {
 		cfg := convertCommonConfig(values.VTInsert, values.Global)
 		spec.Insert = &vmv1.VTInsert{}
-		spec.Insert.ReplicaCount = cfg.ReplicaCount
-		spec.Insert.Image = cfg.Image
-		spec.Insert.ExtraArgs = cfg.ExtraArgs
-		spec.Insert.ExtraEnvs = cfg.ExtraEnvs
-		spec.Insert.Resources = cfg.Resources
-		spec.Insert.NodeSelector = cfg.NodeSelector
-		spec.Insert.Tolerations = cfg.Tolerations
-		spec.Insert.Affinity = cfg.Affinity
-		spec.Insert.SecurityContext = cfg.SecurityContext
-		spec.Insert.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.Insert.CommonAppsParams = cfg.CommonAppsParams
 		spec.Insert.PodMetadata = cfg.PodMetadata
 	}
 
@@ -1128,16 +1031,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 	if values.VTStorage.Enabled == nil || *values.VTStorage.Enabled {
 		cfg := convertCommonConfig(values.VTStorage, values.Global)
 		spec.Storage = &vmv1.VTStorage{}
-		spec.Storage.ReplicaCount = cfg.ReplicaCount
-		spec.Storage.Image = cfg.Image
-		spec.Storage.ExtraArgs = cfg.ExtraArgs
-		spec.Storage.ExtraEnvs = cfg.ExtraEnvs
-		spec.Storage.Resources = cfg.Resources
-		spec.Storage.NodeSelector = cfg.NodeSelector
-		spec.Storage.Tolerations = cfg.Tolerations
-		spec.Storage.Affinity = cfg.Affinity
-		spec.Storage.SecurityContext = cfg.SecurityContext
-		spec.Storage.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.Storage.CommonAppsParams = cfg.CommonAppsParams
 		spec.Storage.PodMetadata = cfg.PodMetadata
 
 		if cfg.Storage != nil {

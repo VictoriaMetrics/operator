@@ -12,28 +12,27 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite/allure"
 )
 
-var (
-	k8sClient client.WithWatch
-	ctx       = context.Background()
-)
-
 func TestUpgrade(t *testing.T) {
 	RegisterFailHandler(Fail)
 	suiteConfig, reporterConfig := GinkgoConfiguration()
 	RunSpecs(t, "Upgrade Suite", suiteConfig, reporterConfig)
 }
 
-var _ = BeforeSuite(func() {
-	By("bootstrapping upgrade test environment")
-	data := suite.InitTestEnv()
-	k8sClient = suite.GetClient(data)
-})
+var (
+	k8sClient client.WithWatch
+	ctx       = context.Background()
 
-var _ = AfterSuite(func() {
-	By("tearing down the upgrade test environment")
-	suite.ShutdownTestEnv()
-})
+	_ = SynchronizedBeforeSuite(func() []byte {
+		return suite.InitTestEnv()
+	}, func(data []byte) {
+		k8sClient = suite.GetClient(data)
+	})
 
-var _ = ReportAfterSuite("allure report", func(report Report) {
-	_ = allure.FromGinkgoReport(report)
-})
+	_ = SynchronizedAfterSuite(func() {}, func() {
+		suite.ShutdownTestEnv()
+	})
+
+	_ = ReportAfterSuite("allure report", func(report Report) {
+		_ = allure.FromGinkgoReport(report)
+	})
+)

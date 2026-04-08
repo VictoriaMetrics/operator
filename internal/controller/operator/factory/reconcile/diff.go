@@ -71,7 +71,9 @@ func (r *fieldDiffRecorder) Report(rs cmp.Result) {
 					}
 				}
 			}
-			key = key + "." + name
+			if len(name) > 0 {
+				key = key + "." + name
+			}
 		case cmp.SliceIndex:
 			ix, iy := v.SplitKeys()
 			switch {

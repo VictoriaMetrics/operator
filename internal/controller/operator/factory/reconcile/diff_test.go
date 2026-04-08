@@ -8,12 +8,19 @@ import (
 )
 
 func TestDiffDeepOk(t *testing.T) {
+	type CmpDeeplyNestedStruct struct {
+		DeeplyNested string `json:"field,omitempty"`
+	}
+	type CmpNestedStruct struct {
+		CmpDeeplyNestedStruct `json:",inline,omitempty"`
+	}
 	type cmpStruct struct {
-		Field1 []string       `json:"field1,omitempty"`
-		Field2 map[string]int `json:"field2,omitempty"`
-		Field3 int32
-		Field4 map[int]int `json:"field4,omitempty"`
-		Field5 string
+		Field1          []string       `json:"field1,omitempty"`
+		Field2          map[string]int `json:"field2,omitempty"`
+		Field3          int32
+		Field4          map[int]int `json:"field4,omitempty"`
+		Field5          string
+		CmpNestedStruct `json:",inline"`
 	}
 	type opts struct {
 		desired, current             *cmpStruct
@@ -217,8 +224,13 @@ func TestDiffDeepOk(t *testing.T) {
 				1: 2,
 				2: 1,
 			},
+			CmpNestedStruct: CmpNestedStruct{
+				CmpDeeplyNestedStruct: CmpDeeplyNestedStruct{
+					DeeplyNested: "value",
+				},
+			},
 		},
-		expected:           `{"spec.field4[1]":{"--":2,"++":1},"spec.field4[2]":{"--":1,"++":2}}`,
+		expected:           `{"spec.field":{"--":"value","++":""},"spec.field4[1]":{"--":2,"++":1},"spec.field4[2]":{"--":1,"++":2}}`,
 		expectedDerivative: `{"spec.field4[1]":{"--":2,"++":1},"spec.field4[2]":{"--":1,"++":2}}`,
 	})
 }

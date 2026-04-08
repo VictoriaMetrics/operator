@@ -182,7 +182,7 @@ func IsRetryable(err error) bool {
 }
 
 func isConflict(err error) bool {
-	return k8serrors.IsConflict(err) || isRecreate(err)
+	return k8serrors.IsAlreadyExists(err) || k8serrors.IsConflict(err) || isRecreate(err)
 }
 
 func retryOnConflict(fn func() error) error {

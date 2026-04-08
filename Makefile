@@ -8,6 +8,7 @@ ORG ?= victoriametrics
 TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
 		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+OPERATOR_IMAGE ?= $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
@@ -17,10 +18,6 @@ FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
 
 BUILDINFO = $(DATEINFO_TAG)-$(TAG)
-
-LOCAL_REGISTRY_NAME ?= kind-registry
-LOCAL_REGISTRY_PORT ?= 5001
-LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.35.3
@@ -169,19 +166,21 @@ BASE_REF ?= origin/master
 SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
 
 test-e2e: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		$(SKIP_UPGRADE_TESTS) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-timeout=90m \
+		-randomize-all \
+		-timeout=60m \
 		-junit-report=report.xml ./test/e2e/...
 
 .PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
 test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-timeout=90m \
+		-randomize-all \
+		-timeout=60m \
 		-junit-report=report.xml ./test/e2e/upgrade/...
 
 .PHONY: lint
@@ -303,13 +302,6 @@ olm: operator-sdk opm yq docs
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.21"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
-	$(if $(findstring localhost,$(REGISTRY)), \
-		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \
-		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG); \
-		$(OPM) index add \
-			--bundles $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) \
-			--tag $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG) -c docker; \
-		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG),)
 
 ##@ Deployment
 
@@ -340,47 +332,16 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
 
 # builds image and loads it into kind.
-load-kind: docker-build kind operator-sdk
-	if [ -n "$(LOCAL_REGISTRY_NAME)" ]; then \
-		if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
-			$(CONTAINER_TOOL) run \
-				-d --restart=always \
-				-p "127.0.0.1:${LOCAL_REGISTRY_PORT}:5000" \
-				--network bridge --name "$(LOCAL_REGISTRY_NAME)" \
-				registry:2; \
-		fi; \
-	fi;
+load-kind: docker-build kind
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
-		$(KIND) create cluster --config=./config/olm/kind.yaml; \
+		$(KIND) create cluster --config=./kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-	if [ -n "$(LOCAL_REGISTRY_NAME)" ]; then \
-		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
-		for node in $$($(KIND) get nodes); do \
-			$(CONTAINER_TOOL) exec "$${node}" mkdir -p "${LOCAL_REGISTRY_DIR}"; \
-			$(CONTAINER_TOOL) exec -i "$${node}" sh -c "echo '[host.\"http://$(LOCAL_REGISTRY_NAME):5000\"]' > $(LOCAL_REGISTRY_DIR)/hosts.toml"; \
-		done; \
-		if [ "$$($(CONTAINER_TOOL) inspect -f='{{json .NetworkSettings.Networks.kind}}' $(LOCAL_REGISTRY_NAME))" = 'null' ]; then \
-			$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
-		fi; \
-	fi;
-	if ! $(OPERATOR_SDK) olm status; then \
-		$(OPERATOR_SDK) olm install --version $(OLM_VERSION); \
-	fi
-
-kustomize-set-annotation:
-	cd $(OVERLAY) && \
-		$(KUSTOMIZE) edit set annotation $(ANNOTATION)
+	$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
 
 deploy-kind: OVERLAY=config/base-with-webhook
-deploy-kind: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
-deploy-kind: load-kind docker-push deploy
-
-deploy-kind-olm: ANNOTATION=local-test-image:$(REPO)-index:$(TAG)
-deploy-kind-olm: OVERLAY=config/olm
-deploy-kind-olm: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
-deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
+deploy-kind: load-kind deploy
 
 undeploy-kind: OVERLAY=config/kind
 undeploy-kind: load-kind undeploy

@@ -503,3 +503,46 @@ func TestConvertVLCollector(t *testing.T) {
 		},
 	)
 }
+func TestConvertVLogs(t *testing.T) {
+	f := func(values *VLogsHelmValues, expected func() *vmv1beta1.VLogs) {
+		t.Helper()
+		actual := Convert("test-name", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VLogsHelmValues{
+			Server: ServerValues{
+				Image: ImageValues{
+					Repository: "victoriametrics/victoria-logs",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount:    ptr.To(int32(1)),
+				RetentionPeriod: "14d",
+			},
+		},
+		func() *vmv1beta1.VLogs {
+			return &vmv1beta1.VLogs{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VLogs",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1beta1.VLogsSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/victoria-logs",
+							Tag:        "v0.3.2",
+						},
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					RetentionPeriod: "14d",
+				},
+			}
+		},
+	)
+}

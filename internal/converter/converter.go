@@ -28,6 +28,13 @@ type VMClusterHelmValues struct {
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
 }
 
+// VLogsHelmValues represents values from VictoriaLogs single helm chart
+type VLogsHelmValues struct {
+	Global         GlobalValues    `yaml:"global,omitempty"`
+	Server         ServerValues    `yaml:"server"`
+	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
+}
+
 // VLClusterHelmValues represents values from VictoriaLogs cluster helm chart
 type VLClusterHelmValues struct {
 	Global         GlobalValues    `yaml:"global,omitempty"`
@@ -272,6 +279,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-logs-single":
+		var values VLogsHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	default:
 		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
@@ -393,6 +406,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		agent.Spec = *convertVLCollectorSpec(v)
 		cr = agent
+
+	case *VLogsHelmValues:
+		vlogs := &vmv1beta1.VLogs{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+				Kind:       "VLogs",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		vlogs.Spec = *convertVLogsSpec(v)
+		cr = vlogs
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -924,6 +951,35 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
 		TenantID:               values.Collector.TenantID,
 		CheckpointsPath:        values.Collector.CheckpointsPath,
 		LogsPath:               values.Collector.LogsPath,
+	}
+
+	return spec
+}
+func convertVLogsSpec(values *VLogsHelmValues) *vmv1beta1.VLogsSpec {
+	spec := &vmv1beta1.VLogsSpec{}
+	cfg := convertCommonConfig(values.Server, values.Global)
+
+	spec.Image = cfg.Image
+	spec.ExtraArgs = cfg.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.PodMetadata = cfg.PodMetadata
+	spec.SecurityContext = cfg.SecurityContext
+	spec.ImagePullSecrets = cfg.ImagePullSecrets
+
+	if values.Server.RetentionPeriod != nil {
+		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	if cfg.Storage != nil {
+		spec.Storage = cfg.Storage
 	}
 
 	return spec

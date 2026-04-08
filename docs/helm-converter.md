@@ -14,7 +14,7 @@ aliases:
 
 The `helm-converter` is a CLI tool designed to help with the migration process from Helm charts to their corresponding VictoriaMetrics Operator Custom Resources (CRs).
 
-It takes your existing Helm `values.yaml` file and generates the equivalent Operator Custom Resource YAML manifest.
+It takes your existing Helm `values.yaml` file and generates the equivalent Operator Custom Resource YAML manifest. This manifest is not a 1:1 replacement, but it takes care of the bulk of the conversion work.
 
 ## Supported Helm Charts
 
@@ -88,7 +88,10 @@ The tool maps the majority of critical parameters, including Replicas, Images, R
 
 ## Limitations
 
+Helm converter manifests are not 1:1
+
 Some configurations are currently excluded from automated mapping:
 *   **Ingress and ServiceMonitors**: Secondary standalone objects sometimes managed by the Helm charts (like raw `Ingress` objects or default `ServiceMonitor` definitions) are not processed. The Operator typically assumes you manage `Ingress` resources externally or define `VMServiceScrape` logic independently.
-*   **Autoscaling and PDBs**: Fields defining `hpa` (HorizontalPodAutoscaler), `vpa` (VerticalPodAutoscaler), and `podDisruptionBudget` are not automatically translated to their embedded Operator CR equivalents at this time.
+*   **Autoscaling and PDBs**: Fields defining `hpa` (HorizontalPodAutoscaler), `vpa` (VerticalPodAutoscaler), and `podDisruptionBudget` are not automatically translated to their embedded Operator CR equivalents at this time. These manifests need to be created manually in case the operator's CR doesn't provide a way to define those.
+*   **`fullname` and templating**: Operator doesn't support redefining object names with `fullname`, so resources managed by the operator may have different names.
 *   **Service Configuration**: Network configuration blocks such as `service` overrides (e.g. `clusterIP`, `type`, `loadBalancerIP`, `annotations`) are skipped. You can configure them manually using the `serviceSpec` field in the generated Operator CR.

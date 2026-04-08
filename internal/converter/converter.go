@@ -27,6 +27,26 @@ type VMClusterHelmValues struct {
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
 }
 
+// VMAgentHelmValues represents values from VictoriaMetrics agent helm chart
+type VMAgentHelmValues struct {
+	Global             GlobalValues                        `yaml:"global,omitempty"`
+	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty"`
+	Image              ImageValues                         `yaml:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty"`
+	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty"`
+	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty"`
+	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty"`
+	Labels             map[string]string                   `yaml:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty"`
+	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	RemoteWrite        []vmv1beta1.VMAgentRemoteWriteSpec  `yaml:"remoteWrite,omitempty"`
+	ServiceAccount     *ServiceAccount                     `yaml:"serviceAccount,omitempty"`
+}
+
 type GlobalValues struct {
 	ImagePullSecrets []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty"`
 	Image            ImageValues                   `yaml:"image,omitempty"`
@@ -87,6 +107,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-metrics-agent":
+		var values VMAgentHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	default:
 		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
@@ -124,6 +150,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		cluster.Spec = *convertVMClusterSpec(v)
 		cr = cluster
+
+	case *VMAgentHelmValues:
+		agent := &vmv1beta1.VMAgent{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+				Kind:       "VMAgent",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		agent.Spec = *convertVMAgentSpec(v)
+		cr = agent
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -269,6 +309,45 @@ func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
 	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	return spec
+}
+
+func convertVMAgentSpec(values *VMAgentHelmValues) *vmv1beta1.VMAgentSpec {
+	spec := &vmv1beta1.VMAgentSpec{}
+
+	cfg := convertCommonConfig(ServerValues{
+		Image:              values.Image,
+		ImagePullSecrets:   values.ImagePullSecrets,
+		ReplicaCount:       values.ReplicaCount,
+		ExtraArgs:          values.ExtraArgs,
+		ExtraEnvs:          values.ExtraEnvs,
+		Resources:          values.Resources,
+		NodeSelector:       values.NodeSelector,
+		Tolerations:        values.Tolerations,
+		Affinity:           values.Affinity,
+		PodAnnotations:     values.PodAnnotations,
+		Labels:             values.Labels,
+		PodSecurityContext: values.PodSecurityContext,
+		SecurityContext:    values.SecurityContext,
+	}, values.Global)
+
+	spec.ReplicaCount = cfg.ReplicaCount
+	spec.Image = cfg.Image
+	spec.ExtraArgs = cfg.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	spec.SecurityContext = cfg.SecurityContext
+	spec.ImagePullSecrets = cfg.ImagePullSecrets
+	spec.PodMetadata = cfg.PodMetadata
+	spec.RemoteWrite = values.RemoteWrite
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name

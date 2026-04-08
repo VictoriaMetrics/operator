@@ -187,3 +187,47 @@ func TestConvertVMCluster(t *testing.T) {
 		},
 	)
 }
+
+func TestConvertVMAgent(t *testing.T) {
+	f := func(values *VMAgentHelmValues, expected func() *vmv1beta1.VMAgent) {
+		t.Helper()
+		actual := Convert("test-agent", "test-ns", values)
+		assert.Equal(t, expected(), actual)
+	}
+
+	f(
+		&VMAgentHelmValues{
+			ReplicaCount: ptr.To(int32(2)),
+			Image: ImageValues{
+				Repository: "victoriametrics/vmagent",
+				Tag:        "v1.93.0",
+			},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "http://vminsert:8480/insert/0/prometheus",
+				},
+			},
+		},
+		func() *vmv1beta1.VMAgent {
+			cr := &vmv1beta1.VMAgent{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAgent",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-agent",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.ReplicaCount = ptr.To(int32(2))
+			cr.Spec.Image.Repository = "victoriametrics/vmagent"
+			cr.Spec.Image.Tag = "v1.93.0"
+			cr.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "http://vminsert:8480/insert/0/prometheus",
+				},
+			}
+			return cr
+		},
+	)
+}

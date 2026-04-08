@@ -319,7 +319,7 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 }
 
 // Convert converts helm values to corresponding CRD
-func Convert(name, namespace string, values any) any {
+func Convert(name, namespace string, values any) (any, error) {
 	var cr any
 
 	switch v := values.(type) {
@@ -334,7 +334,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		single.Spec = *convertVMSingleSpec(v)
+		spec, err := convertVMSingleSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		single.Spec = *spec
 		cr = single
 
 	case *VMClusterHelmValues:
@@ -348,7 +352,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		cluster.Spec = *convertVMClusterSpec(v)
+		spec, err := convertVMClusterSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		cluster.Spec = *spec
 		cr = cluster
 
 	case *VMAgentHelmValues:
@@ -362,7 +370,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		agent.Spec = *convertVMAgentSpec(v)
+		spec, err := convertVMAgentSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		agent.Spec = *spec
 		cr = agent
 
 	case *VMAlertHelmValues:
@@ -376,7 +388,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		alert.Spec = *convertVMAlertSpec(v)
+		spec, err := convertVMAlertSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		alert.Spec = *spec
 		cr = alert
 
 	case *VMAnomalyHelmValues:
@@ -390,7 +406,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		anomaly.Spec = *convertVMAnomalySpec(v)
+		spec, err := convertVMAnomalySpec(v)
+		if err != nil {
+			return nil, err
+		}
+		anomaly.Spec = *spec
 		cr = anomaly
 
 	case *VLAgentHelmValues:
@@ -404,7 +424,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		agent.Spec = *convertVLAgentSpec(v)
+		spec, err := convertVLAgentSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		agent.Spec = *spec
 		cr = agent
 
 	case *VLClusterHelmValues:
@@ -418,7 +442,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		cluster.Spec = *convertVLClusterSpec(v)
+		spec, err := convertVLClusterSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		cluster.Spec = *spec
 		cr = cluster
 
 	case *VLCollectorHelmValues:
@@ -432,7 +460,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		agent.Spec = *convertVLCollectorSpec(v)
+		spec, err := convertVLCollectorSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		agent.Spec = *spec
 		cr = agent
 
 	case *VLogsHelmValues:
@@ -446,7 +478,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		vlogs.Spec = *convertVLogsSpec(v)
+		spec, err := convertVLogsSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		vlogs.Spec = *spec
 		cr = vlogs
 
 	case *VTSingleHelmValues:
@@ -460,7 +496,11 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		vtsingle.Spec = *convertVTSingleSpec(v)
+		spec, err := convertVTSingleSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		vtsingle.Spec = *spec
 		cr = vtsingle
 
 	case *VTClusterHelmValues:
@@ -474,14 +514,18 @@ func Convert(name, namespace string, values any) any {
 				Namespace: namespace,
 			},
 		}
-		cluster.Spec = *convertVTClusterSpec(v)
+		spec, err := convertVTClusterSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		cluster.Spec = *spec
 		cr = cluster
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
 	}
 
-	return cr
+	return cr, nil
 }
 
 type commonConfig struct {
@@ -490,7 +534,7 @@ type commonConfig struct {
 	Storage     *corev1.PersistentVolumeClaimSpec
 }
 
-func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig {
+func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig, error) {
 	var cfg commonConfig
 
 	cfg.ReplicaCount = values.ReplicaCount
@@ -511,7 +555,11 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 	}
 
 	// Persistent Volume
-	cfg.Storage = convertPersistentVolume(values.PersistentVolume)
+	storage, err := convertPersistentVolume(values.PersistentVolume)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Storage = storage
 
 	// Common Apps Params
 	if values.Resources != nil {
@@ -549,7 +597,7 @@ func convertCommonConfig(values ServerValues, global GlobalValues) commonConfig 
 		}
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
@@ -577,9 +625,9 @@ func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
 	return result
 }
 
-func convertPersistentVolume(pv *PersistentVolumeValues) *corev1.PersistentVolumeClaimSpec {
+func convertPersistentVolume(pv *PersistentVolumeValues) (*corev1.PersistentVolumeClaimSpec, error) {
 	if pv == nil || !pv.Enabled {
-		return nil
+		return nil, nil
 	}
 
 	storage := &corev1.PersistentVolumeClaimSpec{
@@ -595,20 +643,24 @@ func convertPersistentVolume(pv *PersistentVolumeValues) *corev1.PersistentVolum
 	}
 	if pv.Size != "" {
 		q, err := resource.ParseQuantity(pv.Size)
-		if err == nil {
-			storage.Resources = corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: q,
-				},
-			}
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse persistent volume size %q: %w", pv.Size, err)
+		}
+		storage.Resources = corev1.VolumeResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: q,
+			},
 		}
 	}
-	return storage
+	return storage, nil
 }
 
-func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {
+func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, error) {
 	spec := &vmv1beta1.VMSingleSpec{}
-	cfg := convertCommonConfig(values.Server, values.Global)
+	cfg, err := convertCommonConfig(values.Server, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
@@ -631,13 +683,13 @@ func convertVMSingleSpec(values *VMSingleHelmValues) *vmv1beta1.VMSingleSpec {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
-	return spec
+	return spec, nil
 }
 
-func convertVMAnomalySpec(values *VMAnomalyHelmValues) *vmv1.VMAnomalySpec {
+func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, error) {
 	spec := &vmv1.VMAnomalySpec{}
 
-	cfg := convertCommonConfig(ServerValues{
+	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ImagePullSecrets:   values.ImagePullSecrets,
 		ReplicaCount:       values.ReplicaCount,
@@ -652,6 +704,9 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) *vmv1.VMAnomalySpec {
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
 	}, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
@@ -680,13 +735,13 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) *vmv1.VMAnomalySpec {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
-	return spec
+	return spec, nil
 }
 
-func convertVMAlertSpec(values *VMAlertHelmValues) *vmv1beta1.VMAlertSpec {
+func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, error) {
 	spec := &vmv1beta1.VMAlertSpec{}
 
-	cfg := convertCommonConfig(ServerValues{
+	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Server.Image,
 		ImagePullSecrets:   values.Server.ImagePullSecrets,
 		ReplicaCount:       values.Server.ReplicaCount,
@@ -701,6 +756,9 @@ func convertVMAlertSpec(values *VMAlertHelmValues) *vmv1beta1.VMAlertSpec {
 		PodSecurityContext: values.Server.PodSecurityContext,
 		SecurityContext:    values.Server.SecurityContext,
 	}, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
@@ -723,13 +781,13 @@ func convertVMAlertSpec(values *VMAlertHelmValues) *vmv1beta1.VMAlertSpec {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
-	return spec
+	return spec, nil
 }
 
-func convertVMAgentSpec(values *VMAgentHelmValues) *vmv1beta1.VMAgentSpec {
+func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, error) {
 	spec := &vmv1beta1.VMAgentSpec{}
 
-	cfg := convertCommonConfig(ServerValues{
+	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ImagePullSecrets:   values.ImagePullSecrets,
 		ReplicaCount:       values.ReplicaCount,
@@ -744,6 +802,9 @@ func convertVMAgentSpec(values *VMAgentHelmValues) *vmv1beta1.VMAgentSpec {
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
 	}, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
@@ -762,10 +823,10 @@ func convertVMAgentSpec(values *VMAgentHelmValues) *vmv1beta1.VMAgentSpec {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
-	return spec
+	return spec, nil
 }
 
-func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec {
+func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec, error) {
 	spec := &vmv1beta1.VMClusterSpec{}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -779,7 +840,10 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	// VMSelect
 	if values.VMSelect.Enabled == nil || *values.VMSelect.Enabled {
 		spec.VMSelect = &vmv1beta1.VMSelect{}
-		cfg := convertCommonConfig(values.VMSelect, values.Global)
+		cfg, err := convertCommonConfig(values.VMSelect, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VMSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMSelect.PodMetadata = cfg.PodMetadata
 	}
@@ -787,7 +851,10 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	// VMInsert
 	if values.VMInsert.Enabled == nil || *values.VMInsert.Enabled {
 		spec.VMInsert = &vmv1beta1.VMInsert{}
-		cfg := convertCommonConfig(values.VMInsert, values.Global)
+		cfg, err := convertCommonConfig(values.VMInsert, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VMInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMInsert.PodMetadata = cfg.PodMetadata
 	}
@@ -795,7 +862,10 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 	// VMStorage
 	if values.VMStorage.Enabled == nil || *values.VMStorage.Enabled {
 		spec.VMStorage = &vmv1beta1.VMStorage{}
-		cfg := convertCommonConfig(values.VMStorage, values.Global)
+		cfg, err := convertCommonConfig(values.VMStorage, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VMStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMStorage.PodMetadata = cfg.PodMetadata
 		if cfg.Storage != nil {
@@ -807,12 +877,12 @@ func convertVMClusterSpec(values *VMClusterHelmValues) *vmv1beta1.VMClusterSpec 
 		}
 	}
 
-	return spec
+	return spec, nil
 }
-func convertVLAgentSpec(values *VLAgentHelmValues) *vmv1.VLAgentSpec {
+func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 	spec := &vmv1.VLAgentSpec{}
 
-	cfg := convertCommonConfig(ServerValues{
+	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ReplicaCount:       values.ReplicaCount,
 		ExtraArgs:          nil,
@@ -827,6 +897,9 @@ func convertVLAgentSpec(values *VLAgentHelmValues) *vmv1.VLAgentSpec {
 		SecurityContext:    values.SecurityContext,
 		PersistentVolume:   values.PersistentVolume,
 	}, GlobalValues{})
+	if err != nil {
+		return nil, err
+	}
 
 	spec.Image = cfg.Image
 	spec.ReplicaCount = cfg.ReplicaCount
@@ -859,9 +932,9 @@ func convertVLAgentSpec(values *VLAgentHelmValues) *vmv1.VLAgentSpec {
 	spec.Volumes = values.ExtraVolumes
 	spec.VolumeMounts = values.ExtraVolumeMounts
 
-	return spec
+	return spec, nil
 }
-func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
+func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, error) {
 	spec := &vmv1.VLClusterSpec{}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -870,7 +943,10 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 
 	// VLSelect
 	if values.VLSelect.Enabled == nil || *values.VLSelect.Enabled {
-		cfg := convertCommonConfig(values.VLSelect, values.Global)
+		cfg, err := convertCommonConfig(values.VLSelect, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VLSelect = &vmv1.VLSelect{}
 		spec.VLSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLSelect.PodMetadata = cfg.PodMetadata
@@ -878,7 +954,10 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 
 	// VLInsert
 	if values.VLInsert.Enabled == nil || *values.VLInsert.Enabled {
-		cfg := convertCommonConfig(values.VLInsert, values.Global)
+		cfg, err := convertCommonConfig(values.VLInsert, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VLInsert = &vmv1.VLInsert{}
 		spec.VLInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLInsert.PodMetadata = cfg.PodMetadata
@@ -886,7 +965,10 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 
 	// VLStorage
 	if values.VLStorage.Enabled == nil || *values.VLStorage.Enabled {
-		cfg := convertCommonConfig(values.VLStorage, values.Global)
+		cfg, err := convertCommonConfig(values.VLStorage, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.VLStorage = &vmv1.VLStorage{}
 		spec.VLStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VLStorage.PodMetadata = cfg.PodMetadata
@@ -900,17 +982,12 @@ func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
 		}
 	}
 
-	return spec
+	return spec, nil
 }
-func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
+func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, error) {
 	spec := &vmv1.VLAgentSpec{}
 
-	extraArgs := make(map[string]interface{})
-	for k, v := range values.ExtraArgs {
-		extraArgs[k] = v
-	}
-
-	cfg := convertCommonConfig(ServerValues{
+	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ExtraArgs:          extraArgs,
 		ExtraEnvs:          values.Env,
@@ -923,6 +1000,9 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
 	}, GlobalValues{})
+	if err != nil {
+		return nil, err
+	}
 
 	spec.Image = cfg.Image
 	spec.ExtraEnvs = cfg.ExtraEnvs
@@ -960,11 +1040,14 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) *vmv1.VLAgentSpec {
 		LogsPath:               values.Collector.LogsPath,
 	}
 
-	return spec
+	return spec, nil
 }
-func convertVLogsSpec(values *VLogsHelmValues) *vmv1beta1.VLogsSpec {
+func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 	spec := &vmv1beta1.VLogsSpec{}
-	cfg := convertCommonConfig(values.Server, values.Global)
+	cfg, err := convertCommonConfig(values.Server, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
@@ -981,11 +1064,14 @@ func convertVLogsSpec(values *VLogsHelmValues) *vmv1beta1.VLogsSpec {
 		spec.Storage = cfg.Storage
 	}
 
-	return spec
+	return spec, nil
 }
-func convertVTSingleSpec(values *VTSingleHelmValues) *vmv1.VTSingleSpec {
+func convertVTSingleSpec(values *VTSingleHelmValues) (*vmv1.VTSingleSpec, error) {
 	spec := &vmv1.VTSingleSpec{}
-	cfg := convertCommonConfig(values.Server, values.Global)
+	cfg, err := convertCommonConfig(values.Server, values.Global)
+	if err != nil {
+		return nil, err
+	}
 
 	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
@@ -1002,9 +1088,9 @@ func convertVTSingleSpec(values *VTSingleHelmValues) *vmv1.VTSingleSpec {
 		spec.Storage = cfg.Storage
 	}
 
-	return spec
+	return spec, nil
 }
-func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
+func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, error) {
 	spec := &vmv1.VTClusterSpec{}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -1013,7 +1099,10 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 
 	// VTSelect
 	if values.VTSelect.Enabled == nil || *values.VTSelect.Enabled {
-		cfg := convertCommonConfig(values.VTSelect, values.Global)
+		cfg, err := convertCommonConfig(values.VTSelect, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.Select = &vmv1.VTSelect{}
 		spec.Select.CommonAppsParams = cfg.CommonAppsParams
 		spec.Select.PodMetadata = cfg.PodMetadata
@@ -1021,7 +1110,10 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 
 	// VTInsert
 	if values.VTInsert.Enabled == nil || *values.VTInsert.Enabled {
-		cfg := convertCommonConfig(values.VTInsert, values.Global)
+		cfg, err := convertCommonConfig(values.VTInsert, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.Insert = &vmv1.VTInsert{}
 		spec.Insert.CommonAppsParams = cfg.CommonAppsParams
 		spec.Insert.PodMetadata = cfg.PodMetadata
@@ -1029,7 +1121,10 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 
 	// VTStorage
 	if values.VTStorage.Enabled == nil || *values.VTStorage.Enabled {
-		cfg := convertCommonConfig(values.VTStorage, values.Global)
+		cfg, err := convertCommonConfig(values.VTStorage, values.Global)
+		if err != nil {
+			return nil, err
+		}
 		spec.Storage = &vmv1.VTStorage{}
 		spec.Storage.CommonAppsParams = cfg.CommonAppsParams
 		spec.Storage.PodMetadata = cfg.PodMetadata
@@ -1043,5 +1138,5 @@ func convertVTClusterSpec(values *VTClusterHelmValues) *vmv1.VTClusterSpec {
 		}
 	}
 
-	return spec
+	return spec, nil
 }

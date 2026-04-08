@@ -47,7 +47,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	cr := converter.Convert(*name, *namespace, values)
+	cr, err := converter.Convert(*name, *namespace, values)
+	if err != nil {
+		fmt.Printf("cannot convert values: %v\n", err)
+		os.Exit(1)
+	}
 
 	outputData, err := k8syaml.Marshal(cr)
 	if err != nil {

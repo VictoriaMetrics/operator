@@ -16,7 +16,8 @@ import (
 func TestConvertVMSingle(t *testing.T) {
 	f := func(values *VMSingleHelmValues, expected func() *vmv1beta1.VMSingle) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -122,7 +123,8 @@ func TestConvertVMSingle(t *testing.T) {
 func TestConvertVMCluster(t *testing.T) {
 	f := func(values *VMClusterHelmValues, expected func() *vmv1beta1.VMCluster) {
 		t.Helper()
-		actual := Convert("test-cluster", "test-ns", values)
+		actual, err := Convert("test-cluster", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -192,7 +194,8 @@ func TestConvertVMCluster(t *testing.T) {
 func TestConvertVMAgent(t *testing.T) {
 	f := func(values *VMAgentHelmValues, expected func() *vmv1beta1.VMAgent) {
 		t.Helper()
-		actual := Convert("test-agent", "test-ns", values)
+		actual, err := Convert("test-agent", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -236,7 +239,8 @@ func TestConvertVMAgent(t *testing.T) {
 func TestConvertVMAlert(t *testing.T) {
 	f := func(values *VMAlertHelmValues, expected func() *vmv1beta1.VMAlert) {
 		t.Helper()
-		actual := Convert("test-alert", "test-ns", values)
+		actual, err := Convert("test-alert", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -278,7 +282,8 @@ func TestConvertVMAlert(t *testing.T) {
 func TestConvertVMAnomaly(t *testing.T) {
 	f := func(values *VMAnomalyHelmValues, expected func() *vmv1.VMAnomaly) {
 		t.Helper()
-		actual := Convert("test-anomaly", "test-ns", values)
+		actual, err := Convert("test-anomaly", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -325,7 +330,8 @@ func TestConvertVMAnomaly(t *testing.T) {
 func TestConvertVLAgent(t *testing.T) {
 	f := func(values *VLAgentHelmValues, expected func() *vmv1.VLAgent) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -374,7 +380,8 @@ func TestConvertVLAgent(t *testing.T) {
 func TestConvertVLCluster(t *testing.T) {
 	f := func(values *VLClusterHelmValues, expected func() *vmv1.VLCluster) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -452,7 +459,8 @@ func TestConvertVLCluster(t *testing.T) {
 func TestConvertVLCollector(t *testing.T) {
 	f := func(values *VLCollectorHelmValues, expected func() *vmv1.VLAgent) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -506,7 +514,8 @@ func TestConvertVLCollector(t *testing.T) {
 func TestConvertVLogs(t *testing.T) {
 	f := func(values *VLogsHelmValues, expected func() *vmv1beta1.VLogs) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -549,7 +558,8 @@ func TestConvertVLogs(t *testing.T) {
 func TestConvertVTSingle(t *testing.T) {
 	f := func(values *VTSingleHelmValues, expected func() *vmv1.VTSingle) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 
@@ -592,7 +602,8 @@ func TestConvertVTSingle(t *testing.T) {
 func TestConvertVTCluster(t *testing.T) {
 	f := func(values *VTClusterHelmValues, expected func() *vmv1.VTCluster) {
 		t.Helper()
-		actual := Convert("test-name", "test-ns", values)
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
 		assert.Equal(t, expected(), actual)
 	}
 

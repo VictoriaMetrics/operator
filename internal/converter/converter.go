@@ -73,43 +73,23 @@ type PersistentVolumeValues struct {
 }
 
 // UnmarshalValues unmarshals yaml data into the specified type
-func UnmarshalValues(data []byte) (any, error) {
-	var detector map[string]any
-	if err := yaml.Unmarshal(data, &detector); err != nil {
-		return nil, err
-	}
-
-	if _, ok := detector["server"]; ok {
+func UnmarshalValues(data []byte, chart string) (any, error) {
+	switch chart {
+	case "victoria-metrics-single":
 		var values VMSingleHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
 		return &values, nil
-	}
-
-	if _, ok := detector["vmselect"]; ok {
+	case "victoria-metrics-cluster":
 		var values VMClusterHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
 		return &values, nil
+	default:
+		return nil, fmt.Errorf("unsupported chart: %s", chart)
 	}
-	if _, ok := detector["vminsert"]; ok {
-		var values VMClusterHelmValues
-		if err := yaml.Unmarshal(data, &values); err != nil {
-			return nil, err
-		}
-		return &values, nil
-	}
-	if _, ok := detector["vmstorage"]; ok {
-		var values VMClusterHelmValues
-		if err := yaml.Unmarshal(data, &values); err != nil {
-			return nil, err
-		}
-		return &values, nil
-	}
-
-	return nil, fmt.Errorf("cannot detect type from helm values")
 }
 
 // Convert converts helm values to corresponding CRD

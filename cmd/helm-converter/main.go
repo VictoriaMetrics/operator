@@ -15,6 +15,7 @@ var (
 	outputFile = flag.String("output", "", "output file with operator manifests")
 	name       = flag.String("name", "victoria-metrics-single", "name of the generated CR")
 	namespace  = flag.String("namespace", "default", "namespace of the generated CR")
+	chart      = flag.String("chart", "victoria-metrics-single", "name of the helm chart")
 )
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	values, err := converter.UnmarshalValues(inputData)
+	values, err := converter.UnmarshalValues(inputData, *chart)
 	if err != nil {
 		fmt.Printf("cannot unmarshal input file: %v\n", err)
 		os.Exit(1)

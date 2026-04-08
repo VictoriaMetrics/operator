@@ -219,6 +219,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, buildinfo.ShortVersion()))
+
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	mustAddRestClientMetrics(r)
@@ -317,6 +318,10 @@ func RunManager(ctx context.Context) error {
 	baseClient, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
+	}
+
+	if *dryRun {
+		return RunDryRunMode(ctx, mgr, baseConfig)
 	}
 
 	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig); err != nil {

@@ -20,6 +20,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): apply scrape class relabellings before job ones. See [#1997](https://github.com/VictoriaMetrics/operator/issues/1997).
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): render %SHARD_NUM% placeholder when shard count is greater than 0. See [#2001](https://github.com/VictoriaMetrics/operator/issues/2001).
 * BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): do not ignore ExtraStorageNodes for select, when default storage is disabled. See [#1910](https://github.com/VictoriaMetrics/operator/issues/1910).
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): use default stub, when no VMAuth backends are available
 
 ## [v0.68.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.3)
 **Release date:** 16 March 2026

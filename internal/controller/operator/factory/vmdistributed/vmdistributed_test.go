@@ -395,7 +395,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			for i := range d.zones.vmagents {
 				vmAgentURLs = append(vmAgentURLs, d.zones.vmagents[i].AsURL())
 			}
-			for i := range d.zones.vmclusters {
+			for i := len(d.zones.vmclusters) - 1; i >= 0; i-- {
 				vmClusterURLs = append(vmClusterURLs, d.zones.vmclusters[i].AsURL(vmv1beta1.ClusterComponentSelect))
 			}
 			targetRefs := []vmv1beta1.TargetRef{
@@ -518,7 +518,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			for i := range d.zones.vmagents {
 				vmAgentURLs = append(vmAgentURLs, d.zones.vmagents[i].AsURL())
 			}
-			for i := range d.zones.vmclusters {
+			for i := len(d.zones.vmclusters) - 1; i >= 0; i-- {
 				vmClusterURLs = append(vmClusterURLs, d.zones.vmclusters[i].AsURL(vmv1beta1.ClusterComponentSelect))
 			}
 			targetRefs := []vmv1beta1.TargetRef{

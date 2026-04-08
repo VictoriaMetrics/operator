@@ -2,7 +2,6 @@ package vmdistributed
 
 import (
 	"slices"
-	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -10,6 +9,8 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
+
+const defaultStubAddr = "http://127.0.0.1:9999"
 
 func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerReference) bool {
 	for i := range owners {
@@ -23,7 +24,7 @@ func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerRefere
 
 func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
 	var urls []string
-	for i := range vmClusters {
+	for i := len(vmClusters) - 1; i >= 0; i-- {
 		if slices.Contains(excludeIds, i) {
 			continue
 		}
@@ -33,7 +34,9 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerRe
 		}
 		urls = append(urls, vmCluster.AsURL(vmv1beta1.ClusterComponentSelect))
 	}
-	sort.Strings(urls)
+	if len(urls) == 0 {
+		urls = append(urls, defaultStubAddr)
+	}
 	return vmv1beta1.TargetRef{
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
@@ -58,7 +61,9 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 		}
 		urls = append(urls, vmAgent.AsURL())
 	}
-	sort.Strings(urls)
+	if len(urls) == 0 {
+		urls = append(urls, defaultStubAddr)
+	}
 	return vmv1beta1.TargetRef{
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To("first_available"),
@@ -88,15 +93,8 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 	}
 	var targetRefs []vmv1beta1.TargetRef
 	owner := cr.AsOwner()
-	if ref := vmAgentTargetRef(vmAgents, &owner, excludeIds...); len(ref.Static.URLs) > 0 {
-		targetRefs = append(targetRefs, ref)
-	}
-	if ref := vmClusterTargetRef(vmClusters, &owner, excludeIds...); len(ref.Static.URLs) > 0 {
-		targetRefs = append(targetRefs, ref)
-	}
-	if len(targetRefs) == 0 {
-		return nil
-	}
+	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, excludeIds...))
+	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, excludeIds...))
 	vmAuth.Spec.UnauthorizedUserAccessSpec.URLMap = nil
 	vmAuth.Spec.UnauthorizedUserAccessSpec.URLPrefix = nil
 	vmAuth.Spec.UnauthorizedUserAccessSpec.TargetRefs = targetRefs

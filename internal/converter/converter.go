@@ -28,6 +28,15 @@ type VMClusterHelmValues struct {
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
 }
 
+// VLClusterHelmValues represents values from VictoriaLogs cluster helm chart
+type VLClusterHelmValues struct {
+	Global         GlobalValues    `yaml:"global,omitempty"`
+	VLSelect       ServerValues    `yaml:"vlselect"`
+	VLInsert       ServerValues    `yaml:"vlinsert"`
+	VLStorage      ServerValues    `yaml:"vlstorage"`
+	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
+}
+
 // VMAgentHelmValues represents values from VictoriaMetrics agent helm chart
 type VMAgentHelmValues struct {
 	Global             GlobalValues                        `yaml:"global,omitempty"`
@@ -208,6 +217,12 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 			return nil, err
 		}
 		return &values, nil
+	case "victoria-logs-cluster":
+		var values VLClusterHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	case "victoria-logs-agent":
 		var values VLAgentHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
@@ -307,6 +322,20 @@ func Convert(name, namespace string, values any) any {
 		}
 		agent.Spec = *convertVLAgentSpec(v)
 		cr = agent
+
+	case *VLClusterHelmValues:
+		cluster := &vmv1.VLCluster{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VLCluster",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		cluster.Spec = *convertVLClusterSpec(v)
+		cr = cluster
 
 	default:
 		panic(fmt.Sprintf("unsupported values type: %T", values))
@@ -711,6 +740,74 @@ func convertVLAgentSpec(values *VLAgentHelmValues) *vmv1.VLAgentSpec {
 	spec.PriorityClassName = values.PriorityClassName
 	spec.Volumes = values.ExtraVolumes
 	spec.VolumeMounts = values.ExtraVolumeMounts
+
+	return spec
+}
+func convertVLClusterSpec(values *VLClusterHelmValues) *vmv1.VLClusterSpec {
+	spec := &vmv1.VLClusterSpec{}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	// VLSelect
+	if values.VLSelect.Enabled == nil || *values.VLSelect.Enabled {
+		cfg := convertCommonConfig(values.VLSelect, values.Global)
+		spec.VLSelect = &vmv1.VLSelect{}
+		spec.VLSelect.ReplicaCount = cfg.ReplicaCount
+		spec.VLSelect.Image = cfg.Image
+		spec.VLSelect.ExtraArgs = cfg.ExtraArgs
+		spec.VLSelect.ExtraEnvs = cfg.ExtraEnvs
+		spec.VLSelect.Resources = cfg.Resources
+		spec.VLSelect.NodeSelector = cfg.NodeSelector
+		spec.VLSelect.Tolerations = cfg.Tolerations
+		spec.VLSelect.Affinity = cfg.Affinity
+		spec.VLSelect.SecurityContext = cfg.SecurityContext
+		spec.VLSelect.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLSelect.PodMetadata = cfg.PodMetadata
+	}
+
+	// VLInsert
+	if values.VLInsert.Enabled == nil || *values.VLInsert.Enabled {
+		cfg := convertCommonConfig(values.VLInsert, values.Global)
+		spec.VLInsert = &vmv1.VLInsert{}
+		spec.VLInsert.ReplicaCount = cfg.ReplicaCount
+		spec.VLInsert.Image = cfg.Image
+		spec.VLInsert.ExtraArgs = cfg.ExtraArgs
+		spec.VLInsert.ExtraEnvs = cfg.ExtraEnvs
+		spec.VLInsert.Resources = cfg.Resources
+		spec.VLInsert.NodeSelector = cfg.NodeSelector
+		spec.VLInsert.Tolerations = cfg.Tolerations
+		spec.VLInsert.Affinity = cfg.Affinity
+		spec.VLInsert.SecurityContext = cfg.SecurityContext
+		spec.VLInsert.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLInsert.PodMetadata = cfg.PodMetadata
+	}
+
+	// VLStorage
+	if values.VLStorage.Enabled == nil || *values.VLStorage.Enabled {
+		cfg := convertCommonConfig(values.VLStorage, values.Global)
+		spec.VLStorage = &vmv1.VLStorage{}
+		spec.VLStorage.ReplicaCount = cfg.ReplicaCount
+		spec.VLStorage.Image = cfg.Image
+		spec.VLStorage.ExtraArgs = cfg.ExtraArgs
+		spec.VLStorage.ExtraEnvs = cfg.ExtraEnvs
+		spec.VLStorage.Resources = cfg.Resources
+		spec.VLStorage.NodeSelector = cfg.NodeSelector
+		spec.VLStorage.Tolerations = cfg.Tolerations
+		spec.VLStorage.Affinity = cfg.Affinity
+		spec.VLStorage.SecurityContext = cfg.SecurityContext
+		spec.VLStorage.ImagePullSecrets = cfg.ImagePullSecrets
+		spec.VLStorage.PodMetadata = cfg.PodMetadata
+
+		if cfg.Storage != nil {
+			spec.VLStorage.Storage = &vmv1beta1.StorageSpec{
+				VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+					Spec: *cfg.Storage,
+				},
+			}
+		}
+	}
 
 	return spec
 }

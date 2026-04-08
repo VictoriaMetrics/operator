@@ -13,7 +13,7 @@ import (
 var (
 	inputFile  = flag.String("input", "", "input file with helm values")
 	outputFile = flag.String("output", "", "output file with operator manifests")
-	name       = flag.String("name", "victoria-metrics-single", "name of the generated CR")
+	name       = flag.String("name", "", "name of the generated CR (defaults to the chart name)")
 	namespace  = flag.String("namespace", "default", "namespace of the generated CR")
 	chart      = flag.String("chart", "victoria-metrics-single", "name of the helm chart")
 )
@@ -29,6 +29,10 @@ func main() {
 	if *outputFile == "" {
 		fmt.Println("output file is required")
 		os.Exit(1)
+	}
+
+	if *name == "" {
+		*name = *chart
 	}
 
 	inputData, err := os.ReadFile(*inputFile)

@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.68.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.4)
+**Release date:** 09 April 2026
+
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce statefulRollingUpdateStrategyBehavior to allow managing VMAgent update strategy in a statefulMode. See [#1987](https://github.com/VictoriaMetrics/operator/issues/1987).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 

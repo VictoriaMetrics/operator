@@ -51,7 +51,7 @@ func AddServiceAccountTokenVolumeMount(dst *corev1.Container, automount bool) {
 }
 
 // AddServiceAccountTokenVolume conditionally adds volume "kube-api-access" with ServiceAccountToken projection
-func AddServiceAccountTokenVolume(dst []corev1.Volume, params *vmv1beta1.CommonApplicationDeploymentParams) []corev1.Volume {
+func AddServiceAccountTokenVolume(dst []corev1.Volume, params *vmv1beta1.CommonAppsParams) []corev1.Volume {
 	if !params.DisableAutomountServiceAccountToken {
 		return dst
 	}

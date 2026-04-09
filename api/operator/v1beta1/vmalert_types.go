@@ -137,7 +137,6 @@ type VMAlertSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -148,9 +147,8 @@ type VMAlertSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -168,10 +166,9 @@ func (cr *VMAlert) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAlert) UseProxyProtocol() bool {
-	v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]
-	return ok && v == "true"
+	return UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -282,8 +279,8 @@ type VMAlertStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAlertStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAlert) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VMAlert  executes a list of given alerting or recording rules against configured address.
@@ -318,10 +315,6 @@ func (cr *VMAlert) GetStatus() *VMAlertStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAlert) DefaultStatusFields(vs *VMAlertStatus) {
-}
-
-func (cr *VMAlert) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VMAlert) ProbePath() string {

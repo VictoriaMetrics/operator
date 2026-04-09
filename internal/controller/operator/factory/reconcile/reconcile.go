@@ -18,23 +18,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 var (
-	podWaitReadyIntervalCheck = 50 * time.Millisecond
-	appWaitReadyDeadline      = 5 * time.Second
-	podWaitReadyTimeout       = 5 * time.Second
-	vmStatusInterval          = 5 * time.Second
+	pvcWaitReadyInterval = 1 * time.Second
+	pvcWaitReadyTimeout  = 5 * time.Second
+
+	podWaitReadyInterval = 1 * time.Second
+	podWaitReadyTimeout  = 5 * time.Second
+
+	appWaitReadyTimeout = 5 * time.Second
+	vmWaitReadyInterval = 5 * time.Second
+	vmWaitLogInterval   = 60 * time.Second
 )
 
 // Init sets package defaults
-func Init(intervalCheck, appWaitDeadline, podReadyDeadline, statusInterval, statusUpdate time.Duration) {
-	podWaitReadyIntervalCheck = intervalCheck
-	appWaitReadyDeadline = appWaitDeadline
-	podWaitReadyTimeout = podReadyDeadline
-	vmStatusInterval = statusInterval
+func Init(cfg *config.BaseOperatorConf, statusUpdate time.Duration) {
+	podWaitReadyInterval = cfg.PodWaitReadyInterval
+	podWaitReadyTimeout = cfg.PodWaitReadyTimeout
+
+	pvcWaitReadyInterval = cfg.PVCWaitReadyInterval
+	pvcWaitReadyTimeout = cfg.PVCWaitReadyTimeout
+
+	appWaitReadyTimeout = cfg.AppWaitReadyTimeout
+	vmWaitReadyInterval = cfg.VMWaitReadyInterval
 	statusUpdateTTL = statusUpdate
 }
 
@@ -132,7 +143,7 @@ func IsRetryable(err error) bool {
 }
 
 func isConflict(err error) bool {
-	return k8serrors.IsConflict(err) || isRecreate(err)
+	return k8serrors.IsAlreadyExists(err) || k8serrors.IsConflict(err) || isRecreate(err)
 }
 
 func retryOnConflict(fn func() error) error {
@@ -146,10 +157,12 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	obj ObjectWithDeepCopyAndStatus[T, ST, STC],
 	interval time.Duration,
 	status vmv1beta1.UpdateStatus,
+	minGeneration int64,
 ) error {
-	lastStatus := obj.GetStatus().GetStatusMetadata()
+	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
-	err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
+	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)
+	err := wait.PollUntilContextCancel(ctx, interval, true, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return false, nil
@@ -157,8 +170,11 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 			err = fmt.Errorf("unexpected error during attempt to get %T=%s: %w", obj, nsn.String(), err)
 			return
 		}
-		lastStatus = obj.GetStatus().GetStatusMetadata()
-		return lastStatus != nil && obj.GetGeneration() == lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
+		lastStatus = obj.GetStatusMetadata()
+		if lastStatus != nil && !limiter.Throttle() {
+			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
+		}
+		return lastStatus != nil && minGeneration <= lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {
 		updateStatus := "unknown"

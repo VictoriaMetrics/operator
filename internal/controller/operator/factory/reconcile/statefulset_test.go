@@ -611,6 +611,145 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		},
 	})
 
+	// maxUnavailable=0 with 1 pod
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev2",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 0,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(1))},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: "True",
+						},
+					},
+				},
+			},
+		},
+		actions: map[string][]string{
+			"vmselect-sts-0": {"Evict", "Get"},
+		},
+	})
+
+	// maxUnavailable=0 with 3 pods
+	f(opts{
+		sts: &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "vmselect-sts",
+				Namespace: "default",
+			},
+			Status: appsv1.StatefulSetStatus{
+				CurrentRevision: "rev1",
+				UpdateRevision:  "rev2",
+			},
+		},
+		opts: rollingUpdateOpts{
+			selector:       map[string]string{"app": "vmselect"},
+			maxUnavailable: 0,
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(3))},
+				Status: appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-1",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-sts-2",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect", podRevisionLabel: "rev1"},
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "StatefulSet",
+					}},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					Conditions: []corev1.PodCondition{
+						{Type: corev1.PodReady, Status: "True"},
+					},
+				},
+			},
+		},
+		actions: map[string][]string{
+			"vmselect-sts-0": {"Evict", "Get"},
+			"vmselect-sts-1": {"Evict", "Get"},
+			"vmselect-sts-2": {"Evict", "Get"},
+		},
+	})
+
 	// rolling update is timeout
 	f(opts{
 		sts: &appsv1.StatefulSet{
@@ -688,11 +827,13 @@ func TestSortPodsByID(t *testing.T) {
 
 func TestStatefulsetReconcile(t *testing.T) {
 	type opts struct {
-		new, prev         *appsv1.StatefulSet
-		predefinedObjects []runtime.Object
-		validate          func(*appsv1.StatefulSet)
-		actions           []k8stools.ClientAction
-		wantErr           bool
+		new, prev           *appsv1.StatefulSet
+		predefinedObjects   []runtime.Object
+		validate            func(*appsv1.StatefulSet)
+		actions             []k8stools.ClientAction
+		skipPVCStatusUpdate bool
+		wantErr             bool
+		o                   *StatefulSetOpts
 	}
 	getSts := func(fns ...func(s *appsv1.StatefulSet)) *appsv1.StatefulSet {
 		s := &appsv1.StatefulSet{
@@ -739,10 +880,11 @@ func TestStatefulsetReconcile(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.Background()
-		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
-		var emptyOpts STSOptions
+		cl := k8stools.GetTestClientWithOptsActionsAndObjects(o.predefinedObjects, &k8stools.ClientOpts{
+			SkipPVCStatusUpdate: o.skipPVCStatusUpdate,
+		})
 		synctest.Test(t, func(t *testing.T) {
-			err := StatefulSet(ctx, cl, emptyOpts, o.new, o.prev, nil)
+			err := StatefulSet(ctx, cl, o.new, o.prev, nil, o.o)
 			if o.wantErr {
 				assert.Error(t, err)
 				return
@@ -763,6 +905,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	}
 
 	nn := types.NamespacedName{Name: "test-1", Namespace: "default"}
+	pnn := types.NamespacedName{Name: "vmselect-cachedir-test-1-0", Namespace: "default"}
 
 	// create statefulset
 	f(opts{
@@ -884,6 +1027,20 @@ func TestStatefulsetReconcile(t *testing.T) {
 			}}
 		}),
 		predefinedObjects: []runtime.Object{
+			&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-cachedir-test-1-0",
+					Namespace: "default",
+					Labels:    map[string]string{"label": "value"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+			},
 			getSts(func(s *appsv1.StatefulSet) {
 				s.Finalizers = []string{vmv1beta1.FinalizerName}
 				s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
@@ -914,8 +1071,96 @@ func TestStatefulsetReconcile(t *testing.T) {
 			{Verb: "Delete", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 			{Verb: "Create", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pnn},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pnn},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pnn},
 			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
 		},
+	})
+
+	// fail while waiting for PVC expansion
+	f(opts{
+		skipPVCStatusUpdate: true,
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vmselect-cachedir",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "test",
+					},
+					Labels: map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}}
+		}),
+		prev: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vmselect-cachedir",
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "test",
+					},
+					Labels: map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+			}}
+		}),
+		predefinedObjects: []runtime.Object{
+			&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmselect-cachedir-test-1-0",
+					Namespace: "default",
+					Labels:    map[string]string{"label": "value"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("4Gi"),
+					},
+				},
+			},
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Finalizers = []string{vmv1beta1.FinalizerName}
+				s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmselect-cachedir",
+						Annotations: map[string]string{
+							"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+							"test": "test",
+						},
+						Labels: map[string]string{"app": "vmselect"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("5Gi"),
+							},
+						},
+					},
+				}}
+			}),
+		},
+		wantErr: true,
 	})
 
 	// context deadline error
@@ -930,6 +1175,120 @@ func TestStatefulsetReconcile(t *testing.T) {
 			}),
 		},
 		wantErr: true,
+	})
+
+	// do not update with custom patch
+	f(opts{
+		new:  getSts(),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.Replicas = ptr.To[int32](6)
+				s.Status.Replicas = 6
+				s.Status.ReadyReplicas = 6
+				s.Status.UpdatedReplicas = 6
+			}),
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-0",
+					Namespace: "default",
+					Labels: map[string]string{
+						podRevisionLabel: "some-version",
+						"label":          "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1-1",
+					Namespace: "default",
+					Labels: map[string]string{
+						"label": "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1-2",
+					Namespace: "default",
+					Labels: map[string]string{
+						"label": "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1-3",
+					Namespace: "default",
+					Labels: map[string]string{
+						"label": "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1-4",
+					Namespace: "default",
+					Labels: map[string]string{
+						"label": "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1-5",
+					Namespace: "default",
+					Labels: map[string]string{
+						"label": "value",
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{Status: "True", Type: corev1.PodReady},
+					},
+					Phase: corev1.PodRunning,
+				},
+			},
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+		o: &StatefulSetOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+				newSpec.Replicas = existingSpec.Replicas
+			},
+		},
 	})
 }
 

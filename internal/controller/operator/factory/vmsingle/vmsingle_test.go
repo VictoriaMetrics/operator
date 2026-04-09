@@ -39,7 +39,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMSingleSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1))},
 			},
 		},
@@ -67,7 +67,7 @@ func TestCreateOrUpdate(t *testing.T) {
 					GraphitePort:     "8053",
 					OpenTSDBPort:     "8054",
 				},
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1))},
 			},
 		},

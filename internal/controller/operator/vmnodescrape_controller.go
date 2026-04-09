@@ -58,22 +58,23 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
 func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmnodescrape", req.Name, "namespace", req.Namespace)
-	instance := &vmv1beta1.VMNodeScrape{}
+	var instance vmv1beta1.VMNodeScrape
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMNodeScrape instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmnodescrape", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmnodescrape", req}
+		return
 	}
-
-	RegisterObjectStat(instance, "vmnodescrape")
+	RegisterObjectStat(&instance, "vmnodescrape")
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmnodescrape"}
+		err = &parsingError{instance.Spec.ParsingError, "vmnodescrape"}
+		return
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, instance); err != nil {
+	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
 		return
 	}
 	return

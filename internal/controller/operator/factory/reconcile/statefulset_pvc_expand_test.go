@@ -160,10 +160,10 @@ func Test_updateSTSPVC(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		cl := k8stools.GetTestClientWithActions(nil)
+		cl := k8stools.GetTestClientWithActionsAndObjects(nil)
 		ctx := context.TODO()
 		if o.preRun != nil {
-			o.preRun(cl.Client)
+			o.preRun(cl)
 			cl.Actions = nil
 		}
 		err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
@@ -224,6 +224,11 @@ func Test_updateSTSPVC(t *testing.T) {
 							Requests: map[corev1.ResourceName]resource.Quantity{
 								corev1.ResourceStorage: resource.MustParse("10Gi"),
 							},
+						},
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Capacity: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
 					},
 				},
@@ -294,13 +299,18 @@ func Test_updateSTSPVC(t *testing.T) {
 						"test":      "test",
 						"3rd-party": "value",
 					},
-					ResourceVersion: "1",
+					ResourceVersion: "2",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
 			},
@@ -382,7 +392,9 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -398,13 +410,18 @@ func Test_updateSTSPVC(t *testing.T) {
 						"test":      "after",
 						"3rd-party": "value",
 					},
-					ResourceVersion: "2",
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
 			},
@@ -489,8 +506,12 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc2NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -501,13 +522,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Annotations: map[string]string{
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
-					ResourceVersion: "2",
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("5Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("5Gi"),
 					},
 				},
 			},
@@ -519,13 +545,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Annotations: map[string]string{
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
-					ResourceVersion: "2",
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("15Gi"),
 					},
 				},
 			},
@@ -581,7 +612,7 @@ func Test_updateSTSPVC(t *testing.T) {
 					Name:            pvc1NSN.Name,
 					Namespace:       pvc1NSN.Namespace,
 					Labels:          map[string]string{"app": "vmselect"},
-					ResourceVersion: "1",
+					ResourceVersion: "2",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -590,8 +621,14 @@ func Test_updateSTSPVC(t *testing.T) {
 						},
 					},
 				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
 			},
 		},
+		wantErr: true,
 	})
 
 	// expand with annotation on non-expandable sc
@@ -642,7 +679,9 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -653,13 +692,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Annotations: map[string]string{
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
-					ResourceVersion: "2",
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("15Gi"),
 					},
 				},
 			},
@@ -724,7 +768,9 @@ func Test_updateSTSPVC(t *testing.T) {
 			}))
 		},
 		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
 		},
 		expected: []corev1.PersistentVolumeClaim{
 			{
@@ -735,13 +781,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Annotations: map[string]string{
 						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
 					},
-					ResourceVersion: "2",
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("15Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("15Gi"),
 					},
 				},
 			},
@@ -772,7 +823,7 @@ func Test_updateSTSPVC(t *testing.T) {
 					Name:            "orphan-vmselect-0",
 					Namespace:       "default",
 					Labels:          map[string]string{"app": "vmselect"},
-					ResourceVersion: "1",
+					ResourceVersion: "2",
 				},
 			},
 		},
@@ -825,13 +876,18 @@ func Test_updateSTSPVC(t *testing.T) {
 					Name:            "data-vmselect-0",
 					Namespace:       "default",
 					Labels:          map[string]string{"app": "vmselect"},
-					ResourceVersion: "1",
+					ResourceVersion: "2",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("20Gi"),
 						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("20Gi"),
 					},
 				},
 			},

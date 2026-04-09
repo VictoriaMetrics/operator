@@ -163,15 +163,17 @@ func createOrUpdateVTStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		return err
 	}
 
-	stsOpts := reconcile.STSOptions{
-		HasClaim: len(newSts.Spec.VolumeClaimTemplates) > 0,
-		SelectorLabels: func() map[string]string {
-			return cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
-		},
+	o := reconcile.StatefulSetOpts{
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 		UpdateBehavior: cr.Spec.Storage.RollingUpdateStrategyBehavior,
+		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+			if cr.Spec.Storage.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
 	}
 	owner := cr.AsOwner()
-	return reconcile.StatefulSet(ctx, rclient, stsOpts, newSts, prevSts, &owner)
+	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
 func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
@@ -203,7 +205,7 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy != nil {
 		stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.Storage.PersistentVolumeClaimRetentionPolicy
 	}
-	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false), &cr.Spec.Storage.CommonApplicationDeploymentParams)
+	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.Storage.CommonAppsParams)
 	storageSpec := cr.Spec.Storage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.Storage.ClaimTemplates...)
@@ -319,19 +321,18 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = build.Probe(vmstorageContainer, cr.Spec.Storage)
+	build.Probe(&vmstorageContainer, cr.Spec.Storage, &cr.Spec.Storage.CommonAppsParams)
 
 	storageContainers := []corev1.Container{vmstorageContainer}
 	var initContainers []corev1.Container
 
-	useStrictSecurity := ptr.Deref(cr.Spec.Storage.UseStrictSecurity, false)
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.Storage.SecurityContext, initContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.Storage.CommonAppsParams)
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.Storage.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch storage init containers: %w", err)
 	}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.Storage.SecurityContext, storageContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(storageContainers, &cr.Spec.Storage.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(storageContainers, cr.Spec.Storage.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot patch storage containers: %w", err)

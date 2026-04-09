@@ -23,6 +23,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := false
+	var generation int64
 	err := retryOnConflict(func() error {
 		var existingObj vmv1beta1.VMAuth
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -31,6 +32,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 				if err := rclient.Create(ctx, newObj); err != nil {
 					return fmt.Errorf("cannot create new VMAuth=%s: %w", nsn.String(), err)
 				}
+				generation = newObj.Generation
 				return nil
 			}
 			return fmt.Errorf("cannot get VMAuth=%s: %w", nsn.String(), err)
@@ -43,7 +45,7 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
+		specDiff := diffDeep(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
 			return nil
@@ -53,12 +55,13 @@ func VMAuth(ctx context.Context, rclient client.Client, newObj, prevObj *vmv1bet
 		if err := rclient.Update(ctx, &existingObj); err != nil {
 			return fmt.Errorf("cannot update VMAuth=%s: %w", nsn.String(), err)
 		}
+		generation = existingObj.Generation
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	if err := waitForStatus(ctx, rclient, newObj, vmStatusInterval, vmv1beta1.UpdateStatusOperational); err != nil {
+	if err := waitForStatus(ctx, rclient, newObj, vmWaitReadyInterval, vmv1beta1.UpdateStatusOperational, generation); err != nil {
 		return fmt.Errorf("failed to wait for VMAuth=%s to be ready: %w", nsn.String(), err)
 	}
 	return nil

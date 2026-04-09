@@ -58,30 +58,35 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
-func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
+func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {
-		result, resultErr = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, resultErr)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		return result, &getError{err, "vmalertmanagerconfig", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmalertmanagerconfig", req}
+		return
 	}
 
 	RegisterObjectStat(&instance, "vmalertmanagerconfig")
-
-	if alertmanagerReconcileLimit.MustThrottleReconcile() {
+	if instance.Spec.ParsingError != "" {
+		err = &parsingError{instance.Spec.ParsingError, "vmalertmanagerconfig"}
+		return
+	}
+	if alertmanagerReconcileLimit.Throttle() {
 		return
 	}
 
 	alertmanagerSync.Lock()
 	defer alertmanagerSync.Unlock()
 	var objects vmv1beta1.VMAlertmanagerList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertmanagerList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertmanagerList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmalertmanagers for vmalertmanagerconfig: %w", err)
+		err = fmt.Errorf("cannot list vmalertmanagers for vmalertmanagerconfig: %w", err)
+		return
 	}
 
 	for i := range objects.Items {
@@ -111,8 +116,9 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); err != nil {
-			continue
+		if configErr := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); configErr != nil {
+			l.Error(configErr, "cannot update alertmanager config")
+			err = configErr
 		}
 	}
 	return

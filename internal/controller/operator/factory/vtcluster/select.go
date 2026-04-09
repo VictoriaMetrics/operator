@@ -181,7 +181,14 @@ func createOrUpdateVTSelectDeployment(ctx context.Context, rclient client.Client
 		return err
 	}
 	owner := cr.AsOwner()
-	return reconcile.Deployment(ctx, rclient, newDep, prevDep, cr.Spec.Select.HPA != nil, &owner)
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.Select.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+			}
+		},
+	}
+	return reconcile.Deployment(ctx, rclient, newDep, prevDep, &owner, &o)
 }
 
 func buildVTSelectDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
@@ -212,7 +219,7 @@ func buildVTSelectDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.Select.UseStrictSecurity, false), &cr.Spec.Select.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.Select.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -232,20 +239,22 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.Select.LogFormat))
 	}
 
+	storageNodeFlag := build.NewFlag("-storageNode", "")
+	storageNodeIds := cr.AvailableStorageNodeIDs("select")
 	if cr.Spec.Storage != nil && cr.Spec.Storage.ReplicaCount != nil {
 		// TODO: check TLS
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs("select")
 		for idx, i := range storageNodeIds {
 			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName), idx)
 		}
-		if len(cr.Spec.Select.ExtraStorageNodes) > 0 {
-			for i, node := range cr.Spec.Select.ExtraStorageNodes {
-				idx := i + len(storageNodeIds)
-				storageNodeFlag.Add(node.Addr, idx)
-			}
+	}
+	if len(cr.Spec.Select.ExtraStorageNodes) > 0 {
+		for i, node := range cr.Spec.Select.ExtraStorageNodes {
+			idx := i + len(storageNodeIds)
+			storageNodeFlag.Add(node.Addr, idx)
 		}
-		totalNodes := len(cr.Spec.Select.ExtraStorageNodes) + len(storageNodeIds)
+	}
+	totalNodes := len(cr.Spec.Select.ExtraStorageNodes) + len(storageNodeIds)
+	if totalNodes > 0 {
 		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	}
 
@@ -319,10 +328,10 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	selectContainers = build.Probe(selectContainers, cr.Spec.Select)
+	build.Probe(&selectContainers, cr.Spec.Select, &cr.Spec.Select.CommonAppsParams)
 	operatorContainers := []corev1.Container{selectContainers}
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.Select.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.Select.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.Select.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Select.Containers)
 	if err != nil {
 		return nil, err

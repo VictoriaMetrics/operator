@@ -89,11 +89,8 @@ type VLAgentSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
-	*vmv1beta1.EmbeddedProbes                   `json:",inline"`
-	vmv1beta1.CommonDefaultableParams           `json:",inline,omitempty"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
 type VLAgentK8sCollector struct {
@@ -184,6 +181,11 @@ func (cr *VLAgent) Validate() error {
 		}
 	}
 	return nil
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VLAgent) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -286,15 +288,16 @@ type VLAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VLAgentStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VLAgent) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // +genclient
 
 // VLAgent - is a tiny but brave agent, which helps you collect logs from various sources and stores them in VictoriaLogs.
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VLAgent App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="DaemonSet,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="StatefulSet,apps"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -459,11 +462,6 @@ func (cr *VLAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VLAgent) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface

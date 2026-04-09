@@ -75,8 +75,6 @@ type VMSingleSpec struct {
 	// ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// LivenessProbe that will be added to VMSingle pod
-	*EmbeddedProbes `json:",inline"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 
@@ -84,8 +82,7 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonDefaultableParams           `json:",inline"`
-	CommonApplicationDeploymentParams `json:",inline"`
+	CommonAppsParams `json:",inline"`
 }
 
 // HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
@@ -109,6 +106,16 @@ func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 	}
 
 	return nil
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VMSingle) UseProxyProtocol() bool {
+	return UseProxyProtocol(cr.Spec.ExtraArgs)
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMSingle) AutomountServiceAccountToken() bool {
+	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -157,10 +164,6 @@ func (cr *VMSingle) GetStatus() *VMSingleStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMSingle) DefaultStatusFields(_ *VMSingleStatus) {}
-
-func (cr *VMSingle) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
-}
 
 func (cr *VMSingle) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
@@ -347,8 +350,8 @@ func (cr *VMSingle) Validate() error {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMSingleStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMSingle) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

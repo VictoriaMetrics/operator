@@ -2,7 +2,6 @@ package vmdistributed
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -46,8 +45,10 @@ func (zs *zones) Len() int {
 func (zs *zones) Less(i, j int) bool {
 	statusI := zs.vmclusters[i].Status
 	statusJ := zs.vmclusters[j].Status
-	if statusI.UpdateStatus != statusJ.UpdateStatus {
-		return statusI.UpdateStatus == vmv1beta1.UpdateStatusFailed
+	isNonOperationalI := statusI.UpdateStatus != vmv1beta1.UpdateStatusOperational
+	isNonOperationalJ := statusJ.UpdateStatus != vmv1beta1.UpdateStatusOperational
+	if isNonOperationalI != isNonOperationalJ {
+		return isNonOperationalI
 	}
 	isZeroI := zs.vmclusters[i].CreationTimestamp.IsZero()
 	isZeroJ := zs.vmclusters[j].CreationTimestamp.IsZero()
@@ -195,8 +196,9 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 	if needsLBUpdate {
 		// wait for empty persistent queue
-		if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
-			return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty: %w", item, nsnCluster.String(), err)
+		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
+		if ctx.Err() != nil {
+			return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty", item, nsnCluster.String())
 		}
 
 		// excluding zone from VMAuth LB
@@ -217,8 +219,9 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	// wait for empty persistent queue
-	if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
-		return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained: %w", item, nsnCluster.String(), err)
+	zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
+	if ctx.Err() != nil {
+		return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
 	}
 
 	// restore zone in VMAuth LB
@@ -290,9 +293,12 @@ func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1be
 	return addrs
 }
 
-func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) error {
+func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
 	vmCluster := zs.vmclusters[clusterIdx]
 	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
+
+	nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
+	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
@@ -314,27 +320,16 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					continue
 				}
 				if v > 0 {
-					logger.WithContext(ctx).Info("persistent queue on VMAgent instance is not ready", "url", addr, "name", nsn.String(), "size", v)
+					logger.WithContext(ctx).V(1).Info("persistent queue on VMAgent instance is not ready", "url", addr, "name", nsn.String(), "size", v)
 					return false, nil
 				}
 			}
-			logger.WithContext(ctx).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
+			logger.WithContext(ctx).V(1).Info("all persistent queues on VMAgent for given cluster were drained", "url", addr, "name", nsn.String())
 			return true, nil
 		})
 	}
 
 	var wg sync.WaitGroup
-	var resultErr error
-	var once sync.Once
-	gctx, gcancel := context.WithCancel(ctx)
-	defer gcancel()
-	cancel := func(err error) {
-		once.Do(func() {
-			resultErr = err
-			gcancel()
-		})
-	}
-
 	for i := range zs.vmagents {
 		vmAgent := zs.vmagents[i]
 		if vmAgent.CreationTimestamp.IsZero() {
@@ -344,7 +339,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 			Name:      vmAgent.Name,
 			Namespace: vmAgent.Namespace,
 		}
-		m := newManager(gctx)
+		m := newManager(ctx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.ctx, func(ctx context.Context) {
 				addrs := getMetricsAddrs(ctx, rclient, vmAgent)
@@ -352,21 +347,18 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 					if m.has(addr) {
 						continue
 					}
-					logger.WithContext(ctx).Info("start polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
+					logger.WithContext(ctx).V(1).Info("start polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
 					pctx := m.add(addr)
 					wg.Go(func() {
 						if err := pollMetrics(pctx, nsn, addr); err != nil {
-							if !errors.Is(err, context.Canceled) {
-								cancel(err)
-								return
-							}
+							return
 						}
 						m.stop(addr)
 					})
 				}
 				for _, addr := range m.ids() {
 					if _, ok := addrs[addr]; !ok {
-						logger.WithContext(ctx).Info("stop polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
+						logger.WithContext(ctx).V(1).Info("stop polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
 						m.delete(addr)
 					}
 				}
@@ -374,10 +366,10 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		})
 	}
 	wg.Wait()
-	if resultErr != nil {
-		return fmt.Errorf("failed to wait for VMAgent metrics: %w", resultErr)
+
+	if ctx.Err() == nil {
+		logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster.String())
 	}
-	return nil
 }
 
 func newManager(ctx context.Context) *manager {

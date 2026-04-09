@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -205,8 +206,8 @@ type VTClusterStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VTClusterStatus) GetStatusMetadata() *vmv1beta1.StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VTCluster) GetStatusMetadata() *vmv1beta1.StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // VTInsert defines vtinsert component configuration at victoria-traces cluster
@@ -231,8 +232,7 @@ type VTInsert struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -248,13 +248,12 @@ type VTInsert struct {
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
-// Probe implements build.probeCRD interface
-func (cr *VTInsert) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTInsert) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ProbePath implements build.probeCRD interface
@@ -328,8 +327,7 @@ type VTSelect struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
@@ -348,8 +346,7 @@ type VTSelect struct {
 	// ExtraStorageNodes - defines additional storage nodes to VTSelect
 	ExtraStorageNodes []VTStorageNode `json:"extraStorageNodes,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -358,6 +355,11 @@ func (cr *VTSelect) GetMetricsPath() string {
 		return healthPath
 	}
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTSelect) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -373,11 +375,6 @@ func (cr *VTSelect) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VTSelect) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VTSelect) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface
@@ -447,8 +444,7 @@ type VTStorage struct {
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget       *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*vmv1beta1.EmbeddedProbes `json:",inline"`
+	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
@@ -484,8 +480,7 @@ type VTStorage struct {
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
-	vmv1beta1.CommonDefaultableParams           `json:",inline"`
-	vmv1beta1.CommonApplicationDeploymentParams `json:",inline"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 
 	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
 	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
@@ -499,6 +494,11 @@ func (cr *VTStorage) GetStorageVolumeName() string {
 		return cr.Storage.VolumeClaimTemplate.Name
 	}
 	return "vtstorage-db"
+}
+
+// UseProxyProtocol implements build.probeCRD interface
+func (cr *VTStorage) UseProxyProtocol() bool {
+	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -522,11 +522,6 @@ func (cr *VTStorage) UseTLS() bool {
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VTStorage) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// Probe implements build.probeCRD interface
-func (cr *VTStorage) Probe() *vmv1beta1.EmbeddedProbes {
-	return cr.EmbeddedProbes
 }
 
 // ProbePath implements build.probeCRD interface
@@ -612,23 +607,6 @@ func (cr *VTCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.Select != nil {
-		vms := cr.Spec.Select
-		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
-		}
-		if vms.HPA != nil {
-			if err := vms.HPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if vms.VPA != nil {
-			if err := vms.VPA.Validate(); err != nil {
-				return err
-			}
-		}
-	}
 	if cr.Spec.Insert != nil {
 		vti := cr.Spec.Insert
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
@@ -646,7 +624,9 @@ func (cr *VTCluster) Validate() error {
 			}
 		}
 	}
+	storageNodes := sets.New[string]()
 	if cr.Spec.Storage != nil {
+		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage))
 		vts := cr.Spec.Storage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
@@ -658,6 +638,40 @@ func (cr *VTCluster) Validate() error {
 		if vts.VPA != nil {
 			if err := vts.VPA.Validate(); err != nil {
 				return err
+			}
+		}
+	}
+	if cr.Spec.Select != nil {
+		vms := cr.Spec.Select
+		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
+			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if vms.HPA != nil {
+			if err := vms.HPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if vms.VPA != nil {
+			if err := vms.VPA.Validate(); err != nil {
+				return err
+			}
+		}
+		if nodes, ok := cr.Spec.Select.ExtraArgs["storageNode"]; ok {
+			for _, node := range strings.Split(nodes, ",") {
+				node = strings.TrimSpace(node)
+				if storageNodes.Has(node) {
+					return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node)
+				} else {
+					storageNodes.Insert(node)
+				}
+			}
+		}
+		for _, node := range cr.Spec.Select.ExtraStorageNodes {
+			if storageNodes.Has(node.Addr) {
+				return fmt.Errorf("encountered storageNode=%s multiple times, please make all storage node addresses are unique", node.Addr)
+			} else {
+				storageNodes.Insert(node.Addr)
 			}
 		}
 	}

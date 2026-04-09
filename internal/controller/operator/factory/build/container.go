@@ -19,95 +19,71 @@ const probeTimeoutSeconds int32 = 5
 const DataVolumeName = "data"
 
 type probeCRD interface {
-	Probe() *vmv1beta1.EmbeddedProbes
 	ProbePath() string
 	ProbeScheme() string
 	ProbePort() string
 	ProbeNeedLiveness() bool
+	UseProxyProtocol() bool
 }
 
-// Probe builds probe for container with possible custom values with
-func Probe(container corev1.Container, cr probeCRD) corev1.Container {
-	// ep *vmv1beta1.EmbeddedProbes, probePath func() string, port string, needAddLiveness bool) corev1.Container {
-	var rp, lp, sp *corev1.Probe
-	ep := cr.Probe()
-	probePath := cr.ProbePath
-	port := cr.ProbePort()
-	needAddLiveness := cr.ProbeNeedLiveness()
+// Probe adds probe for container
+func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonAppsParams) {
+	port := intstr.Parse(cr.ProbePort())
 	scheme := cr.ProbeScheme()
-	if ep != nil {
-		rp = ep.ReadinessProbe
-		lp = ep.LivenessProbe
-		sp = ep.StartupProbe
-	}
-
-	defaultProbeHandler := func() corev1.ProbeHandler {
-		return corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.Parse(port),
-				Scheme: corev1.URIScheme(scheme),
-				Path:   probePath(),
-			},
-		}
-	}
-	if rp == nil {
-		rp = &corev1.Probe{
-			ProbeHandler:     defaultProbeHandler(),
-			TimeoutSeconds:   probeTimeoutSeconds,
-			PeriodSeconds:    5,
-			FailureThreshold: 10,
-		}
-	}
-	if needAddLiveness {
-		if lp == nil {
-			lp = &corev1.Probe{
-				ProbeHandler:     defaultProbeHandler(),
-				TimeoutSeconds:   probeTimeoutSeconds,
-				FailureThreshold: 10,
-				PeriodSeconds:    5,
+	path := cr.ProbePath()
+	getProbe := func(probe *corev1.Probe, createIfNil bool) *corev1.Probe {
+		if probe == nil {
+			if createIfNil {
+				probe = new(corev1.Probe)
+			} else {
+				return probe
 			}
 		}
-	}
-	// ensure, that custom probe has all needed fields.
-	addMissingFields := func(probe *corev1.Probe) {
-		if probe != nil {
-
-			if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
-				probe.HTTPGet = &corev1.HTTPGetAction{
-					Port:   intstr.Parse(port),
-					Scheme: corev1.URIScheme(scheme),
-					Path:   probePath(),
-				}
-			}
-			if probe.HTTPGet != nil {
-				if probe.HTTPGet.Path == "" {
-					probe.HTTPGet.Path = probePath()
-				}
-				if probe.HTTPGet.Port.StrVal == "" && probe.HTTPGet.Port.IntVal == 0 {
-					probe.HTTPGet.Port = intstr.Parse(port)
-				}
-			}
-			if probe.PeriodSeconds == 0 {
-				probe.PeriodSeconds = 5
-			}
-			if probe.FailureThreshold == 0 {
-				probe.FailureThreshold = 10
-			}
-			if probe.TimeoutSeconds == 0 {
-				probe.TimeoutSeconds = probeTimeoutSeconds
-			}
-			if probe.SuccessThreshold == 0 {
-				probe.SuccessThreshold = 1
+		if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
+			if cr.UseProxyProtocol() {
+				probe.TCPSocket = new(corev1.TCPSocketAction)
+			} else {
+				probe.HTTPGet = new(corev1.HTTPGetAction)
 			}
 		}
+		if cr.UseProxyProtocol() && probe.TCPSocket != nil {
+			if probe.TCPSocket.Port.StrVal == "" && probe.TCPSocket.Port.IntVal == 0 {
+				probe.TCPSocket.Port = port
+			}
+		} else if probe.HTTPGet != nil {
+			if len(probe.HTTPGet.Path) == 0 {
+				probe.HTTPGet.Path = path
+			}
+			if probe.HTTPGet.Port.StrVal == "" && probe.HTTPGet.Port.IntVal == 0 {
+				probe.HTTPGet.Port = port
+			}
+			if len(probe.HTTPGet.Scheme) == 0 {
+				probe.HTTPGet.Scheme = corev1.URIScheme(scheme)
+			}
+		}
+		if probe.PeriodSeconds == 0 {
+			probe.PeriodSeconds = 5
+		}
+		if probe.FailureThreshold == 0 {
+			probe.FailureThreshold = 10
+		}
+		if probe.TimeoutSeconds == 0 {
+			probe.TimeoutSeconds = probeTimeoutSeconds
+		}
+		if probe.SuccessThreshold == 0 {
+			probe.SuccessThreshold = 1
+		}
+		return probe
 	}
-	addMissingFields(lp)
-	addMissingFields(sp)
-	addMissingFields(rp)
-	container.LivenessProbe = lp
-	container.StartupProbe = sp
-	container.ReadinessProbe = rp
-	return container
+	var liveness, readiness, startup *corev1.Probe
+	if params != nil {
+		liveness, readiness, startup = params.LivenessProbe, params.ReadinessProbe, params.StartupProbe
+	}
+	if cr.ProbeNeedLiveness() {
+		container.LivenessProbe = getProbe(liveness, true)
+	}
+	container.StartupProbe = getProbe(startup, false)
+	container.ReadinessProbe = getProbe(readiness, true)
 }
 
 // Resources creates container resources with conditional defaults values

@@ -21,9 +21,9 @@ func TestDeployReconcile(t *testing.T) {
 		new, prev         *appsv1.Deployment
 		predefinedObjects []runtime.Object
 		actions           []k8stools.ClientAction
-		hasHPA            bool
 		validate          func(*appsv1.Deployment)
 		wantErr           bool
+		o                 *DeploymentOpts
 	}
 	getDeploy := func(fns ...func(d *appsv1.Deployment)) *appsv1.Deployment {
 		d := &appsv1.Deployment{
@@ -76,7 +76,7 @@ func TestDeployReconcile(t *testing.T) {
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActionsAndObjects(o.predefinedObjects)
 		synctest.Test(t, func(t *testing.T) {
-			err := Deployment(ctx, cl, o.new, o.prev, o.hasHPA, nil)
+			err := Deployment(ctx, cl, o.new, o.prev, nil, o.o)
 			if o.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -150,6 +150,36 @@ func TestDeployReconcile(t *testing.T) {
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "Deployment", Resource: nn},
 			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
+	})
+
+	// do not update with custom patch
+	f(opts{
+		new: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Replicas = ptr.To[int32](1)
+		}),
+		prev: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Template.Annotations = map[string]string{
+				"new-annotation": "value",
+			}
+		}),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Spec.Replicas = ptr.To[int32](2)
+				d.Status.ReadyReplicas = 2
+				d.Status.UpdatedReplicas = 2
+				d.Status.Replicas = 2
+				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
+		o: &DeploymentOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+				newSpec.Replicas = existingSpec.Replicas
+			},
 		},
 	})
 }

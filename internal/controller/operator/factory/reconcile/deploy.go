@@ -18,17 +18,25 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+type DeploymentOpts struct {
+	PatchSpec func(existingSpec, newSpec *appsv1.DeploymentSpec)
+}
+
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
-func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.Deployment, hasHPA bool, owner *metav1.OwnerReference) error {
+func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.Deployment, owner *metav1.OwnerReference, o *DeploymentOpts) error {
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
 	}
+
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
+	if o == nil {
+		o = new(DeploymentOpts)
+	}
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.Deployment
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -44,16 +52,15 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
-		spec := &newObj.Spec
-		if hasHPA {
-			spec.Replicas = existingObj.Spec.Replicas
+		if o.PatchSpec != nil {
+			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
 		}
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
@@ -69,7 +76,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	if err != nil {
 		return err
 	}
-	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyDeadline)
+	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyTimeout)
 }
 
 // waitForDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready

@@ -90,6 +90,9 @@ type parsingError struct {
 	controller string
 }
 
+// ErrShutdown is a custom error returned as a cause of operator context cancel
+var ErrShutdown = fmt.Errorf("graceful shutdown, exiting")
+
 func (pe *parsingError) Error() string {
 	return fmt.Sprintf("parsing object error for object controller=%q: %q",
 		pe.controller, pe.origin)
@@ -128,6 +131,9 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
+		if !errors.Is(context.Cause(ctx), ErrShutdown) {
+			originResult.RequeueAfter = time.Second * 5
+		}
 		return originResult, nil
 	case errors.As(err, &pe):
 		namespacedName := "unknown"
@@ -142,7 +148,6 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
 		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
 		if k8serrors.IsNotFound(err) {
-			err = nil
 			return originResult, nil
 		}
 	case k8serrors.IsConflict(err):
@@ -180,69 +185,6 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
 		}
 	}
-
-	return originResult, err
-}
-
-func handleReconcileErrWithoutStatus(
-	ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	originResult ctrl.Result,
-	err error,
-) (ctrl.Result, error) {
-	if err == nil {
-		return originResult, nil
-	}
-	var ge *getError
-	var pe *parsingError
-	switch {
-	case errors.Is(err, context.Canceled):
-		contextCancelErrorsTotal.Inc()
-		return originResult, nil
-	case errors.As(err, &pe):
-		parseObjectErrorsTotal.WithLabelValues(pe.controller, "unknown").Inc()
-	case errors.As(err, &ge):
-		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
-		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
-		if k8serrors.IsNotFound(err) {
-			err = nil
-			return originResult, nil
-		}
-	case k8serrors.IsConflict(err):
-		controller := "unknown"
-		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
-			controller = object.GetObjectKind().GroupVersionKind().GroupKind().Kind
-		}
-		conflictErrorsTotal.WithLabelValues(controller, "unknown").Inc()
-		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
-	}
-	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
-		errEvent := &corev1.Event{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "victoria-metrics-operator-" + uuid.New().String(),
-				Namespace: object.GetNamespace(),
-			},
-			Type:    corev1.EventTypeWarning,
-			Reason:  "ReconciliationError",
-			Message: err.Error(),
-			Source: corev1.EventSource{
-				Component: "victoria-metrics-operator",
-			},
-			LastTimestamp: metav1.NewTime(time.Now()),
-			InvolvedObject: corev1.ObjectReference{
-				Kind:            object.GetObjectKind().GroupVersionKind().Kind,
-				Namespace:       object.GetNamespace(),
-				Name:            object.GetName(),
-				UID:             object.GetUID(),
-				ResourceVersion: object.GetResourceVersion(),
-			},
-		}
-		if err := rclient.Create(ctx, errEvent); err != nil {
-			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
-		}
-	}
-
 	return originResult, err
 }
 

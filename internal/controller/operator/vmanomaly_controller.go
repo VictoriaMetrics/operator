@@ -63,35 +63,35 @@ func (r *VMAnomalyReconciler) Init(rclient client.Client, l logr.Logger, sc *run
 func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmanomaly", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1.VMAnomaly{}
+	var instance vmv1.VMAnomaly
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VMAnomaly instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{origin: err, controller: "vmanomaly", requestObject: req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{origin: err, controller: "vmanomaly", requestObject: req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vmanomaly")
+	RegisterObjectStat(&instance, "vmanomaly")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAnomalyDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmanomaly"}
+		err = &parsingError{instance.Spec.ParsingError, "vmanomaly"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmanomaly.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vmanomaly.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, err
 		}
 		return result, nil

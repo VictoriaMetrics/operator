@@ -28,7 +28,7 @@ func TestVMAuthReconcile(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -85,6 +85,60 @@ func TestVMAuthReconcile(t *testing.T) {
 		prev: getVMAuth(),
 		predefinedObjects: []runtime.Object{
 			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Update", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+		},
+	})
+
+	// no update on status change
+	f(opts{
+		new:  getVMAuth(),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+		},
+	})
+
+	// configmaps added
+	f(opts{
+		new: getVMAuth(func(v *vmv1beta1.VMAuth) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		prev: getVMAuth(),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Status.ObservedGeneration = v.Generation
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+			{Verb: "Update", Kind: "VMAuth", Resource: nn},
+			{Verb: "Get", Kind: "VMAuth", Resource: nn},
+		},
+	})
+
+	// configmaps removed
+	f(opts{
+		new: getVMAuth(),
+		prev: getVMAuth(func(v *vmv1beta1.VMAuth) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMAuth(func(v *vmv1beta1.VMAuth) {
+				v.Spec.ConfigMaps = []string{"cm1"}
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
 			}),

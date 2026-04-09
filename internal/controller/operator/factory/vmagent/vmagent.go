@@ -31,14 +31,14 @@ import (
 )
 
 const (
-	vmAgentConfDir                  = "/etc/vmagent/config"
-	vmAgentConfOutDir               = "/etc/vmagent/config_out"
-	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
-	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
-	vmAgentPersistentQueueMountName = "persistent-queue-data"
-	globalRelabelingName            = "global_relabeling.yaml"
-	urlRelabelingName               = "url_relabeling-%d.yaml"
-	globalAggregationConfigName     = "global_aggregation.yaml"
+	confDir                     = "/etc/vmagent/config"
+	confOutDir                  = "/etc/vmagent/config_out"
+	persistentQueueDir          = "/tmp/vmagent-remotewrite-data"
+	persistentQueueSTSDir       = "/vmagent_pq/vmagent-remotewrite-data"
+	persistentQueueMountName    = "persistent-queue-data"
+	globalRelabelingName        = "global_relabeling.yaml"
+	urlRelabelingName           = "url_relabeling-%d.yaml"
+	globalAggregationConfigName = "global_aggregation.yaml"
 
 	tlsAssetsDir          = "/etc/vmagent-tls/certs"
 	scrapeGzippedFilename = "vmagent.yaml.gz"
@@ -203,7 +203,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	rtCh := make(chan *returnValue)
 	owner := cr.AsOwner()
-	updateShard := func(shardNum int) {
+	updateShard := func(shardNum int32) {
 		var rv returnValue
 		defer func() {
 			rtCh <- &rv
@@ -255,8 +255,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
-
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, false, &owner); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, nil); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -294,13 +293,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 			selectorLabels := maps.Clone(newApp.Spec.Selector.MatchLabels)
-			opts := reconcile.STSOptions{
-				HasClaim: len(newApp.Spec.VolumeClaimTemplates) > 0,
-				SelectorLabels: func() map[string]string {
-					return selectorLabels
-				},
+			o := reconcile.StatefulSetOpts{
+				SelectorLabels: selectorLabels,
+				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, opts, newApp, prevApp, &owner); err != nil {
+			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -368,8 +365,6 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		return nil, err
 	}
 
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
 	if cr.Spec.DaemonSetMode {
 		dsSpec := &appsv1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -393,8 +388,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 				},
 			},
 		}
-		build.DaemonSetAddCommonParams(dsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+		build.DaemonSetAddCommonParams(dsSpec, &cr.Spec.CommonAppsParams)
+		dsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(dsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 		return dsSpec, nil
 	}
@@ -429,9 +424,9 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		if cr.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 			stsSpec.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 		}
-		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
+		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
+		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -465,8 +460,8 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 			},
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
-	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &cr.Spec.CommonAppsParams)
+	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 	return depSpec, nil
 }
@@ -532,13 +527,13 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	var crMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 	}
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
-			Name:      vmAgentPersistentQueueMountName,
+			Name:      persistentQueueMountName,
 			MountPath: pqMountPath,
 		},
 	)
@@ -548,7 +543,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	// in case for sts, we have to use persistentVolumeClaimTemplate instead
 	if !cr.Spec.StatefulMode {
 		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
+			Name: persistentQueueMountName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -559,7 +554,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		args = append(args,
-			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConfOutDir, configFilename)))
+			fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
 		// it must prevent vmagent restarts during operator version change
@@ -589,7 +584,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 		m := corev1.VolumeMount{
 			Name:      "config-out",
-			MountPath: vmAgentConfOutDir,
+			MountPath: confOutDir,
 		}
 		crMounts = append(crMounts, m)
 		m.ReadOnly = true
@@ -601,7 +596,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      string(build.SecretConfigResourceKind),
-			MountPath: vmAgentConfDir,
+			MountPath: confDir,
 			ReadOnly:  true,
 		})
 
@@ -675,10 +670,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, cr.AutomountServiceAccountToken())
-	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-
-	vmagentContainer = build.Probe(vmagentContainer, cr)
-
+	build.Probe(&vmagentContainer, cr, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	var operatorContainers []corev1.Container
@@ -694,7 +686,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 				Key: configFilename,
 			}
 			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
-			build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
+			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
@@ -707,7 +699,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	operatorContainers = append([]corev1.Container{vmagentContainer}, operatorContainers...)
 
-	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -731,7 +723,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	}, nil
 }
 
-func patchShardContainers(containers []corev1.Container, shardNum, shardCount int) {
+func patchShardContainers(containers []corev1.Container, shardNum, shardCount int32) {
 	for i := range containers {
 		container := &containers[i]
 		if container.Name == "vmagent" {
@@ -925,9 +917,9 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
-	pqMountPath := vmAgentPersistentQueueDir
+	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
+		pqMountPath = persistentQueueSTSDir
 		if cr.Spec.StatefulStorage != nil {
 			if storage, ok := cr.Spec.StatefulStorage.VolumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
 				storageInt, ok := storage.AsInt64()

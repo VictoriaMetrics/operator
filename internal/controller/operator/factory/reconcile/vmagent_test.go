@@ -30,7 +30,7 @@ func TestVMAgentReconcile(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(1)),
 				},
 			},
@@ -126,22 +126,76 @@ func TestVMAgentReconcile(t *testing.T) {
 		},
 	})
 
-	// attempt to recreate on deletion
+	// configmaps added
 	f(opts{
-		new: getVMAgent(),
+		new: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		prev: getVMAgent(),
 		predefinedObjects: []runtime.Object{
 			getVMAgent(func(v *vmv1beta1.VMAgent) {
-				v.Finalizers = []string{vmv1beta1.FinalizerName}
-				v.DeletionTimestamp = ptr.To(metav1.Now())
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
 			}),
 		},
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
-			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
 			{Verb: "Get", Kind: "VMAgent", Resource: nn},
 		},
-		wantErr: true,
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Equal(t, []string{"cm1"}, v.Spec.ConfigMaps)
+		},
+	})
+
+	// configmaps changed
+	f(opts{
+		new: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm2"}
+		}),
+		prev: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Spec.ConfigMaps = []string{"cm1"}
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+		},
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Equal(t, []string{"cm2"}, v.Spec.ConfigMaps)
+		},
+	})
+
+	// configmaps removed
+	f(opts{
+		new: getVMAgent(),
+		prev: getVMAgent(func(v *vmv1beta1.VMAgent) {
+			v.Spec.ConfigMaps = []string{"cm1"}
+		}),
+		predefinedObjects: []runtime.Object{
+			getVMAgent(func(v *vmv1beta1.VMAgent) {
+				v.Spec.ConfigMaps = []string{"cm1"}
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+				v.Generation = 1
+				v.Status.ObservedGeneration = 1
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+			{Verb: "Update", Kind: "VMAgent", Resource: nn},
+			{Verb: "Get", Kind: "VMAgent", Resource: nn},
+		},
+		validate: func(v *vmv1beta1.VMAgent) {
+			assert.Empty(t, v.Spec.ConfigMaps)
+		},
 	})
 }

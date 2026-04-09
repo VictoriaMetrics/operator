@@ -67,7 +67,7 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 	if err != nil {
 		return err
 	}
-	return waitDaemonSetReady(ctx, rclient, newObj, appWaitReadyDeadline)
+	return waitDaemonSetReady(ctx, rclient, newObj, appWaitReadyTimeout)
 }
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready

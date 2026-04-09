@@ -32,13 +32,14 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 )
 
 var (
 	testEnv       *envtest.Environment
-	cancelManager context.CancelFunc
+	cancelManager context.CancelCauseFunc
 	stopped       = make(chan struct{})
 )
 
@@ -86,6 +87,8 @@ func GetClient(data []byte) client.WithWatch {
 				envs[envName] = rv
 			}
 		}
+		envName := fmt.Sprintf("VM_%s_TERMINATION_GRACE_PERIOD_SECONDS", prefix)
+		envs[envName] = "5"
 	}
 
 	for en, ev := range envs {
@@ -105,8 +108,8 @@ func GetClient(data []byte) client.WithWatch {
 	return k8sClient
 }
 
-// InitOperatorProcess prepares operator process for usage, must be called once
-func InitOperatorProcess(extraNamespaces ...string) []byte {
+// InitTestEnv sets up the envtest environment and k8sClient, returning kubeconfig data
+func InitTestEnv(extraNamespaces ...string) []byte {
 	format.MaxLength = 50000
 	l := zap.New(zap.WriteTo(GinkgoWriter), zap.Level(zapcore.DebugLevel))
 	logf.SetLogger(l)
@@ -161,7 +164,12 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		err := k8sClient.Create(context.Background(), &testNamespace)
 		Expect(err == nil || k8serrors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
 	}
+	return buf.Bytes()
+}
 
+// InitOperatorProcess prepares operator process for usage, must be called once
+func InitOperatorProcess(extraNamespaces ...string) []byte {
+	data := InitTestEnv(extraNamespaces...)
 	// disable web servers because it fails to listen when running several test packages one after another
 	// also web servers aren't very useful in tests
 	os.Args = append(os.Args[:1],
@@ -170,7 +178,7 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		"--health-probe-bind-address", "0",
 		"--controller.maxConcurrentReconciles", "30",
 	)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	go func(ctx context.Context) {
 		defer GinkgoRecover()
 		err := manager.RunManager(ctx)
@@ -178,17 +186,23 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 		Expect(err).NotTo(HaveOccurred())
 	}(ctx)
 	cancelManager = cancel
-	return buf.Bytes()
+	return data
 }
 
 // ShutdownOperatorProcess stops operator process
 // and cleanup resources
 func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
-	cancelManager()
+	cancelManager(operator.ErrShutdown)
 	Eventually(stopped, 60, 2).Should(BeClosed())
-	Expect(testEnv.Stop()).ToNot(HaveOccurred())
+	ShutdownTestEnv()
+}
 
+// ShutdownTestEnv stops the envtest environment
+func ShutdownTestEnv() {
+	if testEnv != nil {
+		Expect(testEnv.Stop()).ToNot(HaveOccurred())
+	}
 }
 
 func isLocalHost(host string) bool {

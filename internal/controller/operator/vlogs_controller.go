@@ -64,25 +64,25 @@ func (r *VLogsReconciler) Scheme() *runtime.Scheme {
 func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vlogs", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VLogs{}
+	var instance vmv1beta1.VLogs
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vlogs", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vlogs", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vlogs")
+	RegisterObjectStat(&instance, "vlogs")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVLogsDelete(ctx, r.Client, instance); err != nil {
-			return result, err
-		}
+		err = finalize.OnVLogsDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vlogs"}
+		err = &parsingError{instance.Spec.ParsingError, "vlogs"}
+		return
 	}
 	l.Info("VLogs CustomResource transited into read-only state. Please migrate to the VLSingle.")
 	return

@@ -60,32 +60,36 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
-	instance := &vmv1beta1.VMRule{}
+	var instance vmv1beta1.VMRule
 	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMRule instance
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return result, &getError{err, "vmrule", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmrule", req}
+		return
 	}
 
-	RegisterObjectStat(instance, "vmrule")
-
-	if alertReconcileLimit.MustThrottleReconcile() {
-		// fast path
-		return ctrl.Result{}, nil
+	RegisterObjectStat(&instance, "vmrule")
+	if instance.Spec.ParsingError != "" {
+		err = &parsingError{instance.Spec.ParsingError, "vmrule"}
+		return
+	}
+	if alertReconcileLimit.Throttle() {
+		return
 	}
 
 	alertSync.Lock()
 	defer alertSync.Unlock()
 	var objects vmv1beta1.VMAlertList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAlertList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmalerts for vmrule: %w", err)
+		err = fmt.Errorf("cannot list vmalerts for vmrule: %w", err)
+		return
 	}
 
 	for i := range objects.Items {
@@ -105,7 +109,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				ObjectSelector:    item.Spec.RuleSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
 			if err != nil {
 				l.Error(err, "cannot match vmalert and vmrule")
 				continue
@@ -115,9 +119,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			}
 		}
 
-		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, item, instance)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
+		if _, configErr := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, item, &instance); configErr != nil {
+			l.Error(configErr, "cannot update rules configmaps")
+			err = configErr
 		}
 	}
 	return

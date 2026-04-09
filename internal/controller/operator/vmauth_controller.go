@@ -38,7 +38,7 @@ import (
 
 var (
 	authSync           sync.RWMutex
-	authReconcileLimit = limiter.NewRateLimiter("vmauth", 5)
+	authReconcileLimit = limiter.NewReconcileRateLimiter("vmauth", 5)
 )
 
 // VMAuthReconciler reconciles a VMAuth object
@@ -69,13 +69,13 @@ func (r *VMAuthReconciler) Scheme() *runtime.Scheme {
 func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmauth", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	instance := &vmv1beta1.VMAuth{}
+	var instance vmv1beta1.VMAuth
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return result, &getError{err, "vmauth", req}
 	}
 
@@ -84,24 +84,25 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		defer authSync.RUnlock()
 	}
 
-	RegisterObjectStat(instance, "vmauth")
+	RegisterObjectStat(&instance, "vmauth")
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAuthDelete(ctx, r, instance); err != nil {
-			return result, fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
+		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
+			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
-		return result, nil
+		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return result, &parsingError{instance.Spec.ParsingError, "vmauth"}
+		err = &parsingError{instance.Spec.ParsingError, "vmauth"}
+		return
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return result, err
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
 	}
-	r.Client.Scheme().Default(instance)
+	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
-		if err := vmauth.CreateOrUpdate(ctx, instance, r); err != nil {
+		if err := vmauth.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
 		return result, nil

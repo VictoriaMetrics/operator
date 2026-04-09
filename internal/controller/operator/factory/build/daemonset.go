@@ -8,7 +8,7 @@ import (
 )
 
 // DeploymentAddCommonParams adds common params for all deployments
-func DaemonSetAddCommonParams(dst *appsv1.DaemonSet, useStrictSecurity bool, params *vmv1beta1.CommonApplicationDeploymentParams) {
+func DaemonSetAddCommonParams(dst *appsv1.DaemonSet, params *vmv1beta1.CommonAppsParams) {
 	dst.Spec.Template.Spec.Affinity = params.Affinity
 	dst.Spec.Template.Spec.Tolerations = params.Tolerations
 	dst.Spec.Template.Spec.SchedulerName = params.SchedulerName
@@ -22,11 +22,10 @@ func DaemonSetAddCommonParams(dst *appsv1.DaemonSet, useStrictSecurity bool, par
 	dst.Spec.Template.Spec.DNSPolicy = params.DNSPolicy
 	dst.Spec.Template.Spec.DNSConfig = params.DNSConfig
 	dst.Spec.Template.Spec.NodeSelector = params.NodeSelector
-	dst.Spec.Template.Spec.SecurityContext = AddStrictSecuritySettingsWithRootToPod(params.SecurityContext, useStrictSecurity)
+	dst.Spec.Template.Spec.SecurityContext = addStrictSecuritySettingsWithRootToPod(params)
 	dst.Spec.Template.Spec.TerminationGracePeriodSeconds = params.TerminationGracePeriodSeconds
 	dst.Spec.Template.Spec.TopologySpreadConstraints = params.TopologySpreadConstraints
 	dst.Spec.Template.Spec.ImagePullSecrets = params.ImagePullSecrets
-	dst.Spec.Template.Spec.TerminationGracePeriodSeconds = params.TerminationGracePeriodSeconds
 	dst.Spec.Template.Spec.ReadinessGates = params.ReadinessGates
 	dst.Spec.MinReadySeconds = params.MinReadySeconds
 	dst.Spec.RevisionHistoryLimit = params.RevisionHistoryLimitCount

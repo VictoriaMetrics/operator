@@ -65,37 +65,42 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMUser
 	defer func() {
-		result, err = handleReconcileErrWithoutStatus(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
 	}()
 
-	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		return result, &getError{err, "vmuser", req}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, "vmuser", req}
+		return
 	}
-	RegisterObjectStat(&instance, "vmuser")
-
 	if !instance.DeletionTimestamp.IsZero() {
 		// need to remove finalizer and delete related resources.
-		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
-			return result, fmt.Errorf("cannot remove finalizer for vmuser: %w", err)
+		if err = finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
+			err = fmt.Errorf("cannot remove finalizer for vmuser: %w", err)
 		}
 		return
 	}
-
-	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
-		return result, err
+	RegisterObjectStat(&instance, "vmuser")
+	if instance.Spec.ParsingError != "" {
+		err = &parsingError{instance.Spec.ParsingError, "vmuser"}
+		return
 	}
 
-	if authReconcileLimit.MustThrottleReconcile() {
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
+	}
+
+	if authReconcileLimit.Throttle() {
 		return
 	}
 
 	authSync.Lock()
 	defer authSync.Unlock()
 	var objects vmv1beta1.VMAuthList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAuthList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, r.Client, r.BaseConf.WatchNamespaces, func(dst *vmv1beta1.VMAuthList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
-		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
+		err = fmt.Errorf("cannot list vmauths for vmuser: %w", err)
+		return
 	}
 
 	for i := range objects.Items {
@@ -125,8 +130,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		if err := vmauth.CreateOrUpdateConfig(ctx, r, item, &instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
+		if configErr := vmauth.CreateOrUpdateConfig(ctx, r, item, &instance); configErr != nil {
+			l.Error(configErr, "cannot create or update vmauth deploy for vmuser")
+			err = configErr
 		}
 	}
 	return

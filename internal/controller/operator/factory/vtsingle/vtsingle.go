@@ -108,7 +108,7 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 		return fmt.Errorf("cannot generate new deploy for vtsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false, &owner)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
 }
 
 func newDeployment(r *vmv1.VTSingle) (*appsv1.Deployment, error) {
@@ -137,7 +137,7 @@ func newDeployment(r *vmv1.VTSingle) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
+	build.DeploymentAddCommonParams(depSpec, &r.Spec.CommonAppsParams)
 	return depSpec, nil
 }
 
@@ -229,6 +229,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
+
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vtsingleContainer := corev1.Container{
@@ -244,11 +245,11 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          r.Spec.Image.PullPolicy,
 	}
 
-	vtsingleContainer = build.Probe(vtsingleContainer, r)
+	build.Probe(&vtsingleContainer, r, &r.Spec.CommonAppsParams)
 
 	operatorContainers := []corev1.Container{vtsingleContainer}
 
-	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &r.Spec.CommonAppsParams)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {

@@ -66,7 +66,7 @@ type VMAgentSpec struct {
 	// replicas count according to spec.replicas,
 	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
 	// +optional
-	ShardCount *int `json:"shardCount,omitempty"`
+	ShardCount *int32 `json:"shardCount,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// works only for deployments, statefulset always use OnDelete.
@@ -79,7 +79,6 @@ type VMAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	*EmbeddedProbes     `json:",inline"`
 	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
 	// Supports only VMPodScrape
 	// (available from v0.55.0).
@@ -97,6 +96,10 @@ type VMAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	StatefulRollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy
 	// +optional
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
@@ -114,11 +117,10 @@ type VMAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	CommonRelabelParams               `json:",inline,omitempty"`
-	CommonScrapeParams                `json:",inline,omitempty"`
-	CommonDefaultableParams           `json:",inline,omitempty"`
-	CommonConfigReloaderParams        `json:",inline,omitempty"`
-	CommonApplicationDeploymentParams `json:",inline,omitempty"`
+	CommonRelabelParams        `json:",inline,omitempty"`
+	CommonScrapeParams         `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline,omitempty"`
 }
 
 // SetLastSpec implements objectWithLastAppliedState interface
@@ -157,8 +159,15 @@ func (cr *VMAgent) Validate() error {
 			}
 		}
 	}
-	if cr.Spec.DaemonSetMode && cr.Spec.StatefulMode {
-		return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+	if cr.Spec.StatefulMode {
+		if cr.Spec.DaemonSetMode {
+			return fmt.Errorf("daemonSetMode and statefulMode cannot be used in the same time")
+		}
+		if cr.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+			if err := cr.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+				return fmt.Errorf("vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", err)
+			}
+		}
 	}
 	if cr.Spec.DaemonSetMode {
 		if cr.Spec.PodDisruptionBudget != nil {
@@ -200,11 +209,11 @@ func (cr *VMAgent) Validate() error {
 
 // IsSharded returns true if sharding is enabled
 func (cr *VMAgent) IsSharded() bool {
-	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 && !cr.Spec.DaemonSetMode
+	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 0 && !cr.Spec.DaemonSetMode
 }
 
 // GetShardCount returns shard count for vmagent
-func (cr *VMAgent) GetShardCount() int {
+func (cr *VMAgent) GetShardCount() int32 {
 	if !cr.IsSharded() {
 		return 1
 	}
@@ -226,12 +235,9 @@ func (cr *VMAgent) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
 }
 
-// UseProxyProtocol implements reloadable interface
+// UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAgent) UseProxyProtocol() bool {
-	if v, ok := cr.Spec.ExtraArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
-		return true
-	}
-	return false
+	return UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -409,8 +415,8 @@ type VMAgentStatus struct {
 }
 
 // GetStatusMetadata returns metadata for object status
-func (cr *VMAgentStatus) GetStatusMetadata() *StatusMetadata {
-	return &cr.StatusMetadata
+func (cr *VMAgent) GetStatusMetadata() *StatusMetadata {
+	return &cr.Status.StatusMetadata
 }
 
 // +genclient
@@ -486,7 +492,7 @@ func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 	}
 	var shardCnt int32
 	if cr.IsSharded() {
-		shardCnt = int32(*cr.Spec.ShardCount)
+		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Replicas = replicaCount
 	vs.Shards = shardCnt
@@ -588,10 +594,6 @@ func (cr *VMAgent) AsURL() string {
 		}
 	}
 	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
-}
-
-func (cr *VMAgent) Probe() *EmbeddedProbes {
-	return cr.Spec.EmbeddedProbes
 }
 
 func (cr *VMAgent) ProbePath() string {

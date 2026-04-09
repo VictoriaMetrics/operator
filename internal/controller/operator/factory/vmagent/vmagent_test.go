@@ -764,19 +764,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			var ds appsv1.DaemonSet
 			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
 
-			var pqVolume *corev1.Volume
-			for i := range ds.Spec.Template.Spec.Volumes {
-				volume := &ds.Spec.Template.Spec.Volumes[i]
-				if volume.Name == persistentQueueMountName {
-					pqVolume = volume
-					break
-				}
-			}
-			if assert.NotNil(t, pqVolume) {
-				assert.Nil(t, pqVolume.EmptyDir)
-				if assert.NotNil(t, pqVolume.HostPath) {
-					assert.Equal(t, "/var/lib/vmagent-pq", pqVolume.HostPath.Path)
-				}
+			pqVolume := ds.Spec.Template.Spec.Volumes[0]
+			assert.Nil(t, pqVolume.EmptyDir)
+			if assert.NotNil(t, pqVolume.HostPath) {
+				assert.Equal(t, "/var/lib/vmagent-pq", pqVolume.HostPath.Path)
 			}
 
 			container := ds.Spec.Template.Spec.Containers[0]

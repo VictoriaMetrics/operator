@@ -168,6 +168,7 @@ SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e
 test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
+		--output-interceptor-mode=none \
 		$(SKIP_UPGRADE_TESTS) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \
@@ -178,6 +179,7 @@ test-e2e: load-kind ginkgo crust-gather mirrord
 test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
+		--output-interceptor-mode=none \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \
 		-timeout=60m \

@@ -81,6 +81,15 @@ type VMAgentHelmValues struct {
 }
 
 // VMAlertHelmValues represents values from VictoriaMetrics alert helm chart
+
+// VMAuthHelmValues represents values from VictoriaMetrics auth helm chart
+type VMAuthHelmValues struct {
+	ServerValues   `yaml:",inline"`
+	Global         GlobalValues    `yaml:"global,omitempty"`
+	Env            []corev1.EnvVar `yaml:"env,omitempty"`
+	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty"`
+}
+
 type VMAlertHelmValues struct {
 	Global         GlobalValues        `yaml:"global,omitempty"`
 	Server         VMAlertServerValues `yaml:"server"`
@@ -208,7 +217,6 @@ type VLCollectorSettings struct {
 	LogsPath               string   `yaml:"logsPath,omitempty"`
 }
 
-
 type ServiceValues struct {
 	Annotations              map[string]string `yaml:"annotations,omitempty"`
 	Labels                   map[string]string `yaml:"labels,omitempty"`
@@ -259,6 +267,12 @@ type PersistentVolumeValues struct {
 // UnmarshalValues unmarshals yaml data into the specified type
 func UnmarshalValues(data []byte, chart string) (any, error) {
 	switch chart {
+	case "victoria-metrics-auth":
+		var values VMAuthHelmValues
+		if err := yaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
 	case "victoria-metrics-single":
 		var values VMSingleHelmValues
 		if err := yaml.Unmarshal(data, &values); err != nil {
@@ -335,6 +349,24 @@ func Convert(name, namespace string, values any) (any, error) {
 	var cr any
 
 	switch v := values.(type) {
+	case *VMAuthHelmValues:
+		auth := &vmv1beta1.VMAuth{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+				Kind:       "VMAuth",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		spec, err := convertVMAuthSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		auth.Spec = *spec
+		cr = auth
+
 	case *VMSingleHelmValues:
 		single := &vmv1beta1.VMSingle{
 			TypeMeta: metav1.TypeMeta{
@@ -542,7 +574,7 @@ func Convert(name, namespace string, values any) (any, error) {
 
 type commonConfig struct {
 	vmv1beta1.CommonAppsParams
-	ServiceSpec      *vmv1beta1.AdditionalServiceSpec
+	ServiceSpec *vmv1beta1.AdditionalServiceSpec
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata
 	Storage     *corev1.PersistentVolumeClaimSpec
 }
@@ -610,6 +642,9 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 		}
 	}
 
+	// Service
+	cfg.ServiceSpec = convertService(values.Service)
+
 	return cfg, nil
 }
 
@@ -637,7 +672,6 @@ func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
 
 	return result
 }
-
 
 func convertService(service *ServiceValues) *vmv1beta1.AdditionalServiceSpec {
 	if service == nil {
@@ -1201,6 +1235,26 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 				},
 			}
 		}
+	}
+
+	return spec, nil
+}
+
+func convertVMAuthSpec(values *VMAuthHelmValues) (*vmv1beta1.VMAuthSpec, error) {
+	spec := &vmv1beta1.VMAuthSpec{}
+
+	cfg, err := convertCommonConfig(values.ServerValues, values.Global)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.CommonAppsParams = cfg.CommonAppsParams
+	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
+	spec.ExtraEnvs = values.Env
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
 	return spec, nil

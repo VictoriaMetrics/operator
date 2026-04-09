@@ -678,3 +678,45 @@ func TestConvertVTCluster(t *testing.T) {
 		},
 	)
 }
+func TestConvertVMAuth(t *testing.T) {
+	f := func(values *VMAuthHelmValues, expected func() *vmv1beta1.VMAuth) {
+		t.Helper()
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VMAuthHelmValues{
+			ServerValues: ServerValues{
+				Image: ImageValues{
+					Repository: "victoriametrics/vmauth",
+					Tag:        "v1.100.0",
+				},
+				ReplicaCount: ptr.To(int32(1)),
+			},
+		},
+		func() *vmv1beta1.VMAuth {
+			return &vmv1beta1.VMAuth{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAuth",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1beta1.VMAuthSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/vmauth",
+							Tag:        "v1.100.0",
+						},
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+			}
+		},
+	)
+}

@@ -14,6 +14,7 @@ DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
 E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
+E2E_TARGET ?= ./test/e2e/...
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
 
@@ -160,26 +161,18 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-BASE_REF ?= origin/master
-SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
-
 test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
-		$(SKIP_UPGRADE_TESTS) \
+		--output-interceptor-mode=none \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \
 		-timeout=60m \
-		-junit-report=report.xml ./test/e2e/...
+		-junit-report=report.xml $(E2E_TARGET)
 
 .PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
-test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
-		-ldflags="-linkmode=external" \
-		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-randomize-all \
-		-timeout=60m \
-		-junit-report=report.xml ./test/e2e/upgrade/...
+test-e2e-upgrade: E2E_TARGET=./test/e2e/upgrade/...
+test-e2e-upgrade: test-e2e
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter

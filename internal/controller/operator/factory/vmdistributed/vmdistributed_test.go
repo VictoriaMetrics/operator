@@ -575,6 +575,69 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// should always have static fallback for vmauth
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+		},
+		preRun: func(c client.Client, d *testData) {
+			// Create initial VMAuth backed by CRD targets
+			lb := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters)
+			c.Scheme().Default(lb)
+			assert.NoError(t, c.Create(context.TODO(), lb))
+		},
+		actions: func(d *testData) []action {
+			return []action{
+				{
+					verb: "Get",
+					key:  "*v1beta1.VMAuth/default/vmauth-lb",
+				},
+				{
+					verb: "Update",
+					key:  "*v1beta1.VMAuth/default/vmauth-lb",
+				},
+				{
+					verb: "Get",
+					key:  "*v1beta1.VMAuth/default/vmauth-lb",
+				},
+				{
+					verb: "Get",
+					key:  "*v1beta1.VMAuth/default/vmauth-lb",
+				},
+			}
+		},
+		validate: func(ctx context.Context, rclient client.Client, d *testData) {
+			// Simulate removing both backends by passing empty slices
+			vmAuth := buildVMAuthLB(d.cr, nil, nil)
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
+
+			var got vmv1beta1.VMAuth
+			nsn := types.NamespacedName{
+				Name:      vmAuth.Name,
+				Namespace: vmAuth.Namespace,
+			}
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+
+			expectedTargetRefs := []vmv1beta1.TargetRef{
+				{
+					Name:  "write",
+					Paths: []string{"/insert/.+", "/api/v1/write"},
+				},
+				{
+					Name:  "read",
+					Paths: []string{"/select/.+", "/admin/tenants"},
+				},
+			}
+			for i := range expectedTargetRefs {
+				expectedTargetRefs[i].LoadBalancingPolicy = ptr.To("first_available")
+				expectedTargetRefs[i].RetryStatusCodes = []int{500, 502, 503}
+				expectedTargetRefs[i].Static = &vmv1beta1.StaticRef{URL: defaultStubAddr}
+			}
+			assert.Equal(t, expectedTargetRefs, got.Spec.DefaultTargetRefs)
+		},
+	})
+
 	// should not create VMAuth if it is disabled
 	f(opts{
 		prepare: func(d *testData) {

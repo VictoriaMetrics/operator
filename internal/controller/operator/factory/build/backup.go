@@ -54,7 +54,6 @@ func VMBackupManager(
 		fmt.Sprintf("-dst=%s", backupDst),
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
-		"-eula",
 	}
 
 	if cr.LogLevel != nil {
@@ -169,7 +168,6 @@ func VMRestore(
 ) (*corev1.Container, error) {
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
-		"-eula",
 	}
 
 	if cr.LogLevel != nil {

@@ -721,6 +721,76 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// generate vmagent daemonset with overridden persistent queue volume
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-override-pq-volume",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				DaemonSetMode: true,
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Volumes: []corev1.Volume{
+						{
+							Name: persistentQueueMountName,
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/lib/vmagent-pq",
+								},
+							},
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      persistentQueueMountName,
+							MountPath: persistentQueueDir,
+						},
+						{
+							Name:      "extra-volume",
+							MountPath: "/etc/vmagent/extra",
+						},
+					},
+				},
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var ds appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
+
+			var pqVolume *corev1.Volume
+			for i := range ds.Spec.Template.Spec.Volumes {
+				volume := &ds.Spec.Template.Spec.Volumes[i]
+				if volume.Name == persistentQueueMountName {
+					pqVolume = volume
+					break
+				}
+			}
+			if assert.NotNil(t, pqVolume) {
+				assert.Nil(t, pqVolume.EmptyDir)
+				if assert.NotNil(t, pqVolume.HostPath) {
+					assert.Equal(t, "/var/lib/vmagent-pq", pqVolume.HostPath.Path)
+				}
+			}
+
+			container := ds.Spec.Template.Spec.Containers[0]
+			assert.Contains(t, container.VolumeMounts, corev1.VolumeMount{
+				Name:      persistentQueueMountName,
+				MountPath: persistentQueueDir,
+			})
+			assert.Contains(t, container.VolumeMounts, corev1.VolumeMount{
+				Name:      "extra-volume",
+				MountPath: "/etc/vmagent/extra",
+			})
+		},
+	})
+
 	// generate vmagent daemonset with ondelete update strategy
 	f(opts{
 		cr: &vmv1beta1.VMAgent{
@@ -2263,6 +2333,76 @@ containers:
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent`,
+	})
+
+	// ingest only mode with default persistent queue volume
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v1.97.1",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "8425",
+				},
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://some-url/api/v1/write"},
+				},
+			},
+		},
+		wantYaml: `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir: {}
+initcontainers: []
+containers:
+    - name: vmagent
+      image: victoriametrics/vmagent:v1.97.1
+      args:
+        - -httpListenAddr=:8425
+        - -remoteWrite.maxDiskUsagePerURL=1073741824
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+        - -remoteWrite.url=http://some-url/api/v1/write
+      ports:
+        - name: http
+          containerport: 8425
+          protocol: TCP
+      volumemounts:
+        - name: persistent-queue-data
+          mountpath: /tmp/vmagent-remotewrite-data
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8425
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+serviceaccountname: vmagent-agent
+
+    `,
 	})
 
 	// ingest only mode with relabelling

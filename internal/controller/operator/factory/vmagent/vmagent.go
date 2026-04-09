@@ -544,34 +544,40 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
-	var agentVolumeMounts []corev1.VolumeMount
 	var crMounts []corev1.VolumeMount
-	// mount data path any way, even if user changes its value
-	// we cannot rely on value of remoteWriteSettings.
 	pqMountPath := persistentQueueDir
 	if cr.Spec.StatefulMode {
 		pqMountPath = persistentQueueSTSDir
 	}
-	agentVolumeMounts = append(agentVolumeMounts,
-		corev1.VolumeMount{
-			Name:      persistentQueueMountName,
-			MountPath: pqMountPath,
-		},
-	)
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
-
-	var volumes []corev1.Volume
-	// in case for sts, we have to use persistentVolumeClaimTemplate instead
-	if !cr.Spec.StatefulMode {
-		volumes = append(volumes, corev1.Volume{
-			Name: persistentQueueMountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
+	// Use StorageVolumeMountsTo to allow user-provided volumes to override
+	// the default emptyDir for persistent queue. This matches the pattern
+	// used by vlsingle, vmsingle, and vtsingle (see build/container.go).
+	// For StatefulMode, PVC is handled separately by IntoSTSVolume.
+	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
+	volumes, agentVolumeMounts, storageErr := build.StorageVolumeMountsTo(
+		cr.Spec.Volumes, cr.Spec.VolumeMounts, pvcSrc, pqMountPath, persistentQueueMountName)
+	if storageErr != nil {
+		return nil, fmt.Errorf("cannot configure persistent queue volume: %w", storageErr)
 	}
-
-	volumes = append(volumes, cr.Spec.Volumes...)
+	if cr.Spec.StatefulMode {
+		hasUserPersistentQueueVolume := false
+		for _, volume := range cr.Spec.Volumes {
+			if volume.Name == persistentQueueMountName {
+				hasUserPersistentQueueVolume = true
+				break
+			}
+		}
+		if !hasUserPersistentQueueVolume {
+			filteredVolumes := make([]corev1.Volume, 0, len(volumes))
+			for _, volume := range volumes {
+				if volume.Name == persistentQueueMountName {
+					continue
+				}
+				filteredVolumes = append(filteredVolumes, volume)
+			}
+			volumes = filteredVolumes
+		}
+	}
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		args = append(args,

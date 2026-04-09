@@ -162,14 +162,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-BASE_REF ?= origin/master
-SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
-
 test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		--output-interceptor-mode=none \
-		$(SKIP_UPGRADE_TESTS) \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \
 		-timeout=60m \

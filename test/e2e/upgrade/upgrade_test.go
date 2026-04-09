@@ -519,6 +519,7 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 	for i, o := range objs {
 		By(fmt.Sprintf("waiting for %s to become operational", displayNames[i]))
 		wg.Go(func() {
+			defer GinkgoRecover()
 			Eventually(func() error {
 				return suite.ExpectObjectStatus(ctx, k8sClient, o, nsns[i], vmv1beta1.UpdateStatusOperational)
 			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())
@@ -535,6 +536,7 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 	for i, o := range objs {
 		By(fmt.Sprintf("waiting for latest operator to reconcile %s", displayNames[i]))
 		wg.Go(func() {
+			defer GinkgoRecover()
 			Eventually(func() error {
 				return suite.ExpectObjectStatus(ctx, k8sClient, o, nsns[i], vmv1beta1.UpdateStatusOperational)
 			}, waitTimeout, 5*time.Second).ShouldNot(HaveOccurred())

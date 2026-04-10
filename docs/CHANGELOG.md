@@ -33,6 +33,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 
+* BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): fix PVC being owned by StatefulSet and top-level object simultaneously. See [#1845](https://github.com/VictoriaMetrics/operator/issues/1845).

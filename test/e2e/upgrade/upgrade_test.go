@@ -786,6 +786,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
+						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -808,6 +809,30 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
+						AcceptEULA: true,
+					}
+					cr.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				})},
+				{version: "v0.68.4", cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
+					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
+						Destination:                 "fs:///tmp",
+						DestinationDisableSuffixAdd: true,
+						Image: vmv1beta1.Image{
+							Tag: "v1.136.0-enterprise",
+						},
+						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{

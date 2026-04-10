@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
+
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use volume from spec.volumes as persistent queue volume if its name is `persistent-queue-data`, previously emptyDir was mounted. See [#1677](https://github.com/VictoriaMetrics/operator/issues/1677).
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): use volume from spec.vmstorage.volumes and spec.vmselect.volumes as data and cache volumes if its name is `vmstorage-db` and `vmselect-cachedir` respectively. See [#784](https://github.com/VictoriaMetrics/operator/issues/784).
 

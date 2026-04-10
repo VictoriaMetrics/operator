@@ -21,6 +21,7 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/test/e2e"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
@@ -423,7 +424,6 @@ func with[T object[T]](cr T, opts ...func(T)) T {
 var (
 	waitTimeout         = 5 * time.Minute
 	latestOperatorImage = os.Getenv("OPERATOR_IMAGE")
-	licenseKey          = os.Getenv("LICENSE_KEY")
 )
 
 type crVersionPair struct {
@@ -470,19 +470,7 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 		}
 	}
 
-	if licenseKey != "" {
-		Expect(k8sClient.Create(ctx,
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "license",
-					Namespace: namespace,
-				},
-				StringData: map[string]string{
-					"key": licenseKey,
-				},
-			},
-		)).ToNot(HaveOccurred())
-	}
+	e2e.CreateLicenseSecret(ctx, k8sClient, namespace)
 
 	names := make([]string, len(objs))
 	displayNames := make([]string, len(objs))

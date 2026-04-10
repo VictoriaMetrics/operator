@@ -1,10 +1,48 @@
 package e2e
 
 import (
+	"context"
 	"os"
+
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var LICENSE_KEY = os.Getenv("LICENSE_KEY")
+
+func CreateLicenseSecret(ctx context.Context, k8sClient client.Client, namespace string) {
+	GinkgoHelper()
+	if LICENSE_KEY != "" {
+		Expect(k8sClient.Create(ctx,
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "license",
+					Namespace: namespace,
+				},
+				StringData: map[string]string{
+					"key": LICENSE_KEY,
+				},
+			},
+		)).ToNot(HaveOccurred())
+	}
+}
+
+func DeleteLicenseSecret(ctx context.Context, k8sClient client.Client, namespace string) {
+	GinkgoHelper()
+	if LICENSE_KEY != "" {
+		Expect(k8sClient.Delete(ctx,
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "license",
+					Namespace: namespace,
+				},
+			},
+		)).ToNot(HaveOccurred())
+	}
+}
 
 const (
 	tlsCA = `-----BEGIN CERTIFICATE-----

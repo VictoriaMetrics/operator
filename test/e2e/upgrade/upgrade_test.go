@@ -427,8 +427,9 @@ var (
 )
 
 type crVersionPair struct {
-	version string
-	cr      client.Object
+	version      string
+	cr           client.Object
+	isEnterprise bool
 }
 
 type entry struct {
@@ -443,13 +444,17 @@ func entries(es []entry) []TableEntry {
 	for _, e := range es {
 		for _, p := range e.pairs {
 			obj := p.cr.DeepCopyObject().(client.Object)
-			result = append(result, Entry(fmt.Sprintf("from %s: %s (%T)", p.version, e.name, obj), p.version, e.genDeps, []client.Object{obj}, e.envs))
+			result = append(result, Entry(fmt.Sprintf("from %s: %s (%T)", p.version, e.name, obj), p.version, e.genDeps, []client.Object{obj}, e.envs, p.isEnterprise))
 		}
 	}
 	return result
 }
 
-func ensureNoPodRollout(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string) {
+func ensureNoPodRollout(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string, isEnterprise bool) {
+	if isEnterprise && e2e.LICENSE_KEY == "" {
+		Skip("skipping enterprise test: LICENSE_KEY is not set")
+	}
+
 	namespace := createRandomNamespace(ctx, k8sClient)
 
 	previousOperatorImage := fmt.Sprintf("quay.io/%s:%s", operatorImageBase, version)
@@ -664,23 +669,23 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.0", cr: with(vmalert)},
 				{version: "v0.68.0", cr: with(vmauth)},
 				{version: "v0.68.0", cr: with(vmalertmanager)},
-				{version: "v0.68.0", cr: with(vmanomaly)},
+				{version: "v0.68.0", cr: with(vmanomaly), isEnterprise: true},
 				{version: "v0.68.1", cr: with(vmalert)},
 				{version: "v0.68.1", cr: with(vmauth)},
 				{version: "v0.68.1", cr: with(vmalertmanager)},
-				{version: "v0.68.1", cr: with(vmanomaly)},
+				{version: "v0.68.1", cr: with(vmanomaly), isEnterprise: true},
 				{version: "v0.68.2", cr: with(vmalert)},
 				{version: "v0.68.2", cr: with(vmauth)},
 				{version: "v0.68.2", cr: with(vmalertmanager)},
-				{version: "v0.68.2", cr: with(vmanomaly)},
+				{version: "v0.68.2", cr: with(vmanomaly), isEnterprise: true},
 				{version: "v0.68.3", cr: with(vmalert)},
 				{version: "v0.68.3", cr: with(vmauth)},
 				{version: "v0.68.3", cr: with(vmalertmanager)},
-				{version: "v0.68.3", cr: with(vmanomaly)},
+				{version: "v0.68.3", cr: with(vmanomaly), isEnterprise: true},
 				{version: "v0.68.4", cr: with(vmalert)},
 				{version: "v0.68.4", cr: with(vmauth)},
 				{version: "v0.68.4", cr: with(vmalertmanager)},
-				{version: "v0.68.4", cr: with(vmanomaly)},
+				{version: "v0.68.4", cr: with(vmanomaly), isEnterprise: true},
 			},
 		},
 		// nolint:dupl
@@ -795,7 +800,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		{
 			name: "VMCluster with VMBackup",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+				{version: "v0.65.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
 					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
@@ -818,7 +823,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						},
 					}
 				})},
-				{version: "v0.68.3", cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+				{version: "v0.68.3", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
 					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
@@ -841,7 +846,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						},
 					}
 				})},
-				{version: "v0.68.4", cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+				{version: "v0.68.4", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
 					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"

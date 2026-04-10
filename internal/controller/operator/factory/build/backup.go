@@ -55,15 +55,21 @@ func VMBackupManager(
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 	}
-
+	if cr.AcceptEULA {
+		args = append(args, "-eula")
+	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}
 	if cr.LogFormat != nil {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
 	}
-	for arg, value := range cr.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	for key, value := range cr.ExtraArgs {
+		arg := fmt.Sprintf("-%s", key)
+		if len(value) != 0 {
+			arg = fmt.Sprintf("%s=%s", arg, value)
+		}
+		args = append(args, arg)
 	}
 	if cr.Concurrency != nil {
 		args = append(args, fmt.Sprintf("-concurrency=%d", *cr.Concurrency))
@@ -169,15 +175,21 @@ func VMRestore(
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
 	}
-
+	if cr.AcceptEULA {
+		args = append(args, "-eula")
+	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}
 	if cr.LogFormat != nil {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
 	}
-	for arg, value := range cr.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	for key, value := range cr.ExtraArgs {
+		arg := fmt.Sprintf("-%s", key)
+		if len(value) != 0 {
+			arg = fmt.Sprintf("%s=%s", arg, value)
+		}
+		args = append(args, arg)
 	}
 	if cr.Concurrency != nil {
 		args = append(args, fmt.Sprintf("-concurrency=%d", *cr.Concurrency))

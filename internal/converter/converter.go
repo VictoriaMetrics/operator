@@ -1082,7 +1082,6 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 
 	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
-		ExtraArgs:          extraArgs,
 		ExtraEnvs:          values.Env,
 		Resources:          values.Resources,
 		NodeSelector:       values.NodeSelector,

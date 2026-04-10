@@ -331,7 +331,9 @@ load-kind: docker-build kind
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-	$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
+	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
+		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
+	fi
 
 deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy

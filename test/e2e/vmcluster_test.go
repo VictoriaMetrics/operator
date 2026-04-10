@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -27,7 +26,6 @@ import (
 
 //nolint:dupl,lll
 var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
-	licenseKey := os.Getenv("LICENSE_KEY")
 	namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 	var ctx context.Context
 	nsn := types.NamespacedName{
@@ -421,19 +419,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 		}
 		BeforeEach(func() {
 			ctx = context.Background()
-			if licenseKey != "" {
-				Expect(k8sClient.Create(ctx,
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "license",
-							Namespace: namespace,
-						},
-						StringData: map[string]string{
-							"key": licenseKey,
-						},
-					},
-				)).ToNot(HaveOccurred())
-			}
+			CreateLicenseSecret(ctx, k8sClient, namespace)
 		})
 
 		It("should skip reconciliation when VMCluster is paused", func() {
@@ -521,16 +507,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				Name:      nsn.Name,
 				Namespace: namespace,
 			}, &vmv1beta1.VMCluster{})
-			if licenseKey != "" {
-				Expect(k8sClient.Delete(ctx,
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "license",
-							Namespace: namespace,
-						},
-					},
-				)).ToNot(HaveOccurred())
-			}
+			DeleteLicenseSecret(ctx, k8sClient, namespace)
 		})
 
 		type testStep struct {
@@ -542,7 +519,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 		DescribeTable("should update exist cluster",
 			func(name string, isEnterprise bool, initCR *vmv1beta1.VMCluster, steps ...testStep) {
 				if isEnterprise {
-					if licenseKey == "" {
+					if LICENSE_KEY == "" {
 						Skip("ignoring VMCluster test, license was not found")
 					}
 					cfg := config.MustGetBaseConfig()

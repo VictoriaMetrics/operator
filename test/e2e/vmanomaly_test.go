@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -70,22 +69,11 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			Namespace: namespace,
 		},
 	}
-	licenseKey := os.Getenv("LICENSE_KEY")
 	BeforeEach(func() {
-		if licenseKey == "" {
+		if LICENSE_KEY == "" {
 			Skip("ignoring VMAnomaly tests, license was not found")
 		}
-		Expect(k8sClient.Create(ctx,
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "license",
-					Namespace: namespace,
-				},
-				StringData: map[string]string{
-					"key": licenseKey,
-				},
-			},
-		)).ToNot(HaveOccurred())
+		CreateLicenseSecret(ctx, k8sClient, namespace)
 
 		Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).ToNot(HaveOccurred())
 		Eventually(func() error {
@@ -95,14 +83,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 
 	})
 	AfterEach(func() {
-		Expect(k8sClient.Delete(ctx,
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "license",
-					Namespace: namespace,
-				},
-			},
-		)).ToNot(HaveOccurred())
+		DeleteLicenseSecret(ctx, k8sClient, namespace)
 		Expect(k8sClient.Delete(ctx, &anomalySingle)).ToNot(HaveOccurred())
 		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
 	})

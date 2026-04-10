@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +23,6 @@ import (
 //nolint:dupl,lll
 var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 
-	licenseKey := os.Getenv("LICENSE_KEY")
 	Context("e2e vmsingle", func() {
 		var ctx context.Context
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
@@ -33,19 +31,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 		}
 		BeforeEach(func() {
 			ctx = context.Background()
-			if licenseKey != "" {
-				Expect(k8sClient.Create(ctx,
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "license",
-							Namespace: namespace,
-						},
-						StringData: map[string]string{
-							"key": licenseKey,
-						},
-					},
-				)).ToNot(HaveOccurred())
-			}
+			CreateLicenseSecret(ctx, k8sClient, namespace)
 		})
 		AfterEach(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1beta1.VMSingle{
@@ -55,16 +41,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 				},
 			})).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMSingle{})
-			if licenseKey != "" {
-				Expect(k8sClient.Delete(ctx,
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "license",
-							Namespace: namespace,
-						},
-					},
-				)).ToNot(HaveOccurred())
-			}
+			DeleteLicenseSecret(ctx, k8sClient, namespace)
 		})
 		Context("crud", func() {
 			It("should be idempotent when calling CreateOrUpdate multiple times", func() {
@@ -110,7 +87,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 			DescribeTable("should create vmsingle",
 				func(name string, isEnterprise bool, cr *vmv1beta1.VMSingle, verify func(*vmv1beta1.VMSingle)) {
 					if isEnterprise {
-						if licenseKey == "" {
+						if LICENSE_KEY == "" {
 							Skip("ignoring VMSingle test, license was not found")
 						}
 						cfg := config.MustGetBaseConfig()
@@ -392,7 +369,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 			DescribeTable("should update exist vmsingle",
 				func(name string, isEnterprise bool, initCR *vmv1beta1.VMSingle, steps ...testStep) {
 					if isEnterprise {
-						if licenseKey == "" {
+						if LICENSE_KEY == "" {
 							Skip("ignoring VMSingle test, license was not found")
 						}
 						cfg := config.MustGetBaseConfig()

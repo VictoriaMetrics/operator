@@ -65,7 +65,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMUser
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

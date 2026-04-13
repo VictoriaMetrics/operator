@@ -85,7 +85,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1beta1.VMAgent
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMAgent instance

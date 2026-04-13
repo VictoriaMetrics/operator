@@ -319,6 +319,80 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	})
 }
 
+func TestHandleReconcileErrWithStatus(t *testing.T) {
+	type opts struct {
+		ctx        context.Context
+		err        error
+		origin     ctrl.Result
+		object     *vmv1beta1.VMCluster
+		wantResult ctrl.Result
+		wantErr    error
+		wantStatus vmv1beta1.UpdateStatus
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		if o.ctx == nil {
+			o.ctx = context.Background()
+		}
+		var predefined []runtime.Object
+		if o.object != nil {
+			predefined = append(predefined, o.object)
+		}
+		fclient := k8stools.GetTestClientWithObjects(predefined)
+		got, err := handleReconcileErrWithStatus(o.ctx, fclient, o.object, o.origin, o.err)
+		assert.Equal(t, o.wantErr, err)
+		assert.Equal(t, o.wantResult, got)
+		if o.wantStatus != "" && o.object != nil {
+			updated := &vmv1beta1.VMCluster{}
+			assert.NoError(t, fclient.Get(o.ctx, client.ObjectKeyFromObject(o.object), updated))
+			assert.Equal(t, o.wantStatus, updated.Status.UpdateStatus)
+		}
+	}
+
+	// nil error
+	f(opts{
+		err:        nil,
+		object:     &vmv1beta1.VMCluster{},
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    nil,
+	})
+
+	// parsingError
+	f(opts{
+		err: &parsingError{origin: "bad field value", controller: "vmcluster"},
+		object: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster",
+				Namespace: "default",
+			},
+		},
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    &parsingError{origin: "bad field value", controller: "vmcluster"},
+		wantStatus: vmv1beta1.UpdateStatusFailed,
+	})
+
+	// context.Canceled sets RequeueAfter, no status update
+	f(opts{
+		err:        context.Canceled,
+		object:     &vmv1beta1.VMCluster{},
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{RequeueAfter: time.Second * 5},
+		wantErr:    nil,
+	})
+
+	// transient error
+	f(opts{
+		err:        fmt.Errorf("some transient error"),
+		object:     &vmv1beta1.VMCluster{},
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    fmt.Errorf("some transient error"),
+	})
+}
+
 func TestHandleReconcileErr(t *testing.T) {
 	type opts struct {
 		ctx        context.Context

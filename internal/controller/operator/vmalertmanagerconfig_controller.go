@@ -62,7 +62,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

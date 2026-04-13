@@ -60,7 +60,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1beta1.VMServiceScrape
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMServiceScrape instance

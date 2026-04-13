@@ -60,7 +60,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	var instance vmv1beta1.VMProbe
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMPodScrape instance

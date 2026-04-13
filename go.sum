@@ -1,5 +1,5 @@
-github.com/AndrewChubatiuk/env/v11 v11.0.0-20260302065400-14d0354881b6 h1:5CPOPjp7co7TgffUQ/jOVlw6IX8uHXDHt0W85Mwd7Zw=
-github.com/AndrewChubatiuk/env/v11 v11.0.0-20260302065400-14d0354881b6/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
+github.com/AndrewChubatiuk/env/v11 v11.0.0-20260301045445-cf4a9682420b h1:QZiBRRR3Breqrtl4xqqw3NdhYbfU004j1kU2zW/bdrc=
+github.com/AndrewChubatiuk/env/v11 v11.0.0-20260301045445-cf4a9682420b/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/VictoriaMetrics/VictoriaLogs v1.43.1 h1:qbTvuyL7hnvFJ/iU2p7+gBa3svPy6O33TqU+HBHP+B0=

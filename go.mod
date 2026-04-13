@@ -124,4 +124,4 @@ require (
 
 replace github.com/VictoriaMetrics/operator/api => ./api
 
-replace github.com/caarlos0/env/v11 => github.com/AndrewChubatiuk/env/v11 v11.0.0-20260302065400-14d0354881b6
+replace github.com/caarlos0/env/v11 => github.com/AndrewChubatiuk/env/v11 v11.0.0-20260301045445-cf4a9682420b

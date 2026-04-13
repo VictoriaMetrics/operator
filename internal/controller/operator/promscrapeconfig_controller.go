@@ -63,6 +63,9 @@ func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	l := r.Log.WithValues("scrapeconfig", req.Name, "namespace", req.Namespace)
 	var instance promv1alpha1.ScrapeConfig
 	ctx = logger.AddToContext(ctx, l)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+	}()
 
 	// Fetch the PromScrapeConfig instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -73,7 +76,7 @@ func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	RegisterObjectStat(&instance, "scrapeconfig")
 	var cr *vmv1beta1.VMScrapeConfig
 	if cr, err = converter.ScrapeConfig(ctx, &instance, r.BaseConf); err != nil {
-		err = &getError{err, "scrapeconfig", req}
+		err = &parsingError{err.Error(), "scrapeconfig"}
 		return
 	}
 	var owner *metav1.OwnerReference

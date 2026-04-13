@@ -59,7 +59,7 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Handle reconcile errors
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch VMDistributed instance

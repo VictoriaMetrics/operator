@@ -66,7 +66,7 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	var instance vmv1.VLAgent
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VLAgent instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

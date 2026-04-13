@@ -62,6 +62,9 @@ func (r *PromServiceMonitorReconciler) Reconcile(ctx context.Context, req ctrl.R
 	l := r.Log.WithValues("servicemonitor", req.Name, "namespace", req.Namespace)
 	var instance promv1.ServiceMonitor
 	ctx = logger.AddToContext(ctx, l)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+	}()
 
 	// Fetch the PromServiceMonitor instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

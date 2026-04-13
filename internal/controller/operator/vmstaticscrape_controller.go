@@ -42,7 +42,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l := r.Log.WithValues("vmstaticscrape", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMStaticScrape
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		err = &getError{err, "vmstaticscrape", req}

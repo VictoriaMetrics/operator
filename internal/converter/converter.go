@@ -2,14 +2,19 @@ package converter
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"time"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8syaml "sigs.k8s.io/yaml"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // VMSingleHelmValues represents values from VictoriaMetrics single helm chart
@@ -264,7 +269,100 @@ type PersistentVolumeValues struct {
 	Annotations  map[string]string `yaml:"annotations,omitempty"`
 }
 
-// UnmarshalValues unmarshals yaml data into the specified type
+var (
+	helmChartsRawBaseURL = "https://raw.githubusercontent.com/VictoriaMetrics/helm-charts"
+	helmChartsIndexURL   = "https://victoriametrics.github.io/helm-charts/index.yaml"
+)
+
+var helmHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
+type helmRepoIndex struct {
+	Entries map[string][]struct {
+		Version string `yaml:"version"`
+	} `yaml:"entries"`
+}
+
+// fetchLatestChartVersion fetches the latest version of the given chart from the
+// VictoriaMetrics helm-charts repository.
+func fetchLatestChartVersion(chart string) (string, error) {
+	resp, err := helmHTTPClient.Get(helmChartsIndexURL)
+	if err != nil {
+		return "", fmt.Errorf("cannot fetch helm repo index: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("cannot fetch helm repo index: HTTP %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("cannot read helm repo index: %w", err)
+	}
+
+	var index helmRepoIndex
+	if err := yaml.Unmarshal(data, &index); err != nil {
+		return "", fmt.Errorf("cannot parse helm repo index: %w", err)
+	}
+
+	entries, ok := index.Entries[chart]
+	if !ok || len(entries) == 0 {
+		return "", fmt.Errorf("chart %q not found in helm repo index", chart)
+	}
+
+	// Index entries are sorted newest-first.
+	return entries[0].Version, nil
+}
+
+// FetchChartDefaults fetches the default values.yaml for the given chart at its
+// latest released version from the VictoriaMetrics helm-charts repository.
+func FetchChartDefaults(chart string) ([]byte, error) {
+	version, err := fetchLatestChartVersion(chart)
+	if err != nil {
+		return nil, err
+	}
+
+	ref := fmt.Sprintf("%s-%s", chart, version)
+	url := fmt.Sprintf("%s/%s/charts/%s/values.yaml", helmChartsRawBaseURL, ref, chart)
+
+	resp, err := helmHTTPClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch chart defaults from %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("cannot fetch chart defaults: HTTP %d for %s", resp.StatusCode, url)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read chart defaults response: %w", err)
+	}
+	return data, nil
+}
+
+// MergeValues deep-merges base and override YAML, with override taking precedence.
+func MergeValues(base, override []byte) ([]byte, error) {
+	var baseMap map[string]any
+	var overrideMap map[string]any
+
+	if err := k8syaml.Unmarshal(base, &baseMap); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal base values: %w", err)
+	}
+	if err := k8syaml.Unmarshal(override, &overrideMap); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal override values: %w", err)
+	}
+
+	if baseMap == nil {
+		return k8syaml.Marshal(overrideMap)
+	}
+	if err := build.MergeDeep(&baseMap, &overrideMap, false); err != nil {
+		return nil, fmt.Errorf("cannot merge values: %w", err)
+	}
+	return k8syaml.Marshal(baseMap)
+}
+
 func UnmarshalValues(data []byte, chart string) (any, error) {
 	switch chart {
 	case "victoria-metrics-auth":

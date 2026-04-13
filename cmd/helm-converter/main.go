@@ -41,7 +41,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	values, err := converter.UnmarshalValues(inputData, *chart)
+	chartDefaults, err := converter.FetchChartDefaults(*chart)
+	if err != nil {
+		fmt.Printf("cannot fetch chart defaults: %v\n", err)
+		os.Exit(1)
+	}
+
+	mergedData, err := converter.MergeValues(chartDefaults, inputData)
+	if err != nil {
+		fmt.Printf("cannot merge values: %v\n", err)
+		os.Exit(1)
+	}
+
+	values, err := converter.UnmarshalValues(mergedData, *chart)
 	if err != nil {
 		fmt.Printf("cannot unmarshal input file: %v\n", err)
 		os.Exit(1)

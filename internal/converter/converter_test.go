@@ -1,17 +1,28 @@
 package converter
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	k8syaml "sigs.k8s.io/yaml"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
+
+func unmarshalYAML(t *testing.T, data []byte) map[string]any {
+	t.Helper()
+	var m map[string]any
+	require.NoError(t, k8syaml.Unmarshal(data, &m))
+	return m
+}
 
 func TestConvertVMSingle(t *testing.T) {
 	f := func(values *VMSingleHelmValues, expected func() *vmv1beta1.VMSingle) {
@@ -719,4 +730,165 @@ func TestConvertVMAuth(t *testing.T) {
 			}
 		},
 	)
+}
+
+func TestMergeValues(t *testing.T) {
+	f := func(base, override string, expected map[string]any) {
+		t.Helper()
+		got, err := MergeValues([]byte(base), []byte(override))
+		require.NoError(t, err)
+		assert.Equal(t, expected, unmarshalYAML(t, got))
+	}
+
+	// override
+	f(
+		"retentionPeriod: 1\nreplicaCount: 1\n",
+		"retentionPeriod: 30d\n",
+		map[string]any{"replicaCount": float64(1), "retentionPeriod": "30d"},
+	)
+
+	// deep merge
+	f(
+		"image:\n  repository: victoriametrics/victoria-metrics\n  tag: v1.0.0\n",
+		"image:\n  tag: v2.0.0\n",
+		map[string]any{"image": map[string]any{
+			"repository": "victoriametrics/victoria-metrics",
+			"tag":        "v2.0.0",
+		}},
+	)
+
+	// add new key
+	f(
+		"replicaCount: 1\n",
+		"replicaCount: 1\nextraArgs:\n  loggerFormat: json\n",
+		map[string]any{
+			"replicaCount": float64(1),
+			"extraArgs":    map[string]any{"loggerFormat": "json"},
+		},
+	)
+
+	// empty override
+	f(
+		"retentionPeriod: 14d\n",
+		"",
+		map[string]any{"retentionPeriod": "14d"},
+	)
+
+	// empty base
+	f(
+		"",
+		"retentionPeriod: 14d\n",
+		map[string]any{"retentionPeriod": "14d"},
+	)
+}
+
+func TestFetchLatestChartVersion(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  victoria-metrics-single:
+  - version: "0.14.0"
+  - version: "0.13.0"
+  victoria-metrics-agent:
+  - version: "0.12.0"
+`))
+	}))
+	defer srv.Close()
+
+	orig := helmChartsIndexURL
+	helmChartsIndexURL = srv.URL
+	defer func() { helmChartsIndexURL = orig }()
+
+	version, err := fetchLatestChartVersion("victoria-metrics-single")
+	require.NoError(t, err)
+	assert.Equal(t, "0.14.0", version)
+
+	version, err = fetchLatestChartVersion("victoria-metrics-agent")
+	require.NoError(t, err)
+	assert.Equal(t, "0.12.0", version)
+
+	_, err = fetchLatestChartVersion("unknown-chart")
+	assert.ErrorContains(t, err, `"unknown-chart" not found`)
+}
+
+func TestFetchLatestChartVersionHTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	orig := helmChartsIndexURL
+	helmChartsIndexURL = srv.URL
+	defer func() { helmChartsIndexURL = orig }()
+
+	_, err := fetchLatestChartVersion("victoria-metrics-single")
+	assert.ErrorContains(t, err, "HTTP 500")
+}
+
+func TestFetchChartDefaults(t *testing.T) {
+	const fakeValues = "retentionPeriod: 1\nreplicaCount: 1\n"
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  victoria-metrics-single:
+  - version: "0.14.0"
+`))
+		case "/victoria-metrics-single-0.14.0/charts/victoria-metrics-single/values.yaml":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fakeValues))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	origIndex := helmChartsIndexURL
+	origBase := helmChartsRawBaseURL
+	helmChartsIndexURL = srv.URL
+	helmChartsRawBaseURL = srv.URL
+	defer func() {
+		helmChartsIndexURL = origIndex
+		helmChartsRawBaseURL = origBase
+	}()
+
+	got, err := FetchChartDefaults("victoria-metrics-single")
+	require.NoError(t, err)
+	assert.Equal(t, fakeValues, string(got))
+}
+
+func TestFetchChartDefaultsValuesNotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`
+apiVersion: v1
+entries:
+  victoria-metrics-single:
+  - version: "0.14.0"
+`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	origIndex := helmChartsIndexURL
+	origBase := helmChartsRawBaseURL
+	helmChartsIndexURL = srv.URL
+	helmChartsRawBaseURL = srv.URL
+	defer func() {
+		helmChartsIndexURL = origIndex
+		helmChartsRawBaseURL = origBase
+	}()
+
+	_, err := FetchChartDefaults("victoria-metrics-single")
+	assert.ErrorContains(t, err, "HTTP 404")
 }

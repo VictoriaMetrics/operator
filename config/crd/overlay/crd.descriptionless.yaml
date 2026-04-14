@@ -8265,6 +8265,8 @@ spec:
                             type: string
                           title_link:
                             type: string
+                          update_message:
+                            type: boolean
                           username:
                             type: string
                         type: object

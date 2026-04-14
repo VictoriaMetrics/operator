@@ -647,6 +647,10 @@ type SlackConfig struct {
 	// A list of Slack actions that are sent with each notification.
 	// +optional
 	Actions []SlackAction `json:"actions,omitempty"`
+	// Whether to update the original message in-place instead of sending a new one.
+	// available since alertmanager v0.32.0
+	// +optional
+	UpdateMessage *bool `json:"update_message,omitempty" yaml:"update_message,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`

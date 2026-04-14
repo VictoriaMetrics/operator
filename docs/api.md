@@ -2733,6 +2733,7 @@ Appears in: [Receiver](#receiver)
 | thumb_url<a href="#slackconfig-thumb_url" id="slackconfig-thumb_url">#</a><br/>_string_ | _(Optional)_<br/> |
 | title<a href="#slackconfig-title" id="slackconfig-title">#</a><br/>_string_ | _(Optional)_<br/> |
 | title_link<a href="#slackconfig-title_link" id="slackconfig-title_link">#</a><br/>_string_ | _(Optional)_<br/> |
+| update_message<a href="#slackconfig-update_message" id="slackconfig-update_message">#</a><br/>_boolean_ | _(Optional)_<br/>UpdateMessage controls whether the original Slack message is updated in-place<br />when the alert status changes, instead of sending a new message.<br />Requires api_url pointing to https://slack.com/api/chat.postMessage<br />and a Bot Token with chat:write and chat:update scopes.<br />Available since Alertmanager v0.32.0. |
 | username<a href="#slackconfig-username" id="slackconfig-username">#</a><br/>_string_ | _(Optional)_<br/> |
 
 #### SlackConfirmationField

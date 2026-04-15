@@ -120,6 +120,77 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// user-provided persistent-queue-data volume in statefulMode must suppress
+	// the default IntoSTSVolume injection so the StatefulSet doesn't end up
+	// with duplicate volumes / a stray PVC template for that name.
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-user-volume-override",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					Volumes: []corev1.Volume{
+						{
+							Name: "persistent-queue-data",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "user-supplied-pqc",
+								},
+							},
+						},
+					},
+				},
+				StatefulMode: true,
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(true),
+				},
+				StatefulStorage: &vmv1beta1.StorageSpec{
+					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+						Spec: corev1.PersistentVolumeClaimSpec{
+							StorageClassName: ptr.To("embed-sc"),
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceStorage: resource.MustParse("10Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &sts))
+			// Exactly one persistent-queue-data volume, and it is the user's.
+			matchingVolumes := 0
+			var got corev1.Volume
+			for _, v := range sts.Spec.Template.Spec.Volumes {
+				if v.Name == "persistent-queue-data" {
+					matchingVolumes++
+					got = v
+				}
+			}
+			assert.Equal(t, 1, matchingVolumes, "expected exactly one persistent-queue-data volume")
+			assert.NotNil(t, got.PersistentVolumeClaim, "user-provided PVC volume source must be preserved")
+			if got.PersistentVolumeClaim != nil {
+				assert.Equal(t, "user-supplied-pqc", got.PersistentVolumeClaim.ClaimName)
+			}
+			// No persistent-queue-data entry should have been added to VolumeClaimTemplates.
+			for _, vct := range sts.Spec.VolumeClaimTemplates {
+				assert.NotEqual(t, "persistent-queue-data", vct.Name, "IntoSTSVolume must be skipped when user overrides the volume")
+			}
+		},
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmagent-example-agent-user-volume-override", "default"),
+		},
+	})
+
 	// generate with shards vmagent
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

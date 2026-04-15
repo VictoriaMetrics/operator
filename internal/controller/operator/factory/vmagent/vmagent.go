@@ -447,7 +447,14 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		}
 		build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
+		// Only inject the default persistent-queue storage volume/PVC template
+		// when the user hasn't provided their own volume with the same name.
+		// Otherwise IntoSTSVolume would append a second volume (or PVC
+		// template) that conflicts with the user's override already carried
+		// in podSpec.Volumes from newPodSpec.
+		if !hasUserVolume(cr.Spec.Volumes, persistentQueueMountName) {
+			cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
+		}
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -485,6 +492,19 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 	depSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(depSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
 
 	return depSpec, nil
+}
+
+// hasUserVolume reports whether the user supplied a volume with the given
+// name via cr.Spec.Volumes. Used to decide whether operator-managed default
+// volumes (and, in statefulMode, the IntoSTSVolume injection) should be
+// skipped in favor of the user's override.
+func hasUserVolume(volumes []corev1.Volume, name string) bool {
+	for _, v := range volumes {
+		if v.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
@@ -559,24 +579,15 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	if storageErr != nil {
 		return nil, fmt.Errorf("cannot configure persistent queue volume: %w", storageErr)
 	}
-	if cr.Spec.StatefulMode {
-		hasUserPersistentQueueVolume := false
-		for _, volume := range cr.Spec.Volumes {
+	if cr.Spec.StatefulMode && !hasUserVolume(cr.Spec.Volumes, persistentQueueMountName) {
+		filteredVolumes := make([]corev1.Volume, 0, len(volumes))
+		for _, volume := range volumes {
 			if volume.Name == persistentQueueMountName {
-				hasUserPersistentQueueVolume = true
-				break
+				continue
 			}
+			filteredVolumes = append(filteredVolumes, volume)
 		}
-		if !hasUserPersistentQueueVolume {
-			filteredVolumes := make([]corev1.Volume, 0, len(volumes))
-			for _, volume := range volumes {
-				if volume.Name == persistentQueueMountName {
-					continue
-				}
-				filteredVolumes = append(filteredVolumes, volume)
-			}
-			volumes = filteredVolumes
-		}
+		volumes = filteredVolumes
 	}
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {

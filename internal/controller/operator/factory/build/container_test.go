@@ -359,7 +359,7 @@ func TestStorageVolumeMountsTo(t *testing.T) {
 	}
 	f := func(o opts) {
 		t.Helper()
-		gotVolumes, gotMounts, err := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.storagePath, DataVolumeName)
+		gotVolumes, gotMounts, err := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.storagePath, DataVolumeName, false)
 		assert.Equal(t, o.expectedMounts, gotMounts)
 		assert.Equal(t, o.expectedVolumes, gotVolumes)
 		if o.wantErr {

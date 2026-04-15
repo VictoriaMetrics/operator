@@ -219,23 +219,40 @@ type StorageSpec struct {
 
 // IntoSTSVolume converts storageSpec into proper volume for statefulsetSpec
 // by default, it adds emptyDir volume.
-func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
+func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) error {
+	podSpec := &sts.Template.Spec
+	foundVolume := false
+	for i := range podSpec.Volumes {
+		volume := &podSpec.Volumes[i]
+		if volume.Name == name {
+			foundVolume = true
+		}
+	}
 	switch {
 	case ss == nil:
-		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, corev1.Volume{
+		if foundVolume {
+			return nil
+		}
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	case ss.EmptyDir != nil:
-		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, corev1.Volume{
+		if foundVolume {
+			return fmt.Errorf("either unset storage.emptyDir or remove volume=%q from spec", name)
+		}
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: ss.EmptyDir,
 			},
 		})
 	default:
+		if foundVolume {
+			return fmt.Errorf("either unset storage.volumeClaimTemplate or remove volume=%q from spec", name)
+		}
 		claimTemplate := ss.VolumeClaimTemplate
 		stsClaim := corev1.PersistentVolumeClaim{
 			TypeMeta: metav1.TypeMeta{
@@ -255,6 +272,7 @@ func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
 		}
 		sts.VolumeClaimTemplates = append(sts.VolumeClaimTemplates, stsClaim)
 	}
+	return nil
 }
 
 // EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.PersistentVolumeClaim.

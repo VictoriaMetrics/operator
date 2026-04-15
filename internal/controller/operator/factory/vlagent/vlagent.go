@@ -241,7 +241,9 @@ func newK8sApp(cr *vmv1.VLAgent) (client.Object, error) {
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
 
 	if cr.Spec.TmpDataPath == nil {
-		cr.Spec.Storage.IntoSTSVolume(tmpDataVolumeName, &stsSpec.Spec)
+		if err := cr.Spec.Storage.IntoSTSVolume(tmpDataVolumeName, &stsSpec.Spec); err != nil {
+			return nil, err
+		}
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return stsSpec, nil
@@ -271,7 +273,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		args = append(args, "-envflag.enable=true")
 	}
 
-	var agentVolumeMounts []corev1.VolumeMount
+	var vmMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 	tmpDataPath := defaultTmpDataPath
 	if cr.Spec.K8sCollector.Enabled {
@@ -333,7 +335,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 					},
 				},
 			})
-			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			vmMounts = append(vmMounts, corev1.VolumeMount{
 				Name:      logVolumeName,
 				MountPath: logVolumePath,
 				ReadOnly:  true,
@@ -362,7 +364,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 
 	if cr.Spec.TmpDataPath == nil {
-		agentVolumeMounts = append(agentVolumeMounts,
+		vmMounts = append(vmMounts,
 			corev1.VolumeMount{
 				Name:      tmpDataVolumeName,
 				MountPath: tmpDataPath,
@@ -380,14 +382,14 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	if cr.Spec.SyslogSpec != nil {
 		args = build.AddSyslogArgsTo(args, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
-		volumes, agentVolumeMounts = build.AddSyslogTLSConfigToVolumes(volumes, agentVolumeMounts, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
+		volumes, vmMounts = build.AddSyslogTLSConfigToVolumes(volumes, vmMounts, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
 		ports = build.AddSyslogPortsTo(ports, cr.Spec.SyslogSpec)
 	}
 
-	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
+	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
 	volumes = append(volumes, cr.Spec.Volumes...)
 
 	for _, s := range cr.Spec.Secrets {
@@ -399,7 +401,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 				},
 			},
 		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.SecretsDir, s),
@@ -422,9 +424,9 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
-		agentVolumeMounts = append(agentVolumeMounts, cvm)
+		vmMounts = append(vmMounts, cvm)
 	}
-	volumes, agentVolumeMounts = addRemoteWriteAssetsToVolumes(volumes, agentVolumeMounts, cr)
+	volumes, vmMounts = addRemoteWriteAssetsToVolumes(volumes, vmMounts, cr)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -436,7 +438,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		Args:                     args,
 		Env:                      envs,
 		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
-		VolumeMounts:             agentVolumeMounts,
+		VolumeMounts:             vmMounts,
 		Resources:                cr.Spec.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}

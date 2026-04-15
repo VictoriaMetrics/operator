@@ -447,7 +447,9 @@ func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, err
 		}
 		build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.CommonAppsParams)
 		stsSpec.Spec.Template.Spec.Volumes = build.AddServiceAccountTokenVolume(stsSpec.Spec.Template.Spec.Volumes, &cr.Spec.CommonAppsParams)
-		cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec)
+		if err := cr.Spec.StatefulStorage.IntoSTSVolume(persistentQueueMountName, &stsSpec.Spec); err != nil {
+			return nil, err
+		}
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
@@ -544,7 +546,6 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
-	var agentVolumeMounts []corev1.VolumeMount
 	var crMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
@@ -552,26 +553,11 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 	if cr.Spec.StatefulMode {
 		pqMountPath = persistentQueueSTSDir
 	}
-	agentVolumeMounts = append(agentVolumeMounts,
-		corev1.VolumeMount{
-			Name:      persistentQueueMountName,
-			MountPath: pqMountPath,
-		},
-	)
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
 
-	var volumes []corev1.Volume
-	// in case for sts, we have to use persistentVolumeClaimTemplate instead
-	if !cr.Spec.StatefulMode {
-		volumes = append(volumes, corev1.Volume{
-			Name: persistentQueueMountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
+	volumes, vmMounts, err := build.StorageVolumeMountsTo(cr.Spec.Volumes, cr.Spec.VolumeMounts, nil, pqMountPath, persistentQueueMountName, cr.Spec.StatefulMode)
+	if err != nil {
+		return nil, fmt.Errorf("cannot configure persistent queue volume: %w", err)
 	}
-
-	volumes = append(volumes, cr.Spec.Volumes...)
 
 	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		args = append(args,
@@ -609,23 +595,23 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		}
 		crMounts = append(crMounts, m)
 		m.ReadOnly = true
-		agentVolumeMounts = append(agentVolumeMounts, m)
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		vmMounts = append(vmMounts, m)
+		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      string(build.TLSAssetsResourceKind),
 			MountPath: tlsAssetsDir,
 			ReadOnly:  true,
 		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      string(build.SecretConfigResourceKind),
 			MountPath: confDir,
 			ReadOnly:  true,
 		})
 
 	}
-	mountsLen := len(agentVolumeMounts)
-	volumes, agentVolumeMounts = build.StreamAggrVolumeTo(volumes, agentVolumeMounts, cr)
-	volumes, agentVolumeMounts = build.RelabelVolumeTo(volumes, agentVolumeMounts, cr)
-	crMounts = append(crMounts, agentVolumeMounts[mountsLen:]...)
+	mountsLen := len(vmMounts)
+	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, cr)
+	volumes, vmMounts = build.RelabelVolumeTo(volumes, vmMounts, cr)
+	crMounts = append(crMounts, vmMounts[mountsLen:]...)
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + s),
@@ -635,7 +621,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 				},
 			},
 		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.SecretsDir, s),
@@ -658,11 +644,11 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 			ReadOnly:  true,
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		}
-		agentVolumeMounts = append(agentVolumeMounts, cvm)
+		vmMounts = append(vmMounts, cvm)
 		crMounts = append(crMounts, cvm)
 	}
 
-	volumes, agentVolumeMounts = build.LicenseVolumeTo(volumes, agentVolumeMounts, cr.Spec.License, vmv1beta1.SecretsDir)
+	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	relabelKeys := []string{globalRelabelingName}
@@ -685,7 +671,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		Args:                     args,
 		Env:                      envs,
 		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
-		VolumeMounts:             agentVolumeMounts,
+		VolumeMounts:             vmMounts,
 		Resources:                cr.Spec.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
@@ -712,7 +698,6 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
 		operatorContainers = append(operatorContainers, configReloader)
 	}
-	var err error
 	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 	if err != nil {
 		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)

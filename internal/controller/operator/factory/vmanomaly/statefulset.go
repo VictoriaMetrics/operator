@@ -161,7 +161,9 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	}
 	build.StatefulSetAddCommonParams(app, &cr.Spec.CommonAppsParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
-	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
+	if err := cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec); err != nil {
+		return nil, err
+	}
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return app, nil
 }

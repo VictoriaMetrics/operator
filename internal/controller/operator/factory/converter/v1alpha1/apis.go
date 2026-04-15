@@ -332,6 +332,8 @@ func convertReceivers(promReceivers []promv1alpha1.Receiver) []vmv1beta1.Receive
 				ThumbURL:    obj.ThumbURL,
 				LinkNames:   ptr.Deref(obj.LinkNames, false),
 				MrkdwnIn:    obj.MrkdwnIn,
+				// TODO: uncomment once prometheus-operator adds UpdateMessage to SlackConfig
+				// UpdateMessage: obj.UpdateMessage,
 				Actions: convertSliceStruct(obj.Actions, func(s promv1alpha1.SlackAction) vmv1beta1.SlackAction {
 					return vmv1beta1.SlackAction{
 						Type:  s.Type,

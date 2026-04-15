@@ -648,7 +648,8 @@ type SlackConfig struct {
 	// +optional
 	Actions []SlackAction `json:"actions,omitempty"`
 	// Whether to update the original message in-place instead of sending a new one.
-	// available since alertmanager v0.32.0
+	// Requires Slack Bot API and chat:write scope.
+	// Available since alertmanager v0.32.0.
 	// +optional
 	UpdateMessage *bool `json:"update_message,omitempty" yaml:"update_message,omitempty"`
 	// HTTP client configuration.

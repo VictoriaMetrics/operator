@@ -36,6 +36,8 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
+
 * BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): updated VMAuth config consolidating all VMSelects into a single read and all VMClusters into a single write backend

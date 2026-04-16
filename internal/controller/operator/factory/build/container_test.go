@@ -356,10 +356,11 @@ func TestStorageVolumeMountsTo(t *testing.T) {
 		mounts          []corev1.VolumeMount
 		expectedMounts  []corev1.VolumeMount
 		wantErr         bool
+		isStatefulSet   bool
 	}
 	f := func(o opts) {
 		t.Helper()
-		gotVolumes, gotMounts, err := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.storagePath, DataVolumeName, false)
+		gotVolumes, gotMounts, err := StorageVolumeMountsTo(o.volumes, o.mounts, o.pvcSrc, o.storagePath, DataVolumeName, o.isStatefulSet)
 		assert.Equal(t, o.expectedMounts, gotMounts)
 		assert.Equal(t, o.expectedVolumes, gotVolumes)
 		if o.wantErr {
@@ -537,6 +538,61 @@ func TestStorageVolumeMountsTo(t *testing.T) {
 			MountPath: "/test",
 		}},
 		storagePath: "/test/data",
+		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "test-claim",
+		},
+		wantErr: true,
+	})
+
+	// isStatefulSet, add data volume
+	f(opts{
+		isStatefulSet:   true,
+		storagePath:     "/test",
+		expectedVolumes: nil,
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// isStatefulSet, mount PVC
+	f(opts{
+		isStatefulSet: true,
+		volumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "test-claim",
+				},
+			},
+		}},
+		storagePath: "/test",
+		expectedVolumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "test-claim",
+				},
+			},
+		}},
+		expectedMounts: []corev1.VolumeMount{{
+			Name:      DataVolumeName,
+			MountPath: "/test",
+		}},
+	})
+
+	// isStatefulSet, existing volume + pvcSrc — error
+	f(opts{
+		isStatefulSet: true,
+		volumes: []corev1.Volume{{
+			Name: DataVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{
+					VolumeID: "aws-volume",
+				},
+			},
+		}},
+		storagePath: "/test",
 		pvcSrc: &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: "test-claim",
 		},

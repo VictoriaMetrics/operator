@@ -192,7 +192,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			ClaimName: r.PrefixedName(),
 		}
 	}
-	volumes, vmMounts, err := build.StorageVolumeMountsTo(r.Spec.Volumes, r.Spec.VolumeMounts, pvcSrc, storagePath, build.DataVolumeName)
+	volumes, vmMounts, err := build.StorageVolumeMountsTo(r.Spec.Volumes, r.Spec.VolumeMounts, pvcSrc, storagePath, build.DataVolumeName, false)
 	if err != nil {
 		return nil, err
 	}

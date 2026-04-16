@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use volume from spec.volumes as persistent queue volume if its name is `persistent-queue-data`, previously emptyDir was mounted. See [#1677](https://github.com/VictoriaMetrics/operator/issues/1677).
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): use volume from spec.vmstorage.volumes and spec.vmselect.volumes as data and cache volumes if its name is `vmstorage-db` and `vmselect-cachedir` respectively. See [#784](https://github.com/VictoriaMetrics/operator/issues/784).
+
 ## [v0.68.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.4)
 **Release date:** 09 April 2026
 

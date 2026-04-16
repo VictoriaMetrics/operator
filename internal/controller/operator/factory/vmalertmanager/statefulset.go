@@ -74,7 +74,9 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 		statefulset.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
 	build.StatefulSetAddCommonParams(statefulset, &cr.Spec.CommonAppsParams)
-	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
+	if err := cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec); err != nil {
+		return nil, err
+	}
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
 	return statefulset, nil

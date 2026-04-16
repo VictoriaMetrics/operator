@@ -457,6 +457,72 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// generate vmagent daemonset with predefined volume for persistent queue data
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-with-existing-volume",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Volumes: []corev1.Volume{{
+						Name: "persistent-queue-data",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/host/path/cache",
+							},
+						},
+					}},
+				},
+				DaemonSetMode: true,
+			},
+		},
+		validate: func(ctx context.Context, fclient client.Client, cr *vmv1beta1.VMAgent) {
+			var ds appsv1.DaemonSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &ds))
+			expected := []corev1.Volume{
+				{
+					Name: "persistent-queue-data",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/host/path/cache",
+						},
+					},
+				},
+				{
+					Name: "tls-assets",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "tls-assets-vmagent-example-agent-with-existing-volume",
+						},
+					},
+				},
+				{
+					Name: "config-out",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "config",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "vmagent-example-agent-with-existing-volume",
+						},
+					},
+				},
+			}
+			assert.Equal(t, ds.Spec.Template.Spec.Volumes, expected)
+		},
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
+		},
+	})
+
 	// generate vmagent sharded statefulset with prevSpec
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

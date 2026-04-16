@@ -533,7 +533,9 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMSelect.CommonAppsParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
-		cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
+		if err := cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec); err != nil {
+			return nil, err
+		}
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMSelect.ClaimTemplates...)
 	return stsSpec, nil
@@ -959,7 +961,9 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VMStorage.Storage
-	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
+	if err := storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
+		return nil, err
+	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
 
 	return stsSpec, nil

@@ -222,8 +222,7 @@ type StorageSpec struct {
 func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) error {
 	podSpec := &sts.Template.Spec
 	foundVolume := false
-	for i := range podSpec.Volumes {
-		volume := &podSpec.Volumes[i]
+	for _, volume := range podSpec.Volumes {
 		if volume.Name == name {
 			foundVolume = true
 		}

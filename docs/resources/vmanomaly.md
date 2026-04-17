@@ -330,7 +330,7 @@ spec:
 
 `VMAnomaly` supports discovering additional models, schedulers, and queries using [VMAnomalyConfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/).
 
-For filtering configuration objects, `VMAnomaly` uses `configNamespaceSelector` and `configSelector` selectors.
+For filtering configuration objects, `VMAnomaly` uses `configNamespaceSelector` and `configSelector` selectors. This enables users to associate multiple VMAnomalyConfigs with multiple VMAnomaly instances (a many-to-many relationship).
 
 It allows configuring object access control across namespaces and different environments.
 See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for the specification of selectors.

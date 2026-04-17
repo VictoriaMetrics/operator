@@ -63,8 +63,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac)
-	if err != nil {
+	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
 	}
 
@@ -72,12 +71,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 
 	if prevCR != nil {
 		var err error
-		prevAppTpl, err = newK8sApp(prevCR, configHash, ac)
+		prevAppTpl, err = newK8sApp(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot build prev statefulSet for vmanomaly: %w", err)
 		}
 	}
-	newAppTpl, err := newK8sApp(cr, configHash, ac)
+	newAppTpl, err := newK8sApp(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
@@ -112,7 +111,7 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 }
 
 // newK8sApp builds vmanomaly StatefulSet
-func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
+func newK8sApp(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
 		return nil, err

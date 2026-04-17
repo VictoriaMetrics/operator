@@ -14,7 +14,7 @@ tags:
   - metrics
   - anomaly
 ---
-The `VMAnomalyConfig` CRD allows to declaratively define anomaly detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/schedulers/) and [queries](https://docs.victoriametrics.com/anomaly-detection/components/reader/#per-query-parameters).
+The `VMAnomalyConfig` CRD allows declaratively defining anomaly detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/schedulers/), and [queries](https://docs.victoriametrics.com/anomaly-detection/components/reader/#per-query-parameters).
 
 `VMAnomalyConfig` object updates `models`, `schedulers` and `reader.queries` sections of [VMAnomaly](https://docs.victoriametrics.com/anomaly-detection/)
 configuration by adding items with `{metadata.namespace}-{metadata.name}` key prefix. If at least one generated item collides with an existing key, only the colliding item is skipped, while other valid items from the same `VMAnomalyConfig` are still added to the resulting configuration. Check the `VMAnomalyConfig` status and related events to identify skipped items caused by collisions.
@@ -91,7 +91,7 @@ spec:
       step: '1m'
 ```
 
-result anomaly detection configuration is:
+The result anomaly detection configuration is:
 
 ```yaml
 schedulers:
@@ -127,5 +127,3 @@ writer:
 
 You can see the full actual specification of the `VMAnomalyConfig` resource in
 the **[API docs -> VMAnomalyConfig](https://docs.victoriametrics.com/operator/api/#vmanomalyconfig)**.
-
-

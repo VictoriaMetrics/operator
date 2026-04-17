@@ -1,0 +1,10 @@
+docs/api.md linguist-generated=true
+docs/env.md linguist-generated=true
+docs/flags.md linguist-generated=true
+docs/config-reloader-flags.md linguist-generated=true
+config/crd/bases/*.yaml linguist-generated=true
+config/crd/overlay/crd.yaml linguist-generated=true
+config/crd/overlay/crd.descriptionless.yaml linguist-generated=true
+config/crd/overlay/crd.specless.yaml linguist-generated=true
+api/client/** linguist-generated=true
+api/operator/**/zz_generated.deepcopy.go linguist-generated=true

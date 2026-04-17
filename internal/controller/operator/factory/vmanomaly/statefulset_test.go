@@ -319,7 +319,7 @@ func Test_createDefaultConfig(t *testing.T) {
 		}
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
-		_, err := createOrUpdateConfig(ctx, fclient, o.cr, nil, ac)
+		err := createOrUpdateConfig(ctx, fclient, o.cr, nil, nil, ac)
 		if o.wantErr {
 			assert.Error(t, err)
 			return

@@ -102,6 +102,18 @@ type VMAnomalySpec struct {
 	// Server configures HTTP server for VMAnomaly
 	// +optional
 	Server *VMAnomalyServerSpec `json:"server,omitempty"`
+	// SelectAllByDefault changes default behavior for empty configSelector and configNamespaceSelector.
+	// with selectAllByDefault: true and empty object and namespace selectors
+	// Operator selects all existing VMAnomalyConfig objects
+	// with selectAllByDefault: false - selects nothing
+	// +optional
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
+	// ConfigSelector defines VMAnomalyConfig object selector.
+	// +optional
+	ConfigSelector *metav1.LabelSelector `json:"configSelector,omitempty"`
+	// ConfigNamespaceSelector defines VMAnomalyConfig object namespace selector.
+	// +optional
+	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -473,6 +485,14 @@ func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
 		return nil
 	}
 	return nil
+}
+
+// IsUnmanaged checks if object should manage any config objects
+func (cr *VMAnomaly) IsUnmanaged() bool {
+	if cr == nil {
+		return true
+	}
+	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil
 }
 
 // +kubebuilder:object:root=true

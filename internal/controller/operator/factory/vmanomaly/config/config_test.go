@@ -39,7 +39,9 @@ func TestLoad(t *testing.T) {
 			},
 		}
 		ac := build.NewAssetsCache(ctx, fclient, cfg)
-		loaded, err := Load(o.cr, ac)
+		pos, err := NewParsedObjects(ctx, fclient, o.cr)
+		assert.NoError(t, err)
+		loaded, err := pos.Load(o.cr, ac)
 		if o.wantErr {
 			assert.Error(t, err)
 			return
@@ -661,5 +663,181 @@ writer:
 			},
 		},
 		wantErr: true,
+	})
+
+	// with external models
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+reader:
+  class: vm
+  datasource_url: "http://test.com"
+  sampling_period: 1m
+  queries:
+    test:
+      expr: vm_metric
+      data_range: [0, inf]
+writer:
+  class: vm
+  datasource_url: "http://test.com"
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+settings:
+  restore_state: true
+`,
+				ConfigSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
+						},
+					},
+				},
+				ConfigNamespaceSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "env",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"prod"},
+						},
+					},
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+					MetricFormat: vmv1.VMAnomalyVMWriterMetricFormatSpec{
+						Name: "metrics_$VAR",
+						For:  "custom_$QUERY_KEY",
+						ExtraLabels: map[string]string{
+							"label1": "value1",
+							"label2": "value2",
+						},
+					},
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TenantID: "0:2",
+					},
+				},
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://custom.ds",
+					QueryRangePath: "/api/v1/query_range",
+					SamplingPeriod: "10s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TenantID: "0:1",
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+					Labels: map[string]string{
+						"env": "prod",
+					},
+				},
+			},
+			&vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "anomaly",
+					Labels: map[string]string{
+						"app": "prod",
+					},
+					Namespace: "default",
+				},
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "test": {
+      "class": "zscore",
+      "queries": ["test"],
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "test": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  },
+  "queries": {
+    "test": {
+      "expr": "vm_metric"
+    }
+  }
+}`),
+				},
+			},
+		},
+		expected: `
+models:
+  default-anomaly-test:
+    class: zscore
+    queries:
+    - default-anomaly-test
+    z_threshold: 2.5
+  model_univariate_1:
+    class: zscore
+    queries:
+    - test
+    z_threshold: 2.5
+schedulers:
+  default-anomaly-test:
+    class: periodic
+    fit_every: 12m
+    fit_window: 13h
+    infer_every: 11m
+  scheduler_periodic_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://custom.ds
+  sampling_period: 10s
+  query_range_path: /api/v1/query_range
+  queries:
+    default-anomaly-test:
+      expr: vm_metric
+    test:
+      expr: vm_metric
+      data_range:
+      - "0"
+      - inf
+  tenant_id: "0:1"
+writer:
+  class: vm
+  datasource_url: http://write.endpoint
+  metric_format:
+    __name__: metrics_$VAR
+    for: custom_$QUERY_KEY
+    label1: value1
+    label2: value2
+  tenant_id: "0:2"
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  restore_state: true
+`,
 	})
 }

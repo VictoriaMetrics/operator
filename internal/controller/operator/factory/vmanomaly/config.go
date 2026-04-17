@@ -2,8 +2,6 @@ package vmanomaly
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,16 +14,34 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly/config"
 )
 
+// CreateOrUpdateConfig builds configuration for VMAnomaly
+func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig) error {
+	var prevCR *vmv1.VMAnomaly
+	if cr.Status.LastAppliedSpec != nil {
+		prevCR = cr.DeepCopy()
+		prevCR.Spec = *cr.Status.LastAppliedSpec
+	}
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+		return err
+	}
+	return nil
+}
+
 // createOrUpdateConfig reconcile configuration for vmanomaly and returns configuration consistent hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, ac *build.AssetsCache) (string, error) {
-	data, err := config.Load(cr, ac)
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig, ac *build.AssetsCache) error {
+	pos, err := config.NewParsedObjects(ctx, rclient, cr)
 	if err != nil {
-		return "", err
+		return err
+	}
+	data, err := pos.Load(cr, ac)
+	if err != nil {
+		return err
 	}
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, cr),
 		Data: map[string][]byte{
-			secretConfigKey: data,
+			configEnvsubstFilename: data,
 		},
 	}
 	owner := cr.AsOwner()
@@ -36,7 +52,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
 		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
-			return "", err
+			return err
 		}
 	}
 
@@ -46,11 +62,8 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 
 	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta, &owner); err != nil {
-		return "", err
+		return err
 	}
 
-	hash := sha256.New()
-	hash.Write(data)
-	hashBytes := hash.Sum(nil)
-	return hex.EncodeToString(hashBytes), nil
+	return pos.UpdateStatusesForChildObjects(ctx, rclient, cr, childObject)
 }

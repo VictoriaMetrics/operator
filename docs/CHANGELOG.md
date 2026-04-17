@@ -18,7 +18,8 @@ aliases:
 **Update note 1**: deprecated env variables for Prometheus CRs conversion `VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR`, `VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE`, `VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE`, `VM_ENABLEDPROMETHEUSCONVERTER_PROBE`, `VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG`. Use `-controller.disableReconcileFor` command-line flag with comma-separated list of controller names, that should be disabled.
 **Update note 2**: removed `operator_prometheus_converter_watch_events_total` metric since migration of Prometheus object watchers to controllers made this counter obsolete.
 **Update note 3**: made `controller.prometheusCRD.resyncPeriod` command line flag noop, which was relevant to Prometheus object watchers.
-**Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
+**Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
+**Update note 5**: new flag was introduced, so VMAnomaly pods will be recreated. VMAnomaly version should be at least 1.25.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0).
@@ -35,6 +36,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in statefulSet mode, including VMAgent components in VMDistributed, now support configuring rolling update strategy behavior.  See [#1987](https://github.com/VictoriaMetrics/operator/issues/1987).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): introduce `VMAnomalyConfig` CRD to enable dynamic configuration and hot-reload support starting from VMAnomaly version `1.25.0`.
 
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
 

@@ -30,6 +30,7 @@ Package v1 contains API Schema definitions for the operator v1 API group
 - [VLCluster](#vlcluster)
 - [VLSingle](#vlsingle)
 - [VMAnomaly](#vmanomaly)
+- [VMAnomalyConfig](#vmanomalyconfig)
 - [VTCluster](#vtcluster)
 - [VTSingle](#vtsingle)
 
@@ -586,6 +587,17 @@ VMAnomaly is the Schema for the vmanomalies API.
 | metadata<a href="#vmanomaly-metadata" id="vmanomaly-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
 | spec<a href="#vmanomaly-spec" id="vmanomaly-spec">#</a><br/>_[VMAnomalySpec](#vmanomalyspec)_ | _(Required)_<br/> |
 
+#### VMAnomalyConfig
+
+VMAnomalyConfig is the Schema for the vmanomalyconfigs API.
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
+| kind<br/>_string_ | (Required)<br/>`VMAnomalyConfig` |
+| metadata<a href="#vmanomalyconfig-metadata" id="vmanomalyconfig-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vmanomalyconfig-spec" id="vmanomalyconfig-spec">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#rawextension-runtime-pkg)_ | _(Required)_<br/> |
+
 #### VMAnomalyHTTPClientSpec
 
 VMAnomalyHTTPClientSpec defines the desired state of VMAnomalyHTTPClient
@@ -695,8 +707,10 @@ Appears in: [VMAnomaly](#vmanomaly)
 | claimTemplates<a href="#vmanomalyspec-claimtemplates" id="vmanomalyspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VMAnomaly |
 | componentVersion<a href="#vmanomalyspec-componentversion" id="vmanomalyspec-componentversion">#</a><br/>_string_ | _(Optional)_<br/>ComponentVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
 | configMaps<a href="#vmanomalyspec-configmaps" id="vmanomalyspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
+| configNamespaceSelector<a href="#vmanomalyspec-confignamespaceselector" id="vmanomalyspec-confignamespaceselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Optional)_<br/>ConfigNamespaceSelector defines VMAnomalyConfig object namespace selector. |
 | configRawYaml<a href="#vmanomalyspec-configrawyaml" id="vmanomalyspec-configrawyaml">#</a><br/>_string_ | _(Optional)_<br/>ConfigRawYaml - raw configuration for anomaly,<br />it helps it to start without secret.<br />priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret. |
 | configSecret<a href="#vmanomalyspec-configsecret" id="vmanomalyspec-configsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ConfigSecret is the name of a Kubernetes Secret in the same namespace as the<br />VMAnomaly object, which contains configuration for this VMAnomaly,<br />configuration must be inside secret key: anomaly.yaml.<br />It must be created by user.<br />instance. Defaults to 'vmanomaly-<anomaly-name>'<br />The secret is mounted into /etc/anomaly/config. |
+| configSelector<a href="#vmanomalyspec-configselector" id="vmanomalyspec-configselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Optional)_<br/>ConfigSelector defines VMAnomalyConfig object selector. |
 | containers<a href="#vmanomalyspec-containers" id="vmanomalyspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
 | disableAutomountServiceAccountToken<a href="#vmanomalyspec-disableautomountserviceaccounttoken" id="vmanomalyspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
 | disableSelfServiceScrape<a href="#vmanomalyspec-disableselfservicescrape" id="vmanomalyspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
@@ -735,6 +749,7 @@ Appears in: [VMAnomaly](#vmanomaly)
 | schedulerName<a href="#vmanomalyspec-schedulername" id="vmanomalyspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
 | secrets<a href="#vmanomalyspec-secrets" id="vmanomalyspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
 | securityContext<a href="#vmanomalyspec-securitycontext" id="vmanomalyspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
+| selectAllByDefault<a href="#vmanomalyspec-selectallbydefault" id="vmanomalyspec-selectallbydefault">#</a><br/>_boolean_ | _(Optional)_<br/>SelectAllByDefault changes default behavior for empty configSelector and configNamespaceSelector.<br />with selectAllByDefault: true and empty object and namespace selectors<br />Operator selects all existing VMAnomalyConfig objects<br />with selectAllByDefault: false - selects nothing |
 | server<a href="#vmanomalyspec-server" id="vmanomalyspec-server">#</a><br/>_[VMAnomalyServerSpec](#vmanomalyserverspec)_ | _(Optional)_<br/>Server configures HTTP server for VMAnomaly |
 | serviceAccountName<a href="#vmanomalyspec-serviceaccountname" id="vmanomalyspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | serviceScrapeSpec<a href="#vmanomalyspec-servicescrapespec" id="vmanomalyspec-servicescrapespec">#</a><br/>_[VMServiceScrapeSpec](#vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmanomaly VMPodScrape spec |

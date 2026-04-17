@@ -18,13 +18,12 @@ import (
 )
 
 const (
-	secretConfigKey  = "vmanomaly.yaml"
-	anomalyDir       = "/etc/vmanomaly"
-	confDir          = anomalyDir + "/config"
-	confFile         = confDir + "/vmanomaly.yaml"
-	tlsAssetsDir     = anomalyDir + "/tls"
-	storageDir       = "/storage"
-	configVolumeName = "config-volume"
+	anomalyDir             = "/etc/vmanomaly"
+	confDir                = anomalyDir + "/config"
+	tlsAssetsDir           = anomalyDir + "/tls"
+	storageDir             = "/storage"
+	configVolumeName       = "config"
+	configEnvsubstFilename = "vmanomaly.env.yaml"
 )
 
 func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, error) {
@@ -163,9 +162,9 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 			}
 		}
 	}
-
 	// vmanomaly accepts configuration file as a last element of args
-	args = append(args, confFile)
+	args = append(args, "--watch")
+	args = append(args, path.Join(confDir, configEnvsubstFilename))
 
 	container := corev1.Container{
 		Args:                     args,

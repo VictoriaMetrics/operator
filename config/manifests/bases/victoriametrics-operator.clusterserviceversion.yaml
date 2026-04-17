@@ -275,6 +275,11 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1
+    - description: VMAnomalyConfig is the Schema for the vmanomalyconfigs API.
+      displayName: VMAnomaly Config
+      kind: VMAnomalyConfig
+      name: vmanomalyconfigs.operator.victoriametrics.com
+      version: v1
     - description: VMAuth is the Schema for the vmauths API
       displayName: VMAuth
       kind: VMAuth

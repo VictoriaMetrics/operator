@@ -326,6 +326,39 @@ spec:
         z_threshold: 2.5
 ```
 
+## Dynamic configuration
+
+`VMAnomaly` supports discovering additional models, schedulers, and queries using [VMAnomalyConfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/).
+
+For filtering configuration objects, `VMAnomaly` uses `configNamespaceSelector` and `configSelector` selectors. This enables users to associate multiple VMAnomalyConfigs with multiple VMAnomaly instances (a many-to-many relationship).
+
+It allows configuring object access control across namespaces and different environments.
+See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for the specification of selectors.
+
+In addition to the above selectors, object filtering in a cluster is affected by the field `selectAllByDefault` of `VMAnomaly` spec and the `WATCH_NAMESPACE` environment variable for the operator.
+
+The following rules are applied:
+
+- If `configNamespaceSelector` and `configSelector` are both undefined, then by default select nothing. With option set `spec.selectAllByDefault: true`, select all objects of the given type.
+- If `configNamespaceSelector` defined, `configSelector` is undefined, then all objects are matching at the namespaces for the given `configNamespaceSelector`.
+- If `configNamespaceSelector` undefined, `configSelector` is defined, then all objects in `VMAnomaly`'s namespaces are matched for the given `configSelector`.
+- If `configNamespaceSelector` and `configSelector` are both defined, then only objects in namespaces matched by  `configNamespaceSelector` for the given `configSelector` are matching.
+
+
+Here's a more visual and more detailed view:
+
+| `configNamespaceSelector`    | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
+|------------------------|------------------|----------------------|-------------------|-------------------------------------------------------------------------------------------------------------|
+| undefined              | undefined        | false                | undefined         | nothing                                                                                                     |
+| undefined              | undefined        | **true**             | undefined         | all objects of given type (`...`) in the cluster                                                            |
+| **defined**            | undefined        | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `configNamespaceSelector`                               |
+| undefined              | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at `VMAnomaly`'s namespace are matching for given `configSelector`   |
+| **defined**            | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `configNamespaceSelector` for given `configSelector` |
+| *any*                  | undefined        | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace                                           |
+| *any*                  | **defined**      | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace for given `configSelector`                |
+
+See [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode) for more details about the `WATCH_NAMESPACE` variable.
+
 ## Version management
 
 To set `VMAnomaly` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)

@@ -32,51 +32,38 @@ func (p commonModelParams) queries() []string {
 	return p.Queries
 }
 
+func (p commonModelParams) addPrefix(prefix string) {
+	for i := range p.Schedulers {
+		p.Schedulers[i] = fmt.Sprintf("%s-%s", prefix, p.Schedulers[i])
+	}
+	for i := range p.Queries {
+		p.Queries[i] = fmt.Sprintf("%s-%s", prefix, p.Queries[i])
+	}
+}
+
 func (p commonModelParams) schedulers() []string {
 	return p.Schedulers
 }
 
+func (p *commonModelParams) setClass(class string) {
+	p.Class = class
+}
+
 type anomalyModel interface {
 	validatable
+	setClass(string)
 	schedulers() []string
 	queries() []string
+	addPrefix(string)
 }
 
 type model struct {
 	anomalyModel
 }
 
-var (
-	_ yaml.Marshaler   = (*model)(nil)
-	_ yaml.Unmarshaler = (*model)(nil)
-)
-
-// MarshalYAML implements yaml.Marshaller interface
-func (m *model) MarshalYAML() (any, error) {
-	return m.anomalyModel, nil
-}
-
-type onlineModel struct {
-	Decay float64 `yaml:"decay,omitempty"`
-}
-
-func (m *onlineModel) validate() error {
-	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
-	// Valid values are in the range [0, 1].
-	if m.Decay < 0 || m.Decay > 1 {
-		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
-	}
-	return nil
-}
-
-// UnmarshalYAML implements yaml.Unmarshaler interface
-func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
-	var h header
-	if err := unmarshal(&h); err != nil {
-		return err
-	}
+func (m *model) init(class string) error {
 	var mdl anomalyModel
-	switch h.Class {
+	switch class {
 	case "model.auto.AutoTunedModel", "auto":
 		mdl = new(autoTunedModel)
 	case "model.prophet.ProphetModel", "prophet":
@@ -102,12 +89,55 @@ func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	case "model.isolation_forest.IsolationForestMultivariateModel", "isolation_forest_multivariate":
 		mdl = new(isolationForestMultivariateModel)
 	default:
-		return fmt.Errorf("model class=%q is not supported", h.Class)
-	}
-	if err := unmarshal(mdl); err != nil {
-		return err
+		return fmt.Errorf("model class=%q is not supported", class)
 	}
 	m.anomalyModel = mdl
+	return nil
+}
+
+var (
+	_ yaml.Marshaler   = (*model)(nil)
+	_ yaml.Unmarshaler = (*model)(nil)
+)
+
+// Validate validates raw config
+func (m *model) Validate(data []byte) error {
+	if err := yaml.Unmarshal(data, m); err != nil {
+		return err
+	}
+	return m.validate()
+}
+
+// MarshalYAML implements yaml.Marshaller interface
+func (m *model) MarshalYAML() (any, error) {
+	return m.anomalyModel, nil
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler interface
+func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
+	var h header
+	if err := unmarshal(&h); err != nil {
+		return err
+	}
+	if err := m.init(h.Class); err != nil {
+		return err
+	}
+	if err := unmarshal(m.anomalyModel); err != nil {
+		return err
+	}
+	return nil
+}
+
+type onlineModel struct {
+	Decay float64 `yaml:"decay,omitempty"`
+}
+
+func (m *onlineModel) validate() error {
+	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
+	// Valid values are in the range [0, 1].
+	if m.Decay < 0 || m.Decay > 1 {
+		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
+	}
 	return nil
 }
 
@@ -199,6 +229,7 @@ type onlineQuantileModel struct {
 	SeasonStartsFrom  time.Time `yaml:"season_starts_from,omitempty"`
 	MinSamplesSeen    int       `yaml:"min_n_samples_seen,omitempty"`
 	Compression       int       `yaml:"compression,omitempty"`
+	IqrThreshold      float64   `yaml:"iqr_threshold,omitempty"`
 }
 
 func (m *onlineQuantileModel) validate() error {

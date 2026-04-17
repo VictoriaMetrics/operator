@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,15 +62,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	rcfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, rcfg)
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
-	if err != nil {
+	ac := getAssetsCache(ctx, rclient, cr)
+	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
 		return err
 	}
 
@@ -79,12 +71,12 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 
 	if prevCR != nil {
 		var err error
-		prevAppTpl, err = newK8sApp(prevCR, configHash, ac)
+		prevAppTpl, err = newK8sApp(prevCR, ac)
 		if err != nil {
 			return fmt.Errorf("cannot build prev statefulSet for vmanomaly: %w", err)
 		}
 	}
-	newAppTpl, err := newK8sApp(cr, configHash, ac)
+	newAppTpl, err := newK8sApp(cr, ac)
 	if err != nil {
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
@@ -119,18 +111,11 @@ func patchShardContainers(containers []corev1.Container, shardNum, shardCount in
 }
 
 // newK8sApp builds vmanomaly StatefulSet
-func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
+func newK8sApp(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*appsv1.StatefulSet, error) {
 	podSpec, err := newPodSpec(cr, ac)
 	if err != nil {
 		return nil, err
 	}
-	podAnnotations := cr.PodAnnotations()
-	if len(configHash) > 0 {
-		podAnnotations = labels.Merge(podAnnotations, map[string]string{
-			"checksum/config": configHash,
-		})
-	}
-
 	app := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            build.ShardName(cr),
@@ -150,7 +135,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      build.ShardPodLabels(cr),
-					Annotations: podAnnotations,
+					Annotations: cr.PodAnnotations(),
 				},
 				Spec: *podSpec,
 			},
@@ -290,4 +275,14 @@ func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int32) (*appsv
 	}
 	patchShardContainers(app.Spec.Template.Spec.Containers, num, cr.GetShardCount())
 	return app, nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

@@ -85,7 +85,7 @@ func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	if err = reconcile.VMAlertmanagerConfig(ctx, r.Client, cr, nil, owner, true); err != nil {
-		l.Error(err, "failed to reconcile VMPodScrape from AlertmanagerConfig")
+		l.Error(err, "failed to reconcile VMAlertmanagerConfig from AlertmanagerConfig")
 	}
 	return
 }

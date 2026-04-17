@@ -31,10 +31,10 @@ const (
 
 func reloadSupported(cr *vmv1.VMAnomaly) bool {
 	anomalyVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
-	if err == nil {
-		return anomalyVersion.GreaterThanEqual(reloadMinVersion)
+	if err != nil {
+		return false
 	}
-	return false
+	return anomalyVersion.GreaterThanEqual(reloadMinVersion)
 }
 
 func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, error) {

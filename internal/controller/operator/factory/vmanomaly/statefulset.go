@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -118,13 +117,6 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	if err != nil {
 		return nil, err
 	}
-	podAnnotations := cr.PodAnnotations()
-	if len(configHash) > 0 && !reloadSupported(cr) {
-		podAnnotations = labels.Merge(podAnnotations, map[string]string{
-			"checksum/config": configHash,
-		})
-	}
-
 	app := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            build.ShardName(cr),
@@ -144,7 +136,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      build.ShardPodLabels(cr),
-					Annotations: podAnnotations,
+					Annotations: cr.PodAnnotations(),
 				},
 				Spec: *podSpec,
 			},
@@ -155,7 +147,9 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	}
 	build.StatefulSetAddCommonParams(app, &cr.Spec.CommonAppsParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
-	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
+	if err := cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec); err != nil {
+		return nil, err
+	}
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return app, nil
 }

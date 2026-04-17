@@ -77,7 +77,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vlagent
-    tag: v1.49.0
+    tag: v1.50.0
     pullPolicy: Always
 ```
 
@@ -91,7 +91,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vlagent
-    tag: v1.49.0
+    tag: v1.50.0
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret

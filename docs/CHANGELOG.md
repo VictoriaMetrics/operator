@@ -19,11 +19,12 @@ aliases:
 **Update note 2**: removed `operator_prometheus_converter_watch_events_total` metric since migration of Prometheus object watchers to controllers made this counter obsolete.
 **Update note 3**: made `controller.prometheusCRD.resyncPeriod` command line flag noop, which was relevant to Prometheus object watchers.
 **Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
-**Update note 5**: new flag was introduced, so VMAnomaly pods will be recreated.
+**Update note 5**: new flag was introduced, so VMAnomaly pods will be recreated. VMAnomaly version should be at least 1.25.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0).
 
+* FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): new CLI tool that helps with migration from Helm charts to their corresponding Operator Custom Resources (CRs).
 * FEATURE: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): VMSingle reuses vmagent implementation to allow scraping and relabelling. See [#1694](https://github.com/VictoriaMetrics/operator/issues/1694)
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): perform statefulset pods deletion instead of eviction when maxUnavailable set to 100%, which is important for [minimum downtime strategy](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). See [#1706](https://github.com/VictoriaMetrics/operator/issues/1706).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support referencing multiple targets of the same kind at `targetRefs[*].crd.objects`.
@@ -36,6 +37,8 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): introduce `VMAnomalyConfig` CRD to enable dynamic configuration and hot-reload support starting from VMAnomaly version `1.25.0`.
+
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
 
 * BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): VMPodScrape for VLAgent and VMAgent now uses the correct port; previously it used the wrong port and could cause scrape failures. See [#1887](https://github.com/VictoriaMetrics/operator/issues/1887).
@@ -52,6 +55,8 @@ aliases:
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): render %SHARD_NUM% placeholder when shard count is greater than 0. See [#2001](https://github.com/VictoriaMetrics/operator/issues/2001).
 * BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): do not ignore ExtraStorageNodes for select, when default storage is disabled. See [#1910](https://github.com/VictoriaMetrics/operator/issues/1910).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): use default stub, when no VMAuth backends are available
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use volume from spec.volumes as persistent queue volume if its name is `persistent-queue-data`, previously emptyDir was mounted. See [#1677](https://github.com/VictoriaMetrics/operator/issues/1677).
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): use volume from spec.vmstorage.volumes and spec.vmselect.volumes as data and cache volumes if its name is `vmstorage-db` and `vmselect-cachedir` respectively. See [#784](https://github.com/VictoriaMetrics/operator/issues/784).
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
 **Release date:** 23 February 2026

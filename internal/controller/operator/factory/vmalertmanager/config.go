@@ -996,6 +996,9 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 	if slack.ShortFields {
 		temp = append(temp, yaml.MapItem{Key: "short_fields", Value: slack.ShortFields})
 	}
+	if slack.UpdateMessage != nil {
+		temp = append(temp, yaml.MapItem{Key: "update_message", Value: *slack.UpdateMessage})
+	}
 	if len(slack.MrkdwnIn) > 0 {
 		temp = append(temp, yaml.MapItem{Key: "mrkdwn_in", Value: slack.MrkdwnIn})
 	}

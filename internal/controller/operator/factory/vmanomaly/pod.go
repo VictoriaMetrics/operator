@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -18,8 +17,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-var reloadMinVersion = semver.MustParse("v1.25.0")
-
 const (
 	anomalyDir             = "/etc/vmanomaly"
 	confDir                = anomalyDir + "/config"
@@ -28,14 +25,6 @@ const (
 	configVolumeName       = "config"
 	configEnvsubstFilename = "vmanomaly.env.yaml"
 )
-
-func reloadSupported(cr *vmv1.VMAnomaly) bool {
-	anomalyVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
-	if err != nil {
-		return false
-	}
-	return anomalyVersion.GreaterThanEqual(reloadMinVersion)
-}
 
 func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, error) {
 	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
@@ -174,9 +163,7 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		}
 	}
 	// vmanomaly accepts configuration file as a last element of args
-	if reloadSupported(cr) {
-		args = append(args, "--watch")
-	}
+	args = append(args, "--watch")
 	args = append(args, path.Join(confDir, configEnvsubstFilename))
 
 	container := corev1.Container{

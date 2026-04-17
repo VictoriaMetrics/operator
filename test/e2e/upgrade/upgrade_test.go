@@ -656,7 +656,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		},
 		// nolint:dupl
 		{
-			name: "VMAlert/VMAuth/VMAlertmanager/VMAnomaly",
+			name: "VMAlert/VMAuth/VMAlertmanager",
 			genDeps: func(ns string) []client.Object {
 				return []client.Object{
 					with(vmsingle, func(cr *vmv1beta1.VMSingle) {

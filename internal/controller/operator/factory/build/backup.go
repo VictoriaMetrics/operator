@@ -91,7 +91,11 @@ func VMBackupManager(
 	}
 
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
+	portName := "http-backup"
+	if config.UseOldBackupRestorePortNames() {
+		portName = "http"
+	}
+	ports = append(ports, corev1.ContainerPort{Name: portName, Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
 	mounts = append(mounts, cr.VolumeMounts...)
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
@@ -199,7 +203,11 @@ func VMRestore(
 	}
 
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
+	portName := "http-restore"
+	if config.UseOldBackupRestorePortNames() {
+		portName = "http"
+	}
+	ports = append(ports, corev1.ContainerPort{Name: portName, Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
 	mounts = append(mounts, cr.VolumeMounts...)
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{

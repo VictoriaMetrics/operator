@@ -118,6 +118,8 @@ type BaseOperatorConf struct {
 	EnableTCP6                bool   `default:"false" env:"VM_ENABLETCP6"`
 	// Overrides default loopback interface that will be used for all VM components
 	Loopback string `env:"VM_LOOPBACK"`
+	// Restores old VMBackup/VMRestore port names to avoid restarts during upgrades
+	UseOldBackupRestorePortNames bool `default:"false" env:"VM_USE_OLD_BACKUP_RESTORE_PORT_NAMES"`
 
 	// defines global config reloader parameters
 	ConfigReloader struct {
@@ -756,6 +758,12 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		opConf = &c
 	})
 	return opConf
+}
+
+// UseOldBackupRestorePortNames
+func UseOldBackupRestorePortNames() bool {
+	cfg := MustGetBaseConfig()
+	return cfg.UseOldBackupRestorePortNames
 }
 
 // GetLocalhost returns localhost value depending on global configuration

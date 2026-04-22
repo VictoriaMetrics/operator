@@ -390,6 +390,20 @@ func (cr *VMSingle) Validate() error {
 			}
 			defaultScrapeClass = true
 		}
+		if sc.TLSConfig != nil {
+			if err := sc.TLSConfig.Validate(); err != nil {
+				return fmt.Errorf("incorrect tlsConfig for scrapeClass=%q: %w", sc.Name, err)
+			}
+		}
+		if err := sc.OAuth2.validate(); err != nil {
+			return fmt.Errorf("incorrect oauth2 for scrapeClass=%q: %w", sc.Name, err)
+		}
+		if err := sc.Authorization.validate(); err != nil {
+			return fmt.Errorf("incorrect authorization for scrapeClass=%q: %w", sc.Name, err)
+		}
+		if err := sc.validate(); err != nil {
+			return fmt.Errorf("incorrect relabeling for scrapeClass=%q: %w", sc.Name, err)
+		}
 	}
 	if cr.Spec.StorageDataPath != "" {
 		if len(cr.Spec.Volumes) == 0 {
@@ -410,34 +424,6 @@ func (cr *VMSingle) Validate() error {
 		}
 		if len(cr.Spec.VolumeMounts) == 0 && !storageVolumeFound {
 			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
-		}
-	}
-	scrapeClassNames := sets.New[string]()
-	defaultScrapeClass := false
-	for _, sc := range cr.Spec.ScrapeClasses {
-		if scrapeClassNames.Has(sc.Name) {
-			return fmt.Errorf("duplicated scrapeClass=%q", sc.Name)
-		}
-		scrapeClassNames.Insert(sc.Name)
-		if ptr.Deref(sc.Default, false) {
-			if defaultScrapeClass {
-				return fmt.Errorf("multiple default scrape classes defined")
-			}
-			defaultScrapeClass = true
-		}
-		if sc.TLSConfig != nil {
-			if err := sc.TLSConfig.Validate(); err != nil {
-				return fmt.Errorf("incorrect tlsConfig for scrapeClass=%q: %w", sc.Name, err)
-			}
-		}
-		if err := sc.OAuth2.validate(); err != nil {
-			return fmt.Errorf("incorrect oauth2 for scrapeClass=%q: %w", sc.Name, err)
-		}
-		if err := sc.Authorization.validate(); err != nil {
-			return fmt.Errorf("incorrect authorization for scrapeClass=%q: %w", sc.Name, err)
-		}
-		if err := sc.validate(); err != nil {
-			return fmt.Errorf("incorrect relabeling for scrapeClass=%q: %w", sc.Name, err)
 		}
 	}
 	return nil

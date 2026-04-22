@@ -510,19 +510,6 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		return fmt.Errorf("cannot build gossip config: %w", err)
 	}
 
-	// add templates from CR to alermanager config
-	if len(cr.Spec.Templates) > 0 {
-		templatePaths := make([]string, 0, len(cr.Spec.Templates))
-		for _, template := range cr.Spec.Templates {
-			templatePaths = append(templatePaths, path.Join(templatesDir, template.Name, template.Key))
-		}
-		mergedCfg, err := addConfigTemplates(alertmanagerConfig, templatePaths)
-		if err != nil {
-			return fmt.Errorf("cannot build alertmanager config with templates, err: %w", err)
-		}
-		alertmanagerConfig = mergedCfg
-	}
-
 	if err := vmv1beta1.ValidateAlertmanagerConfigSpec(alertmanagerConfig); err != nil {
 		return fmt.Errorf("incorrect result configuration, config source=%s: %w", configSourceName, err)
 	}

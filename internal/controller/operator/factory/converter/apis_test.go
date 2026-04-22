@@ -254,11 +254,13 @@ func TestConvertPodEndpoints(t *testing.T) {
 			},
 		}},
 		want: []vmv1beta1.PodMetricsEndpoint{{
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				TLSConfig: &vmv1beta1.TLSConfig{
-					CA: vmv1beta1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CA: vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -287,13 +289,15 @@ func TestConvertPodEndpoints(t *testing.T) {
 			},
 		}},
 		want: []vmv1beta1.PodMetricsEndpoint{{
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				TLSConfig: &vmv1beta1.TLSConfig{
-					InsecureSkipVerify: true,
-					ServerName:         "some-srv",
-					CA: vmv1beta1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+						ServerName:         "some-srv",
+						CA: vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -317,15 +321,17 @@ func TestConvertPodEndpoints(t *testing.T) {
 			},
 		}},
 		want: []vmv1beta1.PodMetricsEndpoint{{
-			EndpointAuth: vmv1beta1.EndpointAuth{
-				BearerTokenSecret: &corev1.SecretKeySelector{
-					Key: "bearer",
-				},
-				BasicAuth: &vmv1beta1.BasicAuth{
-					Username: corev1.SecretKeySelector{
-						Key: "username",
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BearerTokenSecret: &corev1.SecretKeySelector{
+						Key: "bearer",
 					},
-					Password: corev1.SecretKeySelector{Key: "password"},
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+						},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
 				},
 			},
 		}},

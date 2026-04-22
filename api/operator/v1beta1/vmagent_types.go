@@ -204,6 +204,7 @@ func (cr *VMAgent) Validate() error {
 		if scrapeClassNames.Has(sc.Name) {
 			return fmt.Errorf("duplicated scrapeClass=%q", sc.Name)
 		}
+		scrapeClassNames.Insert(sc.Name)
 		if ptr.Deref(sc.Default, false) {
 			if defaultScrapeClass {
 				return fmt.Errorf("multiple default scrape classes defined")
@@ -309,31 +310,6 @@ type VMAgentRemoteWriteSettings struct {
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
-}
-
-type ScrapeClass struct {
-	// name of the scrape class.
-	//
-	// +kubebuilder:validation:MinLength=1
-	// +required
-	Name string `json:"name"`
-
-	// default defines that the scrape applies to all scrape objects that
-	// don't configure an explicit scrape class name.
-	//
-	// Only one scrape class can be set as the default.
-	//
-	// +optional
-	Default *bool `json:"default,omitempty"`
-
-	EndpointAuth        `json:",inline"`
-	EndpointRelabelings `json:",inline"`
-
-	// AttachMetadata defines additional metadata to the discovered targets.
-	// When the scrape object defines its own configuration, it takes
-	// precedence over the scrape class configuration.
-	// +optional
-	AttachMetadata *AttachMetadata `json:"attachMetadata,omitempty"`
 }
 
 // AWS defines AWS cloud auth specific params

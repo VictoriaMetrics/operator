@@ -138,16 +138,16 @@ func TestConvertScrapeConfig(t *testing.T) {
 					VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
 					Path:            "/test",
 					ScrapeInterval:  "5m",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{Key: "username"},
+							Password: corev1.SecretKeySelector{Key: "password"},
+						},
+					},
 				},
 				StaticConfigs: []vmv1beta1.StaticConfig{{
 					Targets: []string{"target-1", "target-2"},
 				}},
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{Key: "username"},
-						Password: corev1.SecretKeySelector{Key: "password"},
-					},
-				},
 				EndpointRelabelings: vmv1beta1.EndpointRelabelings{
 					RelabelConfigs: []*vmv1beta1.RelabelConfig{{
 						Action:      "LabelMap",
@@ -196,21 +196,25 @@ func TestConvertScrapeConfig(t *testing.T) {
 				HTTPSDConfigs: []vmv1beta1.HTTPSDConfig{
 					{
 						URL: "http://test1.com",
-						Authorization: &vmv1beta1.Authorization{
-							Type: "Bearer",
-							Credentials: &corev1.SecretKeySelector{
-								Key: "token",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									Key: "token",
+								},
 							},
 						},
 					},
 					{
 						URL: "http://test2.com",
-						TLSConfig: &vmv1beta1.TLSConfig{
-							CA:                 vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
-							Cert:               vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
-							KeySecret:          &corev1.SecretKeySelector{Key: "key"},
-							ServerName:         "test",
-							InsecureSkipVerify: true,
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							TLSConfig: &vmv1beta1.TLSConfig{
+								CA:                 vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
+								Cert:               vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
+								KeySecret:          &corev1.SecretKeySelector{Key: "key"},
+								ServerName:         "test",
+								InsecureSkipVerify: true,
+							},
 						},
 					},
 				},
@@ -298,7 +302,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 						Name:   "f1",
 						Values: []string{"1"},
 					}},
-					Port: ptr.To(80),
+					Port: ptr.To[int32](80),
 				}},
 			},
 		},
@@ -350,7 +354,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					Project:      "eu-project",
 					Zone:         vmv1beta1.StringOrArray{"zone-1"},
 					TagSeparator: ptr.To(""),
-					Port:         ptr.To(80),
+					Port:         ptr.To[int32](80),
 				}},
 			},
 		},
@@ -440,10 +444,12 @@ func TestConvertScrapeConfig(t *testing.T) {
 						Server:     "https://nomad.example.com:4646",
 						Namespace:  ptr.To("default"),
 						AllowStale: ptr.To(true),
-						Authorization: &vmv1beta1.Authorization{
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
-								Key:                  "NOMAD_TOKEN",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+									Key:                  "NOMAD_TOKEN",
+								},
 							},
 						},
 					},
@@ -451,10 +457,12 @@ func TestConvertScrapeConfig(t *testing.T) {
 						Server:     "https://nomad.example.com:4646",
 						Namespace:  ptr.To("staging"),
 						AllowStale: ptr.To(true),
-						Authorization: &vmv1beta1.Authorization{
-							Credentials: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
-								Key:                  "NOMAD_TOKEN",
+						HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+							Authorization: &vmv1beta1.Authorization{
+								Credentials: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "nomad-secret"},
+									Key:                  "NOMAD_TOKEN",
+								},
 							},
 						},
 					},
@@ -518,18 +526,20 @@ func TestConvertScrapeConfig(t *testing.T) {
 		want: vmv1beta1.VMScrapeConfig{
 			Spec: vmv1beta1.VMScrapeConfigSpec{
 				NomadSDConfigs: []vmv1beta1.NomadSDConfig{{
-					Server:          "https://nomad.example.com:4646",
-					Namespace:       ptr.To("prod"),
-					Region:          ptr.To("us-west-1"),
-					TagSeparator:    ptr.To(","),
-					AllowStale:      ptr.To(true),
-					FollowRedirects: ptr.To(true),
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{Key: "user"},
-						Password: corev1.SecretKeySelector{Key: "pass"},
-					},
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
+					Server:       "https://nomad.example.com:4646",
+					Namespace:    ptr.To("prod"),
+					Region:       ptr.To("us-west-1"),
+					TagSeparator: ptr.To(","),
+					AllowStale:   ptr.To(true),
+					HTTPSDOptions: vmv1beta1.HTTPSDOptions{
+						FollowRedirects: ptr.To(true),
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{Key: "user"},
+							Password: corev1.SecretKeySelector{Key: "pass"},
+						},
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
 					},
 				}},
 			},

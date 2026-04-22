@@ -1359,7 +1359,7 @@ in the vmagent container. Those secrets would then be sent with a scrape
 request by vmagent to a malicious target. Denying the above would prevent the
 attack, users can instead use the BearerTokenSecret field.
 
-Appears in: [CommonScrapeParams](#commonscrapeparams), [CommonScrapeSecurityEnforcements](#commonscrapesecurityenforcements), [VMAgentSpec](#vmagentspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [CommonScrapeParams](#commonscrapeparams), [CommonScrapeSecurityEnforcements](#commonscrapesecurityenforcements), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -1380,7 +1380,7 @@ Appears in: [Endpoint](#endpoint), [KubernetesSDConfig](#kubernetessdconfig), [P
 
 Authorization configures generic authorization params
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1398,19 +1398,26 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | Field | Description |
 | --- | --- |
 | authenticationMethod<a href="#azuresdconfig-authenticationmethod" id="azuresdconfig-authenticationmethod">#</a><br/>_string_ | _(Optional)_<br/># The authentication method, either OAuth or ManagedIdentity.<br />See https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview |
+| authorization<a href="#azuresdconfig-authorization" id="azuresdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#azuresdconfig-basicauth" id="azuresdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
 | clientID<a href="#azuresdconfig-clientid" id="azuresdconfig-clientid">#</a><br/>_string_ | _(Optional)_<br/>Optional client ID. Only required with the OAuth authentication method. |
 | clientSecret<a href="#azuresdconfig-clientsecret" id="azuresdconfig-clientsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional client secret. Only required with the OAuth authentication method. |
 | environment<a href="#azuresdconfig-environment" id="azuresdconfig-environment">#</a><br/>_string_ | _(Optional)_<br/>The Azure environment. |
+| followRedirects<a href="#azuresdconfig-followredirects" id="azuresdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#azuresdconfig-oauth2" id="azuresdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | port<a href="#azuresdconfig-port" id="azuresdconfig-port">#</a><br/>_integer_ | _(Optional)_<br/>The port to scrape metrics from. If using the public IP address, this must<br />instead be specified in the relabeling rule. |
+| proxyURL<a href="#azuresdconfig-proxyurl" id="azuresdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#azuresdconfig-proxy_client_config" id="azuresdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
 | resourceGroup<a href="#azuresdconfig-resourcegroup" id="azuresdconfig-resourcegroup">#</a><br/>_string_ | _(Optional)_<br/>Optional resource group name. Limits discovery to this resource group. |
 | subscriptionID<a href="#azuresdconfig-subscriptionid" id="azuresdconfig-subscriptionid">#</a><br/>_string_ | _(Required)_<br/>The subscription ID. Always required. |
 | tenantID<a href="#azuresdconfig-tenantid" id="azuresdconfig-tenantid">#</a><br/>_string_ | _(Optional)_<br/>Optional tenant ID. Only required with the OAuth authentication method. |
+| tlsConfig<a href="#azuresdconfig-tlsconfig" id="azuresdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### BasicAuth
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1622,13 +1629,13 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | basicAuth<a href="#consulsdconfig-basicauth" id="consulsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
 | datacenter<a href="#consulsdconfig-datacenter" id="consulsdconfig-datacenter">#</a><br/>_string_ | _(Optional)_<br/>Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter. |
 | filter<a href="#consulsdconfig-filter" id="consulsdconfig-filter">#</a><br/>_string_ | _(Optional)_<br/>Filter defines filter for /v1/catalog/services requests<br />See https://developer.hashicorp.com/consul/api-docs/features/filtering |
-| followRedirects<a href="#consulsdconfig-followredirects" id="consulsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects.<br />If unset, use its default value. |
+| followRedirects<a href="#consulsdconfig-followredirects" id="consulsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
 | namespace<a href="#consulsdconfig-namespace" id="consulsdconfig-namespace">#</a><br/>_string_ | _(Optional)_<br/>Namespaces are only supported in Consul Enterprise. |
 | nodeMeta<a href="#consulsdconfig-nodemeta" id="consulsdconfig-nodemeta">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Node metadata key/value pairs to filter nodes for a given service. |
 | oauth2<a href="#consulsdconfig-oauth2" id="consulsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | partition<a href="#consulsdconfig-partition" id="consulsdconfig-partition">#</a><br/>_string_ | _(Optional)_<br/>Admin Partitions are only supported in Consul Enterprise. |
 | proxyURL<a href="#consulsdconfig-proxyurl" id="consulsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| proxy_client_config<a href="#consulsdconfig-proxy_client_config" id="consulsdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| proxy_client_config<a href="#consulsdconfig-proxy_client_config" id="consulsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
 | scheme<a href="#consulsdconfig-scheme" id="consulsdconfig-scheme">#</a><br/>_string_ | _(Optional)_<br/>HTTP Scheme default "http" |
 | server<a href="#consulsdconfig-server" id="consulsdconfig-server">#</a><br/>_string_ | _(Required)_<br/>A valid string consisting of a hostname or IP followed by an optional port number. |
 | services<a href="#consulsdconfig-services" id="consulsdconfig-services">#</a><br/>_string array_ | _(Optional)_<br/>A list of services for which targets are retrieved. If omitted, all services are scraped. |
@@ -1676,11 +1683,13 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | Field | Description |
 | --- | --- |
 | authorization<a href="#digitaloceansdconfig-authorization" id="digitaloceansdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#digitaloceansdconfig-basicauth" id="digitaloceansdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
 | followRedirects<a href="#digitaloceansdconfig-followredirects" id="digitaloceansdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
 | oauth2<a href="#digitaloceansdconfig-oauth2" id="digitaloceansdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | port<a href="#digitaloceansdconfig-port" id="digitaloceansdconfig-port">#</a><br/>_integer_ | _(Optional)_<br/>The port to scrape metrics from. |
 | proxyURL<a href="#digitaloceansdconfig-proxyurl" id="digitaloceansdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| proxy_client_config<a href="#digitaloceansdconfig-proxy_client_config" id="digitaloceansdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| proxy_client_config<a href="#digitaloceansdconfig-proxy_client_config" id="digitaloceansdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| server<a href="#digitaloceansdconfig-server" id="digitaloceansdconfig-server">#</a><br/>_string_ | _(Optional)_<br/>Server is an optional DigitalOcean API server to query.<br />By default, https://api.digitalocean.com is used. |
 | tlsConfig<a href="#digitaloceansdconfig-tlsconfig" id="digitaloceansdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### DiscordConfig
@@ -1900,7 +1909,7 @@ Appears in: [VMServiceScrapeSpec](#vmservicescrapespec)
 
 EndpointAuth defines target endpoint authorization options for scrapping
 
-Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [Endpoint](#endpoint), [EndpointScrapeParams](#endpointscrapeparams), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
@@ -1924,17 +1933,22 @@ Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [S
 
 #### EndpointScrapeParams
 
-ScrapeTargetParams defines common configuration params for all scrape endpoint targets
+EndpointScrapeParams defines common configuration params for all scrape endpoint targets
 
 Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [TargetEndpoint](#targetendpoint), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
+| authorization<a href="#endpointscrapeparams-authorization" id="endpointscrapeparams-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization with http header Authorization |
+| basicAuth<a href="#endpointscrapeparams-basicauth" id="endpointscrapeparams-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
+| bearerTokenFile<a href="#endpointscrapeparams-bearertokenfile" id="endpointscrapeparams-bearertokenfile">#</a><br/>_string_ | _(Optional)_<br/>File to read bearer token for scraping targets. |
+| bearerTokenSecret<a href="#endpointscrapeparams-bearertokensecret" id="endpointscrapeparams-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. |
 | follow_redirects<a href="#endpointscrapeparams-follow_redirects" id="endpointscrapeparams-follow_redirects">#</a><br/>_boolean_ | _(Optional)_<br/>FollowRedirects controls redirects for scraping. |
 | honorLabels<a href="#endpointscrapeparams-honorlabels" id="endpointscrapeparams-honorlabels">#</a><br/>_boolean_ | _(Optional)_<br/>HonorLabels chooses the metric's labels on collisions with target labels. |
 | honorTimestamps<a href="#endpointscrapeparams-honortimestamps" id="endpointscrapeparams-honortimestamps">#</a><br/>_boolean_ | _(Optional)_<br/>HonorTimestamps controls whether vmagent or vmsingle respects the timestamps present in scraped data. |
 | interval<a href="#endpointscrapeparams-interval" id="endpointscrapeparams-interval">#</a><br/>_string_ | _(Optional)_<br/>Interval at which metrics should be scraped |
 | max_scrape_size<a href="#endpointscrapeparams-max_scrape_size" id="endpointscrapeparams-max_scrape_size">#</a><br/>_string_ | _(Optional)_<br/>MaxScrapeSize defines a maximum size of scraped data for a job |
+| oauth2<a href="#endpointscrapeparams-oauth2" id="endpointscrapeparams-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | params<a href="#endpointscrapeparams-params" id="endpointscrapeparams-params">#</a><br/>_object (keys:string, values:string array)_ | _(Optional)_<br/>Optional HTTP URL parameters |
 | path<a href="#endpointscrapeparams-path" id="endpointscrapeparams-path">#</a><br/>_string_ | _(Optional)_<br/>HTTP path to scrape for metrics. |
 | proxyURL<a href="#endpointscrapeparams-proxyurl" id="endpointscrapeparams-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
@@ -1943,7 +1957,26 @@ Appears in: [Endpoint](#endpoint), [PodMetricsEndpoint](#podmetricsendpoint), [T
 | scrapeTimeout<a href="#endpointscrapeparams-scrapetimeout" id="endpointscrapeparams-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#endpointscrapeparams-scrape_interval" id="endpointscrapeparams-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#endpointscrapeparams-serieslimit" id="endpointscrapeparams-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
+| tlsConfig<a href="#endpointscrapeparams-tlsconfig" id="endpointscrapeparams-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#endpointscrapeparams-vm_scrape_params" id="endpointscrapeparams-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
+
+#### EurekaSDConfig
+
+EurekaSDConfig configurations allows retrieving scrape targets from Eureka REST API.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#eureka_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| authorization<a href="#eurekasdconfig-authorization" id="eurekasdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#eurekasdconfig-basicauth" id="eurekasdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#eurekasdconfig-followredirects" id="eurekasdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#eurekasdconfig-oauth2" id="eurekasdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#eurekasdconfig-proxyurl" id="eurekasdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#eurekasdconfig-proxy_client_config" id="eurekasdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| server<a href="#eurekasdconfig-server" id="eurekasdconfig-server">#</a><br/>_string_ | _(Optional)_<br/>Server is an optional URL to connect to the Eureka server.<br />By default, the http://localhost:8080/eureka/v2 is used. |
+| tlsConfig<a href="#eurekasdconfig-tlsconfig" id="eurekasdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### ExternalConfig
 
@@ -2006,7 +2039,7 @@ Appears in: [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpe
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-Appears in: [DiscordConfig](#discordconfig), [IncidentIOConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SlackConfig](#slackconfig), [SnsConfig](#snsconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WeChatConfig](#wechatconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig)
+Appears in: [DiscordConfig](#discordconfig), [IncidentioConfig](#incidentioconfig), [JiraConfig](#jiraconfig), [MSTeamsConfig](#msteamsconfig), [MSTeamsV2Config](#msteamsv2config), [MattermostConfig](#mattermostconfig), [OpsGenieConfig](#opsgenieconfig), [PagerDutyConfig](#pagerdutyconfig), [PushoverConfig](#pushoverconfig), [RocketchatConfig](#rocketchatconfig), [SNSConfig](#snsconfig), [SlackConfig](#slackconfig), [TelegramConfig](#telegramconfig), [VictorOpsConfig](#victoropsconfig), [WebexConfig](#webexconfig), [WebhookConfig](#webhookconfig), [WechatConfig](#wechatconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2014,8 +2047,12 @@ Appears in: [DiscordConfig](#discordconfig), [IncidentIOConfig](#incidentioconfi
 | basic_auth<a href="#httpconfig-basic_auth" id="httpconfig-basic_auth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth for the client. |
 | bearer_token_file<a href="#httpconfig-bearer_token_file" id="httpconfig-bearer_token_file">#</a><br/>_string_ | _(Optional)_<br/>BearerTokenFile defines filename for bearer token, it must be mounted to pod. |
 | bearer_token_secret<a href="#httpconfig-bearer_token_secret" id="httpconfig-bearer_token_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the bearer token<br />It must be at them same namespace as CRD |
+| follow_redirects<a href="#httpconfig-follow_redirects" id="httpconfig-follow_redirects">#</a><br/>_boolean_ | _(Optional)_<br/>FollowRedirects controls redirects for scraping. |
+| noProxy<a href="#httpconfig-noproxy" id="httpconfig-noproxy">#</a><br/>_string_ | _(Optional)_<br/>NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.<br />IP and domain names can contain port numbers. |
 | oauth2<a href="#httpconfig-oauth2" id="httpconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 client credentials used to fetch a token for the targets. |
-| proxyURL<a href="#httpconfig-proxyurl" id="httpconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>Optional proxy URL. |
+| proxyConnectHeader<a href="#httpconfig-proxyconnectheader" id="httpconfig-proxyconnectheader">#</a><br/>_object (keys:string, values:[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core))_ | _(Optional)_<br/>ProxyConnectHeader optionally specifies headers to send to proxies during CONNECT requests. |
+| proxyFromEnvironment<a href="#httpconfig-proxyfromenvironment" id="httpconfig-proxyfromenvironment">#</a><br/>_boolean_ | _(Optional)_<br/>ProxyFromEnvironment defines whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY). |
+| proxyURL<a href="#httpconfig-proxyurl" id="httpconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyUrl defines the HTTP proxy server to use. |
 | tls_config<a href="#httpconfig-tls_config" id="httpconfig-tls_config">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration for the client. |
 
 #### HTTPSDConfig
@@ -2029,10 +2066,48 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | --- | --- |
 | authorization<a href="#httpsdconfig-authorization" id="httpsdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
 | basicAuth<a href="#httpsdconfig-basicauth" id="httpsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#httpsdconfig-followredirects" id="httpsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#httpsdconfig-oauth2" id="httpsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | proxyURL<a href="#httpsdconfig-proxyurl" id="httpsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| proxy_client_config<a href="#httpsdconfig-proxy_client_config" id="httpsdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| proxy_client_config<a href="#httpsdconfig-proxy_client_config" id="httpsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
 | tlsConfig<a href="#httpsdconfig-tlsconfig" id="httpsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 | url<a href="#httpsdconfig-url" id="httpsdconfig-url">#</a><br/>_string_ | _(Required)_<br/>URL from which the targets are fetched. |
+
+#### HTTPSDOptions
+
+HTTPSDOptions defines HTTP API client options
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#http-api-client-options)
+
+Appears in: [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EurekaSDConfig](#eurekasdconfig), [HTTPSDConfig](#httpsdconfig), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [VultrSDConfig](#vultrsdconfig)
+
+| Field | Description |
+| --- | --- |
+| authorization<a href="#httpsdoptions-authorization" id="httpsdoptions-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#httpsdoptions-basicauth" id="httpsdoptions-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#httpsdoptions-followredirects" id="httpsdoptions-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#httpsdoptions-oauth2" id="httpsdoptions-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#httpsdoptions-proxyurl" id="httpsdoptions-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#httpsdoptions-proxy_client_config" id="httpsdoptions-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| tlsConfig<a href="#httpsdoptions-tlsconfig" id="httpsdoptions-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
+
+#### HetznerSDConfig
+
+HetznerSDConfig configurations allows retrieving scrape targets from Hetzner Cloud and Hetzner Robot.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#hetzner_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| authorization<a href="#hetznersdconfig-authorization" id="hetznersdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#hetznersdconfig-basicauth" id="hetznersdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#hetznersdconfig-followredirects" id="hetznersdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#hetznersdconfig-oauth2" id="hetznersdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| port<a href="#hetznersdconfig-port" id="hetznersdconfig-port">#</a><br/>_integer_ | _(Optional)_<br/>Port is an optional port to scrape metrics from |
+| proxyURL<a href="#hetznersdconfig-proxyurl" id="hetznersdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#hetznersdconfig-proxy_client_config" id="hetznersdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| role<a href="#hetznersdconfig-role" id="hetznersdconfig-role">#</a><br/>_string_ | _(Required)_<br/>Role defines mandatory Hetzner role for entity discovery. |
+| tlsConfig<a href="#hetznersdconfig-tlsconfig" id="hetznersdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### Image
 
@@ -2060,9 +2135,9 @@ Appears in: [PagerDutyConfig](#pagerdutyconfig)
 | href<a href="#imageconfig-href" id="imageconfig-href">#</a><br/>_string_ | _(Optional)_<br/> |
 | source<a href="#imageconfig-source" id="imageconfig-source">#</a><br/>_string_ | _(Required)_<br/> |
 
-#### IncidentIOConfig
+#### IncidentioConfig
 
-IncidentIOConfig configures notifications via incident.io.
+IncidentioConfig configures notifications via incident.io.
 https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
 available from v0.66.0 operator version
 and v0.29.0 alertmanager version
@@ -2159,10 +2234,29 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | namespaces<a href="#kubernetessdconfig-namespaces" id="kubernetessdconfig-namespaces">#</a><br/>_[NamespaceDiscovery](#namespacediscovery)_ | _(Optional)_<br/>Optional namespace discovery. If omitted, discover targets across all namespaces. |
 | oauth2<a href="#kubernetessdconfig-oauth2" id="kubernetessdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | proxyURL<a href="#kubernetessdconfig-proxyurl" id="kubernetessdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| proxy_client_config<a href="#kubernetessdconfig-proxy_client_config" id="kubernetessdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| proxy_client_config<a href="#kubernetessdconfig-proxy_client_config" id="kubernetessdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
 | role<a href="#kubernetessdconfig-role" id="kubernetessdconfig-role">#</a><br/>_string_ | _(Required)_<br/>Role of the Kubernetes entities that should be discovered. |
 | selectors<a href="#kubernetessdconfig-selectors" id="kubernetessdconfig-selectors">#</a><br/>_[K8SSelectorConfig](#k8sselectorconfig) array_ | _(Optional)_<br/>Selector to select objects. |
 | tlsConfig<a href="#kubernetessdconfig-tlsconfig" id="kubernetessdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
+
+#### KumaSDConfig
+
+KumaSDConfig configurations allows retrieving scrape targets from Kuma control plane.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#kuma_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| authorization<a href="#kumasdconfig-authorization" id="kumasdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#kumasdconfig-basicauth" id="kumasdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| clientID<a href="#kumasdconfig-clientid" id="kumasdconfig-clientid">#</a><br/>_string_ | _(Optional)_<br/>ClientID is an optional client ID to send to Kuma Control Plane.<br />The hostname of the server where vmagent runs is used if it isn't set.<br />If the hostname is empty, then "vmagent" string is used as client_id. |
+| followRedirects<a href="#kumasdconfig-followredirects" id="kumasdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#kumasdconfig-oauth2" id="kumasdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#kumasdconfig-proxyurl" id="kumasdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#kumasdconfig-proxy_client_config" id="kumasdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| server<a href="#kumasdconfig-server" id="kumasdconfig-server">#</a><br/>_string_ | _(Required)_<br/>Server must contain the URL of Kuma Control Plane's MADS xDS server. |
+| tlsConfig<a href="#kumasdconfig-tlsconfig" id="kumasdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### License
 
@@ -2234,6 +2328,76 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSin
 | annotations<a href="#managedobjectsmetadata-annotations" id="managedobjectsmetadata-annotations">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Annotations is an unstructured key value map stored with a resource that may be<br />set by external tools to store and retrieve arbitrary metadata. They are not<br />queryable and should be preserved when modifying objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations |
 | labels<a href="#managedobjectsmetadata-labels" id="managedobjectsmetadata-labels">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
 
+#### MattermostAttachment
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| author_icon<a href="#mattermostattachment-author_icon" id="mattermostattachment-author_icon">#</a><br/>_string_ | _(Required)_<br/> |
+| author_link<a href="#mattermostattachment-author_link" id="mattermostattachment-author_link">#</a><br/>_string_ | _(Required)_<br/> |
+| author_name<a href="#mattermostattachment-author_name" id="mattermostattachment-author_name">#</a><br/>_string_ | _(Required)_<br/> |
+| color<a href="#mattermostattachment-color" id="mattermostattachment-color">#</a><br/>_string_ | _(Required)_<br/> |
+| fallback<a href="#mattermostattachment-fallback" id="mattermostattachment-fallback">#</a><br/>_string_ | _(Required)_<br/> |
+| fields<a href="#mattermostattachment-fields" id="mattermostattachment-fields">#</a><br/>_[MattermostField](#mattermostfield) array_ | _(Required)_<br/> |
+| footer<a href="#mattermostattachment-footer" id="mattermostattachment-footer">#</a><br/>_string_ | _(Required)_<br/> |
+| footer_icon<a href="#mattermostattachment-footer_icon" id="mattermostattachment-footer_icon">#</a><br/>_string_ | _(Required)_<br/> |
+| image_url<a href="#mattermostattachment-image_url" id="mattermostattachment-image_url">#</a><br/>_string_ | _(Required)_<br/> |
+| pretext<a href="#mattermostattachment-pretext" id="mattermostattachment-pretext">#</a><br/>_string_ | _(Required)_<br/> |
+| text<a href="#mattermostattachment-text" id="mattermostattachment-text">#</a><br/>_string_ | _(Required)_<br/> |
+| thumb_url<a href="#mattermostattachment-thumb_url" id="mattermostattachment-thumb_url">#</a><br/>_string_ | _(Required)_<br/> |
+| title<a href="#mattermostattachment-title" id="mattermostattachment-title">#</a><br/>_string_ | _(Required)_<br/> |
+| title_link<a href="#mattermostattachment-title_link" id="mattermostattachment-title_link">#</a><br/>_string_ | _(Required)_<br/> |
+
+#### MattermostConfig
+
+MattermostConfig configures notifications via Mattermost.
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| attachments<a href="#mattermostconfig-attachments" id="mattermostconfig-attachments">#</a><br/>_[MattermostAttachment](#mattermostattachment) array_ | _(Optional)_<br/>Attachments defines richer formatting options |
+| channel<a href="#mattermostconfig-channel" id="mattermostconfig-channel">#</a><br/>_string_ | _(Optional)_<br/>Channel overrides the channel the message posts in. |
+| http_config<a href="#mattermostconfig-http_config" id="mattermostconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
+| icon_emoji<a href="#mattermostconfig-icon_emoji" id="mattermostconfig-icon_emoji">#</a><br/>_string_ | _(Optional)_<br/>IconEmoji overrides the profile picture and icon_url parameter. |
+| icon_url<a href="#mattermostconfig-icon_url" id="mattermostconfig-icon_url">#</a><br/>_string_ | _(Optional)_<br/>IconURL overrides the profile picture the message posts with. |
+| priority<a href="#mattermostconfig-priority" id="mattermostconfig-priority">#</a><br/>_[MattermostPriority](#mattermostpriority)_ | _(Optional)_<br/> |
+| props<a href="#mattermostconfig-props" id="mattermostconfig-props">#</a><br/>_[MattermostProps](#mattermostprops)_ | _(Optional)_<br/> |
+| send_resolved<a href="#mattermostconfig-send_resolved" id="mattermostconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| text<a href="#mattermostconfig-text" id="mattermostconfig-text">#</a><br/>_string_ | _(Required)_<br/>Text defines markdown-formatted message to display in the post. |
+| url<a href="#mattermostconfig-url" id="mattermostconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
+| url_secret<a href="#mattermostconfig-url_secret" id="mattermostconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the Mattermost URL.<br />one of `urlSecret` and `url` must be defined. |
+| username<a href="#mattermostconfig-username" id="mattermostconfig-username">#</a><br/>_string_ | _(Optional)_<br/>Username overrides the username the message posts as |
+
+#### MattermostField
+
+Appears in: [MattermostAttachment](#mattermostattachment)
+
+| Field | Description |
+| --- | --- |
+| short<a href="#mattermostfield-short" id="mattermostfield-short">#</a><br/>_boolean_ | _(Required)_<br/> |
+| title<a href="#mattermostfield-title" id="mattermostfield-title">#</a><br/>_string_ | _(Required)_<br/> |
+| value<a href="#mattermostfield-value" id="mattermostfield-value">#</a><br/>_string_ | _(Required)_<br/> |
+
+#### MattermostPriority
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| persistent_notifications<a href="#mattermostpriority-persistent_notifications" id="mattermostpriority-persistent_notifications">#</a><br/>_boolean_ | _(Required)_<br/> |
+| priority<a href="#mattermostpriority-priority" id="mattermostpriority-priority">#</a><br/>_string_ | _(Required)_<br/> |
+| requested_ack<a href="#mattermostpriority-requested_ack" id="mattermostpriority-requested_ack">#</a><br/>_boolean_ | _(Required)_<br/> |
+
+#### MattermostProps
+
+Appears in: [MattermostConfig](#mattermostconfig)
+
+| Field | Description |
+| --- | --- |
+| card<a href="#mattermostprops-card" id="mattermostprops-card">#</a><br/>_string_ | _(Required)_<br/> |
+
 #### NamespaceDiscovery
 
 NamespaceDiscovery is the configuration for discovering
@@ -2285,7 +2449,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 | namespace<a href="#nomadsdconfig-namespace" id="nomadsdconfig-namespace">#</a><br/>_string_ | _(Optional)_<br/>Namespace to use for Nomad service discovery. |
 | oauth2<a href="#nomadsdconfig-oauth2" id="nomadsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | proxyURL<a href="#nomadsdconfig-proxyurl" id="nomadsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
-| proxy_client_config<a href="#nomadsdconfig-proxy_client_config" id="nomadsdconfig-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| proxy_client_config<a href="#nomadsdconfig-proxy_client_config" id="nomadsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
 | region<a href="#nomadsdconfig-region" id="nomadsdconfig-region">#</a><br/>_string_ | _(Optional)_<br/>Region to use for Nomad service discovery. |
 | server<a href="#nomadsdconfig-server" id="nomadsdconfig-server">#</a><br/>_string_ | _(Required)_<br/>A valid string consisting of a hostname or IP followed by an optional port number. |
 | tagSeparator<a href="#nomadsdconfig-tagseparator" id="nomadsdconfig-tagseparator">#</a><br/>_string_ | _(Optional)_<br/>The string by which Nomad tags are joined into the tag label.<br />If unset, use its default value. |
@@ -2295,7 +2459,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 OAuth2 defines OAuth2 configuration
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec)
+Appears in: [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2307,6 +2471,28 @@ Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloc
 | scopes<a href="#oauth2-scopes" id="oauth2-scopes">#</a><br/>_string array_ | _(Optional)_<br/>OAuth2 scopes used for the token request |
 | tls_config<a href="#oauth2-tls_config" id="oauth2-tls_config">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig for token_url connection<br />( available from v0.55.0).<br />Is only supported by Scrape objects family |
 | token_url<a href="#oauth2-token_url" id="oauth2-token_url">#</a><br/>_string_ | _(Required)_<br/>The URL to fetch the token from |
+
+#### OVHCloudSDConfig
+
+OVHCloudSDConfig configurations allows retrieving scrape targets from OVH Cloud VPS and OVH Cloud dedicated server.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#ovhcloud_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| applicationKey<a href="#ovhcloudsdconfig-applicationkey" id="ovhcloudsdconfig-applicationkey">#</a><br/>_string_ | _(Required)_<br/>ApplicationKey defines a self generated token. |
+| applicationSecret<a href="#ovhcloudsdconfig-applicationsecret" id="ovhcloudsdconfig-applicationsecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Required)_<br/>ApplicationSecret defines a generated secret. |
+| authorization<a href="#ovhcloudsdconfig-authorization" id="ovhcloudsdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#ovhcloudsdconfig-basicauth" id="ovhcloudsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| consumerKey<a href="#ovhcloudsdconfig-consumerkey" id="ovhcloudsdconfig-consumerkey">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Required)_<br/>ConsumerKey holds user/app specific token |
+| endpoint<a href="#ovhcloudsdconfig-endpoint" id="ovhcloudsdconfig-endpoint">#</a><br/>_string_ | _(Optional)_<br/>Endpoint defines OVH Cloud endpoint |
+| followRedirects<a href="#ovhcloudsdconfig-followredirects" id="ovhcloudsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| oauth2<a href="#ovhcloudsdconfig-oauth2" id="ovhcloudsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#ovhcloudsdconfig-proxyurl" id="ovhcloudsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#ovhcloudsdconfig-proxy_client_config" id="ovhcloudsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| service<a href="#ovhcloudsdconfig-service" id="ovhcloudsdconfig-service">#</a><br/>_string_ | _(Required)_<br/>Service could be either `vps` or `dedicated_server` |
+| tlsConfig<a href="#ovhcloudsdconfig-tlsconfig" id="ovhcloudsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### OpenStackSDConfig
 
@@ -2435,20 +2621,54 @@ Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 | tlsConfig<a href="#podmetricsendpoint-tlsconfig" id="podmetricsendpoint-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#podmetricsendpoint-vm_scrape_params" id="podmetricsendpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
-#### ProxyAuth
+#### ProxyClientConfig
 
-ProxyAuth represent proxy auth config
-Only VictoriaMetrics scrapers supports it.
-See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
+ProxyClientConfig represent proxy client config
 
-Appears in: [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [VMScrapeParams](#vmscrapeparams)
+Appears in: [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EurekaSDConfig](#eurekasdconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [VMScrapeParams](#vmscrapeparams), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
-| basic_auth<a href="#proxyauth-basic_auth" id="proxyauth-basic_auth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/> |
-| bearer_token<a href="#proxyauth-bearer_token" id="proxyauth-bearer_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Required)_<br/> |
-| bearer_token_file<a href="#proxyauth-bearer_token_file" id="proxyauth-bearer_token_file">#</a><br/>_string_ | _(Required)_<br/> |
-| tls_config<a href="#proxyauth-tls_config" id="proxyauth-tls_config">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/> |
+| authorization<a href="#proxyclientconfig-authorization" id="proxyclientconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization with http header Authorization |
+| basic_auth<a href="#proxyclientconfig-basic_auth" id="proxyclientconfig-basic_auth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allows proxy to authenticate over basic authentication |
+| bearer_token<a href="#proxyclientconfig-bearer_token" id="proxyclientconfig-bearer_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Secret to mount to read bearer token for scraping targets proxy auth. The secret<br />needs to be in the same namespace as the scrape object and accessible by<br />the victoria-metrics operator. |
+| bearer_token_file<a href="#proxyclientconfig-bearer_token_file" id="proxyclientconfig-bearer_token_file">#</a><br/>_string_ | _(Optional)_<br/>BearerTokenFile defines file to read bearer token from for proxy auth. |
+| oauth2<a href="#proxyclientconfig-oauth2" id="proxyclientconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| tls_config<a href="#proxyclientconfig-tls_config" id="proxyclientconfig-tls_config">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
+
+#### ProxyConfig
+
+ProxyConfig defines proxy configs
+
+Appears in: [HTTPConfig](#httpconfig)
+
+| Field | Description |
+| --- | --- |
+| noProxy<a href="#proxyconfig-noproxy" id="proxyconfig-noproxy">#</a><br/>_string_ | _(Optional)_<br/>NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.<br />IP and domain names can contain port numbers. |
+| proxyConnectHeader<a href="#proxyconfig-proxyconnectheader" id="proxyconfig-proxyconnectheader">#</a><br/>_object (keys:string, values:[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core))_ | _(Optional)_<br/>ProxyConnectHeader optionally specifies headers to send to proxies during CONNECT requests. |
+| proxyFromEnvironment<a href="#proxyconfig-proxyfromenvironment" id="proxyconfig-proxyfromenvironment">#</a><br/>_boolean_ | _(Optional)_<br/>ProxyFromEnvironment defines whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY). |
+| proxyURL<a href="#proxyconfig-proxyurl" id="proxyconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyUrl defines the HTTP proxy server to use. |
+
+#### PuppetDBSDConfig
+
+PuppetDBSDConfig configurations allows retrieving scrape targets from PuppetDB resources.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#puppetdb_sd_configs)
+
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
+
+| Field | Description |
+| --- | --- |
+| authorization<a href="#puppetdbsdconfig-authorization" id="puppetdbsdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#puppetdbsdconfig-basicauth" id="puppetdbsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| followRedirects<a href="#puppetdbsdconfig-followredirects" id="puppetdbsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| includeParameters<a href="#puppetdbsdconfig-includeparameters" id="puppetdbsdconfig-includeparameters">#</a><br/>_boolean_ | _(Optional)_<br/>IncludeParameters defines if parameters should be included as meta labels. |
+| oauth2<a href="#puppetdbsdconfig-oauth2" id="puppetdbsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| port<a href="#puppetdbsdconfig-port" id="puppetdbsdconfig-port">#</a><br/>_integer_ | _(Optional)_<br/>Port defines port to scrape metrics from |
+| proxyURL<a href="#puppetdbsdconfig-proxyurl" id="puppetdbsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#puppetdbsdconfig-proxy_client_config" id="puppetdbsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| query<a href="#puppetdbsdconfig-query" id="puppetdbsdconfig-query">#</a><br/>_string_ | _(Required)_<br/>Query defines PQL query that allows to filter discovered resources. |
+| tlsConfig<a href="#puppetdbsdconfig-tlsconfig" id="puppetdbsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
+| url<a href="#puppetdbsdconfig-url" id="puppetdbsdconfig-url">#</a><br/>_string_ | _(Required)_<br/>URL of the PuppetDB root query endpoint |
 
 #### PushoverConfig
 
@@ -2494,8 +2714,9 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | --- | --- |
 | discord_configs<a href="#receiver-discord_configs" id="receiver-discord_configs">#</a><br/>_[DiscordConfig](#discordconfig) array_ | _(Optional)_<br/> |
 | email_configs<a href="#receiver-email_configs" id="receiver-email_configs">#</a><br/>_[EmailConfig](#emailconfig) array_ | _(Optional)_<br/>EmailConfigs defines email notification configurations. |
-| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentIOConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
+| incidentio_configs<a href="#receiver-incidentio_configs" id="receiver-incidentio_configs">#</a><br/>_[IncidentioConfig](#incidentioconfig) array_ | _(Optional)_<br/> |
 | jira_configs<a href="#receiver-jira_configs" id="receiver-jira_configs">#</a><br/>_[JiraConfig](#jiraconfig) array_ | _(Optional)_<br/> |
+| mattermost_configs<a href="#receiver-mattermost_configs" id="receiver-mattermost_configs">#</a><br/>_[MattermostConfig](#mattermostconfig) array_ | _(Optional)_<br/>MattermostConfigs defines Mattermost notification configurations. |
 | msteams_configs<a href="#receiver-msteams_configs" id="receiver-msteams_configs">#</a><br/>_[MSTeamsConfig](#msteamsconfig) array_ | _(Optional)_<br/> |
 | msteamsv2_configs<a href="#receiver-msteamsv2_configs" id="receiver-msteamsv2_configs">#</a><br/>_[MSTeamsV2Config](#msteamsv2config) array_ | _(Optional)_<br/> |
 | name<a href="#receiver-name" id="receiver-name">#</a><br/>_string_ | _(Required)_<br/>Name of the receiver. Must be unique across all items from the list. |
@@ -2504,12 +2725,12 @@ Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 | pushover_configs<a href="#receiver-pushover_configs" id="receiver-pushover_configs">#</a><br/>_[PushoverConfig](#pushoverconfig) array_ | _(Optional)_<br/>PushoverConfigs defines push over notification configurations. |
 | rocketchat_configs<a href="#receiver-rocketchat_configs" id="receiver-rocketchat_configs">#</a><br/>_[RocketchatConfig](#rocketchatconfig) array_ | _(Optional)_<br/> |
 | slack_configs<a href="#receiver-slack_configs" id="receiver-slack_configs">#</a><br/>_[SlackConfig](#slackconfig) array_ | _(Optional)_<br/>SlackConfigs defines slack notification configurations. |
-| sns_configs<a href="#receiver-sns_configs" id="receiver-sns_configs">#</a><br/>_[SnsConfig](#snsconfig) array_ | _(Optional)_<br/> |
+| sns_configs<a href="#receiver-sns_configs" id="receiver-sns_configs">#</a><br/>_[SNSConfig](#snsconfig) array_ | _(Optional)_<br/> |
 | telegram_configs<a href="#receiver-telegram_configs" id="receiver-telegram_configs">#</a><br/>_[TelegramConfig](#telegramconfig) array_ | _(Optional)_<br/> |
 | victorops_configs<a href="#receiver-victorops_configs" id="receiver-victorops_configs">#</a><br/>_[VictorOpsConfig](#victoropsconfig) array_ | _(Optional)_<br/>VictorOpsConfigs defines victor ops notification configurations. |
 | webex_configs<a href="#receiver-webex_configs" id="receiver-webex_configs">#</a><br/>_[WebexConfig](#webexconfig) array_ | _(Optional)_<br/> |
 | webhook_configs<a href="#receiver-webhook_configs" id="receiver-webhook_configs">#</a><br/>_[WebhookConfig](#webhookconfig) array_ | _(Optional)_<br/>WebhookConfigs defines webhook notification configurations. |
-| wechat_configs<a href="#receiver-wechat_configs" id="receiver-wechat_configs">#</a><br/>_[WeChatConfig](#wechatconfig) array_ | _(Optional)_<br/>WeChatConfigs defines wechat notification configurations. |
+| wechat_configs<a href="#receiver-wechat_configs" id="receiver-wechat_configs">#</a><br/>_[WechatConfig](#wechatconfig) array_ | _(Optional)_<br/>WechatConfigs defines wechat notification configurations. |
 
 #### RelabelConfig
 
@@ -2650,6 +2871,23 @@ Appears in: [VMRuleSpec](#vmrulespec)
 | tenant<a href="#rulegroup-tenant" id="rulegroup-tenant">#</a><br/>_string_ | _(Optional)_<br/>Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy). |
 | type<a href="#rulegroup-type" id="rulegroup-type">#</a><br/>_string_ | _(Optional)_<br/>Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite,vlogs |
 
+#### SNSConfig
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| api_url<a href="#snsconfig-api_url" id="snsconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The api URL |
+| attributes<a href="#snsconfig-attributes" id="snsconfig-attributes">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>SNS message attributes |
+| http_config<a href="#snsconfig-http_config" id="snsconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
+| message<a href="#snsconfig-message" id="snsconfig-message">#</a><br/>_string_ | _(Optional)_<br/>The message content of the SNS notification. |
+| phone_number<a href="#snsconfig-phone_number" id="snsconfig-phone_number">#</a><br/>_string_ | _(Required)_<br/>Phone number if message is delivered via SMS<br />Specify this, topic_arn or target_arn |
+| send_resolved<a href="#snsconfig-send_resolved" id="snsconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| sigv4<a href="#snsconfig-sigv4" id="snsconfig-sigv4">#</a><br/>_[Sigv4Config](#sigv4config)_ | _(Required)_<br/>Configure the AWS Signature Verification 4 signing process |
+| subject<a href="#snsconfig-subject" id="snsconfig-subject">#</a><br/>_string_ | _(Optional)_<br/>The subject line if message is delivered to an email endpoint. |
+| target_arn<a href="#snsconfig-target_arn" id="snsconfig-target_arn">#</a><br/>_string_ | _(Optional)_<br/>Mobile platform endpoint ARN if message is delivered via mobile notifications<br />Specify this, topic_arn or phone_number |
+| topic_arn<a href="#snsconfig-topic_arn" id="snsconfig-topic_arn">#</a><br/>_string_ | _(Optional)_<br/>SNS topic ARN, either specify this, phone_number or target_arn |
+
 #### ScrapeClass
 
 Appears in: [CommonScrapeParams](#commonscrapeparams), [VMAgentSpec](#vmagentspec), [VMSingleSpec](#vmsinglespec)
@@ -2688,7 +2926,7 @@ Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), 
 
 #### Sigv4Config
 
-Appears in: [SnsConfig](#snsconfig)
+Appears in: [SNSConfig](#snsconfig)
 
 | Field | Description |
 | --- | --- |
@@ -2780,23 +3018,6 @@ Appears in: [SlackConfig](#slackconfig)
 | short<a href="#slackfield-short" id="slackfield-short">#</a><br/>_boolean_ | _(Optional)_<br/> |
 | title<a href="#slackfield-title" id="slackfield-title">#</a><br/>_string_ | _(Required)_<br/> |
 | value<a href="#slackfield-value" id="slackfield-value">#</a><br/>_string_ | _(Required)_<br/> |
-
-#### SnsConfig
-
-Appears in: [Receiver](#receiver)
-
-| Field | Description |
-| --- | --- |
-| api_url<a href="#snsconfig-api_url" id="snsconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The api URL |
-| attributes<a href="#snsconfig-attributes" id="snsconfig-attributes">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>SNS message attributes |
-| http_config<a href="#snsconfig-http_config" id="snsconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
-| message<a href="#snsconfig-message" id="snsconfig-message">#</a><br/>_string_ | _(Optional)_<br/>The message content of the SNS notification. |
-| phone_number<a href="#snsconfig-phone_number" id="snsconfig-phone_number">#</a><br/>_string_ | _(Required)_<br/>Phone number if message is delivered via SMS<br />Specify this, topic_arn or target_arn |
-| send_resolved<a href="#snsconfig-send_resolved" id="snsconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
-| sigv4<a href="#snsconfig-sigv4" id="snsconfig-sigv4">#</a><br/>_[Sigv4Config](#sigv4config)_ | _(Required)_<br/>Configure the AWS Signature Verification 4 signing process |
-| subject<a href="#snsconfig-subject" id="snsconfig-subject">#</a><br/>_string_ | _(Optional)_<br/>The subject line if message is delivered to an email endpoint. |
-| target_arn<a href="#snsconfig-target_arn" id="snsconfig-target_arn">#</a><br/>_string_ | _(Optional)_<br/>Mobile platform endpoint ARN if message is delivered via mobile notifications<br />Specify this, topic_arn or phone_number |
-| topic_arn<a href="#snsconfig-topic_arn" id="snsconfig-topic_arn">#</a><br/>_string_ | _(Optional)_<br/>SNS topic ARN, either specify this, phone_number or target_arn |
 
 #### StatefulSetUpdateStrategyBehavior
 
@@ -2917,7 +3138,7 @@ Appears in: [VMAlertmanagerGossipConfig](#vmalertmanagergossipconfig), [VMAlertm
 
 TLSConfig specifies TLSConfig configuration parameters.
 
-Appears in: [APIServerConfig](#apiserverconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [KubernetesSDConfig](#kubernetessdconfig), [NomadSDConfig](#nomadsdconfig), [OAuth2](#oauth2), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyAuth](#proxyauth), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [EmailConfig](#emailconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [NomadSDConfig](#nomadsdconfig), [OAuth2](#oauth2), [OVHCloudSDConfig](#ovhcloudsdconfig), [OpenStackSDConfig](#openstacksdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3576,6 +3797,7 @@ Appears in: [VMAlertmanager](#vmalertmanager)
 | --- | --- |
 | additionalPeers<a href="#vmalertmanagerspec-additionalpeers" id="vmalertmanagerspec-additionalpeers">#</a><br/>_string array_ | _(Required)_<br/>AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. |
 | affinity<a href="#vmalertmanagerspec-affinity" id="vmalertmanagerspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
+| arbitraryFSAccessThroughSMs<a href="#vmalertmanagerspec-arbitraryfsaccessthroughsms" id="vmalertmanagerspec-arbitraryfsaccessthroughsms">#</a><br/>_[ArbitraryFSAccessThroughSMsConfig](#arbitraryfsaccessthroughsmsconfig)_ | _(Optional)_<br/>ArbitraryFSAccessThroughSMs configures whether configuration<br />can contain paths to arbitrary files on the file system<br />e.g bearer token files, basic auth password files, tls certs file paths |
 | claimTemplates<a href="#vmalertmanagerspec-claimtemplates" id="vmalertmanagerspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet |
 | clusterAdvertiseAddress<a href="#vmalertmanagerspec-clusteradvertiseaddress" id="vmalertmanagerspec-clusteradvertiseaddress">#</a><br/>_string_ | _(Optional)_<br/>ClusterAdvertiseAddress is the explicit address to advertise in cluster.<br />Needs to be provided for non RFC1918 [1] (public) addresses.<br />[1] RFC1918: https://tools.ietf.org/html/rfc1918 |
 | clusterDomainName<a href="#vmalertmanagerspec-clusterdomainname" id="vmalertmanagerspec-clusterdomainname">#</a><br/>_string_ | _(Optional)_<br/>ClusterDomainName defines domain name suffix for in-cluster dns addresses<br />aka .cluster.local<br />used to build pod peer addresses for in-cluster communication |
@@ -3665,7 +3887,7 @@ Appears in: [VMAlertmanagerSpec](#vmalertmanagerspec)
 | client_type<a href="#vmalertmanagertracingconfig-client_type" id="vmalertmanagertracingconfig-client_type">#</a><br/>_string_ | _(Optional)_<br/>ClientType defines tracing client protocol |
 | compression<a href="#vmalertmanagertracingconfig-compression" id="vmalertmanagertracingconfig-compression">#</a><br/>_string_ | _(Optional)_<br/>Compression defines compression algorithm for tracing |
 | endpoint<a href="#vmalertmanagertracingconfig-endpoint" id="vmalertmanagertracingconfig-endpoint">#</a><br/>_string_ | _(Required)_<br/>Endpoint defines tracing URL where traces will be sent |
-| http_headers<a href="#vmalertmanagertracingconfig-http_headers" id="vmalertmanagertracingconfig-http_headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>HTTPHeaders defines custom HTTP headers for tracing |
+| headers<a href="#vmalertmanagertracingconfig-headers" id="vmalertmanagertracingconfig-headers">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Headers defines custom HTTP headers for tracing |
 | insecure<a href="#vmalertmanagertracingconfig-insecure" id="vmalertmanagertracingconfig-insecure">#</a><br/>_boolean_ | _(Optional)_<br/>Insecure allows TLS configuration to be omitted |
 | sampling_fraction<a href="#vmalertmanagertracingconfig-sampling_fraction" id="vmalertmanagertracingconfig-sampling_fraction">#</a><br/>_string_ | _(Optional)_<br/>SamplingFraction defines fraction of the requests that should be sampled |
 | timeout<a href="#vmalertmanagertracingconfig-timeout" id="vmalertmanagertracingconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout defines tracing connection timeout |
@@ -4252,22 +4474,27 @@ Appears in: [VMScrapeConfig](#vmscrapeconfig)
 | digitalOceanSDConfigs<a href="#vmscrapeconfigspec-digitaloceansdconfigs" id="vmscrapeconfigspec-digitaloceansdconfigs">#</a><br/>_[DigitalOceanSDConfig](#digitaloceansdconfig) array_ | _(Optional)_<br/>DigitalOceanSDConfigs defines a list of DigitalOcean service discovery configurations. |
 | dnsSDConfigs<a href="#vmscrapeconfigspec-dnssdconfigs" id="vmscrapeconfigspec-dnssdconfigs">#</a><br/>_[DNSSDConfig](#dnssdconfig) array_ | _(Optional)_<br/>DNSSDConfigs defines a list of DNS service discovery configurations. |
 | ec2SDConfigs<a href="#vmscrapeconfigspec-ec2sdconfigs" id="vmscrapeconfigspec-ec2sdconfigs">#</a><br/>_[EC2SDConfig](#ec2sdconfig) array_ | _(Optional)_<br/>EC2SDConfigs defines a list of EC2 service discovery configurations. |
+| eurekaSDConfigs<a href="#vmscrapeconfigspec-eurekasdconfigs" id="vmscrapeconfigspec-eurekasdconfigs">#</a><br/>_[EurekaSDConfig](#eurekasdconfig) array_ | _(Optional)_<br/>EurekaSDConfigs defines a list of Eureka service discovery configurations. |
 | fileSDConfigs<a href="#vmscrapeconfigspec-filesdconfigs" id="vmscrapeconfigspec-filesdconfigs">#</a><br/>_[FileSDConfig](#filesdconfig) array_ | _(Optional)_<br/>FileSDConfigs defines a list of file service discovery configurations. |
 | follow_redirects<a href="#vmscrapeconfigspec-follow_redirects" id="vmscrapeconfigspec-follow_redirects">#</a><br/>_boolean_ | _(Optional)_<br/>FollowRedirects controls redirects for scraping. |
 | gceSDConfigs<a href="#vmscrapeconfigspec-gcesdconfigs" id="vmscrapeconfigspec-gcesdconfigs">#</a><br/>_[GCESDConfig](#gcesdconfig) array_ | _(Optional)_<br/>GCESDConfigs defines a list of GCE service discovery configurations. |
+| hetznerSDConfigs<a href="#vmscrapeconfigspec-hetznersdconfigs" id="vmscrapeconfigspec-hetznersdconfigs">#</a><br/>_[HetznerSDConfig](#hetznersdconfig) array_ | _(Optional)_<br/>HetznerSDConfigs defines a list of Hetzner service discovery configurations. |
 | honorLabels<a href="#vmscrapeconfigspec-honorlabels" id="vmscrapeconfigspec-honorlabels">#</a><br/>_boolean_ | _(Optional)_<br/>HonorLabels chooses the metric's labels on collisions with target labels. |
 | honorTimestamps<a href="#vmscrapeconfigspec-honortimestamps" id="vmscrapeconfigspec-honortimestamps">#</a><br/>_boolean_ | _(Optional)_<br/>HonorTimestamps controls whether vmagent or vmsingle respects the timestamps present in scraped data. |
 | httpSDConfigs<a href="#vmscrapeconfigspec-httpsdconfigs" id="vmscrapeconfigspec-httpsdconfigs">#</a><br/>_[HTTPSDConfig](#httpsdconfig) array_ | _(Optional)_<br/>HTTPSDConfigs defines a list of HTTP service discovery configurations. |
 | interval<a href="#vmscrapeconfigspec-interval" id="vmscrapeconfigspec-interval">#</a><br/>_string_ | _(Optional)_<br/>Interval at which metrics should be scraped |
 | kubernetesSDConfigs<a href="#vmscrapeconfigspec-kubernetessdconfigs" id="vmscrapeconfigspec-kubernetessdconfigs">#</a><br/>_[KubernetesSDConfig](#kubernetessdconfig) array_ | _(Optional)_<br/>KubernetesSDConfigs defines a list of Kubernetes service discovery configurations. |
+| kumaSDConfigs<a href="#vmscrapeconfigspec-kumasdconfigs" id="vmscrapeconfigspec-kumasdconfigs">#</a><br/>_[KumaSDConfig](#kumasdconfig) array_ | _(Optional)_<br/>KumaSDConfigs defines a list of Kuma service discovery configurations. |
 | max_scrape_size<a href="#vmscrapeconfigspec-max_scrape_size" id="vmscrapeconfigspec-max_scrape_size">#</a><br/>_string_ | _(Optional)_<br/>MaxScrapeSize defines a maximum size of scraped data for a job |
 | metricRelabelConfigs<a href="#vmscrapeconfigspec-metricrelabelconfigs" id="vmscrapeconfigspec-metricrelabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>MetricRelabelConfigs to apply to samples after scrapping. |
 | nomadSDConfigs<a href="#vmscrapeconfigspec-nomadsdconfigs" id="vmscrapeconfigspec-nomadsdconfigs">#</a><br/>_[NomadSDConfig](#nomadsdconfig) array_ | _(Optional)_<br/>NomadSDConfigs defines a list of Nomad service discovery configurations. |
 | oauth2<a href="#vmscrapeconfigspec-oauth2" id="vmscrapeconfigspec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
 | openstackSDConfigs<a href="#vmscrapeconfigspec-openstacksdconfigs" id="vmscrapeconfigspec-openstacksdconfigs">#</a><br/>_[OpenStackSDConfig](#openstacksdconfig) array_ | _(Optional)_<br/>OpenStackSDConfigs defines a list of OpenStack service discovery configurations. |
+| ovhcloudSDConfigs<a href="#vmscrapeconfigspec-ovhcloudsdconfigs" id="vmscrapeconfigspec-ovhcloudsdconfigs">#</a><br/>_[OVHCloudSDConfig](#ovhcloudsdconfig) array_ | _(Optional)_<br/>OVHCloudSDConfigs defines a list of OVH Cloud service discovery configurations. |
 | params<a href="#vmscrapeconfigspec-params" id="vmscrapeconfigspec-params">#</a><br/>_object (keys:string, values:string array)_ | _(Optional)_<br/>Optional HTTP URL parameters |
 | path<a href="#vmscrapeconfigspec-path" id="vmscrapeconfigspec-path">#</a><br/>_string_ | _(Optional)_<br/>HTTP path to scrape for metrics. |
 | proxyURL<a href="#vmscrapeconfigspec-proxyurl" id="vmscrapeconfigspec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| puppetDBSDConfigs<a href="#vmscrapeconfigspec-puppetdbsdconfigs" id="vmscrapeconfigspec-puppetdbsdconfigs">#</a><br/>_[PuppetDBSDConfig](#puppetdbsdconfig) array_ | _(Optional)_<br/>PuppetDBSDConfigs defines a list of PuppetDB service discovery configurations. |
 | relabelConfigs<a href="#vmscrapeconfigspec-relabelconfigs" id="vmscrapeconfigspec-relabelconfigs">#</a><br/>_[RelabelConfig](#relabelconfig) array_ | _(Optional)_<br/>RelabelConfigs to apply to samples during service discovery. |
 | sampleLimit<a href="#vmscrapeconfigspec-samplelimit" id="vmscrapeconfigspec-samplelimit">#</a><br/>_integer_ | _(Optional)_<br/>SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. |
 | scheme<a href="#vmscrapeconfigspec-scheme" id="vmscrapeconfigspec-scheme">#</a><br/>_string_ | _(Optional)_<br/>HTTP scheme to use for scraping. |
@@ -4278,6 +4505,7 @@ Appears in: [VMScrapeConfig](#vmscrapeconfig)
 | staticConfigs<a href="#vmscrapeconfigspec-staticconfigs" id="vmscrapeconfigspec-staticconfigs">#</a><br/>_[StaticConfig](#staticconfig) array_ | _(Optional)_<br/>StaticConfigs defines a list of static targets with a common label set. |
 | tlsConfig<a href="#vmscrapeconfigspec-tlsconfig" id="vmscrapeconfigspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#vmscrapeconfigspec-vm_scrape_params" id="vmscrapeconfigspec-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
+| vultrSDConfigs<a href="#vmscrapeconfigspec-vultrsdconfigs" id="vmscrapeconfigspec-vultrsdconfigs">#</a><br/>_[VultrSDConfig](#vultrsdconfig) array_ | _(Optional)_<br/>VultrSDConfigs defines a list of Vultr service discovery configurations. |
 
 #### VMScrapeParams
 
@@ -4292,7 +4520,7 @@ Appears in: [Endpoint](#endpoint), [EndpointScrapeParams](#endpointscrapeparams)
 | disable_keep_alive<a href="#vmscrapeparams-disable_keep_alive" id="vmscrapeparams-disable_keep_alive">#</a><br/>_boolean_ | _(Optional)_<br/>disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be reused.<br />See https://docs.victoriametrics.com/victoriametrics/vmagent/#scrape_config-enhancements |
 | headers<a href="#vmscrapeparams-headers" id="vmscrapeparams-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allows sending custom headers to scrape targets<br />must be in of semicolon separated header with it's value<br />eg:<br />headerName: headerValue<br />vmagent and vmsingle support since 1.79.0 version |
 | no_stale_markers<a href="#vmscrapeparams-no_stale_markers" id="vmscrapeparams-no_stale_markers">#</a><br/>_boolean_ | _(Optional)_<br/> |
-| proxy_client_config<a href="#vmscrapeparams-proxy_client_config" id="vmscrapeparams-proxy_client_config">#</a><br/>_[ProxyAuth](#proxyauth)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy |
+| proxy_client_config<a href="#vmscrapeparams-proxy_client_config" id="vmscrapeparams-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy |
 | scrape_align_interval<a href="#vmscrapeparams-scrape_align_interval" id="vmscrapeparams-scrape_align_interval">#</a><br/>_string_ | _(Optional)_<br/> |
 | scrape_offset<a href="#vmscrapeparams-scrape_offset" id="vmscrapeparams-scrape_offset">#</a><br/>_string_ | _(Optional)_<br/> |
 | stream_parse<a href="#vmscrapeparams-stream_parse" id="vmscrapeparams-stream_parse">#</a><br/>_boolean_ | _(Optional)_<br/> |
@@ -4729,26 +4957,28 @@ Appears in: [Receiver](#receiver)
 | send_resolved<a href="#victoropsconfig-send_resolved" id="victoropsconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
 | state_message<a href="#victoropsconfig-state_message" id="victoropsconfig-state_message">#</a><br/>_string_ | _(Optional)_<br/>Contains long explanation of the alerted problem. |
 
-#### WeChatConfig
+#### VultrSDConfig
 
-WeChatConfig configures notifications via WeChat.
-See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
+VultrSDConfig configurations allows retrieving scrape targets from Vultr instances.
+See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#vultr_sd_configs)
 
-Appears in: [Receiver](#receiver)
+Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 | Field | Description |
 | --- | --- |
-| agent_id<a href="#wechatconfig-agent_id" id="wechatconfig-agent_id">#</a><br/>_string_ | _(Optional)_<br/> |
-| api_secret<a href="#wechatconfig-api_secret" id="wechatconfig-api_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />fallback to global alertmanager setting if empty |
-| api_url<a href="#wechatconfig-api_url" id="wechatconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The WeChat API URL.<br />fallback to global alertmanager setting if empty |
-| corp_id<a href="#wechatconfig-corp_id" id="wechatconfig-corp_id">#</a><br/>_string_ | _(Optional)_<br/>The corp id for authentication.<br />fallback to global alertmanager setting if empty |
-| http_config<a href="#wechatconfig-http_config" id="wechatconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
-| message<a href="#wechatconfig-message" id="wechatconfig-message">#</a><br/>_string_ | _(Required)_<br/>API request data as defined by the WeChat API. |
-| message_type<a href="#wechatconfig-message_type" id="wechatconfig-message_type">#</a><br/>_string_ | _(Optional)_<br/> |
-| send_resolved<a href="#wechatconfig-send_resolved" id="wechatconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
-| to_party<a href="#wechatconfig-to_party" id="wechatconfig-to_party">#</a><br/>_string_ | _(Optional)_<br/> |
-| to_tag<a href="#wechatconfig-to_tag" id="wechatconfig-to_tag">#</a><br/>_string_ | _(Optional)_<br/> |
-| to_user<a href="#wechatconfig-to_user" id="wechatconfig-to_user">#</a><br/>_string_ | _(Optional)_<br/> |
+| authorization<a href="#vultrsdconfig-authorization" id="vultrsdconfig-authorization">#</a><br/>_[Authorization](#authorization)_ | _(Optional)_<br/>Authorization header to use on every scrape request. |
+| basicAuth<a href="#vultrsdconfig-basicauth" id="vultrsdconfig-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth information to use on every scrape request. |
+| firewallGroupID<a href="#vultrsdconfig-firewallgroupid" id="vultrsdconfig-firewallgroupid">#</a><br/>_string_ | _(Optional)_<br/>FirewallGroupID is an optional query arguments to filter instances by firewall group id. |
+| followRedirects<a href="#vultrsdconfig-followredirects" id="vultrsdconfig-followredirects">#</a><br/>_boolean_ | _(Optional)_<br/>Configure whether HTTP requests follow HTTP 3xx redirects. |
+| hostname<a href="#vultrsdconfig-hostname" id="vultrsdconfig-hostname">#</a><br/>_string_ | _(Optional)_<br/>Hostname is an optional query arguments to filter instances by hostname. |
+| label<a href="#vultrsdconfig-label" id="vultrsdconfig-label">#</a><br/>_string_ | _(Optional)_<br/>Label is an optional query arguments to filter instances by label. |
+| mainIP<a href="#vultrsdconfig-mainip" id="vultrsdconfig-mainip">#</a><br/>_string_ | _(Optional)_<br/>MainIP is an optional query arguments to filter instances by main ip address. |
+| oauth2<a href="#vultrsdconfig-oauth2" id="vultrsdconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| port<a href="#vultrsdconfig-port" id="vultrsdconfig-port">#</a><br/>_integer_ | _(Optional)_<br/>Port is an optional port to scrape metrics from. |
+| proxyURL<a href="#vultrsdconfig-proxyurl" id="vultrsdconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. |
+| proxy_client_config<a href="#vultrsdconfig-proxy_client_config" id="vultrsdconfig-proxy_client_config">#</a><br/>_[ProxyClientConfig](#proxyclientconfig)_ | _(Optional)_<br/>ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy) |
+| region<a href="#vultrsdconfig-region" id="vultrsdconfig-region">#</a><br/>_string_ | _(Optional)_<br/>Region is an optional query arguments to filter instances by region id. |
+| tlsConfig<a href="#vultrsdconfig-tlsconfig" id="vultrsdconfig-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration to use on every scrape request |
 
 #### WebexConfig
 
@@ -4777,3 +5007,24 @@ Appears in: [Receiver](#receiver)
 | timeout<a href="#webhookconfig-timeout" id="webhookconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke the webhook<br />available since v0.28.0 alertmanager version |
 | url<a href="#webhookconfig-url" id="webhookconfig-url">#</a><br/>_string_ | _(Optional)_<br/>URL to send requests to,<br />one of `urlSecret` and `url` must be defined. |
 | url_secret<a href="#webhookconfig-url_secret" id="webhookconfig-url_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. |
+
+#### WechatConfig
+
+WechatConfig configures notifications via Wechat.
+See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
+
+Appears in: [Receiver](#receiver)
+
+| Field | Description |
+| --- | --- |
+| agent_id<a href="#wechatconfig-agent_id" id="wechatconfig-agent_id">#</a><br/>_string_ | _(Optional)_<br/> |
+| api_secret<a href="#wechatconfig-api_secret" id="wechatconfig-api_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />fallback to global alertmanager setting if empty |
+| api_url<a href="#wechatconfig-api_url" id="wechatconfig-api_url">#</a><br/>_string_ | _(Optional)_<br/>The WeChat API URL.<br />fallback to global alertmanager setting if empty |
+| corp_id<a href="#wechatconfig-corp_id" id="wechatconfig-corp_id">#</a><br/>_string_ | _(Optional)_<br/>The corp id for authentication.<br />fallback to global alertmanager setting if empty |
+| http_config<a href="#wechatconfig-http_config" id="wechatconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/>HTTP client configuration. |
+| message<a href="#wechatconfig-message" id="wechatconfig-message">#</a><br/>_string_ | _(Required)_<br/>API request data as defined by the WeChat API. |
+| message_type<a href="#wechatconfig-message_type" id="wechatconfig-message_type">#</a><br/>_string_ | _(Optional)_<br/> |
+| send_resolved<a href="#wechatconfig-send_resolved" id="wechatconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
+| to_party<a href="#wechatconfig-to_party" id="wechatconfig-to_party">#</a><br/>_string_ | _(Optional)_<br/> |
+| to_tag<a href="#wechatconfig-to_tag" id="wechatconfig-to_tag">#</a><br/>_string_ | _(Optional)_<br/> |
+| to_user<a href="#wechatconfig-to_user" id="wechatconfig-to_user">#</a><br/>_string_ | _(Optional)_<br/> |

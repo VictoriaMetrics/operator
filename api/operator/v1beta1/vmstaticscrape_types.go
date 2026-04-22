@@ -48,7 +48,6 @@ type TargetEndpoint struct {
 	// +optional
 	Labels               map[string]string `json:"labels,omitempty"`
 	EndpointRelabelings  `json:",inline"`
-	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
 }
 

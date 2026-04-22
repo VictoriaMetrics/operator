@@ -213,9 +213,9 @@ func (ac *AssetsCache) TLSToYAML(ns, prefix string, cfg *vmv1beta1.TLSConfig) (y
 	return r, nil
 }
 
-// ProxyAuthToYAML returns yaml representation of provided ProxyAuth config
+// ProxyClientConfigToYAML returns yaml representation of provided ProxyClientConfig config
 // Please note all secret values will be added as a plain text to it.
-func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yaml.MapSlice, error) {
+func (ac *AssetsCache) ProxyClientConfigToYAML(ns string, cfg *vmv1beta1.ProxyClientConfig) (yaml.MapSlice, error) {
 	if cfg == nil {
 		return nil, nil
 	}
@@ -236,6 +236,24 @@ func (ac *AssetsCache) ProxyAuthToYAML(ns string, cfg *vmv1beta1.ProxyAuth) (yam
 		}
 		if len(authYaml) > 0 {
 			r = append(r, yaml.MapItem{Key: "proxy_tls_config", Value: authYaml})
+		}
+	}
+	if cfg.Authorization != nil {
+		authYaml, err := ac.AuthorizationToYAML(ns, cfg.Authorization)
+		if err != nil {
+			return nil, err
+		}
+		if len(authYaml) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_authorization", Value: authYaml})
+		}
+	}
+	if cfg.OAuth2 != nil {
+		authYaml, err := ac.OAuth2ToYAML(ns, cfg.OAuth2)
+		if err != nil {
+			return nil, err
+		}
+		if len(authYaml) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_oauth2", Value: authYaml})
 		}
 	}
 	if cfg.BearerToken != nil {

@@ -117,26 +117,26 @@ relabel_configs:
 					HonorTimestamps: ptr.To(true),
 					VMScrapeParams: &vmv1beta1.VMScrapeParams{
 						StreamParse: ptr.To(true),
-						ProxyClientConfig: &vmv1beta1.ProxyAuth{
+						ProxyClientConfig: &vmv1beta1.ProxyClientConfig{
 							TLSConfig: &vmv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
 							BearerTokenFile: "/tmp/proxy-token",
 						},
 					},
-				},
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					BearerTokenFile: "/tmp/bearer",
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							Key: "username",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "ba-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BearerTokenFile: "/tmp/bearer",
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "ba-secret",
+								},
 							},
 						},
-					},
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
 					},
 				},
 				JobLabel:     "env",

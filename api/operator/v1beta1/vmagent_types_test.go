@@ -92,4 +92,37 @@ func TestVMAgent_Validate(t *testing.T) {
 			},
 		},
 	}, false)
+
+	// single default scrape class - valid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "default", Default: ptr.To(true)},
+				{Name: "other"},
+			},
+		},
+	}, false)
+
+	// multiple default scrape classes - invalid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "default", Default: ptr.To(true)},
+				{Name: "other", Default: ptr.To(true)},
+			},
+		},
+	}, true)
+
+	// duplicated scrape class names - invalid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "cls"},
+				{Name: "cls"},
+			},
+		},
+	}, true)
 }

@@ -102,7 +102,6 @@ type PodMetricsEndpoint struct {
 	// +optional
 	TargetPort           *intstr.IntOrString `json:"targetPort,omitempty"`
 	EndpointRelabelings  `json:",inline"`
-	EndpointAuth         `json:",inline"`
 	EndpointScrapeParams `json:",inline"`
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional

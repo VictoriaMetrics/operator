@@ -234,7 +234,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.serviceScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMServiceScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.Endpoints {
-				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+				if err := ep.ValidateArbitraryFSAccess(); err != nil {
 					return err
 				}
 			}
@@ -250,7 +250,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.podScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMPodScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.PodMetricsEndpoints {
-				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+				if err := ep.ValidateArbitraryFSAccess(); err != nil {
 					return err
 				}
 			}
@@ -266,7 +266,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.staticScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMStaticScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.TargetEndpoints {
-				if err := testForArbitraryFSAccess(ep.EndpointAuth); err != nil {
+				if err := ep.ValidateArbitraryFSAccess(); err != nil {
 					return err
 				}
 			}
@@ -281,7 +281,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	})
 	pos.nodeScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMNodeScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
+			if err := sc.Spec.ValidateArbitraryFSAccess(); err != nil {
 				return err
 			}
 		}
@@ -295,7 +295,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	})
 	pos.probes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMProbe) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
+			if err := sc.Spec.ValidateArbitraryFSAccess(); err != nil {
 				return err
 			}
 		}
@@ -310,7 +310,7 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.scrapeConfigs.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMScrapeConfig) error {
 		// TODO: @f41gh7 validate per configuration FS access
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
-			if err := testForArbitraryFSAccess(sc.Spec.EndpointAuth); err != nil {
+			if err := sc.Spec.ValidateArbitraryFSAccess(); err != nil {
 				return err
 			}
 		}

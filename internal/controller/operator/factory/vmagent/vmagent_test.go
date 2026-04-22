@@ -197,11 +197,11 @@ func TestCreateOrUpdate(t *testing.T) {
 							EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 								Interval: "30s",
 								Scheme:   "http",
-							},
-							EndpointAuth: vmv1beta1.EndpointAuth{
-								BasicAuth: &vmv1beta1.BasicAuth{
-									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
-									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									BasicAuth: &vmv1beta1.BasicAuth{
+										Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+										Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+									},
 								},
 							},
 						},
@@ -341,16 +341,16 @@ func TestCreateOrUpdate(t *testing.T) {
 							EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 								Interval: "30s",
 								Scheme:   "https",
-							},
-							EndpointAuth: vmv1beta1.EndpointAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 								},
 							},
 						},

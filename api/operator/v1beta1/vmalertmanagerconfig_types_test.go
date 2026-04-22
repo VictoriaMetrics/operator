@@ -290,7 +290,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             "receiver": "jira"
         }
     }
-}`, `receiver at idx=0 is invalid: at idx=0 for jira_configs missing required field 'issue_type'`)
+}`, `receivers[0]: jira_configs[0]: missing required field 'issue_type'`)
 
 	f(`{
     "apiVersion": "v1",
@@ -327,7 +327,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             "receiver": "teams"
         }
     }
-}`, `receiver at idx=0 is invalid: at idx=0 for msteamsv2_configs at most one of webhook_url or webhook_url_secret must be configured`)
+}`, `receivers[0]: msteamsv2_configs[0]: at most one of webhook_url or webhook_url_secret must be configured`)
 
 	f(`{
     "apiVersion": "v1",
@@ -359,7 +359,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             "receiver": "teams"
         }
     }
-}`, `receiver at idx=0 is invalid: at idx=0 for msteamsv2_configs of webhook_url or webhook_url_secret must be configured`)
+}`, `receivers[0]: msteamsv2_configs[0]: webhook_url or webhook_url_secret must be configured`)
 
 	f(`{
     "apiVersion": "v1",

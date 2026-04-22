@@ -60,8 +60,11 @@ jobs:
 
       - name: Install opm
         run: |
-          curl -sL https://github.com/operator-framework/operator-registry/releases/download/v1.65.0/linux-amd64-opm -o /usr/local/bin/opm
-          chmod +x /usr/local/bin/opm
+          OPM_VERSION=v1.65.0
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/linux-amd64-opm
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/checksums.txt
+          grep ' linux-amd64-opm$' checksums.txt | sha256sum -c -
+          install -m 0755 linux-amd64-opm /usr/local/bin/opm
 
       - name: Add operatorhub bundle
         id: update

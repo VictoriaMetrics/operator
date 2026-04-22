@@ -53,7 +53,7 @@ jobs:
       - uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f
         with:
           name: olm
-          workflow: release.yaml
+          workflow: main.yaml
           github_token: ${{ secrets.VM_BOT_GH_TOKEN }}
           run_id: ${{ github.event.workflow_run.id }}
           path: bundle

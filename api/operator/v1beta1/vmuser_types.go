@@ -266,7 +266,7 @@ func (cr *VMUser) PrefixedName() string {
 
 func (cr *VMUser) ValidateArbitraryFSAccess() error {
 	var props []string
-	props = cr.Spec.VMUserConfigOptions.TLSConfig.appendForbiddenProperties(props)
+	props = cr.Spec.TLSConfig.appendForbiddenProperties(props)
 	if len(props) > 0 {
 		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
 	}

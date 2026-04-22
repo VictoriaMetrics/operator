@@ -522,7 +522,7 @@ relabel_configs:
 					ScrapeTimeout: "15s",
 					VMScrapeParams: &vmv1beta1.VMScrapeParams{
 						StreamParse: ptr.To(false),
-						ProxyClientConfig: &vmv1beta1.ProxyAuth{
+						ProxyClientConfig: &vmv1beta1.ProxyClientConfig{
 							TLSConfig: &vmv1beta1.TLSConfig{
 								CA: vmv1beta1.SecretOrConfigMap{
 									ConfigMap: &corev1.ConfigMapKeySelector{
@@ -544,11 +544,11 @@ relabel_configs:
 							},
 						},
 					},
-				},
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					BearerTokenFile: "/tmp/some_path",
-					BasicAuth: &vmv1beta1.BasicAuth{
-						PasswordFile: "/tmp/some-file-ba",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BearerTokenFile: "/tmp/some_path",
+						BasicAuth: &vmv1beta1.BasicAuth{
+							PasswordFile: "/tmp/some-file-ba",
+						},
 					},
 				},
 				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},

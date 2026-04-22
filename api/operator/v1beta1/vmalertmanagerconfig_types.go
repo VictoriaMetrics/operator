@@ -117,6 +117,102 @@ func (cr *VMAlertmanagerConfig) GetStatus() *VMAlertmanagerConfigStatus {
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAlertmanagerConfig) DefaultStatusFields(vs *VMAlertmanagerConfigStatus) {}
 
+func (cr *VMAlertmanagerConfig) ValidateArbitraryFSAccess() error {
+	for i, r := range cr.Spec.Receivers {
+		for j, rc := range r.EmailConfigs {
+			if err := rc.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].email_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.PagerDutyConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].pagerduty_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.PushoverConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].pushover_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.SlackConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].slack_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.OpsGenieConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].opsgenie_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WebhookConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].webhook_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.VictorOpsConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].victorops_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WechatConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].wechat_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.TelegramConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].telegram_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.MSTeamsConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].msteams_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.DiscordConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].discord_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.SNSConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].sns_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.WebexConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].webex_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.JiraConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].jira_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.IncidentioConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].incidentio_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.RocketchatConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].rocketchat_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.MSTeamsV2Configs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].msteamsv2_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+		for j, rc := range r.MattermostConfigs {
+			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+				return fmt.Errorf("spec.receivers[%d].mattermost_configs[%d]: found prohibited properties: %w", i, j, err)
+			}
+		}
+	}
+	return nil
+}
+
 func (r *VMAlertmanagerConfig) Validate() error {
 	if MustSkipCRValidation(r) {
 		return nil
@@ -128,7 +224,7 @@ func (r *VMAlertmanagerConfig) Validate() error {
 		}
 		receivers[recv.Name] = struct{}{}
 		if err := validateReceiver(recv); err != nil {
-			return fmt.Errorf("receiver at idx=%d is invalid: %w", idx, err)
+			return fmt.Errorf("receivers[%d]: %w", idx, err)
 		}
 	}
 	tiNames, err := validateTimeIntervals(r.Spec.TimeIntervals)
@@ -339,12 +435,15 @@ type Receiver struct {
 	// +optional
 	WebhookConfigs []WebhookConfig `json:"webhook_configs,omitempty" yaml:"webhook_configs,omitempty"`
 
+	// MattermostConfigs defines Mattermost notification configurations.
+	// +optional
+	MattermostConfigs []MattermostConfig `json:"mattermost_configs,omitempty" yaml:"mattermost_configs,omitempty"`
 	// VictorOpsConfigs defines victor ops notification configurations.
 	// +optional
 	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty" yaml:"victorops_configs,omitempty"`
-	// WeChatConfigs defines wechat notification configurations.
+	// WechatConfigs defines wechat notification configurations.
 	// +optional
-	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty" yaml:"wechat_configs,omitempty"`
+	WechatConfigs []WechatConfig `json:"wechat_configs,omitempty" yaml:"wechat_configs,omitempty"`
 	// +optional
 	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty" yaml:"telegram_configs,omitempty"`
 	// +optional
@@ -352,13 +451,13 @@ type Receiver struct {
 	// +optional
 	DiscordConfigs []DiscordConfig `json:"discord_configs,omitempty" yaml:"discord_configs,omitempty"`
 	// +optional
-	SNSConfigs []SnsConfig `json:"sns_configs,omitempty" yaml:"sns_configs,omitempty"`
+	SNSConfigs []SNSConfig `json:"sns_configs,omitempty" yaml:"sns_configs,omitempty"`
 	// +optional
 	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
 	// +optional
 	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
 	// +optional
-	IncidentIOConfigs []IncidentIOConfig `json:"incidentio_configs,omitempty" yaml:"incidentio_configs,omitempty"`
+	IncidentioConfigs []IncidentioConfig `json:"incidentio_configs,omitempty" yaml:"incidentio_configs,omitempty"`
 	// +optional
 	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
 	// +optional
@@ -397,6 +496,25 @@ type TelegramConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+func (c *TelegramConfig) validate() error {
+	if c.BotToken == nil {
+		return fmt.Errorf("required field 'bot_token' must be set")
+	}
+	if c.ChatID == 0 {
+		return fmt.Errorf("required field 'chat_id' must be set")
+	}
+	if c.ParseMode != "" &&
+		c.ParseMode != "Markdown" &&
+		c.ParseMode != "MarkdownV2" &&
+		c.ParseMode != "HTML" {
+		return fmt.Errorf("unknown parse_mode=%q: must be Markdown, MarkdownV2, HTML or empty string", c.ParseMode)
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.
 // See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 type WebhookConfig struct {
@@ -426,9 +544,27 @@ type WebhookConfig struct {
 	Timeout string `json:"timeout,omitempty"`
 }
 
-// WeChatConfig configures notifications via WeChat.
+func (c *WebhookConfig) validate() error {
+	if c.URL == nil && c.URLSecret == nil {
+		return fmt.Errorf("one of 'url' or 'url_secret' must be specified")
+	}
+	if c.URL != nil && c.URLSecret != nil {
+		return fmt.Errorf("at most one of 'url' or 'url_secret' must be specified")
+	}
+	if c.URL != nil {
+		if _, err := url.Parse(*c.URL); err != nil {
+			return fmt.Errorf("invalid 'url': %w", err)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
+// WechatConfig configures notifications via Wechat.
 // See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
-type WeChatConfig struct {
+type WechatConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
@@ -460,6 +596,18 @@ type WeChatConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *WechatConfig) validate() error {
+	if c.APIURL != "" {
+		if _, err := url.Parse(c.APIURL); err != nil {
+			return fmt.Errorf("incorrect api_url=%q: %w", c.APIURL, err)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // EmailConfig configures notifications via Email.
@@ -512,6 +660,47 @@ type EmailConfig struct {
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
 }
 
+func (c *EmailConfig) validate() error {
+	if c.To == "" {
+		return fmt.Errorf("required field `to` must be set")
+	}
+	if c.Smarthost != "" {
+		_, port, err := net.SplitHostPort(c.Smarthost)
+		if err != nil {
+			return fmt.Errorf("failed to parse `smarthost`: %w", err)
+		}
+		if port == "" {
+			return fmt.Errorf("smarthost=%q: port cannot be empty", c.Smarthost)
+		}
+	}
+
+	if len(c.Headers) > 0 {
+		normalizedHeaders := map[string]struct{}{}
+		for key := range c.Headers {
+			normalized := strings.ToLower(key)
+			if _, ok := normalizedHeaders[normalized]; ok {
+				return fmt.Errorf("duplicate header %q", normalized)
+			}
+			normalizedHeaders[normalized] = struct{}{}
+		}
+	}
+	if c.TLSConfig != nil {
+		if err := c.TLSConfig.Validate(); err != nil {
+			return fmt.Errorf("invalid tls_config: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *EmailConfig) validateArbitraryFSAccess() error {
+	var props []string
+	props = c.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
+}
+
 // VictorOpsConfig configures notifications via VictorOps.
 // See https://prometheus.io/docs/alerting/latest/configuration/#victorops_config
 type VictorOpsConfig struct {
@@ -547,6 +736,36 @@ type VictorOpsConfig struct {
 	// https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537
 	// +optional
 	CustomFields map[string]string `json:"custom_fields,omitempty" yaml:"custom_fields,omitempty"`
+}
+
+func (c *VictorOpsConfig) validate() error {
+	// from https://github.com/prometheus/alertmanager/blob/a7f9fdadbecbb7e692d2cd8d3334e3d6de1602e1/config/notifiers.go#L497
+	reservedFields := map[string]struct{}{
+		"routing_key":         {},
+		"message_type":        {},
+		"state_message":       {},
+		"entity_display_name": {},
+		"monitoring_tool":     {},
+		"entity_id":           {},
+		"entity_state":        {},
+	}
+	for key := range c.CustomFields {
+		if _, ok := reservedFields[key]; ok {
+			return fmt.Errorf("encoundered usage of reserved word %q in custom fields", key)
+		}
+	}
+	if c.RoutingKey == "" {
+		return fmt.Errorf("missing 'routing_key' key")
+	}
+	if c.APIURL != "" {
+		if _, err := url.Parse(c.APIURL); err != nil {
+			return fmt.Errorf("incorrect api_url=%q: %w", c.APIURL, err)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // PushoverConfig configures notifications via Pushover.
@@ -593,6 +812,19 @@ type PushoverConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *PushoverConfig) validate() error {
+	if c.UserKey == nil {
+		return fmt.Errorf("required field 'user_key' must be set")
+	}
+	if c.Token == nil {
+		return fmt.Errorf("required field 'token' must be set")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // SlackConfig configures notifications via Slack.
@@ -655,6 +887,35 @@ type SlackConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *SlackConfig) validate() error {
+	for idx, a := range c.Actions {
+		if a.Type == "" {
+			return fmt.Errorf("actions[%d].type is required", idx)
+		}
+		if a.Text == "" {
+			return fmt.Errorf("actions[%d].text is required", idx)
+		}
+		if a.URL == "" && a.Name == "" {
+			return fmt.Errorf("actions[%d]: url or name should be set", idx)
+		}
+		if a.ConfirmField != nil && a.ConfirmField.Text == "" {
+			return fmt.Errorf("actions[%d].confirm_field.text must be set", idx)
+		}
+	}
+	for idx, field := range c.Fields {
+		if field.Value == "" {
+			return fmt.Errorf("fields[%d].value must be set", idx)
+		}
+		if field.Title == "" {
+			return fmt.Errorf("fields[%d].title must be set", idx)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
@@ -760,6 +1021,28 @@ type OpsGenieConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+func (c *OpsGenieConfig) validate() error {
+	for idx, responder := range c.Responders {
+		if responder.ID == "" && responder.Name == "" && responder.Username == "" {
+			return fmt.Errorf("responders[%d]: one of id, name or username is required", idx)
+		}
+		switch {
+		case strings.Contains(responder.Type, "{{"):
+			_, err := template.New("").Parse(responder.Type)
+			if err != nil {
+				return fmt.Errorf("responders[%d].type is not a valid template: %w", idx, err)
+			}
+		case opsgenieTypeMatcher.MatchString(responder.Type):
+		default:
+			return fmt.Errorf("responders[%d].type=%q doesn't match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
 // OpsGenieConfigResponder defines a responder to an incident.
 // One of `id`, `name` or `username` has to be defined.
 type OpsGenieConfigResponder struct {
@@ -833,6 +1116,24 @@ type PagerDutyConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+func (c *PagerDutyConfig) validate() error {
+	if c.URL != "" {
+		if _, err := url.Parse(c.URL); err != nil {
+			return fmt.Errorf("invalid url=%q: %w", c.URL, err)
+		}
+	}
+	if c.RoutingKey == nil && c.ServiceKey == nil {
+		return fmt.Errorf("one of 'routing_key' or 'service_key' must be configured")
+	}
+	if c.RoutingKey != nil && c.ServiceKey != nil {
+		return fmt.Errorf("at most one of 'routing_key' or 'service_key' must be configured")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
 // ImageConfig is used to attach images to the incident.
 // See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
 // for more information.
@@ -876,6 +1177,24 @@ type MSTeamsConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+func (c *MSTeamsConfig) validate() error {
+	if c.URL == nil && c.URLSecret == nil {
+		return fmt.Errorf("webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil && c.URLSecret != nil {
+		return fmt.Errorf("at most one of webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil {
+		if _, err := url.Parse(*c.URL); err != nil {
+			return fmt.Errorf("invalid webhook_url=%q", *c.URL)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
 type DiscordConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
@@ -913,7 +1232,25 @@ type DiscordConfig struct {
 	AvatarURL string `json:"avatar_url,omitempty" yaml:"avatar_url,omitempty"`
 }
 
-type SnsConfig struct {
+func (c *DiscordConfig) validate() error {
+	if c.URL == nil && c.URLSecret == nil {
+		return fmt.Errorf("webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil && c.URLSecret != nil {
+		return fmt.Errorf("at most one of webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil {
+		if _, err := url.Parse(*c.URL); err != nil {
+			return fmt.Errorf("invalid webhook_url=%q", *c.URL)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
+type SNSConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
@@ -944,6 +1281,16 @@ type SnsConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *SNSConfig) validate() error {
+	if c.TargetArn == "" && c.TopicArn == "" && c.PhoneNumber == "" {
+		return fmt.Errorf("one of target_arn, topic_arn or phone_number fields must be set")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 type Sigv4Config struct {
@@ -984,6 +1331,24 @@ type WebexConfig struct {
 	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *WebexConfig) validate() error {
+	if c.URL != nil && *c.URL != "" {
+		if _, err := url.Parse(*c.URL); err != nil {
+			return fmt.Errorf("incorrect url=%q: %w", *c.URL, err)
+		}
+	}
+	if c.RoomId == "" {
+		return fmt.Errorf("missing required field 'room_id'")
+	}
+	if c.HTTPConfig == nil || c.HTTPConfig.Authorization == nil {
+		return fmt.Errorf("missing required http_config.authorization")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // JiraConfig represent alertmanager's jira_config entry
@@ -1047,11 +1412,29 @@ type JiraConfig struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
-// IncidentIOConfig configures notifications via incident.io.
+func (c *JiraConfig) validate() error {
+	if c.APIURL != nil && *c.APIURL != "" {
+		if _, err := url.Parse(*c.APIURL); err != nil {
+			return fmt.Errorf("incorrect url=%q: %w", *c.APIURL, err)
+		}
+	}
+	if c.Project == "" {
+		return fmt.Errorf("missing required field 'project'")
+	}
+	if c.IssueType == "" {
+		return fmt.Errorf("missing required field 'issue_type'")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
+// IncidentioConfig configures notifications via incident.io.
 // https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
 // available from v0.66.0 operator version
 // and v0.29.0 alertmanager version
-type IncidentIOConfig struct {
+type IncidentioConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
@@ -1071,6 +1454,18 @@ type IncidentIOConfig struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *IncidentioConfig) validate() error {
+	if len(c.URL) != 0 {
+		if _, err := url.Parse(c.URL); err != nil {
+			return fmt.Errorf("incorrect url=%q: %w", c.URL, err)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // RocketchatConfig configures notifications via Rocketchat.
@@ -1122,6 +1517,18 @@ type RocketchatConfig struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *RocketchatConfig) validate() error {
+	if c.APIURL != nil && *c.APIURL != "" {
+		if _, err := url.Parse(*c.APIURL); err != nil {
+			return fmt.Errorf("incorrect url=%q: %w", *c.APIURL, err)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
 }
 
 // RocketchatAttachmentField defines API fields
@@ -1180,6 +1587,111 @@ type MSTeamsV2Config struct {
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
+func (c *MSTeamsV2Config) validate() error {
+	if c.URL == nil && c.URLSecret == nil {
+		return fmt.Errorf("webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil && c.URLSecret != nil {
+		return fmt.Errorf("at most one of webhook_url or webhook_url_secret must be configured")
+	}
+	if c.URL != nil {
+		if _, err := url.Parse(*c.URL); err != nil {
+			return fmt.Errorf("invalid webhook_url=%q", *c.URL)
+		}
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
+// MattermostConfig configures notifications via Mattermost.
+type MattermostConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
+	// Username overrides the username the message posts as
+	// +optional
+	Username string `json:"username,omitempty" yaml:"username,omitempty"`
+	// Channel overrides the channel the message posts in.
+	// +optional
+	Channel string `json:"channel,omitempty" yaml:"channel,omitempty"`
+	// Text defines markdown-formatted message to display in the post.
+	Text string `json:"text"`
+	// IconURL overrides the profile picture the message posts with.
+	// +optional
+	IconURL string `json:"icon_url,omitempty" yaml:"icon_url,omitempty"`
+	// IconEmoji overrides the profile picture and icon_url parameter.
+	// +optional
+	IconEmoji string `json:"icon_emoji,omitempty" yaml:"icon_emoji,omitempty"`
+	// URL to send requests to,
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URL *string `json:"url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the Mattermost URL.
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URLSecret *corev1.SecretKeySelector `json:"url_secret,omitempty" yaml:"url_secret,omitempty"`
+	// Attachments defines richer formatting options
+	// +optional
+	Attachments []*MattermostAttachment `json:"attachments,omitempty" yaml:"attachments,omitempty"`
+	// +optional
+	Props *MattermostProps `json:"props,omitempty" yaml:"props,omitempty"`
+	// +optional
+	Priority *MattermostPriority `json:"priority,omitempty" yaml:"priority,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
+}
+
+func (c *MattermostConfig) validate() error {
+	if c.URLSecret == nil && c.URL == nil {
+		return fmt.Errorf("url_secret or url must be configured")
+	}
+	if c.URLSecret != nil && c.URL != nil {
+		return fmt.Errorf("at most one of url_secret or url must be configured")
+	}
+	if err := c.HTTPConfig.validate(); err != nil {
+		return fmt.Errorf("incorrect http_config: %w", err)
+	}
+	return nil
+}
+
+type MattermostAttachment struct {
+	Fallback   string            `json:"fallback,omitempty" yaml:"fallback,omitempty"`
+	Color      string            `json:"color,omitempty" yaml:"color,omitempty"`
+	Pretext    string            `json:"pretext,omitempty" yaml:"pretext,omitempty"`
+	Text       string            `json:"text,omitempty" yaml:"text,omitempty"`
+	AuthorName string            `json:"author_name,omitempty" yaml:"author_name,omitempty"`
+	AuthorLink string            `json:"author_link,omitempty" yaml:"author_link,omitempty"`
+	AuthorIcon string            `json:"author_icon,omitempty" yaml:"author_icon,omitempty"`
+	Title      string            `json:"title,omitempty" yaml:"title,omitempty"`
+	TitleLink  string            `json:"title_link,omitempty" yaml:"title_link,omitempty"`
+	Fields     []MattermostField `json:"fields,omitempty" yaml:"fields,omitempty"`
+	ThumbURL   string            `json:"thumb_url,omitempty" yaml:"thumb_url,omitempty"`
+	Footer     string            `json:"footer,omitempty" yaml:"footer,omitempty"`
+	FooterIcon string            `json:"footer_icon,omitempty" yaml:"footer_icon,omitempty"`
+	ImageURL   string            `json:"image_url,omitempty" yaml:"image_url,omitempty"`
+}
+
+type MattermostField struct {
+	Title string `json:"title,omitempty" yaml:"title,omitempty"`
+	Value string `json:"value,omitempty" yaml:"value,omitempty"`
+	Short bool   `json:"short,omitempty" yaml:"short,omitempty"`
+}
+
+type MattermostProps struct {
+	Card *string `json:"card,omitempty" yaml:"card,omitempty"`
+}
+
+type MattermostPriority struct {
+	Priority                string `json:"priority,omitempty" yaml:"priority,omitempty"`
+	RequestedAck            *bool  `json:"requested_ack,omitempty" yaml:"requested_ack,omitempty"`
+	PersistentNotifications *bool  `json:"persistent_notifications,omitempty" yaml:"persistent_notifications,omitempty"`
+}
+
 // HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
@@ -1196,9 +1708,6 @@ type HTTPConfig struct {
 	// TLS configuration for the client.
 	// +optional
 	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
-	// Optional proxy URL.
-	// +optional
-	ProxyURL string `json:"proxyURL,omitempty" yaml:"proxy_url,omitempty"`
 	// Authorization header configuration for the client.
 	// This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
 	// +optional
@@ -1206,60 +1715,96 @@ type HTTPConfig struct {
 	// OAuth2 client credentials used to fetch a token for the targets.
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// +optional
+	ProxyConfig `json:",inline"`
+}
+
+func (c *HTTPConfig) validateArbitraryFSAccess() error {
+	var props []string
+	if c.BearerTokenFile != "" {
+		props = append(props, "bearerTokenFile")
+	}
+	if c.BasicAuth != nil && c.BasicAuth.PasswordFile != "" {
+		props = append(props, "basicAuth.passwordFile")
+	}
+	if c.OAuth2 != nil && c.OAuth2.ClientSecretFile != "" {
+		props = append(props, "oauth2.clientSecretFile")
+	}
+	if c.Authorization != nil && c.Authorization.CredentialsFile != "" {
+		props = append(props, "authorization.credentialsFile")
+	}
+	props = c.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
+}
+
+// ProxyConfig defines proxy configs
+type ProxyConfig struct {
+	// ProxyUrl defines the HTTP proxy server to use.
+	// +kubebuilder:validation:Pattern:="^(http|https|socks5)://.+$"
+	// +optional
+	ProxyURL string `json:"proxyURL,omitempty" yaml:"proxy_url,omitempty"`
+	// NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
+	// IP and domain names can contain port numbers.
+	// +optional
+	NoProxy string `json:"noProxy,omitempty" yaml:"no_proxy,omitempty"`
+	// ProxyFromEnvironment defines whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY).
+	// +optional
+	ProxyFromEnvironment bool `json:"proxyFromEnvironment,omitempty" yaml:"proxy_from_environment,omitempty"`
+	// ProxyConnectHeader optionally specifies headers to send to proxies during CONNECT requests.
+	// +optional
+	ProxyConnectHeader map[string][]corev1.SecretKeySelector `json:"proxyConnectHeader,omitempty" yaml:"proxy_connect_header,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaller interface
-func (hc *HTTPConfig) UnmarshalJSON(data []byte) error {
+func (c *HTTPConfig) UnmarshalJSON(data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 
-	type phc HTTPConfig
-	if err := decoder.Decode((*phc)(hc)); err != nil {
+	type pc HTTPConfig
+	if err := decoder.Decode((*pc)(c)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (hc *HTTPConfig) validate() error {
-	if hc == nil {
+func (c *HTTPConfig) validate() error {
+	if c == nil {
 		return nil
 	}
-
-	if (hc.BasicAuth != nil || hc.OAuth2 != nil) && (hc.BearerTokenSecret != nil) {
+	if (c.BasicAuth != nil || c.OAuth2 != nil) && (c.BearerTokenSecret != nil) {
 		return fmt.Errorf("at most one of basicAuth, oauth2, bearerTokenSecret must be configured")
 	}
-
-	if hc.Authorization != nil {
-		if hc.BearerTokenSecret != nil || len(hc.BearerTokenFile) > 0 {
+	if c.Authorization != nil {
+		if c.BearerTokenSecret != nil || len(c.BearerTokenFile) > 0 {
 			return fmt.Errorf("authorization is not compatible with bearer_token_secret and Bearer_token_file")
 		}
-
-		if hc.BasicAuth != nil || hc.OAuth2 != nil {
+		if c.BasicAuth != nil || c.OAuth2 != nil {
 			return fmt.Errorf("at most one of basicAuth, oauth2 & authorization must be configured")
 		}
-
-		if err := hc.Authorization.validate(); err != nil {
+		if err := c.Authorization.validate(); err != nil {
 			return err
 		}
 	}
-
-	if hc.OAuth2 != nil {
-		if hc.BasicAuth != nil {
+	if c.OAuth2 != nil {
+		if c.BasicAuth != nil {
 			return fmt.Errorf("at most one of basicAuth, oauth2 & authorization must be configured")
 		}
-
-		if err := hc.OAuth2.validate(); err != nil {
+		if err := c.OAuth2.validate(); err != nil {
 			return err
 		}
 	}
-
-	if hc.TLSConfig != nil {
-		if err := hc.TLSConfig.Validate(); err != nil {
+	if c.TLSConfig != nil {
+		if err := c.TLSConfig.Validate(); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -1516,10 +2061,10 @@ func validateTimeIntervals(timeIntervals []TimeIntervals) (map[string]struct{}, 
 
 	for idx, ti := range timeIntervals {
 		if err := validateTimeIntervalsEntry(&ti); err != nil {
-			return nil, fmt.Errorf("time interval at idx=%d is invalid: %w", idx, err)
+			return nil, fmt.Errorf("time_intervals[%d]: %w", idx, err)
 		}
 		if _, ok := timeIntervalNames[ti.Name]; ok {
-			return nil, fmt.Errorf("time interval at idx=%d is not unique with name=%q", idx, ti.Name)
+			return nil, fmt.Errorf("time_intervals[%d].name=%q is not unique", idx, ti.Name)
 		}
 		timeIntervalNames[ti.Name] = struct{}{}
 	}
@@ -1564,29 +2109,29 @@ func validateTimeIntervalsEntry(ti *TimeIntervals) error {
 	}
 
 	for i, ti := range ti.TimeIntervals {
-		for _, time := range ti.Times {
+		for j, time := range ti.Times {
 			if err := validateTimeRangeForInterval(time); err != nil {
-				return fmt.Errorf("time range=%q at idx=%d is invalid: %w", time, i, err)
+				return fmt.Errorf("time_intervals[%d].times[%d]: %w", i, j, err)
 			}
 		}
-		for _, weekday := range ti.Weekdays {
+		for j, weekday := range ti.Weekdays {
 			if err := validateWeekDays(weekday); err != nil {
-				return fmt.Errorf("weekday range=%q at idx=%d is invalid: %w", weekday, i, err)
+				return fmt.Errorf("time_intervals[%d].weekdays[%d]: %w", i, j, err)
 			}
 		}
-		for _, dom := range ti.DaysOfMonth {
+		for j, dom := range ti.DaysOfMonth {
 			if err := validateDoM(dom); err != nil {
-				return fmt.Errorf("day of month range=%q at idx=%d is invalid: %w", dom, i, err)
+				return fmt.Errorf("time_intervals[%d].days_of_month[%d]: %w", i, j, err)
 			}
 		}
-		for _, month := range ti.Months {
+		for j, month := range ti.Months {
 			if err := validateMonths(month); err != nil {
-				return fmt.Errorf("month range=%q at idx=%d is invalid: %w", month, i, err)
+				return fmt.Errorf("time_intervals[%d].months[%d]: %w", i, j, err)
 			}
 		}
-		for _, year := range ti.Years {
+		for j, year := range ti.Years {
 			if err := validateYears(year); err != nil {
-				return fmt.Errorf("year range=%q at idx=%d is invalid: %w", year, i, err)
+				return fmt.Errorf("time_intervals[%d].years[%d]: %w", i, j, err)
 			}
 		}
 	}
@@ -1597,306 +2142,96 @@ func validateReceiver(recv Receiver) error {
 	if recv.Name == "" {
 		return fmt.Errorf("name field cannot be empty")
 	}
-
-	for idx, cfg := range recv.EmailConfigs {
-		if cfg.To == "" {
-			return fmt.Errorf("at idx=%d for email_configs required field `to` must be set", idx)
-		}
-
-		if cfg.Smarthost != "" {
-			_, port, err := net.SplitHostPort(cfg.Smarthost)
-			if err != nil {
-				return err
-			}
-			if port == "" {
-				return fmt.Errorf("at idx=%d for email_configs smarthost=%q: port cannot be empty", idx, cfg.Smarthost)
-			}
-		}
-
-		if len(cfg.Headers) > 0 {
-			normalizedHeaders := map[string]struct{}{}
-			for key := range cfg.Headers {
-				normalized := strings.ToLower(key)
-				if _, ok := normalizedHeaders[normalized]; ok {
-					return fmt.Errorf("at idx=%d for email_configs duplicate header %q", idx, normalized)
-				}
-				normalizedHeaders[normalized] = struct{}{}
-			}
-		}
-		if cfg.TLSConfig != nil {
-			if err := cfg.TLSConfig.Validate(); err != nil {
-				return fmt.Errorf("at idx=%d for email_configs invalid tls_config: %w", idx, err)
-			}
+	for i, c := range recv.EmailConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("email_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.PagerDutyConfigs {
-		if cfg.URL != "" {
-			if _, err := url.Parse(cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d pagerduty_configs invalid url=%q: %w", idx, cfg.URL, err)
-			}
-		}
-		if cfg.RoutingKey == nil && cfg.ServiceKey == nil {
-			return fmt.Errorf("at idx=%d pagerduty_configs one of 'routing_key' or 'service_key' must be configured", idx)
-		}
-		if cfg.RoutingKey != nil && cfg.ServiceKey != nil {
-			return fmt.Errorf("at idx=%d pagerduty_configs at most one of 'routing_key' or 'service_key' must be configured", idx)
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for pagerduty_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.PagerDutyConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("pagerduty_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.PushoverConfigs {
-		if cfg.UserKey == nil {
-			return fmt.Errorf("at idx=%d pushover_configs required field 'user_key' must be set", idx)
-		}
-
-		if cfg.Token == nil {
-			return fmt.Errorf("at idx=%d pushover_configs required field 'token' must be set", idx)
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for pushover_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.PushoverConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("pushover_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.SlackConfigs {
-		for _, sa := range cfg.Actions {
-			if sa.Type == "" {
-				return fmt.Errorf("at idx=%d required field 'action.type' for slack actions must be set", idx)
-			}
-			if sa.Text == "" {
-				return fmt.Errorf("at idx=%d required field 'action.text' for slack actions must be set", idx)
-			}
-
-			if sa.URL == "" && sa.Name == "" {
-				return fmt.Errorf("at idx=%d required field 'action.url' or 'action.name' for slack actions must be set", idx)
-			}
-
-			if sa.ConfirmField != nil && sa.ConfirmField.Text == "" {
-				return fmt.Errorf("at idx=%d required field 'confirm_field.text' for slack actions must be set", idx)
-			}
-
-		}
-
-		for _, field := range cfg.Fields {
-			if field.Value == "" {
-				return fmt.Errorf("at idx=%d required field 'value' for slack fields must be set", idx)
-			}
-			if field.Title == "" {
-				return fmt.Errorf("at idx=%d required field 'title' for slack fields must be set", idx)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for slack_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.SlackConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("slack_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.OpsGenieConfigs {
-		for _, responder := range cfg.Responders {
-			if responder.ID == "" && responder.Name == "" && responder.Username == "" {
-				return fmt.Errorf("at idx=%d opsgenie responder must have at least an id, a name or an username defined", idx)
-			}
-
-			switch {
-			case strings.Contains(responder.Type, "{{"):
-				_, err := template.New("").Parse(responder.Type)
-				if err != nil {
-					return fmt.Errorf("responder %v type is not a valid template: %w", responder, err)
-				}
-			case opsgenieTypeMatcher.MatchString(responder.Type):
-			default:
-				return fmt.Errorf("at idx=%d opsgenie_configs responder type=%q doesn't match requirements, want either template or %s", idx, responder.Type, opsgenieTypeMatcher.String())
-			}
-
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for opsgenie_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.OpsGenieConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("opsgenie_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.WebhookConfigs {
-		if cfg.URL == nil && cfg.URLSecret == nil {
-			return fmt.Errorf("at idx=%d of webhook_configs one of 'url' or 'url_secret' must be specified", idx)
-		}
-		if cfg.URL != nil && cfg.URLSecret != nil {
-			return fmt.Errorf("at idx=%d of webhook_configs at most one of 'url' or 'url_secret' must be specified", idx)
-		}
-		if cfg.URL != nil {
-			if _, err := url.Parse(*cfg.URL); err != nil {
-				return fmt.Errorf("invalid 'url': %w", err)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for webhook_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.WebhookConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("webhook_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.VictorOpsConfigs {
-		// from https://github.com/prometheus/alertmanager/blob/a7f9fdadbecbb7e692d2cd8d3334e3d6de1602e1/config/notifiers.go#L497
-		reservedFields := map[string]struct{}{
-			"routing_key":         {},
-			"message_type":        {},
-			"state_message":       {},
-			"entity_display_name": {},
-			"monitoring_tool":     {},
-			"entity_id":           {},
-			"entity_state":        {},
-		}
-
-		if len(cfg.CustomFields) > 0 {
-			for key := range cfg.CustomFields {
-				if _, ok := reservedFields[key]; ok {
-					return fmt.Errorf("at idx=%d of victorops_configs usage of reserved word %q in custom fields", idx, key)
-				}
-			}
-		}
-		if cfg.RoutingKey == "" {
-			return fmt.Errorf("at idx=%d of victorops_configs missing 'routing_key' key", idx)
-		}
-
-		if cfg.APIURL != "" {
-			if _, err := url.Parse(cfg.APIURL); err != nil {
-				return fmt.Errorf("at idx=%d of victorops_configs incorrect api_url=%q: %w", idx, cfg.APIURL, err)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for victorops_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.VictorOpsConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("victorops_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.WeChatConfigs {
-		if cfg.APIURL != "" {
-			if _, err := url.Parse(cfg.APIURL); err != nil {
-				return fmt.Errorf("at idx=%d for wechat_configs incorrect api_url=%q: %w", idx, cfg.APIURL, err)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for wechat_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.WechatConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("wechat_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.TelegramConfigs {
-		if cfg.BotToken == nil {
-			return fmt.Errorf("at idx=%d for telegram_configs required field 'bot_token' must be set", idx)
-		}
-		if cfg.ChatID == 0 {
-			return fmt.Errorf("at idx=%d for telegram_configs required field 'chat_id' must be set", idx)
-		}
-
-		if cfg.ParseMode != "" &&
-			cfg.ParseMode != "Markdown" &&
-			cfg.ParseMode != "MarkdownV2" &&
-			cfg.ParseMode != "HTML" {
-			return fmt.Errorf("at idx=%d unknown parse_mode=%q on telegram_config, must be Markdown, MarkdownV2, HTML or empty string", idx, cfg.ParseMode)
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for telegram_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.TelegramConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("telegram_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.MSTeamsConfigs {
-		if cfg.URL == nil && cfg.URLSecret == nil {
-			return fmt.Errorf("at idx=%d for msteams_configs of webhook_url or webhook_url_secret must be configured", idx)
-		}
-
-		if cfg.URL != nil && cfg.URLSecret != nil {
-			return fmt.Errorf("at idx=%d for msteams_configs at most one of webhook_url or webhook_url_secret must be configured", idx)
-		}
-		if cfg.URL != nil {
-			if _, err := url.Parse(*cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d for msteams_configs has invalid webhook_url=%q", idx, *cfg.URL)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for msteams_configs incorrect http_config: %w", idx, err)
+	for i, c := range recv.MattermostConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("mattermost_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, cfg := range recv.DiscordConfigs {
-		if cfg.URL == nil && cfg.URLSecret == nil {
-			return fmt.Errorf("at idx=%d for discord_configs of webhook_url or webhook_url_secret must be configured", idx)
-		}
-
-		if cfg.URL != nil && cfg.URLSecret != nil {
-			return fmt.Errorf("at idx=%d for discord_configs at most one of webhook_url or webhook_url_secret must be configured", idx)
-		}
-		if cfg.URL != nil {
-			if _, err := url.Parse(*cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d for discord_configs has invalid webhook_url=%q", idx, *cfg.URL)
-			}
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for discord_configs incorrect http_config: %w", idx, err)
+	for idx, c := range recv.MSTeamsConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("msteams_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, cfg := range recv.SNSConfigs {
-		if cfg.TargetArn == "" && cfg.TopicArn == "" && cfg.PhoneNumber == "" {
-			return fmt.Errorf("at idx=%d for sns_configs one of target_arn, topic_arn or phone_number fields must be set", idx)
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for sns_configs incorrect http_config: %w", idx, err)
+	for idx, c := range recv.DiscordConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("discord_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, cfg := range recv.WebexConfigs {
-		if cfg.URL != nil && *cfg.URL != "" {
-			if _, err := url.Parse(*cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d for webex_configs incorrect url=%q: %w", idx, *cfg.URL, err)
-			}
-		}
-		if cfg.RoomId == "" {
-			return fmt.Errorf("at idx=%d for webex_configs missing required field 'room_id'", idx)
-		}
-		if cfg.HTTPConfig == nil || cfg.HTTPConfig.Authorization == nil {
-			return fmt.Errorf("at idx=%d for webex_configs missing http_config.authorization configuration", idx)
-		}
-		if err := cfg.HTTPConfig.Authorization.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for webex_configs incorrect http_config.authorization: %w", idx, err)
-		}
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for webex_configs incorrect http_config: %w", idx, err)
+	for idx, c := range recv.SNSConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("sns_configs[%d]: %w", idx, err)
 		}
 	}
-
-	for idx, cfg := range recv.JiraConfigs {
-		if cfg.APIURL != nil && *cfg.APIURL != "" {
-			if _, err := url.Parse(*cfg.APIURL); err != nil {
-				return fmt.Errorf("at idx=%d for jira_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
-			}
-		}
-		if cfg.Project == "" {
-			return fmt.Errorf("at idx=%d for jira_configs missing required field 'project'", idx)
-		}
-		if cfg.IssueType == "" {
-			return fmt.Errorf("at idx=%d for jira_configs missing required field 'issue_type'", idx)
+	for idx, c := range recv.WebexConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("webex_configs[%d]: %w", idx, err)
 		}
 	}
-
-	for idx, cfg := range recv.IncidentIOConfigs {
-		if len(cfg.URL) != 0 {
-			if _, err := url.Parse(cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d for incidentio_configs incorrect url=%q: %w", idx, cfg.URL, err)
-			}
+	for idx, c := range recv.JiraConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("jira_configs[%d]: %w", idx, err)
 		}
 	}
-
-	for idx, cfg := range recv.RocketchatConfigs {
-		if cfg.APIURL != nil && *cfg.APIURL != "" {
-			if _, err := url.Parse(*cfg.APIURL); err != nil {
-				return fmt.Errorf("at idx=%d for rocketchat_configs incorrect url=%q: %w", idx, *cfg.APIURL, err)
-			}
+	for idx, c := range recv.IncidentioConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("incidentio_configs[%d]: %w", idx, err)
 		}
 	}
-
-	for idx, cfg := range recv.MSTeamsV2Configs {
-		if cfg.URL == nil && cfg.URLSecret == nil {
-			return fmt.Errorf("at idx=%d for msteamsv2_configs of webhook_url or webhook_url_secret must be configured", idx)
-		}
-
-		if cfg.URL != nil && cfg.URLSecret != nil {
-			return fmt.Errorf("at idx=%d for msteamsv2_configs at most one of webhook_url or webhook_url_secret must be configured", idx)
-		}
-		if cfg.URL != nil {
-			if _, err := url.Parse(*cfg.URL); err != nil {
-				return fmt.Errorf("at idx=%d for msteamsv2_configs has invalid webhook_url=%q", idx, *cfg.URL)
-			}
-		}
-
-		if err := cfg.HTTPConfig.validate(); err != nil {
-			return fmt.Errorf("at idx=%d for msteamsv2_configs incorrect http_config: %w", idx, err)
+	for idx, c := range recv.RocketchatConfigs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("rocketchat_configs[%d]: %w", idx, err)
 		}
 	}
-
+	for idx, c := range recv.MSTeamsV2Configs {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("msteamsv2_configs[%d]: %w", idx, err)
+		}
+	}
 	return nil
 }
 

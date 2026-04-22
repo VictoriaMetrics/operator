@@ -37,7 +37,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): introduce `VMAnomalyConfig` CRD to enable dynamic configuration and hot-reload support starting from VMAnomaly version `1.25.0`.
-
+* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): introduce arbitrary fs access feature for VMAlertmanager. See [#899](https://github.com/VictoriaMetrics/operator/issues/899)
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
 
 * BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).
@@ -83,6 +83,7 @@ aliases:
 * FEATURE: [vmprobe](https://docs.victoriametrics.com/operator/resources/vmprobe/): added `spec.targets.kubernetes` property, that allows to configure probe for `ingress`, `pod` and `service` roles. See [#1078](https://github.com/VictoriaMetrics/operator/issues/1078) and [#1716](https://github.com/VictoriaMetrics/operator/issues/1716).
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): added nomad_sd_config support. See [#1809](https://github.com/VictoriaMetrics/operator/issues/1809).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support VPA for vmcluster, vtcluster, vlcluster and vmauth. See [#1795](https://github.com/VictoriaMetrics/operator/issues/1795). Thanks to the @dctrwatson for the pull request [#1803](https://github.com/VictoriaMetrics/operator/pull/1803).
+* FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): added kuma_sd_config, hetzner_sd_config, eureka_sd_confiig, puppetdb_sd_config and vultr_sd_config support.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): previously the operator requested `nodes/proxy` RBAC permissions even though vmagent did not use them; now this permission is no longer required, reducing the default privilege footprint for users running vmagent. See [#1753](https://github.com/VictoriaMetrics/operator/issues/1753).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): throw error if no notifiers found. See [#1757](https://github.com/VictoriaMetrics/operator/issues/1757).

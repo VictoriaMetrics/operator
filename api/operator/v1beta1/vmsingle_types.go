@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -374,6 +375,20 @@ func (cr *VMSingle) Validate() error {
 	if cr.Spec.VMBackup != nil {
 		if err := cr.Spec.VMBackup.validate(cr.Spec.License); err != nil {
 			return err
+		}
+	}
+	scrapeClassNames := sets.New[string]()
+	defaultScrapeClass := false
+	for _, sc := range cr.Spec.ScrapeClasses {
+		if scrapeClassNames.Has(sc.Name) {
+			return fmt.Errorf("duplicated scrapeClass=%q", sc.Name)
+		}
+		scrapeClassNames.Insert(sc.Name)
+		if ptr.Deref(sc.Default, false) {
+			if defaultScrapeClass {
+				return fmt.Errorf("multiple default scrape classes defined")
+			}
+			defaultScrapeClass = true
 		}
 	}
 	if cr.Spec.StorageDataPath != "" {

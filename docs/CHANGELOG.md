@@ -20,6 +20,7 @@ aliases:
 **Update note 3**: made `controller.prometheusCRD.resyncPeriod` command line flag noop, which was relevant to Prometheus object watchers.
 **Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
 **Update note 5**: new flag was introduced, so VMAnomaly pods will be recreated. VMAnomaly version should be at least 1.25.
+**Update note 6**: fixed port name collision in VMSingle and VMCluster, when VMBackup is enabled. To avoid VMSingle/VMCluster pods recreation set `VM_USE_OLD_BACKUP_RESTORE_PORT_NAMES` environment variable to `true`.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0).
@@ -57,6 +58,7 @@ aliases:
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): use default stub, when no VMAuth backends are available
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use volume from spec.volumes as persistent queue volume if its name is `persistent-queue-data`, previously emptyDir was mounted. See [#1677](https://github.com/VictoriaMetrics/operator/issues/1677).
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): use volume from spec.vmstorage.volumes and spec.vmselect.volumes as data and cache volumes if its name is `vmstorage-db` and `vmselect-cachedir` respectively. See [#784](https://github.com/VictoriaMetrics/operator/issues/784).
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/) and [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): renamed vmbackup and vmrestore port names, before they had identical to storage/single port names, which is not allowed.
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): updated scraping implementation to match vmagent functionality.
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)

@@ -866,7 +866,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				})},
 			},
 			envs: map[string]string{
-				"VM_LOOPBACK": "localhost",
+				"VM_LOOPBACK":                          "localhost",
+				"VM_USE_OLD_BACKUP_RESTORE_PORT_NAMES": "true",
 			},
 		},
 		// nolint:dupl

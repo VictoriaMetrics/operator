@@ -688,21 +688,17 @@ func (cr *VTCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	if cr.Spec.Storage == nil || cr.Spec.Storage.ReplicaCount == nil {
 		return result
 	}
-	maintenanceNodes := make(map[int32]struct{})
+	maintenanceNodes := sets.New[int32]()
 	switch requestsType {
 	case "select":
-		for _, i := range cr.Spec.Storage.MaintenanceSelectNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceSelectNodeIDs...)
 	case "insert":
-		for _, i := range cr.Spec.Storage.MaintenanceInsertNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceInsertNodeIDs...)
 	default:
 		panic("BUG unsupported requestsType: " + requestsType)
 	}
 	for i := int32(0); i < *cr.Spec.Storage.ReplicaCount; i++ {
-		if _, ok := maintenanceNodes[i]; ok {
+		if maintenanceNodes.Has(i) {
 			continue
 		}
 		result = append(result, i)

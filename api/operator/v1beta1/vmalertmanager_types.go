@@ -206,6 +206,11 @@ type VMAlertmanagerSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// ArbitraryFSAccessThroughSMs configures whether configuration
+	// can contain paths to arbitrary files on the file system
+	// e.g bearer token files, basic auth password files, tls certs file paths
+	// +optional
+	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
@@ -591,9 +596,9 @@ type VMAlertmanagerTracingConfig struct {
 	// TLSConfig defines tracing TLS config
 	// +optional
 	TLSConfig *TLSClientConfig `json:"tls_config,omitempty"`
-	// HTTPHeaders defines custom HTTP headers for tracing
+	// Headers defines custom HTTP headers for tracing
 	// +optional
-	HTTPHeaders map[string]string `json:"http_headers,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 	// Compression defines compression algorithm for tracing
 	// +optional
 	Compression string `json:"compression,omitempty"`

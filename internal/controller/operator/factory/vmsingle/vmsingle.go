@@ -95,7 +95,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
@@ -686,7 +686,16 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	owner := cr.AsOwner()
-	for kind, secret := range ac.GetOutput() {
+	secrets := ac.GetOutput()
+	keys := make([]build.ResourceKind, 0, len(secrets))
+	for kind := range secrets {
+		keys = append(keys, kind)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	for _, kind := range keys {
+		secret := secrets[kind]
 		var prevSecretMeta *metav1.ObjectMeta
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))

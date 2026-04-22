@@ -12,6 +12,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type ScrapeClass struct {
+	// name of the scrape class.
+	//
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	Name string `json:"name"`
+
+	// default defines that the scrape applies to all scrape objects that
+	// don't configure an explicit scrape class name.
+	//
+	// Only one scrape class can be set as the default.
+	//
+	// +optional
+	Default *bool `json:"default,omitempty"`
+
+	EndpointAuth        `json:",inline"`
+	EndpointRelabelings `json:",inline"`
+
+	// AttachMetadata defines additional metadata to the discovered targets.
+	// When the scrape object defines its own configuration, it takes
+	// precedence over the scrape class configuration.
+	// +optional
+	AttachMetadata *AttachMetadata `json:"attachMetadata,omitempty"`
+}
+
 // AttachMetadata configures metadata attachment
 type AttachMetadata struct {
 	// Node instructs vmagent or vmsingle to add node specific metadata from service discovery
@@ -47,7 +72,7 @@ type VMScrapeParams struct {
 	// ProxyClientConfig configures proxy auth settings for scraping
 	// See feature description https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-targets-via-a-proxy
 	// +optional
-	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+	ProxyClientConfig *ProxyClientConfig `json:"proxy_client_config,omitempty"`
 	// Headers allows sending custom headers to scrape targets
 	// must be in of semicolon separated header with it's value
 	// eg:
@@ -57,16 +82,55 @@ type VMScrapeParams struct {
 	Headers []string `json:"headers,omitempty"`
 }
 
-// ProxyAuth represent proxy auth config
-// Only VictoriaMetrics scrapers supports it.
-// See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
-type ProxyAuth struct {
-	BasicAuth       *BasicAuth                `json:"basic_auth,omitempty"`
-	BearerToken     *corev1.SecretKeySelector `json:"bearer_token,omitempty"`
-	BearerTokenFile string                    `json:"bearer_token_file,omitempty"`
+// ProxyClientConfig represent proxy client config
+type ProxyClientConfig struct {
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// BasicAuth allows proxy to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
+	// Secret to mount to read bearer token for scraping targets proxy auth. The secret
+	// needs to be in the same namespace as the scrape object and accessible by
+	// the victoria-metrics operator.
+	// +optional
+	// +nullable
+	BearerToken *corev1.SecretKeySelector `json:"bearer_token,omitempty"`
+	// BearerTokenFile defines file to read bearer token from for proxy auth.
+	// +optional
+	BearerTokenFile string `json:"bearer_token_file,omitempty"`
+	// TLSConfig configuration to use when scraping the endpoint
+	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
+	// Authorization with http header Authorization
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
+}
+
+func (c *ProxyClientConfig) validateArbitraryFSAccess() error {
+	if c == nil {
+		return nil
+	}
+	var props []string
+	if c.BearerTokenFile != "" {
+		props = append(props, "bearer_token_file")
+	}
+	if c.BasicAuth != nil && c.BasicAuth.PasswordFile != "" {
+		props = append(props, "basic_auth.passwordFile")
+	}
+	if c.OAuth2 != nil && c.OAuth2.ClientSecretFile != "" {
+		props = append(props, "oauth2.clientSecretFile")
+	}
+	if c.Authorization != nil && c.Authorization.CredentialsFile != "" {
+		props = append(props, "authorization.credentialsFile")
+	}
+	props = c.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
 }
 
 // OAuth2 defines OAuth2 configuration
@@ -121,7 +185,7 @@ func (o *OAuth2) validate() error {
 		return fmt.Errorf("cannot specify both Secret and ConfigMap for client_id field")
 	}
 	if o.TLSConfig != nil {
-		if err := o.validate(); err != nil {
+		if err := o.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("invalid tls_config: %w", err)
 		}
 	}
@@ -245,7 +309,7 @@ func (rc *RelabelConfig) IsEmpty() bool {
 	return reflect.DeepEqual(*rc, RelabelConfig{})
 }
 
-// ScrapeTargetParams defines common configuration params for all scrape endpoint targets
+// EndpointScrapeParams defines common configuration params for all scrape endpoint targets
 type EndpointScrapeParams struct {
 	// HTTP path to scrape for metrics.
 	// +optional
@@ -292,6 +356,19 @@ type EndpointScrapeParams struct {
 	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+	EndpointAuth   `json:",inline"`
+}
+
+func (p *EndpointScrapeParams) ValidateArbitraryFSAccess() error {
+	if err := p.validateArbitraryFSAccess(); err != nil {
+		return fmt.Errorf("endpoint auth contains prohibited properties for arbitrary filesystem access mode: %w", err)
+	}
+	if p.VMScrapeParams != nil {
+		if err := p.VMScrapeParams.ProxyClientConfig.validateArbitraryFSAccess(); err != nil {
+			return fmt.Errorf("endpoint proxy auth contains prohibited properties for arbitrary filesystem access mode: %w", err)
+		}
+	}
+	return nil
 }
 
 // EndpointAuth defines target endpoint authorization options for scrapping
@@ -317,6 +394,41 @@ type EndpointAuth struct {
 	// Authorization with http header Authorization
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
+}
+
+func (a *EndpointAuth) validateArbitraryFSAccess() error {
+	var props []string
+	if a.BearerTokenFile != "" {
+		props = append(props, "bearerTokenFile")
+	}
+	if a.BasicAuth != nil && a.BasicAuth.PasswordFile != "" {
+		props = append(props, "basicAuth.passwordFile")
+	}
+	if a.OAuth2 != nil && a.OAuth2.ClientSecretFile != "" {
+		props = append(props, "oauth2.clientSecretFile")
+	}
+	if a.Authorization != nil && a.Authorization.CredentialsFile != "" {
+		props = append(props, "authorization.credentialsFile")
+	}
+	if a.TLSConfig != nil {
+		tls := a.TLSConfig
+		if err := tls.Validate(); err != nil {
+			return err
+		}
+		if tls.CAFile != "" {
+			props = append(props, "tlsConfig.caFile")
+		}
+		if tls.CertFile != "" {
+			props = append(props, "tlsConfig.certFile")
+		}
+		if tls.KeyFile != "" {
+			props = append(props, "tlsConfig.keyFile")
+		}
+	}
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
 }
 
 // EndpointRelabelings defines service discovery and metrics relabeling configuration for endpoints

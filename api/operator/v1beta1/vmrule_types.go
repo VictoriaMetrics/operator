@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
@@ -165,7 +166,7 @@ func (cr *VMRule) Validate() error {
 			panic(fmt.Sprintf("cannot init vmalert templates for validation: %s", err))
 		}
 	})
-	uniqNames := make(map[string]struct{})
+	uniqNames := sets.New[string]()
 	var totalSize int
 	for i := range cr.Spec.Groups {
 		// make a copy
@@ -179,10 +180,10 @@ func (cr *VMRule) Validate() error {
 			group.Tenant = ""
 		}
 		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", cr.Namespace, cr.Name, group.Name)
-		if _, ok := uniqNames[group.Name]; ok {
+		if uniqNames.Has(group.Name) {
 			return fmt.Errorf("duplicate group name: %s", errContext)
 		}
-		uniqNames[group.Name] = struct{}{}
+		uniqNames.Insert(group.Name)
 		groupBytes, err := yaml.Marshal(group)
 		if err != nil {
 			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)

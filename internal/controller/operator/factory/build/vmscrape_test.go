@@ -299,9 +299,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 					Path:   "/metrics",
 					Params: map[string][]string{"authKey": {"some-access-key"}},
 					Scheme: "https",
-				},
-				EndpointAuth: vmv1beta1.EndpointAuth{
-					TLSConfig: &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
+					},
 				},
 				Port: "http",
 			}},

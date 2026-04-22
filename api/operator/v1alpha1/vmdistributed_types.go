@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -438,9 +439,9 @@ func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
 
 // Validate validates the VMDistributed resource
 func (cr *VMDistributed) Validate() error {
-	zones := make(map[string]struct{})
-	clusters := make(map[string]struct{})
-	agents := make(map[string]struct{})
+	zones := sets.New[string]()
+	clusters := sets.New[string]()
+	agents := sets.New[string]()
 	spec := cr.Spec
 	hasCommonVMInsert := cr.Spec.ZoneCommon.VMCluster.Spec.VMInsert != nil
 	hasCommonVMSelect := cr.Spec.ZoneCommon.VMCluster.Spec.VMSelect != nil
@@ -449,23 +450,23 @@ func (cr *VMDistributed) Validate() error {
 		if len(zone.Name) == 0 {
 			return fmt.Errorf("spec.zones[%d].name is required", i)
 		}
-		if _, ok := zones[zone.Name]; ok {
+		if zones.Has(zone.Name) {
 			return fmt.Errorf("spec.zones[%d].name=%s is duplicated, zone names must be unique", i, zone.Name)
 		}
-		zones[zone.Name] = struct{}{}
+		zones.Insert(zone.Name)
 		clusterName := zone.VMClusterName(cr)
 		agentName := zone.VMAgentName(cr)
 		if len(clusterName) > 0 {
-			if _, ok := clusters[clusterName]; ok {
+			if clusters.Has(clusterName) {
 				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
 			}
-			clusters[clusterName] = struct{}{}
+			clusters.Insert(clusterName)
 		}
 		if len(agentName) > 0 {
-			if _, ok := agents[agentName]; ok {
+			if agents.Has(agentName) {
 				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
 			}
-			agents[agentName] = struct{}{}
+			agents.Insert(agentName)
 		}
 		if zone.VMAgent.Spec.StatefulMode {
 			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {

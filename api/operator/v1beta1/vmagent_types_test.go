@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
 func TestVMAgent_Validate(t *testing.T) {
@@ -54,6 +55,28 @@ func TestVMAgent_Validate(t *testing.T) {
 		},
 	}, false)
 
+	// duplicate scrape class names
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "class-a"},
+				{Name: "class-a"},
+			},
+		},
+	}, true)
+
+	// multiple default scrape classes
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "class-a", Default: ptr.To(true)},
+				{Name: "class-b", Default: ptr.To(true)},
+			},
+		},
+	}, true)
+
 	// relabeling with if array
 	f(VMAgentSpec{
 		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
@@ -69,4 +92,37 @@ func TestVMAgent_Validate(t *testing.T) {
 			},
 		},
 	}, false)
+
+	// single default scrape class - valid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "default", Default: ptr.To(true)},
+				{Name: "other"},
+			},
+		},
+	}, false)
+
+	// multiple default scrape classes - invalid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "default", Default: ptr.To(true)},
+				{Name: "other", Default: ptr.To(true)},
+			},
+		},
+	}, true)
+
+	// duplicated scrape class names - invalid
+	f(VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonScrapeParams: CommonScrapeParams{
+			ScrapeClasses: []ScrapeClass{
+				{Name: "cls"},
+				{Name: "cls"},
+			},
+		},
+	}, true)
 }

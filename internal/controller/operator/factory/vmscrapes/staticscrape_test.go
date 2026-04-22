@@ -181,7 +181,7 @@ relabel_configs:
 								ScrapeAlignInterval: ptr.To("5s"),
 								StreamParse:         ptr.To(true),
 								Headers:             []string{"customer-header: with-value"},
-								ProxyClientConfig: &vmv1beta1.ProxyAuth{
+								ProxyClientConfig: &vmv1beta1.ProxyClientConfig{
 									BasicAuth: &vmv1beta1.BasicAuth{
 										Username: corev1.SecretKeySelector{
 											Key:                  "username",
@@ -194,38 +194,38 @@ relabel_configs:
 									},
 								},
 							},
-						},
-						EndpointAuth: vmv1beta1.EndpointAuth{
-							TLSConfig: &vmv1beta1.TLSConfig{
-								CA: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-									Key:                  "ca",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
-								}},
-								CertFile: "/tmp/cert-part",
-								KeySecret: &corev1.SecretKeySelector{
-									Key:                  "key",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
+							EndpointAuth: vmv1beta1.EndpointAuth{
+								TLSConfig: &vmv1beta1.TLSConfig{
+									CA: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+										Key:                  "ca",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
+									}},
+									CertFile: "/tmp/cert-part",
+									KeySecret: &corev1.SecretKeySelector{
+										Key:                  "key",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cfg"},
+									},
+									InsecureSkipVerify: true,
 								},
-								InsecureSkipVerify: true,
-							},
-							BasicAuth: &vmv1beta1.BasicAuth{
-								Username: corev1.SecretKeySelector{
-									Key:                  "username",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+								BasicAuth: &vmv1beta1.BasicAuth{
+									Username: corev1.SecretKeySelector{
+										Key:                  "username",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+									},
+									Password: corev1.SecretKeySelector{
+										Key:                  "password",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+									},
 								},
-								Password: corev1.SecretKeySelector{
-									Key:                  "password",
-									LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"},
+								BearerTokenSecret: &corev1.SecretKeySelector{
+									Key:                  "token",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
 								},
-							},
-							BearerTokenSecret: &corev1.SecretKeySelector{
-								Key:                  "token",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
-							},
-							OAuth2: &vmv1beta1.OAuth2{
-								ClientSecret: &corev1.SecretKeySelector{Key: "client-s", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
-								ClientID: vmv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{Key: "client-id", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
+								OAuth2: &vmv1beta1.OAuth2{
+									ClientSecret: &corev1.SecretKeySelector{Key: "client-s", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
+									ClientID: vmv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{Key: "client-id", LocalObjectReference: corev1.LocalObjectReference{Name: "oauth-2s"}},
+									},
 								},
 							},
 						},

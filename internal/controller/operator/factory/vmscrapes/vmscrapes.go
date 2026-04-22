@@ -22,35 +22,6 @@ const (
 	kubeNodeEnvTemplate = "%{" + vmv1beta1.KubeNodeEnvName + "}"
 )
 
-// TODO: @f41gh7 validate VMScrapeParams
-func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
-	if e.BearerTokenFile != "" {
-		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
-	}
-	if e.BasicAuth != nil && e.BasicAuth.PasswordFile != "" {
-		return fmt.Errorf("it accesses file system via basicAuth password file which VMAgent specification prohibits")
-	}
-
-	if e.OAuth2 != nil && e.OAuth2.ClientSecretFile != "" {
-		return fmt.Errorf("it accesses file system via oauth2 client secret file which VMAgent specification prohibits")
-	}
-
-	tlsConf := e.TLSConfig
-	if tlsConf == nil {
-		return nil
-	}
-
-	if err := e.TLSConfig.Validate(); err != nil {
-		return err
-	}
-
-	if tlsConf.CAFile != "" || tlsConf.CertFile != "" || tlsConf.KeyFile != "" {
-		return fmt.Errorf("it accesses file system via tls config which VMAgent specification prohibits")
-	}
-
-	return nil
-}
-
 func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, sp *vmv1beta1.CommonScrapeParams) {
 	if dst.ScrapeInterval == "" {
 		dst.ScrapeInterval = dst.Interval
@@ -443,7 +414,7 @@ func buildVMScrapeParams(namespace string, cfg *vmv1beta1.VMScrapeParams, ac *bu
 		r = append(r, yaml.MapItem{Key: "headers", Value: cfg.Headers})
 	}
 	if cfg.ProxyClientConfig != nil {
-		if c, err := ac.ProxyAuthToYAML(namespace, cfg.ProxyClientConfig); err != nil {
+		if c, err := ac.ProxyClientConfigToYAML(namespace, cfg.ProxyClientConfig); err != nil {
 			return nil, err
 		} else if len(c) > 0 {
 			r = append(r, c...)

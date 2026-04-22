@@ -5,7 +5,6 @@ import (
 	"maps"
 	"math/rand"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -642,8 +642,8 @@ func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
 // Validate - validates config on best effort.
 func (boc BaseOperatorConf) validate() error {
 	for _, ns := range boc.WatchNamespaces {
-		if !validNamespaceRegex.MatchString(ns) {
-			return fmt.Errorf("namespace=%q doesn't match regex=%q", ns, validNamespaceRegex.String())
+		if msgs := validation.IsDNS1123Label(ns); len(msgs) > 0 {
+			return fmt.Errorf("namespace=%q is not a valid DNS label: %s", ns, msgs[0])
 		}
 	}
 	validateResource := func(name string, res Resource) error {
@@ -777,8 +777,6 @@ func GetLocalhost() string {
 	}
 	return "127.0.0.1"
 }
-
-var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
 
 // IsClusterWideAccessAllowed checks if cluster wide access for components is needed
 func IsClusterWideAccessAllowed() bool {

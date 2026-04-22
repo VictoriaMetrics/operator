@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -333,13 +334,13 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		crMounts = append(crMounts, cmVolumeMount)
 	}
 
-	volumeByName := make(map[string]struct{})
+	volumeByName := sets.New[string]()
 	for _, t := range cr.Spec.Templates {
 		// Deduplicate configmaps by name
-		if _, ok := volumeByName[t.Name]; ok {
+		if volumeByName.Has(t.Name) {
 			continue
 		}
-		volumeByName[t.Name] = struct{}{}
+		volumeByName.Insert(t.Name)
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("templates-" + t.Name),
 			VolumeSource: corev1.VolumeSource{

@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -228,14 +229,14 @@ func deduplicateRules(ctx context.Context, origin []*vmv1beta1.VMRule) []*vmv1be
 	// deduplicate rules across groups.
 	for _, vmRule := range origin {
 		for i, grp := range vmRule.Spec.Groups {
-			uniqRules := make(map[uint64]struct{})
+			uniqRules := sets.New[uint64]()
 			rules := make([]vmv1beta1.Rule, 0, len(grp.Rules))
 			for _, rule := range grp.Rules {
 				ruleID := calculateRuleID(rule)
-				if _, ok := uniqRules[ruleID]; ok {
+				if uniqRules.Has(ruleID) {
 					logger.WithContext(ctx).Info(fmt.Sprintf("duplicate rule=%q found at group=%q for vmrule=%q", rule.Expr, grp.Name, vmRule.Name))
 				} else {
-					uniqRules[ruleID] = struct{}{}
+					uniqRules.Insert(ruleID)
 					rules = append(rules, rule)
 				}
 			}

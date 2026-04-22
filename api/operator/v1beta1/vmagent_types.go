@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -197,10 +198,10 @@ func (cr *VMAgent) Validate() error {
 			return err
 		}
 	}
-	scrapeClassNames := make(map[string]struct{})
+	scrapeClassNames := sets.New[string]()
 	defaultScrapeClass := false
 	for _, sc := range cr.Spec.ScrapeClasses {
-		if _, ok := scrapeClassNames[sc.Name]; ok {
+		if scrapeClassNames.Has(sc.Name) {
 			return fmt.Errorf("duplicated scrapeClass=%q", sc.Name)
 		}
 		if ptr.Deref(sc.Default, false) {
@@ -223,6 +224,7 @@ func (cr *VMAgent) Validate() error {
 		if err := sc.validate(); err != nil {
 			return fmt.Errorf("incorrect relabeling for scrapeClass=%q: %w", sc.Name, err)
 		}
+		scrapeClassNames.Insert(sc.Name)
 	}
 	return nil
 }

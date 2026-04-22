@@ -621,14 +621,14 @@ func getMetricsServerMTLSOpts() ([]func(*tls.Config), error) {
 }
 
 func flagsAsMetrics(registry metrics.RegistererGatherer, flagSet *flag.FlagSet) {
-	isSetMap := make(map[string]struct{})
+	isSetMap := sets.New[string]()
 	flagSet.Visit(func(f *flag.Flag) {
-		isSetMap[f.Name] = struct{}{}
+		isSetMap.Insert(f.Name)
 	})
 	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "flag", Help: "defines provided flags for the operator"}, []string{"name", "value", "is_set"})
 	flagSet.VisitAll(func(f *flag.Flag) {
 		isSetStr := "false"
-		if _, isSet := isSetMap[f.Name]; isSet {
+		if isSetMap.Has(f.Name) {
 			isSetStr = "true"
 		}
 		m.WithLabelValues(f.Name, f.Value.String(), isSetStr).Set(1)

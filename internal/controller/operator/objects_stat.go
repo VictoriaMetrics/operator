@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -16,19 +17,19 @@ var (
 
 type objectCollector struct {
 	mu                  sync.Mutex
-	objectsByController map[string]map[string]struct{}
+	objectsByController map[string]sets.Set[string]
 }
 
 func (oc *objectCollector) register(name, ns, controller string) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
-	oc.objectsByController[controller][ns+"/"+name] = struct{}{}
+	oc.objectsByController[controller].Insert(ns + "/" + name)
 }
 
 func (oc *objectCollector) deRegister(name, ns, controller string) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
-	delete(oc.objectsByController[controller], ns+"/"+name)
+	oc.objectsByController[controller].Delete(ns + "/" + name)
 }
 
 func (oc *objectCollector) countByController(controller string) float64 {
@@ -38,12 +39,12 @@ func (oc *objectCollector) countByController(controller string) float64 {
 	if !ok {
 		panic(fmt.Sprintf("BUG, controller: %s is not registered", controller))
 	}
-	return float64(len(objects))
+	return float64(objects.Len())
 }
 
 func newCollector() *objectCollector {
 	oc := &objectCollector{
-		objectsByController: map[string]map[string]struct{}{},
+		objectsByController: map[string]sets.Set[string]{},
 	}
 	registeredObjects := []string{
 		"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth", "vlogs", "vlsingle",
@@ -53,7 +54,7 @@ func newCollector() *objectCollector {
 		"alertmanagerconfig", "probe", "scrapeconfig", "vmanomalyconfig",
 	}
 	for _, controller := range registeredObjects {
-		oc.objectsByController[controller] = map[string]struct{}{}
+		oc.objectsByController[controller] = sets.New[string]()
 	}
 	registry := metrics.Registry
 	instrumentMetric := func(controller string) prometheus.GaugeFunc {

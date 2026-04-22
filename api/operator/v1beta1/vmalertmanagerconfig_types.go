@@ -36,6 +36,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
@@ -217,12 +218,12 @@ func (r *VMAlertmanagerConfig) Validate() error {
 	if MustSkipCRValidation(r) {
 		return nil
 	}
-	receivers := make(map[string]struct{})
+	receivers := sets.New[string]()
 	for idx, recv := range r.Spec.Receivers {
-		if _, ok := receivers[recv.Name]; ok {
+		if receivers.Has(recv.Name) {
 			return fmt.Errorf("notification config name %q is not unique", recv.Name)
 		}
-		receivers[recv.Name] = struct{}{}
+		receivers.Insert(recv.Name)
 		if err := validateReceiver(recv); err != nil {
 			return fmt.Errorf("receivers[%d]: %w", idx, err)
 		}
@@ -2056,17 +2057,17 @@ func parseTime(in string) (mins int, err error) {
 	return mins, nil
 }
 
-func validateTimeIntervals(timeIntervals []TimeIntervals) (map[string]struct{}, error) {
-	timeIntervalNames := make(map[string]struct{}, len(timeIntervals))
+func validateTimeIntervals(timeIntervals []TimeIntervals) (sets.Set[string], error) {
+	timeIntervalNames := sets.New[string]()
 
 	for idx, ti := range timeIntervals {
 		if err := validateTimeIntervalsEntry(&ti); err != nil {
 			return nil, fmt.Errorf("time_intervals[%d]: %w", idx, err)
 		}
-		if _, ok := timeIntervalNames[ti.Name]; ok {
+		if timeIntervalNames.Has(ti.Name) {
 			return nil, fmt.Errorf("time_intervals[%d].name=%q is not unique", idx, ti.Name)
 		}
-		timeIntervalNames[ti.Name] = struct{}{}
+		timeIntervalNames.Insert(ti.Name)
 	}
 	return timeIntervalNames, nil
 }
@@ -2077,21 +2078,21 @@ var opsgenieTypeMatcher = regexp.MustCompile(opsgenieValidTypesRe)
 
 // checkRouteReceiver returns an error if a node in the routing tree
 // references a receiver not in the given map.
-func checkRouteReceiver(r *SubRoute, receivers map[string]struct{}, tiNames map[string]struct{}) error {
+func checkRouteReceiver(r *SubRoute, receivers sets.Set[string], tiNames sets.Set[string]) error {
 	for _, ti := range r.ActiveTimeIntervals {
-		if _, ok := tiNames[ti]; !ok {
+		if !tiNames.Has(ti) {
 			return fmt.Errorf("undefined time interval %q used in route", ti)
 		}
 	}
 	for _, ti := range r.MuteTimeIntervals {
-		if _, ok := tiNames[ti]; !ok {
+		if !tiNames.Has(ti) {
 			return fmt.Errorf("undefined time interval %q used in route", ti)
 		}
 	}
 	if r.Receiver == "" {
 		return nil
 	}
-	if _, ok := receivers[r.Receiver]; !ok {
+	if !receivers.Has(r.Receiver) {
 		return fmt.Errorf("undefined receiver %q used in route", r.Receiver)
 	}
 	for idx, sr := range r.Routes {

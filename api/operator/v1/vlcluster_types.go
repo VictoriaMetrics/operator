@@ -777,21 +777,17 @@ func (cr *VLCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	if cr.Spec.VLStorage == nil || cr.Spec.VLStorage.ReplicaCount == nil {
 		return result
 	}
-	maintenanceNodes := make(map[int32]struct{})
+	maintenanceNodes := sets.New[int32]()
 	switch requestsType {
 	case "select":
-		for _, i := range cr.Spec.VLStorage.MaintenanceSelectNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.VLStorage.MaintenanceSelectNodeIDs...)
 	case "insert":
-		for _, i := range cr.Spec.VLStorage.MaintenanceInsertNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.VLStorage.MaintenanceInsertNodeIDs...)
 	default:
 		panic("BUG unsupported requestsType: " + requestsType)
 	}
 	for i := int32(0); i < *cr.Spec.VLStorage.ReplicaCount; i++ {
-		if _, ok := maintenanceNodes[i]; ok {
+		if maintenanceNodes.Has(i) {
 			continue
 		}
 		result = append(result, i)

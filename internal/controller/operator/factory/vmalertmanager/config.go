@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -279,13 +280,13 @@ func (r *rawValue) reset() {
 
 func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSlice, error) {
 	var r []yaml.MapSlice
-	timeIntervalNameList := map[string]struct{}{}
+	timeIntervalNameList := sets.New[string]()
 	tis := cr.Spec.TimeIntervals
 	for _, mti := range tis {
-		if _, ok := timeIntervalNameList[mti.Name]; ok {
+		if timeIntervalNameList.Has(mti.Name) {
 			return r, fmt.Errorf("got duplicate timeInterval name %s", mti.Name)
 		}
-		timeIntervalNameList[mti.Name] = struct{}{}
+		timeIntervalNameList.Insert(mti.Name)
 		if len(mti.TimeIntervals) == 0 {
 			continue
 		}

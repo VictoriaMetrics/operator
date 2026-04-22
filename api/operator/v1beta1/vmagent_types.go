@@ -225,6 +225,7 @@ func (cr *VMAgent) Validate() error {
 		if err := sc.validate(); err != nil {
 			return fmt.Errorf("incorrect relabeling for scrapeClass=%q: %w", sc.Name, err)
 		}
+		scrapeClassNames.Insert(sc.Name)
 	}
 	return nil
 }

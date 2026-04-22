@@ -10,6 +10,8 @@ entries:
     package: victoriametrics-operator
     name: beta
     entries:
+      - name: victoriametrics-operator.v0.69.0
+        replaces: victoriametrics-operator.v0.68.4
       - name: victoriametrics-operator.v0.68.4
         replaces: victoriametrics-operator.v0.68.3
       - name: victoriametrics-operator.v0.68.3

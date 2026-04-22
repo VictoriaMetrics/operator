@@ -121,7 +121,7 @@ func (o *OAuth2) validate() error {
 		return fmt.Errorf("cannot specify both Secret and ConfigMap for client_id field")
 	}
 	if o.TLSConfig != nil {
-		if err := o.validate(); err != nil {
+		if err := o.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("invalid tls_config: %w", err)
 		}
 	}

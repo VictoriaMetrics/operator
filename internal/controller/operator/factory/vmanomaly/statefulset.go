@@ -2,7 +2,6 @@ package vmanomaly
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -253,8 +253,8 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			}
 		}
 	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if err := utilerrors.NewAggregate(errs); err != nil {
+		return err
 	}
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err

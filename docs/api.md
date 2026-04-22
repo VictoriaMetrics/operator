@@ -1359,7 +1359,7 @@ in the vmagent container. Those secrets would then be sent with a scrape
 request by vmagent to a malicious target. Denying the above would prevent the
 attack, users can instead use the BearerTokenSecret field.
 
-Appears in: [CommonScrapeParams](#commonscrapeparams), [CommonScrapeSecurityEnforcements](#commonscrapesecurityenforcements), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [CommonScrapeParams](#commonscrapeparams), [CommonScrapeSecurityEnforcements](#commonscrapesecurityenforcements), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAuthSpec](#vmauthspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -3998,6 +3998,7 @@ Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 | Field | Description |
 | --- | --- |
 | affinity<a href="#vmauthspec-affinity" id="vmauthspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
+| arbitraryFSAccessThroughSMs<a href="#vmauthspec-arbitraryfsaccessthroughsms" id="vmauthspec-arbitraryfsaccessthroughsms">#</a><br/>_[ArbitraryFSAccessThroughSMsConfig](#arbitraryfsaccessthroughsmsconfig)_ | _(Optional)_<br/>ArbitraryFSAccessThroughSMs configures whether configuration<br />can contain paths to arbitrary files on the file system<br />e.g bearer token files, basic auth password files, tls certs file paths |
 | componentVersion<a href="#vmauthspec-componentversion" id="vmauthspec-componentversion">#</a><br/>_string_ | _(Optional)_<br/>ComponentVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
 | configMaps<a href="#vmauthspec-configmaps" id="vmauthspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
 | configReloadAuthKeySecret<a href="#vmauthspec-configreloadauthkeysecret" id="vmauthspec-configreloadauthkeysecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.<br />Given secret reference will be added to the application and vm-config-reloader as volume<br />available since v0.57.0 version |

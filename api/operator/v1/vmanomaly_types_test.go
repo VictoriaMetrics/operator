@@ -1,4 +1,4 @@
-package v1beta1
+package v1
 
 import (
 	"testing"
@@ -6,68 +6,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
-func TestVMAlertmanagerValidate(t *testing.T) {
+func TestVMAnomaly_FinalLabels(t *testing.T) {
 	type opts struct {
-		cr      *VMAlertmanager
-		wantErr bool
-	}
-	f := func(o opts) {
-		t.Helper()
-		if o.wantErr {
-			assert.Error(t, o.cr.Validate())
-		} else {
-			assert.NoError(t, o.cr.Validate())
-		}
-	}
-
-	// config file with bad syntax
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ConfigRawYaml: `
-global:
- resolve_timeout: 10m
- group_wait: 1s`,
-			},
-		},
-		wantErr: true,
-	})
-
-	// config with correct syntax
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ConfigRawYaml: `
-global:
-  resolve_timeout: 5m
-route:
-  group_wait: 10s
-  group_interval: 2m
-  group_by: ["alertgroup", "resource_id"]
-  repeat_interval: 12h
-  receiver: 'blackhole'
-receivers:
-  # by default route to dev/null
-  - name: blackhole`,
-			},
-		},
-	})
-}
-
-func TestVMAlertmanager_FinalLabels(t *testing.T) {
-	type opts struct {
-		cr           *VMAlertmanager
+		cr           *VMAnomaly
 		commonLabels map[string]string
 		want         map[string]string
 	}
@@ -82,9 +27,9 @@ func TestVMAlertmanager_FinalLabels(t *testing.T) {
 
 	// no common labels
 	f(opts{
-		cr: &VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		cr: &VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 		want: map[string]string{
-			"app.kubernetes.io/name":      "vmalertmanager",
+			"app.kubernetes.io/name":      "vmanomaly",
 			"app.kubernetes.io/instance":  "test",
 			"app.kubernetes.io/component": "monitoring",
 			"managed-by":                  "vm-operator",
@@ -92,10 +37,10 @@ func TestVMAlertmanager_FinalLabels(t *testing.T) {
 	})
 	// common labels added
 	f(opts{
-		cr:           &VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		cr:           &VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 		commonLabels: map[string]string{"team": "platform"},
 		want: map[string]string{
-			"app.kubernetes.io/name":      "vmalertmanager",
+			"app.kubernetes.io/name":      "vmanomaly",
 			"app.kubernetes.io/instance":  "test",
 			"app.kubernetes.io/component": "monitoring",
 			"managed-by":                  "vm-operator",
@@ -104,10 +49,10 @@ func TestVMAlertmanager_FinalLabels(t *testing.T) {
 	})
 	// common labels cannot override existing
 	f(opts{
-		cr:           &VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		cr:           &VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 		commonLabels: map[string]string{"managed-by": "intruder", "team": "platform"},
 		want: map[string]string{
-			"app.kubernetes.io/name":      "vmalertmanager",
+			"app.kubernetes.io/name":      "vmanomaly",
 			"app.kubernetes.io/instance":  "test",
 			"app.kubernetes.io/component": "monitoring",
 			"managed-by":                  "vm-operator",
@@ -116,13 +61,13 @@ func TestVMAlertmanager_FinalLabels(t *testing.T) {
 	})
 	// common labels cannot override managedMetadata
 	f(opts{
-		cr: &VMAlertmanager{
+		cr: &VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{Name: "test"},
-			Spec: VMAlertmanagerSpec{ManagedMetadata: &ManagedObjectsMetadata{Labels: map[string]string{"team": "backend"}}},
+			Spec:       VMAnomalySpec{ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{Labels: map[string]string{"team": "backend"}}},
 		},
 		commonLabels: map[string]string{"team": "intruder", "env": "prod"},
 		want: map[string]string{
-			"app.kubernetes.io/name":      "vmalertmanager",
+			"app.kubernetes.io/name":      "vmanomaly",
 			"app.kubernetes.io/instance":  "test",
 			"app.kubernetes.io/component": "monitoring",
 			"managed-by":                  "vm-operator",
@@ -132,9 +77,9 @@ func TestVMAlertmanager_FinalLabels(t *testing.T) {
 	})
 }
 
-func TestVMAlertmanager_FinalAnnotations(t *testing.T) {
+func TestVMAnomaly_FinalAnnotations(t *testing.T) {
 	type opts struct {
-		cr                *VMAlertmanager
+		cr                *VMAnomaly
 		commonAnnotations map[string]string
 		want              map[string]string
 	}
@@ -148,18 +93,18 @@ func TestVMAlertmanager_FinalAnnotations(t *testing.T) {
 	}
 
 	// no annotations
-	f(opts{cr: &VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, want: nil})
+	f(opts{cr: &VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, want: nil})
 	// common annotations added
 	f(opts{
-		cr:                &VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		cr:                &VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
 		commonAnnotations: map[string]string{"note": "managed-by-gitops"},
 		want:              map[string]string{"note": "managed-by-gitops"},
 	})
 	// common annotations cannot override managedMetadata
 	f(opts{
-		cr: &VMAlertmanager{
+		cr: &VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{Name: "test"},
-			Spec: VMAlertmanagerSpec{ManagedMetadata: &ManagedObjectsMetadata{Annotations: map[string]string{"note": "from-spec"}}},
+			Spec:       VMAnomalySpec{ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{Annotations: map[string]string{"note": "from-spec"}}},
 		},
 		commonAnnotations: map[string]string{"note": "intruder", "extra": "value"},
 		want:              map[string]string{"note": "from-spec", "extra": "value"},

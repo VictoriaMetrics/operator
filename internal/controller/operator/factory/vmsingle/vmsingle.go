@@ -58,8 +58,8 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
-			Annotations:     cr.Spec.StorageMetadata.Annotations,
+			Labels:          labels.Merge(labels.Merge(cr.FinalLabels(), cr.Spec.StorageMetadata.Labels), cr.SelectorLabels()),
+			Annotations:     labels.Merge(cr.FinalAnnotations(), cr.Spec.StorageMetadata.Annotations),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: *cr.Spec.Storage,

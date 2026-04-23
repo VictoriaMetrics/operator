@@ -557,6 +557,9 @@ serviceaccountname: vmauth-auth
 				},
 				Port: "8429",
 			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "victoriametrics/operator:config-reloader-v0.68.3",
+			},
 		},
 	}, `
 volumes:

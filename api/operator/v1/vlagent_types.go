@@ -13,6 +13,8 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 // VLAgentSpec defines the desired state of VLAgent
@@ -360,6 +362,10 @@ func (cr *VLAgent) FinalAnnotations() map[string]string {
 	if cr.Spec.ManagedMetadata != nil {
 		v = labels.Merge(cr.Spec.ManagedMetadata.Annotations, v)
 	}
+	cfg := config.MustGetBaseConfig()
+	if len(cfg.CommonAnnotations) > 0 {
+		v = labels.Merge(cfg.CommonAnnotations, v)
+	}
 	return v
 }
 
@@ -388,6 +394,10 @@ func (cr *VLAgent) FinalLabels() map[string]string {
 	v := cr.SelectorLabels()
 	if cr.Spec.ManagedMetadata != nil {
 		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
+	}
+	cfg := config.MustGetBaseConfig()
+	if len(cfg.CommonLabels) > 0 {
+		v = labels.Merge(cfg.CommonLabels, v)
 	}
 	return v
 }

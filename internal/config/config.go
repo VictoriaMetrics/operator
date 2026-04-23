@@ -623,6 +623,15 @@ type BaseOperatorConf struct {
 	//        - all
 	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
 	EnableStrictSecurity bool `default:"false" env:"VM_ENABLESTRICTSECURITY"`
+
+	// CommonLabels are added to every Kubernetes resource created by the operator.
+	// They cannot override labels already set by the operator or via spec.managedMetadata.
+	// Format: key=value,key2=value2
+	CommonLabels map[string]string `default:"" env:"VM_COMMON_LABELS" envSeparator:"," envKeyValSeparator:"="`
+	// CommonAnnotations are added to every Kubernetes resource created by the operator.
+	// They cannot override annotations already set by the operator or via spec.managedMetadata.
+	// Format: key=value,key2=value2
+	CommonAnnotations map[string]string `default:"" env:"VM_COMMON_ANNOTATIONS" envSeparator:"," envKeyValSeparator:"="`
 }
 
 // ResyncAfterDuration returns requeue duration for object period reconcile
@@ -818,6 +827,7 @@ func (labels *Labels) Set(value string) error {
 	labels.LabelsString = value
 	return nil
 }
+
 
 // ConfigAsMetrics exposes major configuration params as prometheus metrics
 func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {

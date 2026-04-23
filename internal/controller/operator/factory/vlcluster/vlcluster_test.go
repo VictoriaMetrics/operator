@@ -91,35 +91,86 @@ func TestCreateOrUpdate(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
 			// ensure SA created
 			var sa corev1.ServiceAccount
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.Namespace}, &sa))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.Namespace}, &sa))
 			assert.Nil(t, sa.Annotations)
-			assert.Equal(t, sa.Labels, cr.FinalLabels(vmv1beta1.ClusterComponentRoot))
+			assert.Equal(t, sa.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vlcluster",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 
 			// check insert
 			var dep appsv1.Deployment
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &dep))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt := dep.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9481", "-internalselect.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 			assert.Nil(t, dep.Annotations)
-			assert.Equal(t, dep.Labels, cr.FinalLabels(vmv1beta1.ClusterComponentInsert))
+			assert.Equal(t, dep.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vlinsert",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 
 			// check select
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &dep))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt = dep.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9471", "-internalinsert.disable=true", "-storageNode=vlstorage-base-0.vlstorage-base.default:9491,vlstorage-base-1.vlstorage-base.default:9491"})
 			assert.Nil(t, dep.Annotations)
-			assert.Equal(t, dep.Labels, cr.FinalLabels(vmv1beta1.ClusterComponentSelect))
+			assert.Equal(t, dep.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 
 			// check storage
 			var sts appsv1.StatefulSet
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
 			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 			cnt = sts.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:9491", "-storageDataPath=/vlstorage-data"})
 			assert.Nil(t, sts.Annotations)
-			assert.Equal(t, sts.Labels, cr.FinalLabels(vmv1beta1.ClusterComponentStorage))
+			assert.Equal(t, sts.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vlstorage",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+
+			// check services
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &svc))
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vlinsert",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &svc))
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &svc))
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vlstorage",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 
@@ -144,7 +195,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
 			// check storage
 			var sts appsv1.StatefulSet
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
 			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 			cnt := sts.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-httpListenAddr=:9491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vlstorage-data"})
@@ -180,7 +231,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
 			// check select
 			var d appsv1.Deployment
-			assert.Nil(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &d))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &d))
 			assert.Len(t, d.Spec.Template.Spec.Containers, 1)
 			cnt := d.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, cnt.Args, []string{
@@ -258,9 +309,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vlinsert",
+						"app.kubernetes.io/part-of":   "vlcluster",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -322,9 +379,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(component),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vlselect",
+						"app.kubernetes.io/part-of":   "vlcluster",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -384,9 +447,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(component),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vlstorage",
+						"app.kubernetes.io/part-of":   "vlcluster",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -465,9 +534,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(component),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vlinsert",
+						"app.kubernetes.io/part-of":   "vlcluster",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1000",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -553,6 +628,113 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLClusterSpec{
+				VLSelect: &vmv1.VLSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VLStorage: &vmv1.VLStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vlselect-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, set.Annotations, map[string]string{"controller": "true"})
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLClusterSpec{
+				VLSelect: &vmv1.VLSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VLStorage: &vmv1.VLStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vlselect-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, set.Annotations, map[string]string{"controller": "true"})
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlselect",
+				"app.kubernetes.io/part-of":   "vlcluster",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		}})
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

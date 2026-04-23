@@ -933,6 +933,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	// with vmbackup and additional service ports
@@ -977,6 +979,7 @@ objectmeta:
 spec:
     ports:
         - name: web-rpc
+          protocol: TCP
           port: 8011
           targetport:
             intval: 8011
@@ -1007,6 +1010,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 
@@ -1049,6 +1054,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 ---
 objectmeta:
@@ -1089,6 +1096,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	// with native and extra service
@@ -1133,6 +1142,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 ---
 objectmeta:
@@ -1168,6 +1179,10 @@ spec:
         app.kubernetes.io/name: vmselect
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vmstorage-test
@@ -1207,6 +1222,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	f(&vmv1beta1.VMCluster{
@@ -1251,6 +1268,8 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `)
 	// transit to headless
 	f(&vmv1beta1.VMCluster{
@@ -1309,6 +1328,8 @@ spec:
         managed-by: vm-operator
     clusterip: "None"
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",
@@ -1391,6 +1412,10 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1466,6 +1491,8 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vminsert-test
@@ -1540,6 +1567,10 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 ---
 objectmeta:
@@ -1581,6 +1612,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",
@@ -1656,6 +1689,8 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vminsert-test
@@ -1697,6 +1732,10 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 ---
 objectmeta:
@@ -1740,6 +1779,9 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+    clusterip: "None"
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

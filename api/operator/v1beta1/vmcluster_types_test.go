@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
@@ -120,4 +123,109 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 			},
 		},
 	}, "select", []int32{0, 1, 2})
+}
+
+func TestVMCluster_FinalLabels(t *testing.T) {
+	type opts struct {
+		cr           *VMCluster
+		commonLabels map[string]string
+		want         map[string]string
+	}
+	f := func(o opts) {
+		t.Helper()
+		cfg := config.MustGetBaseConfig()
+		orig := *cfg
+		defer func() { *cfg = orig }()
+		cfg.CommonLabels = o.commonLabels
+		assert.Equal(t, o.want, o.cr.FinalLabels(ClusterComponentStorage))
+	}
+
+	// no common labels
+	f(opts{
+		cr: &VMCluster{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		want: map[string]string{
+			"app.kubernetes.io/name":      "vmstorage",
+			"app.kubernetes.io/instance":  "test",
+			"app.kubernetes.io/component": "monitoring",
+			"managed-by":                  "vm-operator",
+			"app.kubernetes.io/part-of":   "vmcluster",
+		},
+	})
+	// common labels added
+	f(opts{
+		cr:           &VMCluster{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		commonLabels: map[string]string{"team": "platform"},
+		want: map[string]string{
+			"app.kubernetes.io/name":      "vmstorage",
+			"app.kubernetes.io/instance":  "test",
+			"app.kubernetes.io/component": "monitoring",
+			"managed-by":                  "vm-operator",
+			"app.kubernetes.io/part-of":   "vmcluster",
+			"team":                        "platform",
+		},
+	})
+	// common labels cannot override existing
+	f(opts{
+		cr:           &VMCluster{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		commonLabels: map[string]string{"managed-by": "intruder", "team": "platform"},
+		want: map[string]string{
+			"app.kubernetes.io/name":      "vmstorage",
+			"app.kubernetes.io/instance":  "test",
+			"app.kubernetes.io/component": "monitoring",
+			"managed-by":                  "vm-operator",
+			"app.kubernetes.io/part-of":   "vmcluster",
+			"team":                        "platform",
+		},
+	})
+	// common labels cannot override managedMetadata
+	f(opts{
+		cr: &VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test"},
+			Spec:       VMClusterSpec{ManagedMetadata: &ManagedObjectsMetadata{Labels: map[string]string{"team": "backend"}}},
+		},
+		commonLabels: map[string]string{"team": "intruder", "env": "prod"},
+		want: map[string]string{
+			"app.kubernetes.io/name":      "vmstorage",
+			"app.kubernetes.io/instance":  "test",
+			"app.kubernetes.io/component": "monitoring",
+			"managed-by":                  "vm-operator",
+			"app.kubernetes.io/part-of":   "vmcluster",
+			"team":                        "backend",
+			"env":                         "prod",
+		},
+	})
+}
+
+func TestVMCluster_FinalAnnotations(t *testing.T) {
+	type opts struct {
+		cr                *VMCluster
+		commonAnnotations map[string]string
+		want              map[string]string
+	}
+	f := func(o opts) {
+		t.Helper()
+		cfg := config.MustGetBaseConfig()
+		orig := *cfg
+		defer func() { *cfg = orig }()
+		cfg.CommonAnnotations = o.commonAnnotations
+		assert.Equal(t, o.want, o.cr.FinalAnnotations())
+	}
+
+	// no annotations
+	f(opts{cr: &VMCluster{ObjectMeta: metav1.ObjectMeta{Name: "test"}}, want: nil})
+	// common annotations added
+	f(opts{
+		cr:                &VMCluster{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
+		commonAnnotations: map[string]string{"note": "managed-by-gitops"},
+		want:              map[string]string{"note": "managed-by-gitops"},
+	})
+	// common annotations cannot override managedMetadata
+	f(opts{
+		cr: &VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test"},
+			Spec:       VMClusterSpec{ManagedMetadata: &ManagedObjectsMetadata{Annotations: map[string]string{"note": "from-spec"}}},
+		},
+		commonAnnotations: map[string]string{"note": "intruder", "extra": "value"},
+		want:              map[string]string{"note": "from-spec", "extra": "value"},
+	})
 }

@@ -199,6 +199,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		build.AddDefaults(fclient.Scheme())
 		ctx := context.TODO()
 		assert.NoError(t, createOrUpdateService(ctx, fclient, o.cr, nil))
 		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
@@ -231,13 +232,13 @@ func TestCreateOrUpdateService(t *testing.T) {
 				{
 					Name:       "http",
 					Protocol:   "TCP",
-					TargetPort: intstr.FromString(""),
+					TargetPort: intstr.FromInt32(0),
 				},
 				{
 					Name:       "http-alias",
 					Port:       8428,
 					Protocol:   "TCP",
-					TargetPort: intstr.FromString(""),
+					TargetPort: intstr.FromInt32(8428),
 				},
 			}
 			assert.Equal(t, expectedPorts, svc.Spec.Ports)

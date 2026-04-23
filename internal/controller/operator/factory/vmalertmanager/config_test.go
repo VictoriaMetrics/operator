@@ -2197,7 +2197,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			},
 		},
 	})
-	assert.Nil(t, os.Setenv("WATCH_NAMESPACE", "default"))
+	assert.NoError(t, os.Setenv("WATCH_NAMESPACE", "default"))
 }
 
 func TestBuildWebConfig(t *testing.T) {

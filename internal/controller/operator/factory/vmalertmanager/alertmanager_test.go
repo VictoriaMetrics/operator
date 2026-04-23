@@ -14,8 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -23,7 +25,8 @@ import (
 func TestCreateOrUpdateAlertManager(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlertmanager
-		validate          func(set *appsv1.StatefulSet)
+		cfgMutator        func(*config.BaseOperatorConf)
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -33,6 +36,14 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		ctx := context.TODO()
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		err := CreateOrUpdateAlertManager(ctx, o.cr, fclient)
 		if o.wantErr {
 			assert.Error(t, err)
@@ -40,9 +51,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			assert.NoError(t, err)
 		}
 		if o.validate != nil {
-			var got appsv1.StatefulSet
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
-			o.validate(&got)
+			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
@@ -63,7 +72,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
 			assert.Equal(t, set.Name, "vmalertmanager-test-am")
 			assert.Equal(t, set.Spec.Template.Spec.Containers[0].Resources, corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
@@ -82,6 +93,15 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				"managed-by":                  "vm-operator",
 				"main":                        "system",
 			})
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"main":                        "system",
+				"app.kubernetes.io/name":      "vmalertmanager",
+				"app.kubernetes.io/instance":  "test-am",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 
@@ -103,7 +123,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, vmaContainer.Name, "alertmanager")
@@ -141,7 +163,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
 			assert.Equal(t, set.Name, "vmalertmanager-test-am")
 			assert.Len(t, set.Spec.Template.Spec.Volumes, 4)
 			templatesVolume := set.Spec.Template.Spec.Volumes[2]
@@ -179,7 +203,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 
@@ -214,7 +240,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 		},
-		validate: func(set *appsv1.StatefulSet) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
 			assert.Len(t, set.Spec.Template.Spec.Containers, 2)
 			vmaContainer := set.Spec.Template.Spec.Containers[0]
 
@@ -232,6 +260,77 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			}, "unexpected cluster peer arguments found")
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalertmanager",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalertmanager",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalertmanager",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalertmanager",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		}})
 }
 
 func Test_createDefaultAMConfig(t *testing.T) {
@@ -263,7 +362,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		}
 
 		var amcfgs vmv1beta1.VMAlertmanagerConfigList
-		assert.Nil(t, fclient.List(ctx, &amcfgs))
+		assert.NoError(t, fclient.List(ctx, &amcfgs))
 		for _, amcfg := range amcfgs.Items {
 			assert.Equal(t, amcfg.Status.UpdateStatus, vmv1beta1.UpdateStatusOperational)
 		}

@@ -18,6 +18,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -25,6 +26,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VLAgent
+		cfgMutator        func(c *config.BaseOperatorConf)
 		validate          func(set *appsv1.StatefulSet)
 		predefinedObjects []runtime.Object
 	}
@@ -32,6 +34,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
@@ -292,6 +302,71 @@ func TestCreateOrUpdate(t *testing.T) {
 					"client-id":     []byte(`some-id-value`),
 				},
 			},
+		},
+	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels: map[string]string{
+						"env": "prod",
+					},
+					Annotations: map[string]string{
+						"controller": "true",
+					},
+				},
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Equal(t, set.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlagent",
+				"app.kubernetes.io/instance":  "example-agent",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, set.Annotations, map[string]string{
+				"controller": "true",
+			})
+		},
+	})
+
+	// common labels
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent",
+				Namespace: "default",
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{
+				"env": "prod",
+			}
+			c.CommonAnnotations = map[string]string{
+				"controller": "true",
+			}
+		},
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Equal(t, set.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlagent",
+				"app.kubernetes.io/instance":  "example-agent",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, set.Annotations, map[string]string{
+				"controller": "true",
+			})
 		},
 	})
 }

@@ -828,7 +828,6 @@ func (labels *Labels) Set(value string) error {
 	return nil
 }
 
-
 // ConfigAsMetrics exposes major configuration params as prometheus metrics
 func ConfigAsMetrics(r metrics.RegistererGatherer, cfg *BaseOperatorConf) {
 	opts := getEnvOpts()

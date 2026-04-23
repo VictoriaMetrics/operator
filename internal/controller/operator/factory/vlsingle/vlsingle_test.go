@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -23,8 +24,8 @@ import (
 func TestCreateOrUpdateVLSingle(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VLSingle
-		c                 *config.BaseOperatorConf
-		want              *appsv1.Deployment
+		cfgMutator        func(c *config.BaseOperatorConf)
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle)
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}
@@ -32,17 +33,30 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		err := CreateOrUpdate(context.TODO(), fclient, o.cr)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
+		ctx := context.TODO()
+		err := CreateOrUpdate(ctx, fclient, o.cr)
 		if o.wantErr {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)
 		}
+		if o.validate != nil {
+			o.validate(ctx, fclient, o.cr)
+		}
 	}
 
 	// base gen
 	f(opts{
-		c: config.MustGetBaseConfig(),
 		cr: &vmv1.VLSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
@@ -70,12 +84,16 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vlsingle-base", "default"),
 		},
-		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, "vlsingle-base", got.Name)
+			assert.Equal(t, "default", got.Namespace)
+		},
 	})
 
 	// base with specific port
 	f(opts{
-		c: config.MustGetBaseConfig(),
 		cr: &vmv1.VLSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
@@ -105,12 +123,16 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vlsingle-base", "default"),
 		},
-		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, "vlsingle-base", got.Name)
+			assert.Equal(t, "default", got.Namespace)
+		},
 	})
 
 	// with syslog tls config
 	f(opts{
-		c: config.MustGetBaseConfig(),
 		cr: &vmv1.VLSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
@@ -174,9 +196,66 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vlsingle-base", "default"),
 		},
-
-		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vlsingle-base", Namespace: "default"}},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, "vlsingle-base", got.Name)
+			assert.Equal(t, "default", got.Namespace)
+		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1.VLSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLSingleSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, got.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, got.Annotations, map[string]string{"controller": "true"})
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1.VLSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, got.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vlsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, got.Annotations, map[string]string{"controller": "true"})
+		}})
 }
 
 func TestCreateOrUpdateVLSingle_Paused(t *testing.T) {
@@ -206,9 +285,8 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VLSingle
 		c                 *config.BaseOperatorConf
-		want              *corev1.Service
+		validate          func(*corev1.Service)
 		wantErr           bool
-		wantPortsLen      int
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
@@ -228,8 +306,9 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
-		assert.Equal(t, got.Name, o.want.Name)
-		assert.Len(t, got.Spec.Ports, o.wantPortsLen)
+		if o.validate != nil {
+			o.validate(&got)
+		}
 	}
 
 	// base service test
@@ -241,13 +320,18 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		want: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vlsingle-logs-1",
-				Namespace: "default",
-			},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vlsingle-logs-1", svc.Name)
+			assert.Equal(t, "default", svc.Namespace)
+			assert.Len(t, svc.Spec.Ports, 1)
+
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vlsingle",
+				"app.kubernetes.io/instance":  "logs-1",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
-		wantPortsLen: 1,
 	})
 
 	// with extra service nodePort
@@ -267,13 +351,18 @@ func TestCreateOrUpdateVLSingleService(t *testing.T) {
 				},
 			},
 		},
-		want: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vlsingle-logs-1",
-				Namespace: "default",
-			},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vlsingle-logs-1", svc.Name)
+			assert.Equal(t, "default", svc.Namespace)
+			assert.Len(t, svc.Spec.Ports, 1)
+			// verify labels exist and include core operator metadata
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vlsingle",
+				"app.kubernetes.io/instance":  "logs-1",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
-		wantPortsLen: 1,
 		predefinedObjects: []runtime.Object{
 			&corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{

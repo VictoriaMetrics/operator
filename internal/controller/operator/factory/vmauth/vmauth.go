@@ -528,13 +528,13 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	// add user defined routes.
 	spec.Rules = append(spec.Rules, cr.Spec.Ingress.ExtraRules...)
 	spec.TLS = append(spec.TLS, cr.Spec.Ingress.ExtraTLS...)
-	lbls := labels.Merge(cr.Spec.Ingress.Labels, cr.SelectorLabels())
+	lbls := labels.Merge(labels.Merge(cr.FinalLabels(), cr.Spec.Ingress.Labels), cr.SelectorLabels())
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
 			Labels:          lbls,
-			Annotations:     cr.Spec.Ingress.Annotations,
+			Annotations:     labels.Merge(cr.FinalAnnotations(), cr.Spec.Ingress.Annotations),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: spec,

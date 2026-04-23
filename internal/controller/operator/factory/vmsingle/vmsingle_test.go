@@ -158,6 +158,35 @@ func TestCreateOrUpdate(t *testing.T) {
 			}, got.Labels)
 			assert.Equal(t, map[string]string{"controller": "true"}, got.Annotations)
 		}})
+
+	// common labels cannot overwrite standard labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "hacked",
+				"app.kubernetes.io/instance":  "hacked",
+				"app.kubernetes.io/component": "hacked",
+				"managed-by":                  "hacked",
+			}
+		},
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, got.Labels)
+		}})
 }
 
 func TestCreateOrUpdateService(t *testing.T) {

@@ -49,6 +49,11 @@ type VMAuthSpec struct {
 	// with selectAllByDefault: false - selects nothing
 	// +optional
 	SelectAllByDefault bool `json:"selectAllByDefault,omitempty" yaml:"selectAllByDefault,omitempty"`
+	// ArbitraryFSAccessThroughSMs configures whether configuration
+	// can contain paths to arbitrary files on the file system
+	// e.g bearer token files, basic auth password files, tls certs file paths
+	// +optional
+	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 	// UserSelector defines VMUser to be selected for config file generation.
 	// Works in combination with NamespaceSelector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.

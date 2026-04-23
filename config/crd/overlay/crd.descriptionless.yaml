@@ -13671,6 +13671,11 @@ spec:
               affinity:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              arbitraryFSAccessThroughSMs:
+                properties:
+                  deny:
+                    type: boolean
+                type: object
               componentVersion:
                 type: string
               configMaps:
@@ -18294,6 +18299,11 @@ spec:
                                 type: array
                                 x-kubernetes-list-type: atomic
                             type: object
+                        type: object
+                      arbitraryFSAccessThroughSMs:
+                        properties:
+                          deny:
+                            type: boolean
                         type: object
                       componentVersion:
                         type: string

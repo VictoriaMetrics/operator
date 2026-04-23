@@ -123,6 +123,11 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 				return err
 			}
 		}
+		if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
+			if err := user.ValidateArbitraryFSAccess(); err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	toCreateSecrets, toUpdate, err := pos.addAuthCredentialsBuildSecrets(ac)

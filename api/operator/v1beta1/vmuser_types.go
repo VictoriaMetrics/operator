@@ -264,6 +264,15 @@ func (cr *VMUser) PrefixedName() string {
 	return fmt.Sprintf("vmuser-%s", cr.Name)
 }
 
+func (cr *VMUser) ValidateArbitraryFSAccess() error {
+	var props []string
+	props = cr.Spec.TLSConfig.appendForbiddenProperties(props)
+	if len(props) > 0 {
+		return fmt.Errorf("%s are prohibited", strings.Join(props, ", "))
+	}
+	return nil
+}
+
 // PasswordRefAsKey - builds key for passwordRef cache
 func (cr *VMUser) PasswordRefAsKey() string {
 	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.PasswordRef.Name, cr.Spec.PasswordRef.Key)

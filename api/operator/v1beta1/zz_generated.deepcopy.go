@@ -5493,6 +5493,7 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		*out = new(ManagedObjectsMetadata)
 		(*in).DeepCopyInto(*out)
 	}
+	out.ArbitraryFSAccessThroughSMs = in.ArbitraryFSAccessThroughSMs
 	if in.UserSelector != nil {
 		in, out := &in.UserSelector, &out.UserSelector
 		*out = new(metav1.LabelSelector)

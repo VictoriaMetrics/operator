@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
+
 ## [v0.69.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.69.0)
 **Release date:** 22 April 2026
 

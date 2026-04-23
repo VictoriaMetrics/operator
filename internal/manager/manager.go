@@ -525,11 +525,11 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Cli
 			if !k8serrors.IsNotFound(err) {
 				return fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
 			}
-			continue
-		}
-		for _, r := range api.APIResources {
-			if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
-				kinds.Delete(r.Kind)
+		} else {
+			for _, r := range api.APIResources {
+				if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
+					kinds.Delete(r.Kind)
+				}
 			}
 		}
 		disabledControllerNames.Insert(kinds.UnsortedList()...)

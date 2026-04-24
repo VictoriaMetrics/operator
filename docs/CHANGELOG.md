@@ -28,6 +28,7 @@ aliases:
 **Update note 4**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true"` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
 **Update note 5**: new flag was introduced, so VMAnomaly pods will be recreated. VMAnomaly version should be at least 1.25.
 **Update note 6**: fixed port name collision in VMSingle and VMCluster, when VMBackup is enabled. To avoid VMSingle/VMCluster pods recreation set `VM_USE_OLD_BACKUP_RESTORE_PORT_NAMES` environment variable to `true`.
+**Update note 7**: the default VMDistributed `unauthorizedUserAccessSpec` was removed to allow users to decide whether access should be anonymous or authorized. Please check [documentation](https://docs.victoriametrics.com/operator/resources/vmdistributed/#authorization) with examples for unauthorized and authorized access and update your CRs accordingly.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.139.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.139.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0).

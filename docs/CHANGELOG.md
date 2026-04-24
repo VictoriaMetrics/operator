@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
+* FEATURE: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed): introduce `spec.zones[*].trafficMode` property, which allows disable read, write or whole traffic to a zone. See [#1995](https://github.com/VictoriaMetrics/operator/issues/1995).
 
 * BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
 

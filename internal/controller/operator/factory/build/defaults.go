@@ -52,7 +52,6 @@ func AddDefaults(scheme *runtime.Scheme) {
 
 func addVMDistributedDefaults(objI any) {
 	cr := objI.(*vmv1alpha1.VMDistributed)
-
 	if cr.Spec.ZoneCommon.ReadyTimeout == nil {
 		cr.Spec.ZoneCommon.ReadyTimeout = &metav1.Duration{
 			Duration: 5 * time.Minute,
@@ -61,6 +60,12 @@ func addVMDistributedDefaults(objI any) {
 	if cr.Spec.ZoneCommon.UpdatePause == nil {
 		cr.Spec.ZoneCommon.UpdatePause = &metav1.Duration{
 			Duration: 1 * time.Minute,
+		}
+	}
+	for i := range cr.Spec.Zones {
+		z := &cr.Spec.Zones[i]
+		if len(z.TrafficMode) == 0 {
+			z.TrafficMode = vmv1alpha1.VMDistributedTrafficModeReadWrite
 		}
 	}
 	if cr.Spec.License.IsProvided() {

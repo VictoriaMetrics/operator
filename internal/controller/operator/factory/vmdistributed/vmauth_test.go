@@ -160,7 +160,7 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		vmAuth := buildVMAuthLB(cr, o.agents, o.clusters, o.excludeIds...)
+		vmAuth := buildVMAuthLB(cr, o.agents, o.clusters, nil, o.excludeIds...)
 		assert.NotNil(t, vmAuth)
 		assert.Len(t, vmAuth.Spec.DefaultTargetRefs, 2)
 

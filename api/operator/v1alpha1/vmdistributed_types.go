@@ -84,11 +84,23 @@ type VMDistributedZoneCommon struct {
 	UpdatePause *metav1.Duration `json:"updatePause,omitempty"`
 }
 
+type VMDistributedTrafficMode string
+
+const (
+	VMDistributedTrafficModeReadWrite   VMDistributedTrafficMode = "read-write"
+	VMDistributedTrafficModeReadOnly    VMDistributedTrafficMode = "read-only"
+	VMDistributedTrafficModeWriteOnly   VMDistributedTrafficMode = "write-only"
+	VMDistributedTrafficModeMaintenance VMDistributedTrafficMode = "maintenance"
+)
+
 // +k8s:openapi-gen=true
 // VMDistributedZone defines items within a single zone to update.
 type VMDistributedZone struct {
 	// Name defines a name of zone, which can be used in zoneCommon spec as %ZONE%
 	Name string `json:"name"`
+	// TrafficMode defines allowed traffic mode for a zone: read-only, write-only, read-write, maintenance
+	// +kubebuilder:validation:Enum=read-only;write-only;read-write;maintenance
+	TrafficMode VMDistributedTrafficMode `json:"trafficMode,omitempty"`
 	// VMCluster defines a new inline or referencing existing one VMCluster
 	// +optional
 	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`

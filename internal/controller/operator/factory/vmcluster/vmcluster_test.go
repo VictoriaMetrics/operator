@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -387,7 +388,16 @@ func TestCreateOrUpdate(t *testing.T) {
 				VMSelect: &vmv1beta1.VMSelect{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
+						Volumes: []corev1.Volume{{
+							Name: "vmselect-cachedir",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/host/path/cache",
+								},
+							},
+						}},
 					},
+					CacheMountPath: "/cache",
 					VPA: &vmv1beta1.EmbeddedVPA{
 						UpdatePolicy: &vpav1.PodUpdatePolicy{
 							UpdateMode: ptr.To(vpav1.UpdateModeRecreate),
@@ -411,13 +421,17 @@ func TestCreateOrUpdate(t *testing.T) {
 			c.VPAAPIEnabled = true
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
-			var got vpav1.VerticalPodAutoscaler
+			var vpaGot vpav1.VerticalPodAutoscaler
 			component := vmv1beta1.ClusterComponentSelect
-			vpaName := cr.PrefixedName(component)
-			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
-			expected := vpav1.VerticalPodAutoscaler{
+			selectName := cr.PrefixedName(component)
+			nsn := types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      selectName,
+			}
+			assert.NoError(t, rclient.Get(ctx, nsn, &vpaGot))
+			vpaExpected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
+					Name:            selectName,
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
@@ -425,7 +439,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
 					TargetRef: &autoscalingv1.CrossVersionObjectReference{
-						Name:       vpaName,
+						Name:       selectName,
 						Kind:       "StatefulSet",
 						APIVersion: "apps/v1",
 					},
@@ -443,7 +457,18 @@ func TestCreateOrUpdate(t *testing.T) {
 					},
 				},
 			}
-			assert.Equal(t, got, expected)
+			assert.Equal(t, vpaGot, vpaExpected)
+			var stsSelectGot appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, nsn, &stsSelectGot))
+			volumesSelectExpected := []corev1.Volume{{
+				Name: "vmselect-cachedir",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/path/cache",
+					},
+				},
+			}}
+			assert.Equal(t, stsSelectGot.Spec.Template.Spec.Volumes, volumesSelectExpected)
 		},
 	})
 
@@ -455,6 +480,14 @@ func TestCreateOrUpdate(t *testing.T) {
 				VMStorage: &vmv1beta1.VMStorage{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To(int32(0)),
+						Volumes: []corev1.Volume{{
+							Name: "vmstorage-db",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/host/path/storage",
+								},
+							},
+						}},
 					},
 					VPA: &vmv1beta1.EmbeddedVPA{
 						UpdatePolicy: &vpav1.PodUpdatePolicy{
@@ -475,11 +508,15 @@ func TestCreateOrUpdate(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
 			component := vmv1beta1.ClusterComponentStorage
 			var got vpav1.VerticalPodAutoscaler
-			vpaName := cr.PrefixedName(component)
-			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
+			storageName := cr.PrefixedName(component)
+			nsn := types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      storageName,
+			}
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
+					Name:            storageName,
 					Namespace:       cr.Namespace,
 					Labels:          cr.FinalLabels(component),
 					ResourceVersion: "1",
@@ -487,7 +524,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				Spec: vpav1.VerticalPodAutoscalerSpec{
 					TargetRef: &autoscalingv1.CrossVersionObjectReference{
-						Name:       vpaName,
+						Name:       storageName,
 						Kind:       "StatefulSet",
 						APIVersion: "apps/v1",
 					},
@@ -502,6 +539,18 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 			}
 			assert.Equal(t, got, expected)
+
+			var stsStorageGot appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, nsn, &stsStorageGot))
+			volumesStorageExpected := []corev1.Volume{{
+				Name: "vmstorage-db",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/path/storage",
+					},
+				},
+			}}
+			assert.Equal(t, stsStorageGot.Spec.Template.Spec.Volumes, volumesStorageExpected)
 		},
 	})
 

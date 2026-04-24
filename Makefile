@@ -14,6 +14,7 @@ DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
 E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
+E2E_TARGET ?= ./test/e2e/...
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
 
@@ -160,26 +161,18 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-BASE_REF ?= origin/master
-SKIP_UPGRADE_TESTS ?= $(shell if git diff --quiet $(BASE_REF)...HEAD -- test/e2e/upgrade 2>/dev/null; then echo "--skip-package=upgrade"; fi)
-
 test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
-		$(SKIP_UPGRADE_TESTS) \
+		--output-interceptor-mode=none \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
 		-randomize-all \
 		-timeout=60m \
-		-junit-report=report.xml ./test/e2e/...
+		-junit-report=report.xml $(E2E_TARGET)
 
 .PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
-test-e2e-upgrade: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
-		-ldflags="-linkmode=external" \
-		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-randomize-all \
-		-timeout=60m \
-		-junit-report=report.xml ./test/e2e/upgrade/...
+test-e2e-upgrade: E2E_TARGET=./test/e2e/upgrade/...
+test-e2e-upgrade: test-e2e
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -281,7 +274,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 
 olm: operator-sdk opm yq docs
 	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi --format "{{print .Manifest.Digest}}"))
-	rm -rf bundle*
+	rm -rf bundle* catalog
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \
 		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)
@@ -289,17 +282,29 @@ olm: operator-sdk opm yq docs
 		-q --overwrite --version $(VERSION) \
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
-	cp config/manifests/release-config.yaml bundle/$(VERSION)/
-	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
-		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.spec.install.spec.deployments[0].spec.template.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
-		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
-		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
-	$(YQ) -i '.spec.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]' \
+	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)" | .spec.install.spec.deployments[0].spec.template.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)" | .spec.install.spec.deployments[0].spec.template.spec.containers[0].image = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.21"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
+	mkdir -p bundle/$(VERSION)/catalog-templates catalog/latest
+	$(YQ) '.entries[] | select(.schema == "olm.channel") | .entries[] | select(.name != "victoriametrics-operator.v$(VERSION)") | .name' config/manifests/catalog-templates/latest.yaml > /tmp/vm-prev-names.txt
+	$(YQ) '.entries[] | select(.schema == "olm.channel") | .entries[] | select(.name != "victoriametrics-operator.v$(VERSION)") | .replaces | select(.)' config/manifests/catalog-templates/latest.yaml > /tmp/vm-prev-replaces.txt
+	PREV_HEAD=$$(grep -Fxvf /tmp/vm-prev-replaces.txt /tmp/vm-prev-names.txt | head -1); \
+	test -n "$$PREV_HEAD" || { echo "Error: could not determine previous channel head from catalog template"; exit 1; }; \
+	PREV_HEAD="$$PREV_HEAD" $(YQ) -i '(.entries[] | select(.schema == "olm.channel")).entries = [{"name": "victoriametrics-operator.v$(VERSION)", "replaces": strenv(PREV_HEAD)}] + (.entries[] | select(.schema == "olm.channel") | .entries | map(select(.name != "victoriametrics-operator.v$(VERSION)")))' \
+		config/manifests/catalog-templates/latest.yaml; \
+	PREV_HEAD="$$PREV_HEAD" $(YQ) -i '.spec.relatedImages = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}] | .spec.replaces = strenv(PREV_HEAD)' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	cp config/manifests/catalog-templates/latest.yaml bundle/$(VERSION)/catalog-templates/latest.yaml
+	{ $(YQ) '.entries[] | select(.schema == "olm.package")' \
+	      bundle/$(VERSION)/catalog-templates/latest.yaml; \
+	  echo "---"; \
+	  $(YQ) '(.entries[] | select(.schema == "olm.channel")) | .entries = [.entries[0]]' \
+	      bundle/$(VERSION)/catalog-templates/latest.yaml; \
+	  $(OPM) render bundle/$(VERSION) --output=yaml | \
+	      $(YQ) '(select(.schema == "olm.bundle") | .image) = "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)" | (select(.schema == "olm.bundle") | .relatedImages) = [{"name": "victoriametrics-operator", "image": "$(REGISTRY)/$(ORG)/$(REPO)@$(DIGEST)"}]'; \
+	} > catalog/latest/catalog.yaml
+	$(OPM) validate catalog/latest
 
 ##@ Deployment
 

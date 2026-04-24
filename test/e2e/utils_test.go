@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,7 +34,7 @@ func expectPodCount(ctx context.Context, rclient client.Client, obj client.Objec
 	}
 	podsByHash := make(map[string][]corev1.Pod)
 	var labelName, kind string
-	owners := make(map[string]struct{})
+	owners := sets.New[string]()
 	switch obj.(type) {
 	case *appsv1.StatefulSet:
 		labelName = "controller-revision-hash"
@@ -56,9 +57,7 @@ func expectPodCount(ctx context.Context, rclient client.Client, obj client.Objec
 			if ref.Kind != kind {
 				continue
 			}
-			if _, ok := owners[ref.Name]; !ok {
-				owners[ref.Name] = struct{}{}
-			}
+			owners.Insert(ref.Name)
 		}
 		podsByHash[labelValue] = append(podsByHash[labelValue], pod)
 	}

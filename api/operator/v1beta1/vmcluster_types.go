@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -719,21 +720,17 @@ func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.ReplicaCount == nil {
 		return result
 	}
-	maintenanceNodes := make(map[int32]struct{})
+	maintenanceNodes := sets.New[int32]()
 	switch requestsType {
 	case "select":
-		for _, i := range cr.Spec.VMStorage.MaintenanceSelectNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
 	case "insert":
-		for _, i := range cr.Spec.VMStorage.MaintenanceInsertNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
 	default:
 		panic("BUG unsupported requestsType: " + requestsType)
 	}
 	for i := int32(0); i < *cr.Spec.VMStorage.ReplicaCount; i++ {
-		if _, ok := maintenanceNodes[i]; ok {
+		if maintenanceNodes.Has(i) {
 			continue
 		}
 		result = append(result, i)

@@ -2,7 +2,6 @@ package vmanomaly
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"sync"
@@ -12,6 +11,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -158,7 +158,9 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 	}
 	build.StatefulSetAddCommonParams(app, &cr.Spec.CommonAppsParams)
 	app.Spec.Template.Spec.Volumes = append(app.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
-	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec)
+	if err := cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &app.Spec); err != nil {
+		return nil, err
+	}
 	app.Spec.VolumeClaimTemplates = append(app.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 	return app, nil
 }
@@ -263,8 +265,8 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			}
 		}
 	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if err := utilerrors.NewAggregate(errs); err != nil {
+		return err
 	}
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err

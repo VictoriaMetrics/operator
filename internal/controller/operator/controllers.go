@@ -98,6 +98,11 @@ func (pe *parsingError) Error() string {
 		pe.controller, pe.origin)
 }
 
+func isParsingError(err error) bool {
+	var pe *parsingError
+	return errors.As(err, &pe)
+}
+
 // getError could usually occur at following cases:
 // - not enough k8s permissions
 // - object was deleted and due to race condition queue by operator cache
@@ -116,18 +121,41 @@ func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
 
-func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
+func handleReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
 	ctx context.Context,
 	rclient client.Client,
 	object reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
 	originResult ctrl.Result,
 	err error,
 ) (ctrl.Result, error) {
+	result, err := handleReconcileErr(ctx, rclient, object, originResult, err)
+	if isParsingError(err) {
+		if err := reconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
+			logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
+		}
+	}
+	return result, err
+}
+
+func handleReconcileErr(ctx context.Context, rclient client.Client, object client.Object, originResult ctrl.Result, err error) (ctrl.Result, error) {
 	if err == nil {
 		return originResult, nil
 	}
-	var ge *getError
-	var pe *parsingError
+
+	switch e := err.(type) {
+	case *getError:
+		deregisterObjectByCollector(e.requestObject.Name, e.requestObject.Namespace, e.controller)
+		getObjectsErrorsTotal.WithLabelValues(e.controller, e.requestObject.String()).Inc()
+		if k8serrors.IsNotFound(err) {
+			return originResult, nil
+		}
+	case *parsingError:
+		if object != nil && !reflect.ValueOf(object).IsNil() {
+			namespacedName := fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
+			parseObjectErrorsTotal.WithLabelValues(e.controller, namespacedName).Inc()
+		}
+	}
+
 	switch {
 	case errors.Is(err, context.Canceled):
 		contextCancelErrorsTotal.Inc()
@@ -135,29 +163,12 @@ func handleReconcileErr[T client.Object, ST reconcile.StatusWithMetadata[STC], S
 			originResult.RequeueAfter = time.Second * 5
 		}
 		return originResult, nil
-	case errors.As(err, &pe):
-		namespacedName := "unknown"
-		if object != nil && !reflect.ValueOf(object).IsNil() {
-			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
-			if err := reconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
-				logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
-			}
-		}
-		parseObjectErrorsTotal.WithLabelValues(pe.controller, namespacedName).Inc()
-	case errors.As(err, &ge):
-		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
-		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
-		if k8serrors.IsNotFound(err) {
-			return originResult, nil
-		}
 	case k8serrors.IsConflict(err):
-		controller := "unknown"
-		namespacedName := "unknown"
 		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
-			controller = object.GetObjectKind().GroupVersionKind().GroupKind().Kind
-			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
+			controller := object.GetObjectKind().GroupVersionKind().GroupKind().Kind
+			namespacedName := fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
+			conflictErrorsTotal.WithLabelValues(controller, namespacedName).Inc()
 		}
-		conflictErrorsTotal.WithLabelValues(controller, namespacedName).Inc()
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {

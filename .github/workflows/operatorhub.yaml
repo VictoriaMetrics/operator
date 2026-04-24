@@ -38,7 +38,7 @@ jobs:
           repository: ${{ matrix.repo.upstream }}
           ref: main
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: __k8s-operatorhub-repo
+          path: __operatorhub-repo
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -48,15 +48,23 @@ jobs:
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
-          workdir: __k8s-operatorhub-repo
+          workdir: __operatorhub-repo
 
       - uses: dawidd6/action-download-artifact@v11
         with:
           name: olm
-          workflow: main.yaml
+          workflow: release.yaml
           github_token: ${{ secrets.VM_BOT_GH_TOKEN }}
           run_id: ${{ github.event.workflow_run.id }}
           path: bundle
+
+      - name: Install opm
+        run: |
+          OPM_VERSION=v1.65.0
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/linux-amd64-opm
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/checksums.txt
+          grep ' linux-amd64-opm$' checksums.txt | sha256sum -c -
+          install -m 0755 linux-amd64-opm /usr/local/bin/opm
 
       - name: Add operatorhub bundle
         id: update
@@ -65,41 +73,47 @@ jobs:
             echo "No bundle directory found"
             exit 1;
           fi
-          OPERATOR_DIR=__k8s-operatorhub-repo/operators/victoriametrics-operator
-          CATALOGS_DIR=__k8s-operatorhub-repo/catalogs
+          CATALOGS_DIR=__operatorhub-repo/catalogs
+          NEW_VERSION=$(ls bundle | head -1)
+          CATALOG_FILE=${CATALOGS_DIR}/latest/victoriametrics-operator/catalog.yaml
+          mkdir -p ${CATALOGS_DIR}/latest/victoriametrics-operator
 
-          mkdir -p ${CATALOGS_DIR}
-          mkdir -p ${OPERATOR_DIR}
-
-          export OLD_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
-          export OLD_ENTRY="victoriametrics-operator.v${OLD_VERSION}"
-
-          export NEW_VERSION=$(ls bundle | head -1)
-
-          if [ ! -z $OLD_VERSION ]; then
-            export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
-            yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(OLD_VERSION)' $MANIFEST_PATH
+          # Save existing catalog as PREV_CATALOG before overwriting
+          if [ -f "${CATALOG_FILE}" ]; then
+            cp "${CATALOG_FILE}" /tmp/vm-prev-catalog.yaml
+            PREV_CATALOG=/tmp/vm-prev-catalog.yaml
           fi
 
-          mv bundle/* ${OPERATOR_DIR}/
-          if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            if [ ! -z $OLD_VERSION ]; then
-              yq -i -I2 '.catalog_templates.[].replaces = strenv(OLD_ENTRY)' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
-            fi
-          else
-            rm -f ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+          PREVIOUS_VERSION=$(yq 'select(.schema == "olm.channel") | .entries[0].name' \
+            ${PREV_CATALOG} 2>/dev/null || true)
+
+          opm render bundle/${NEW_VERSION} --output=yaml > /tmp/vm-bundle-rendered.yaml
+          yq 'select(.schema == "olm.package")' "${PREV_CATALOG}" > /tmp/vm-catalog-header.yaml
+          echo "---" >> /tmp/vm-catalog-header.yaml
+          yq '.entries[] | select(.schema == "olm.channel")' \
+            bundle/${NEW_VERSION}/catalog-templates/latest.yaml >> /tmp/vm-catalog-header.yaml
+
+          # Include previous bundles from PREV_CATALOG (excludes current version to avoid duplicates)
+          yq "select(.schema == \"olm.bundle\" and .name != \"victoriametrics-operator.v${NEW_VERSION}\")" \
+            "${PREV_CATALOG}" > /tmp/vm-prev-bundles.yaml
+          yq eval-all '.' /tmp/vm-catalog-header.yaml /tmp/vm-bundle-rendered.yaml /tmp/vm-prev-bundles.yaml > ${CATALOG_FILE}
+
+          if [ -n "${PREVIOUS_VERSION}" ]; then
+            yq -i '(select(.schema == "olm.channel") | .entries[0]).replaces = strenv(PREVIOUS_VERSION)' ${CATALOG_FILE}
           fi
+          opm validate ${CATALOGS_DIR}/latest/victoriametrics-operator
+
           echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}
         uses: peter-evans/create-pull-request@v7
         with:
-          add-paths: operators/victoriametrics-operator,catalogs
+          add-paths: catalogs
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
           committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
-          path: __k8s-operatorhub-repo
+          path: __operatorhub-repo
           push-to-fork: ${{ matrix.repo.fork }}
           branch: vm-operator-release-${{ steps.update.outputs.VERSION }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}

@@ -50,7 +50,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	var instance vmv1beta1.VMCluster
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Client.Get(ctx, request.NamespacedName, &instance); err != nil {

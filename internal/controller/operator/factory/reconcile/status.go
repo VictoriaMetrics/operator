@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -39,7 +40,7 @@ func StatusForChildObjects[T any, PT interface {
 	*T
 	objectWithStatus
 }](ctx context.Context, rclient client.Client, parentObjectName string, childObjects []PT) error {
-	var errors []string
+	var errs []error
 
 	n := strings.Split(parentObjectName, ".")
 	if len(n) != 3 {
@@ -63,14 +64,14 @@ func StatusForChildObjects[T any, PT interface {
 		} else {
 			currCound.Status = "False"
 			currCound.Message = st.CurrentSyncError
-			errors = append(errors, fmt.Sprintf("parent=%s config=namespace/name=%s/%s error text: %s", parentObjectName, childObject.GetNamespace(), childObject.GetName(), st.CurrentSyncError))
+			errs = append(errs, fmt.Errorf("parent=%s config=namespace/name=%s/%s error text: %s", parentObjectName, childObject.GetNamespace(), childObject.GetName(), st.CurrentSyncError))
 		}
 		if err := updateChildStatusConditions[T](ctx, rclient, childObject, currCound); err != nil {
 			return err
 		}
 	}
-	if len(errors) > 0 {
-		logger.WithContext(ctx).Error(fmt.Errorf("%s have errors", parentObjectName), fmt.Sprintf("skip config generation for resources: %s", strings.Join(errors, ",")))
+	if aggErr := utilerrors.NewAggregate(errs); aggErr != nil {
+		logger.WithContext(ctx).Error(aggErr, fmt.Sprintf("%s skip config generation for resources", parentObjectName))
 	}
 	return nil
 }

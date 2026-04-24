@@ -30,10 +30,12 @@ import (
 )
 
 type zones struct {
-	httpClient *http.Client
-	vmagents   []*vmv1beta1.VMAgent
-	vmclusters []*vmv1beta1.VMCluster
-	hasChanges []bool
+	httpClient        *http.Client
+	vmagents          []*vmv1beta1.VMAgent
+	vmclusters        []*vmv1beta1.VMCluster
+	hasChanges        []bool
+	trafficModes      []vmv1alpha1.VMDistributedTrafficMode
+	prevAcceptsWrites []bool
 }
 
 func (zs *zones) Len() int {
@@ -66,6 +68,8 @@ func (zs *zones) Swap(i, j int) {
 	zs.vmagents[i], zs.vmagents[j] = zs.vmagents[j], zs.vmagents[i]
 	zs.vmclusters[i], zs.vmclusters[j] = zs.vmclusters[j], zs.vmclusters[i]
 	zs.hasChanges[i], zs.hasChanges[j] = zs.hasChanges[j], zs.hasChanges[i]
+	zs.trafficModes[i], zs.trafficModes[j] = zs.trafficModes[j], zs.trafficModes[i]
+	zs.prevAcceptsWrites[i], zs.prevAcceptsWrites[j] = zs.prevAcceptsWrites[j], zs.prevAcceptsWrites[i]
 }
 
 // getZones builds desired zones
@@ -74,9 +78,11 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		httpClient: &http.Client{
 			Timeout: httpTimeout,
 		},
-		vmagents:   make([]*vmv1beta1.VMAgent, len(cr.Spec.Zones)),
-		vmclusters: make([]*vmv1beta1.VMCluster, len(cr.Spec.Zones)),
-		hasChanges: make([]bool, len(cr.Spec.Zones)),
+		vmagents:          make([]*vmv1beta1.VMAgent, len(cr.Spec.Zones)),
+		vmclusters:        make([]*vmv1beta1.VMCluster, len(cr.Spec.Zones)),
+		hasChanges:        make([]bool, len(cr.Spec.Zones)),
+		trafficModes:      make([]vmv1alpha1.VMDistributedTrafficMode, len(cr.Spec.Zones)),
+		prevAcceptsWrites: make([]bool, len(cr.Spec.Zones)),
 	}
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
@@ -102,8 +108,15 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		prevClusterSpec := vmCluster.Spec
 		vmCluster.Spec = *vmClusterSpec
 		rclient.Scheme().Default(&vmCluster)
+
+		// for maintenance and read-only modes setting VMInsert replicas down to 0 to enable VMAgent buffering
+		if (z.TrafficMode == vmv1alpha1.VMDistributedTrafficModeReadOnly || z.TrafficMode == vmv1alpha1.VMDistributedTrafficModeMaintenance) && vmCluster.Spec.VMInsert != nil {
+			vmCluster.Spec.VMInsert.ReplicaCount = ptr.To(int32(0))
+		}
 		zs.hasChanges[i] = !equality.Semantic.DeepEqual(&vmCluster.Spec, &prevClusterSpec)
 		zs.vmclusters[i] = &vmCluster
+		zs.trafficModes[i] = z.TrafficMode
+		zs.prevAcceptsWrites[i] = prevClusterSpec.VMInsert != nil && ptr.Deref(prevClusterSpec.VMInsert.ReplicaCount, 1) > 0
 	}
 
 	for i := range cr.Spec.Zones {
@@ -195,11 +208,15 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
+	newAcceptsWrites := vmCluster.Spec.VMInsert != nil && ptr.Deref(vmCluster.Spec.VMInsert.ReplicaCount, 1) > 0
+
 	if needsLBUpdate {
-		// wait for empty persistent queue
-		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-		if ctx.Err() != nil {
-			return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty", item, nsnCluster.String())
+		if zs.prevAcceptsWrites[i] {
+			// wait for empty persistent queue before excluding from LB
+			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
+			if ctx.Err() != nil {
+				return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty", item, nsnCluster.String())
+			}
 		}
 
 		// excluding zone from VMAuth LB
@@ -219,10 +236,12 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
 	}
 
-	// wait for empty persistent queue
-	zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-	if ctx.Err() != nil {
-		return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
+	if newAcceptsWrites {
+		// wait for empty persistent queue before restoring in LB
+		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
+		if ctx.Err() != nil {
+			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
+		}
 	}
 
 	// restore zone in VMAuth LB
@@ -238,7 +257,7 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
 		return nil
 	}
-	vmAuth := buildVMAuthLB(cr, zs.vmagents, zs.vmclusters, excludeIds...)
+	vmAuth := buildVMAuthLB(cr, zs.vmagents, zs.vmclusters, zs.trafficModes, excludeIds...)
 	if vmAuth == nil {
 		return nil
 	}

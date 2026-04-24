@@ -27514,6 +27514,13 @@ spec:
                       type: string
                     remoteWrite:
                       x-kubernetes-preserve-unknown-fields: true
+                    trafficMode:
+                      enum:
+                      - read-only
+                      - write-only
+                      - read-write
+                      - maintenance
+                      type: string
                     vmagent:
                       properties:
                         name:

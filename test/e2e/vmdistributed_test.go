@@ -1030,6 +1030,113 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				return nil
 			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
 		})
+
+		It("should correctly migrate zones between traffic modes", func() {
+			nsn.Name = "vmd-traffic-mode"
+
+			zonesCount := 2
+			clusterSpec := vmv1beta1.VMClusterSpec{
+				VMSelect:  &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				VMInsert:  &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+			}
+
+			zs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
+			vmClusters := make([]*vmv1beta1.VMCluster, zonesCount)
+			vmAgents := make([]*vmv1beta1.VMAgent, zonesCount)
+			for i := range zs {
+				objMeta := metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      fmt.Sprintf("%s-%d", nsn.Name, i+1),
+				}
+				zs[i].Name = objMeta.Name
+				zs[i].VMCluster.Name = objMeta.Name
+				zs[i].VMCluster.Spec = clusterSpec
+				zs[i].VMAgent.Name = objMeta.Name
+				vmClusters[i] = &vmv1beta1.VMCluster{ObjectMeta: objMeta, Spec: clusterSpec}
+				vmAgents[i] = &vmv1beta1.VMAgent{ObjectMeta: objMeta, Spec: genVMAgentSpec()}
+			}
+
+			var wg sync.WaitGroup
+			createVMClusters(ctx, &wg, k8sClient, vmClusters...)
+			createVMAgents(ctx, &wg, k8sClient, vmAgents...)
+			createVMAuth(ctx, &wg, k8sClient, nsn.Name, namespace)
+			wg.Wait()
+
+			By("creating VMDistributed with both zones in read-write mode")
+			cr := &vmv1alpha1.VMDistributed{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: nsn.Name},
+				Spec: vmv1alpha1.VMDistributedSpec{
+					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
+						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
+					},
+					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:  zs,
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
+			})
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			zone0NSN := types.NamespacedName{Name: vmClusters[0].Name, Namespace: namespace}
+			zone1NSN := types.NamespacedName{Name: vmClusters[1].Name, Namespace: namespace}
+
+			getInsertReplicas := func(name types.NamespacedName) int32 {
+				GinkgoHelper()
+				var c vmv1beta1.VMCluster
+				Expect(k8sClient.Get(ctx, name, &c)).ToNot(HaveOccurred())
+				if c.Spec.VMInsert == nil {
+					return -1
+				}
+				return ptr.Deref(c.Spec.VMInsert.ReplicaCount, -1)
+			}
+
+			By("verifying both zones start with VMInsert enabled")
+			Expect(getInsertReplicas(zone0NSN)).To(BeEquivalentTo(1))
+			Expect(getInsertReplicas(zone1NSN)).To(BeEquivalentTo(1))
+
+			By("switching zone 0 to read-only mode")
+			Eventually(func() error {
+				var obj vmv1alpha1.VMDistributed
+				if err := k8sClient.Get(ctx, nsn, &obj); err != nil {
+					return err
+				}
+				obj.Spec.Zones[0].TrafficMode = vmv1alpha1.VMDistributedTrafficModeReadOnly
+				return k8sClient.Update(ctx, &obj)
+			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
+
+			By("waiting for VMDistributed to complete read-only transition")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("verifying zone 0 VMInsert is disabled and zone 1 is unchanged")
+			Expect(getInsertReplicas(zone0NSN)).To(BeEquivalentTo(0))
+			Expect(getInsertReplicas(zone1NSN)).To(BeEquivalentTo(1))
+
+			By("switching zone 0 back to read-write mode")
+			Eventually(func() error {
+				var obj vmv1alpha1.VMDistributed
+				if err := k8sClient.Get(ctx, nsn, &obj); err != nil {
+					return err
+				}
+				obj.Spec.Zones[0].TrafficMode = vmv1alpha1.VMDistributedTrafficModeReadWrite
+				return k8sClient.Update(ctx, &obj)
+			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
+
+			By("waiting for VMDistributed to complete read-write transition")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn)
+			}, eventualDistributedExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("verifying zone 0 VMInsert is re-enabled")
+			Expect(getInsertReplicas(zone0NSN)).To(BeEquivalentTo(1))
+		})
 	})
 
 	Context("fail", func() {

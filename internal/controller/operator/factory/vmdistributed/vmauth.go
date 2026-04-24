@@ -78,7 +78,7 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 	ref := vmv1beta1.TargetRef{
 		Name: "write",
 		URLMapCommon: vmv1beta1.URLMapCommon{
-			LoadBalancingPolicy: ptr.To("first_available"),
+			LoadBalancingPolicy: ptr.To("least_loaded"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
 		Paths: []string{"/insert/.+", "/api/v1/write"},

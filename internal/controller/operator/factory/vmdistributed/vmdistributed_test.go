@@ -415,6 +415,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						Kind:    "VMAgent",
 						Objects: vmAgentObjs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("least_loaded"),
+					},
 				},
 				{
 					Name:  "read",
@@ -423,11 +426,13 @@ func TestCreateOrUpdate(t *testing.T) {
 						Kind:    "VMCluster/vmselect",
 						Objects: vmClusterObjs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("first_available"),
+					},
 				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
-				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
 			}
 			var got vmv1beta1.VMAuth
@@ -550,6 +555,9 @@ func TestCreateOrUpdate(t *testing.T) {
 						Kind:    "VMAgent",
 						Objects: vmAgentObjs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("least_loaded"),
+					},
 				},
 				{
 					Name:  "read",
@@ -558,11 +566,13 @@ func TestCreateOrUpdate(t *testing.T) {
 						Kind:    "VMCluster/vmselect",
 						Objects: vmClusterObjs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("first_available"),
+					},
 				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
-				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
 			}
 			var got vmv1beta1.VMAuth
@@ -623,14 +633,19 @@ func TestCreateOrUpdate(t *testing.T) {
 				{
 					Name:  "write",
 					Paths: []string{"/insert/.+", "/api/v1/write"},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("least_loaded"),
+					},
 				},
 				{
 					Name:  "read",
 					Paths: []string{"/select/.+", "/admin/tenants"},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("first_available"),
+					},
 				},
 			}
 			for i := range expectedTargetRefs {
-				expectedTargetRefs[i].LoadBalancingPolicy = ptr.To("first_available")
 				expectedTargetRefs[i].RetryStatusCodes = []int{500, 502, 503}
 				expectedTargetRefs[i].Static = &vmv1beta1.StaticRef{URL: defaultStubAddr}
 			}

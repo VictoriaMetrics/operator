@@ -1001,22 +1001,67 @@ func Test_buildConfig(t *testing.T) {
 				SelectAllByDefault: true,
 				DefaultTargetRefs: []vmv1beta1.TargetRef{
 					{
-						Name: "vminsert",
+						Name: "write",
 						CRD: &vmv1beta1.CRDRef{
-							Kind: "VMCluster/vminsert",
+							Kind: "VMAgent",
 							NamespacedName: vmv1beta1.NamespacedName{
-								Name:      "cluster",
+								Name:      "cache",
 								Namespace: "monitoring",
 							},
 						},
+						Paths: []string{"/insert/.+", "/api/v1/write"},
+						URLMapCommon: vmv1beta1.URLMapCommon{
+							RetryStatusCodes:    []int{500, 502, 503},
+							LoadBalancingPolicy: ptr.To("first_available"),
+						},
 					},
 					{
-						Name: "vmselect",
+						Name: "read",
 						CRD: &vmv1beta1.CRDRef{
 							Kind: "VMCluster/vmselect",
 							NamespacedName: vmv1beta1.NamespacedName{
 								Name:      "cluster",
 								Namespace: "monitoring",
+							},
+						},
+						Paths: []string{"/select/.+", "/admin/tenants"},
+						URLMapCommon: vmv1beta1.URLMapCommon{
+							RetryStatusCodes:    []int{500, 502, 503},
+							LoadBalancingPolicy: ptr.To("first_available"),
+						},
+					},
+				},
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							Name: "write",
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								LoadBalancingPolicy: ptr.To("least_loaded"),
+							},
+						},
+						{
+							Name: "read",
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								LoadBalancingPolicy: ptr.To("least_loaded"),
+							},
+						},
+						{
+							Static: &vmv1beta1.StaticRef{
+								URLs: []string{
+									"http://vmagent-cache-az-1:8429",
+									"http://vmagent-cache-az-2:8429",
+								},
+							},
+							TargetPathSuffix: "/insert/2",
+							Paths: []string{
+								"/vmagent",
+								"/vmagent/.*",
+							},
+							URLMapCommon: vmv1beta1.URLMapCommon{
+								RequestHeaders:         []string{"baz: bar"},
+								RetryStatusCodes:       []int{500, 502, 503},
+								LoadBalancingPolicy:    ptr.To("least_loaded"),
+								DropSrcPathPrefixParts: ptr.To(1),
 							},
 						},
 					},
@@ -1034,6 +1079,12 @@ func Test_buildConfig(t *testing.T) {
 					VMInsert: &vmv1beta1.VMInsert{},
 				},
 			},
+			&vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cache",
+					Namespace: "monitoring",
+				},
+			},
 			&vmv1beta1.VMUser{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "user-1",
@@ -1044,12 +1095,22 @@ func Test_buildConfig(t *testing.T) {
 					BearerToken: ptr.To("secret-token"),
 					TargetRefs: []vmv1beta1.TargetRef{
 						{
-							Name:             "vminsert",
+							Name:             "write",
 							TargetPathSuffix: "/insert/1",
 						},
 						{
-							Name:             "vmselect",
+							Name:             "read",
 							TargetPathSuffix: "/select/1",
+						},
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMCluster/vminsert",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "cluster",
+									Namespace: "monitoring",
+								},
+							},
+							TargetPathSuffix: "/insert/2",
 						},
 					},
 				},
@@ -1058,7 +1119,27 @@ func Test_buildConfig(t *testing.T) {
 		want: `users:
 - url_map:
   - url_prefix:
-    - http://vminsert-cluster.monitoring.svc:8480/insert/1
+    - http://vmagent-cache.monitoring.svc:8429/insert/1
+    src_paths:
+    - /insert/.+
+    - /api/v1/write
+    retry_status_codes:
+    - 500
+    - 502
+    - 503
+    load_balancing_policy: first_available
+  - url_prefix:
+    - http://vmselect-cluster.monitoring.svc:8481/select/1
+    src_paths:
+    - /select/.+
+    - /admin/tenants
+    retry_status_codes:
+    - 500
+    - 502
+    - 503
+    load_balancing_policy: first_available
+  - url_prefix:
+    - http://vminsert-cluster.monitoring.svc:8480/insert/2
     src_paths:
     - /newrelic/.*
     - /opentelemetry/.*
@@ -1066,34 +1147,44 @@ func Test_buildConfig(t *testing.T) {
     - /prometheus/api/v1/import.*
     - /influx/.*
     - /datadog/.*
-  - url_prefix:
-    - http://vmselect-cluster.monitoring.svc:8481/select/1
-    src_paths:
-    - /vmui.*
-    - /vmui.*
-    - /graph.*
-    - /prometheus/graph.*
-    - /prometheus/vmui.*
-    - /prometheus/api/v1/label.*
-    - /prometheus/api/v1/query.*
-    - /prometheus/api/v1/rules
-    - /prometheus/api/v1/alerts
-    - /prometheus/api/v1/metadata
-    - /prometheus/api/v1/series.*
-    - /prometheus/api/v1/status.*
-    - /prometheus/api/v1/export.*
-    - /prometheus/federate
-    - /admin/tenants
-    - /api/v1/status/.*
-    - /api/v1/rules
-    - /internal/resetRollupResultCache
-    - /prometheus/api/v1/admin/.*
-    - /prometheus.*-debug
-    - /prometheus/prettify-query
-    - /prometheus/api/v1/notifiers
-    - /prometheus/api/v1/query_exemplars
   name: user1
   bearer_token: secret-token
+unauthorized_user:
+  url_map:
+  - url_prefix:
+    - http://vmagent-cache.monitoring.svc:8429
+    src_paths:
+    - /insert/.+
+    - /api/v1/write
+    retry_status_codes:
+    - 500
+    - 502
+    - 503
+    load_balancing_policy: least_loaded
+  - url_prefix:
+    - http://vmselect-cluster.monitoring.svc:8481
+    src_paths:
+    - /select/.+
+    - /admin/tenants
+    retry_status_codes:
+    - 500
+    - 502
+    - 503
+    load_balancing_policy: least_loaded
+  - url_prefix:
+    - http://vmagent-cache-az-1:8429/insert/2
+    - http://vmagent-cache-az-2:8429/insert/2
+    src_paths:
+    - /vmagent
+    - /vmagent/.*
+    headers:
+    - 'baz: bar'
+    retry_status_codes:
+    - 500
+    - 502
+    - 503
+    drop_src_path_prefix_parts: 1
+    load_balancing_policy: least_loaded
 `,
 	})
 

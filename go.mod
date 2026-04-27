@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/VictoriaMetrics/VictoriaMetrics v1.140.0
 	github.com/VictoriaMetrics/metrics v1.43.2
-	github.com/VictoriaMetrics/metricsql v0.86.1
+	github.com/VictoriaMetrics/metricsql v0.87.0
 	github.com/VictoriaMetrics/operator/api v0.66.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/cespare/xxhash/v2 v2.3.0

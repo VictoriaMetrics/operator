@@ -1145,6 +1145,12 @@ Appears in: [VMDistributed](#vmdistributed)
 | zoneCommon<a href="#vmdistributedspec-zonecommon" id="vmdistributedspec-zonecommon">#</a><br/>_[VMDistributedZoneCommon](#vmdistributedzonecommon)_ | _(Optional)_<br/>ZoneCommon defines common properties for all zones |
 | zones<a href="#vmdistributedspec-zones" id="vmdistributedspec-zones">#</a><br/>_[VMDistributedZone](#vmdistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
 
+#### VMDistributedTrafficMode
+
+_Underlying type:_ _string_
+
+Appears in: [VMDistributedZone](#vmdistributedzone)
+
 #### VMDistributedZone
 
 VMDistributedZone defines items within a single zone to update.
@@ -1155,6 +1161,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | --- | --- |
 | name<a href="#vmdistributedzone-name" id="vmdistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in zoneCommon spec as %ZONE% |
 | remoteWrite<a href="#vmdistributedzone-remotewrite" id="vmdistributedzone-remotewrite">#</a><br/>_[VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
+| trafficMode<a href="#vmdistributedzone-trafficmode" id="vmdistributedzone-trafficmode">#</a><br/>_[VMDistributedTrafficMode](#vmdistributedtrafficmode)_ | _(Required)_<br/>TrafficMode defines allowed traffic mode for a zone: read-only, write-only, read-write, maintenance |
 | vmagent<a href="#vmdistributedzone-vmagent" id="vmdistributedzone-vmagent">#</a><br/>_[VMDistributedZoneAgent](#vmdistributedzoneagent)_ | _(Optional)_<br/>VMAgent defines VMAgent to balance incoming traffic between VMClusters. |
 | vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
 

@@ -260,9 +260,10 @@ func TestZonesSorting(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		zs := &zones{
-			vmclusters: o.clusters,
-			vmagents:   make([]*vmv1beta1.VMAgent, len(o.clusters)),
-			hasChanges: make([]bool, len(o.clusters)),
+			vmclusters:   o.clusters,
+			vmagents:     make([]*vmv1beta1.VMAgent, len(o.clusters)),
+			hasChanges:   make([]bool, len(o.clusters)),
+			trafficModes: make([]vmv1alpha1.VMDistributedTrafficMode, len(o.clusters)),
 		}
 		for i := range o.clusters {
 			zs.vmagents[i] = &vmv1beta1.VMAgent{

@@ -96,7 +96,7 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 	return ref
 }
 
-func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, excludeIds ...int) *vmv1beta1.VMAuth {
+func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, trafficModes []vmv1alpha1.VMDistributedTrafficMode, excludeIds ...int) *vmv1beta1.VMAuth {
 	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) || build.IsControllerDisabled("VMAuth") {
 		return nil
 	}
@@ -108,10 +108,23 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 		},
 		Spec: *cr.Spec.VMAuth.Spec.DeepCopy(),
 	}
+	writeExcludeIds := slices.Clone(excludeIds)
+	readExcludeIds := slices.Clone(excludeIds)
+	for i, mode := range trafficModes {
+		switch mode {
+		case vmv1alpha1.VMDistributedTrafficModeReadOnly:
+			writeExcludeIds = append(writeExcludeIds, i)
+		case vmv1alpha1.VMDistributedTrafficModeWriteOnly:
+			readExcludeIds = append(readExcludeIds, i)
+		case vmv1alpha1.VMDistributedTrafficModeMaintenance:
+			writeExcludeIds = append(writeExcludeIds, i)
+			readExcludeIds = append(readExcludeIds, i)
+		}
+	}
 	var targetRefs []vmv1beta1.TargetRef
 	owner := cr.AsOwner()
-	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, excludeIds...))
-	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, excludeIds...))
+	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, writeExcludeIds...))
+	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, readExcludeIds...))
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

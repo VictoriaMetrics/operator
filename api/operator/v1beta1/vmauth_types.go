@@ -9,7 +9,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -748,7 +747,7 @@ func (cr *VMAuth) AutomountServiceAccountToken() bool {
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
 func (cr *VMAuth) LastSpecUpdated() bool {
-	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	updated := cr.Status.LastAppliedSpec == nil || !SpecEqualJSON(&cr.Spec, cr.Status.LastAppliedSpec)
 	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 	return updated
 }

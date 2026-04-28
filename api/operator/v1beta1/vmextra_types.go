@@ -1360,6 +1360,16 @@ type ExternalConfig struct {
 	LocalPath string `json:"localPath,omitempty" yaml:"localPath,omitempty"`
 }
 
+// SpecEqualJSON compares two specs of the same type by JSON marshaling.
+// This treats nil and empty maps/slices identically since both are omitted
+// with omitempty, avoiding false positives from in-memory defaulting that
+// converts nil maps to empty ones.
+func SpecEqualJSON[T any](a, b *T) bool {
+	ab, _ := json.Marshal(a)
+	bb, _ := json.Marshal(b)
+	return bytes.Equal(ab, bb)
+}
+
 // StatusMetadata holds metadata of application update status
 // +k8s:openapi-gen=true
 type StatusMetadata struct {

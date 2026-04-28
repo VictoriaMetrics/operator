@@ -7,7 +7,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
@@ -478,7 +477,7 @@ func (*VLAgent) ProbeNeedLiveness() bool {
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
 func (cr *VLAgent) LastSpecUpdated() bool {
-	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)
+	updated := cr.Status.LastAppliedSpec == nil || !vmv1beta1.SpecEqualJSON(&cr.Spec, cr.Status.LastAppliedSpec)
 	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 	return updated
 }

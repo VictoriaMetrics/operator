@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -89,6 +90,23 @@ func TestCreateOrUpdate(t *testing.T) {
 					Name: "httproutes.gateway.networking.k8s.io",
 				},
 			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			wantLabels := map[string]string{
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "test",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, wantLabels, svc.Labels)
+			var secret corev1.Secret
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &secret))
+			assert.Equal(t, wantLabels, secret.Labels)
+			var httpRoute gwapiv1.HTTPRoute
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &httpRoute))
+			assert.Equal(t, wantLabels, httpRoute.Labels)
 		},
 	})
 
@@ -255,9 +273,14 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmauth",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -330,9 +353,14 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: vpaName}, &got))
 			expected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            vpaName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(),
+					Name:      vpaName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmauth",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1000",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -411,6 +439,95 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmauth-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+			var secret corev1.Secret
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &secret))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, secret.Labels)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmauth-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+			var secret corev1.Secret
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &secret))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, secret.Labels)
+		}})
 }
 
 func TestMakeSpecForAuthOk(t *testing.T) {

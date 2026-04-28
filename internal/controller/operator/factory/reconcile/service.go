@@ -23,6 +23,7 @@ import (
 // its users responsibility to define it correctly.
 func Service(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.Service, owner *metav1.OwnerReference) error {
 	svcForReconcile := newObj.DeepCopy()
+	rclient.Scheme().Default(svcForReconcile)
 	return retryOnConflict(func() error {
 		return reconcileService(ctx, rclient, svcForReconcile, prevObj, owner)
 	})

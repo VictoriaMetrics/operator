@@ -2,7 +2,6 @@ package vmalert
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -13,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -23,24 +23,30 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlert
+		cfgMutator        func(*config.BaseOperatorConf)
 		cmNames           []string
 		predefinedObjects []runtime.Object
-		validate          func(*appsv1.Deployment, *corev1.Secret)
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert)
 	}
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
 		err := CreateOrUpdate(ctx, o.cr, fclient, o.cmNames)
 		assert.NoError(t, err)
 
 		if o.validate != nil {
-			var generatedDeploment appsv1.Deployment
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &generatedDeploment))
-			var generatedTLSSecret corev1.Secret
-			tlsSecretName := build.ResourceName(build.TLSAssetsResourceKind, o.cr)
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: tlsSecretName}, &generatedTLSSecret))
-			o.validate(&generatedDeploment, &generatedTLSSecret)
+			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
@@ -95,7 +101,9 @@ func TestCreateOrUpdate(t *testing.T) {
 		predefinedObjects: []runtime.Object{
 			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
-		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var d appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &d))
 			var foundOk bool
 			for _, cnt := range d.Spec.Template.Spec.Containers {
 				if cnt.Name == "vmalert" {
@@ -199,10 +207,27 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
-		validate: func(d *appsv1.Deployment, s *corev1.Secret) {
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var s corev1.Secret
+			tlsSecretName := build.ResourceName(build.TLSAssetsResourceKind, cr)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsSecretName}, &s))
 			assert.NotEmpty(t, s.Data["default_configmap_datasource-tls_ca"])
 			assert.NotEmpty(t, s.Data["default_configmap_datasource-tls_cert"])
 			assert.NotEmpty(t, s.Data["default_datasource-tls_key"])
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "basic-vmalert",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, s.Labels)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "basic-vmalert",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 
@@ -370,6 +395,91 @@ func TestCreateOrUpdate(t *testing.T) {
 			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				Notifier: &vmv1beta1.VMAlertNotifierSpec{
+					URL: "http://notifier",
+				},
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://datasource",
+				},
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				Notifier: &vmv1beta1.VMAlertNotifierSpec{
+					URL: "http://notifier",
+				},
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://datasource",
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var set appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		}})
 }
 
 func TestBuildNotifiers(t *testing.T) {
@@ -525,7 +635,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlert
 		c                 *config.BaseOperatorConf
-		want              func(svc *corev1.Service) error
+		validate          func(svc *corev1.Service)
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
@@ -540,7 +650,9 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, cl.Get(ctx, nsn, &got))
-		assert.NoError(t, o.want(&got))
+		if o.validate != nil {
+			o.validate(&got)
+		}
 	}
 
 	// base test
@@ -552,11 +664,14 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Name:      "base",
 			},
 		},
-		want: func(svc *corev1.Service) error {
-			if svc.Name != "vmalert-base" {
-				return fmt.Errorf("unexpected name for vmalert service: %v", svc.Name)
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vmalert-base", svc.Name)
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmalert",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 }

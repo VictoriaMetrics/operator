@@ -18,6 +18,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -25,6 +26,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VMAnomaly
+		cfgMutator        func(*config.BaseOperatorConf)
 		validate          func(sts *appsv1.StatefulSet, idx int)
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -35,6 +37,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		err := CreateOrUpdate(ctx, o.cr, fclient)
 		if o.wantErr {
 			assert.Error(t, err)
@@ -297,6 +307,126 @@ schedulers:
 			assert.Equal(t, container.LivenessProbe.HTTPGet.Path, expectedPath)
 			assert.Equal(t, container.ReadinessProbe.HTTPGet.Path, expectedPath)
 			assert.Equal(t, set.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchLabels["shard-num"], strconv.Itoa(idx))
+		},
+	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+reader:
+  queries:
+    query_alias2:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['query_alias2']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://test.com",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet, _ int) {
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmanomaly",
+				"app.kubernetes.io/instance":  "test-anomaly",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test-anomaly",
+				Namespace:   "monitoring",
+				Annotations: map[string]string{"not": "touch"},
+				Labels:      map[string]string{"main": "system"},
+			},
+			Spec: vmv1.VMAnomalySpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+reader:
+  queries:
+    query_alias2:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+models:
+  model_univariate_1:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['query_alias2']
+schedulers:
+  scheduler_periodic_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://test.com",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://write.endpoint",
+				},
+			},
+		},
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		validate: func(set *appsv1.StatefulSet, _ int) {
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmanomaly",
+				"app.kubernetes.io/instance":  "test-anomaly",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
 		},
 	})
 }

@@ -48,8 +48,8 @@ func newPVC(r *vmv1.VTSingle) *corev1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            r.PrefixedName(),
 			Namespace:       r.Namespace,
-			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
-			Annotations:     r.Spec.StorageMetadata.Annotations,
+			Labels:          labels.Merge(labels.Merge(r.FinalLabels(), r.Spec.StorageMetadata.Labels), r.SelectorLabels()),
+			Annotations:     labels.Merge(r.FinalAnnotations(), r.Spec.StorageMetadata.Annotations),
 			OwnerReferences: []metav1.OwnerReference{r.AsOwner()},
 		},
 		Spec: *r.Spec.Storage,

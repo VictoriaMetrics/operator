@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -28,6 +29,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
+		cfgMutator        func(*config.BaseOperatorConf)
 		validate          func(ctx context.Context, client client.Client, cr *vmv1beta1.VMAgent)
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -37,6 +39,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		err := CreateOrUpdate(ctx, o.cr, fclient)
@@ -812,6 +822,67 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Nil(t, ds.Spec.UpdateStrategy.RollingUpdate)
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, client client.Client, cr *vmv1beta1.VMAgent) {
+			var set appsv1.Deployment
+			assert.NoError(t, client.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmagent-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmagent",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, client client.Client, cr *vmv1beta1.VMAgent) {
+			var set appsv1.Deployment
+			assert.NoError(t, client.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmagent-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmagent",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+		}})
 }
 
 func TestBuildRemoteWriteArgs(t *testing.T) {
@@ -1769,10 +1840,14 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 
 func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
-		cr                    *vmv1beta1.VMAgent
-		want                  func(svc *corev1.Service) error
-		wantAdditionalService func(svc *corev1.Service) error
-		predefinedObjects     []runtime.Object
+		cr *vmv1beta1.VMAgent
+		// legacy functional expectations (kept for compatibility)
+		want                  func(svc *corev1.Service)
+		wantAdditionalService func(svc *corev1.Service)
+		// new preferred validation hooks (used first if present)
+		validate           func(svc *corev1.Service)
+		validateAdditional func(svc *corev1.Service)
+		predefinedObjects  []runtime.Object
 	}
 
 	f := func(o opts) {
@@ -1787,11 +1862,20 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, cl.Get(ctx, nsn, &got))
-		assert.NoError(t, o.want(&got))
-		if o.wantAdditionalService != nil {
+		// prefer new validate hooks; fall back to legacy want functions when validate is not provided
+		if o.validate != nil {
+			o.validate(&got)
+		} else if o.want != nil {
+			o.want(&got)
+		}
+		if o.validateAdditional != nil {
 			var additionalSvc corev1.Service
 			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.Spec.ServiceSpec.NameOrDefault(o.cr.Name)}, &additionalSvc))
-			assert.NoError(t, o.wantAdditionalService(&additionalSvc))
+			o.validateAdditional(&additionalSvc)
+		} else if o.wantAdditionalService != nil {
+			var additionalSvc corev1.Service
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.Spec.ServiceSpec.NameOrDefault(o.cr.Name)}, &additionalSvc))
+			o.wantAdditionalService(&additionalSvc)
 		}
 	}
 
@@ -1803,14 +1887,16 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		want: func(svc *corev1.Service) error {
-			if svc.Name != "vmagent-base" {
-				return fmt.Errorf("unexpected name for service: %v", svc.Name)
-			}
-			if len(svc.Spec.Ports) != 1 {
-				return fmt.Errorf("unexpected count for service ports: %v", len(svc.Spec.Ports))
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vmagent-base", svc.Name)
+			assert.Len(t, svc.Spec.Ports, 1)
+			// ensure operator-managed labels present
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmagent",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 
@@ -1850,14 +1936,16 @@ func TestCreateOrUpdateService(t *testing.T) {
 				},
 			},
 		},
-		want: func(svc *corev1.Service) error {
-			if svc.Name != "vmagent-base" {
-				return fmt.Errorf("unexpected name for service: %v", svc.Name)
-			}
-			if len(svc.Spec.Ports) != 3 {
-				return fmt.Errorf("unexpected count for ports, want 3, got: %v", len(svc.Spec.Ports))
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vmagent-base", svc.Name)
+			assert.Len(t, svc.Spec.Ports, 3)
+
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmagent",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
 	})
 
@@ -1904,26 +1992,22 @@ func TestCreateOrUpdateService(t *testing.T) {
 				},
 			},
 		},
-		want: func(svc *corev1.Service) error {
-			if svc.Name != "vmagent-base" {
-				return fmt.Errorf("unexpected name for service: %v", svc.Name)
-			}
-			if len(svc.Spec.Ports) != 3 {
-				return fmt.Errorf("unexpected count for ports, want 3, got: %v", len(svc.Spec.Ports))
-			}
-			return nil
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, "vmagent-base", svc.Name)
+			assert.Len(t, svc.Spec.Ports, 3)
+
+			assert.Equal(t, map[string]string{
+				"app.kubernetes.io/name":      "vmagent",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
 		},
-		wantAdditionalService: func(svc *corev1.Service) error {
-			if len(svc.Spec.Ports) != 1 {
-				return fmt.Errorf("unexpected count for ports, want 1, got: %v", len(svc.Spec.Ports))
-			}
-			if svc.Spec.Ports[0].NodePort != 8085 {
-				return fmt.Errorf("unexpected port %v, want 8085", svc.Spec.Ports[0])
-			}
-			if svc.Spec.Ports[0].Protocol != corev1.ProtocolUDP {
-				return fmt.Errorf("unexpected protocol want udp, got: %v", svc.Spec.Ports[0].Protocol)
-			}
-			return nil
+		validateAdditional: func(svc *corev1.Service) {
+			// additional service should preserve the explicit port definition
+			assert.Len(t, svc.Spec.Ports, 1)
+			assert.Equal(t, int32(8085), svc.Spec.Ports[0].NodePort)
+			assert.Equal(t, corev1.ProtocolUDP, svc.Spec.Ports[0].Protocol)
 		},
 	})
 }

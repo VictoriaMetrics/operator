@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -102,6 +103,7 @@ func (r *VTSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 func (r *VTSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1.VTSingle{}).
+		WithEventFilter(predicate.TypedGenerationChangedPredicate[client.Object]{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		WithOptions(getDefaultOptions()).

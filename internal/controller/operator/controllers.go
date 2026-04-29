@@ -345,8 +345,8 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 			resultStatus = vmv1beta1.UpdateStatusExpanding
 		} else {
 			resultStatus = vmv1beta1.UpdateStatusFailed
-			resultErr = err
 		}
+		resultErr = err
 		return
 	}
 	if specChanged {

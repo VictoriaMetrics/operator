@@ -700,8 +700,8 @@ func (cr *VTCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []
 	var replicaCount int32
 	if cr.Spec.Storage.ReplicaCount != nil {
 		replicaCount = *cr.Spec.Storage.ReplicaCount
-	} else if cr.Spec.Storage.HPA != nil && cr.Spec.Storage.HPA.MinReplicas != nil {
-		replicaCount = *cr.Spec.Storage.HPA.MinReplicas
+	} else if cr.Spec.Storage.HPA != nil {
+		replicaCount = cr.Spec.Storage.HPA.GetMinReplicas()
 	}
 	for i := int32(0); i < replicaCount; i++ {
 		if maintenanceNodes.Has(i) {

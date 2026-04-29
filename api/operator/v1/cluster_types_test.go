@@ -9,10 +9,11 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+//nolint:dupl
 func TestVTCluster_AvailableStorageNodeIDs(t *testing.T) {
-	f := func(cr *VTCluster, requestsType string, want []int32) {
+	f := func(cr *VTCluster, kind vmv1beta1.ClusterComponent, want []int32) {
 		t.Helper()
-		assert.Equal(t, want, cr.AvailableStorageNodeIDs(requestsType))
+		assert.Equal(t, want, cr.AvailableStorageNodeIDs(kind))
 	}
 
 	cr := &VTCluster{
@@ -28,10 +29,10 @@ func TestVTCluster_AvailableStorageNodeIDs(t *testing.T) {
 	}
 
 	// select excludes maintenance nodes
-	f(cr, "select", []int32{0, 2, 4})
+	f(cr, vmv1beta1.ClusterComponentSelect, []int32{0, 2, 4})
 
 	// insert excludes maintenance nodes
-	f(cr, "insert", []int32{1, 2, 3})
+	f(cr, vmv1beta1.ClusterComponentInsert, []int32{1, 2, 3})
 
 	// no maintenance nodes
 	f(&VTCluster{
@@ -40,13 +41,14 @@ func TestVTCluster_AvailableStorageNodeIDs(t *testing.T) {
 				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
 			},
 		},
-	}, "select", []int32{0, 1, 2})
+	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
 }
 
+//nolint:dupl
 func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
-	f := func(cr *VLCluster, requestsType string, want []int32) {
+	f := func(cr *VLCluster, kind vmv1beta1.ClusterComponent, want []int32) {
 		t.Helper()
-		assert.Equal(t, want, cr.AvailableStorageNodeIDs(requestsType))
+		assert.Equal(t, want, cr.AvailableStorageNodeIDs(kind))
 	}
 
 	cr := &VLCluster{
@@ -62,10 +64,10 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 	}
 
 	// select excludes maintenance nodes
-	f(cr, "select", []int32{0, 2, 4})
+	f(cr, vmv1beta1.ClusterComponentSelect, []int32{0, 2, 4})
 
 	// insert excludes maintenance nodes
-	f(cr, "insert", []int32{1, 2, 3})
+	f(cr, vmv1beta1.ClusterComponentInsert, []int32{1, 2, 3})
 
 	// no maintenance nodes
 	f(&VLCluster{
@@ -74,5 +76,5 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
 			},
 		},
-	}, "select", []int32{0, 1, 2})
+	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
 }

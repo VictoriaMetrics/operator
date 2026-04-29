@@ -91,7 +91,7 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || item.Status.ParsingSpecError != "" || item.IsUnmanaged() {
 			continue
 		}
 		l := l.WithValues("vmanomaly", item.Name, "parent_namespace", item.Namespace)

@@ -40,8 +40,8 @@ var _ admission.Validator[*vmv1beta1.VMPodScrape] = &VMPodScrapeCustomValidator{
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMPodScrapeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMPodScrape) (admission.Warnings, error) {
-	if obj.Spec.ParsingError != "" {
-		return nil, errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
 
 	if err := obj.Validate(); err != nil {
@@ -52,8 +52,8 @@ func (*VMPodScrapeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1be
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMPodScrapeCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMPodScrape) (admission.Warnings, error) {
-	if newObj.Spec.ParsingError != "" {
-		return nil, errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 
 	if err := newObj.Validate(); err != nil {

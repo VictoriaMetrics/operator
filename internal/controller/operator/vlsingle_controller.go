@@ -75,8 +75,8 @@ func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		err = finalize.OnVLSingleDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vlsingle"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vlsingle"}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

@@ -40,8 +40,8 @@ var _ admission.Validator[*vmv1alpha1.VMDistributed] = &VMDistributedCustomValid
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1alpha1.VMDistributed) (warnings admission.Warnings, err error) {
-	if obj.Spec.ParsingError != "" {
-		err = errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		err = errors.New(obj.Status.ParsingSpecError)
 		return
 	}
 
@@ -54,8 +54,8 @@ func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj *vm
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1alpha1.VMDistributed) (warnings admission.Warnings, err error) {
-	if newObj.Spec.ParsingError != "" {
-		err = errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
 

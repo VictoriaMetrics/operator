@@ -40,8 +40,8 @@ var _ admission.Validator[*vmv1.VMAnomaly] = &VMAnomalyCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
 func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1.VMAnomaly) (admission.Warnings, error) {
-	if obj.Spec.ParsingError != "" {
-		return nil, errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
 	if err := obj.Validate(); err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
 func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *vmv1.VMAnomaly) (admission.Warnings, error) {
-	if newObj.Spec.ParsingError != "" {
-		return nil, errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {
 		return nil, err

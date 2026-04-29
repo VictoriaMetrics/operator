@@ -34,8 +34,6 @@ import (
 
 // VLClusterSpec defines the desired state of VLCluster
 type VLClusterSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VLSelect, VLInsert and VLStorage Pods.
@@ -195,22 +193,14 @@ func (cr *VLCluster) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]str
 	return v
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLClusterSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLClusterSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlcluster spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VLClusterStatus defines the observed state of VLCluster
 type VLClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VLClusterSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -674,6 +664,25 @@ func (cr *VLCluster) GetStatus() *VLClusterStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VLCluster) DefaultStatusFields(vs *VLClusterStatus) {
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VLCluster) UnmarshalJSON(src []byte) error {
+	type pcr VLCluster
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VLClusterSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
 }
 
 // AsOwner returns owner references with current object as owner

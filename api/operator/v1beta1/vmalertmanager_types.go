@@ -47,8 +47,6 @@ type VMAlertmanager struct {
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 // +k8s:openapi-gen=true
 type VMAlertmanagerSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
 	// +optional
@@ -246,16 +244,6 @@ func (cr *VMAlertmanager) AutomountServiceAccountToken() bool {
 	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAlertmanagerSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmalertmanager spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VMAlertmanagerList is a list of Alertmanagers.
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -275,6 +263,8 @@ type VMAlertmanagerStatus struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VMAlertmanagerSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -288,7 +278,25 @@ func (cr *VMAlertmanager) GetStatus() *VMAlertmanagerStatus {
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VMAlertmanager) DefaultStatusFields(vs *VMAlertmanagerStatus) {
+func (cr *VMAlertmanager) DefaultStatusFields(vs *VMAlertmanagerStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
+	type pcr VMAlertmanager
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAlertmanagerSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
 }
 
 // AsOwner returns owner references with current object as owner
@@ -479,6 +487,9 @@ func (*VMAlertmanager) ProbeNeedLiveness() bool {
 
 // IsUnmanaged checks if alertmanager should managed any alertmanager config objects
 func (cr *VMAlertmanager) IsUnmanaged() bool {
+	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+		return true
+	}
 	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil
 }
 

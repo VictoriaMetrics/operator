@@ -41,8 +41,8 @@ var _ admission.Validator[*vmv1beta1.VMCluster] = &VMClusterCustomValidator{}
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
-	if obj.Spec.ParsingError != "" {
-		err = errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		err = errors.New(obj.Status.ParsingSpecError)
 		return
 	}
 	if err = obj.Validate(); err != nil {
@@ -57,8 +57,8 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1be
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
-	if newObj.Spec.ParsingError != "" {
-		err = errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
 	if err = newObj.Validate(); err != nil {

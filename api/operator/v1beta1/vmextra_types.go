@@ -1073,6 +1073,8 @@ type TLSClientConfig struct {
 // ScrapeObjectStatus defines the observed state of ScrapeObjects
 type ScrapeObjectStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // StatefulSetUpdateStrategyBehavior customizes behavior for StatefulSet updates.

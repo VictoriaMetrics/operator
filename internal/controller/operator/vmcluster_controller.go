@@ -64,8 +64,8 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmcluster"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmcluster"}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

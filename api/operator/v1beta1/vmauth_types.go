@@ -22,8 +22,6 @@ var labelNameRegexp = regexp.MustCompile("^[a-zA-Z_:.][a-zA-Z0-9_:.]*$")
 
 // VMAuthSpec defines the desired state of VMAuth
 type VMAuthSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
@@ -485,16 +483,6 @@ func (cr *VMAuth) Validate() error {
 	return nil
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAuthSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmauth spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // EmbeddedHTTPRoute describes httproute configuration options.
 //
 // Requires gateway-controller CRD installed and VM_GATEWAY_API_ENABLED=true env var
@@ -550,6 +538,8 @@ type VMAuthStatus struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VMAuthSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -581,6 +571,25 @@ func (cr *VMAuth) GetStatus() *VMAuthStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAuth) DefaultStatusFields(vs *VMAuthStatus) {
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAuth) UnmarshalJSON(src []byte) error {
+	type pcr VMAuth
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAuthSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
 }
 
 func (cr *VMAuth) ProbePath() string {
@@ -710,6 +719,9 @@ func (cr *VMAuth) IsOwnsServiceAccount() bool {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
+	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+		return true
+	}
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||
 		cr.Spec.SecretRef != nil ||
 		cr.Spec.LocalPath != ""

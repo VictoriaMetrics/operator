@@ -12,6 +12,7 @@ jobs:
       packages: write
       contents: write
       pages: write
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
@@ -27,6 +28,13 @@ jobs:
           check-latest: true
           cache: true
         id: go
+      - name: Extract Cosign version
+        id: cosign-version
+        run: echo "version=$(grep 'COSIGN_VERSION ?=' Makefile | awk '{print $3}')" >> $GITHUB_OUTPUT
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+        with:
+          cosign-release: ${{ steps.cosign-version.outputs.version }}
       - name: lint, test and build
         env:
           TAG: ${{ github.event.release.tag_name }}
@@ -38,6 +46,7 @@ jobs:
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           echo ${{secrets.QUAY_ACCESSKEY}} | docker login quay.io --username '${{secrets.QUAY_USER}}' --password-stdin
           TAG=${TAG} make publish
+          TAG=${TAG} make sign
           TAG=${TAG} REGISTRY=quay.io make olm
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"

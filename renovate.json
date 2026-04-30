@@ -178,6 +178,17 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "metalbear-co/mirrord"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "COSIGN_VERSION \\?= (?<currentValue>v.*)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "sigstore/cosign"
     }
   ]
 }

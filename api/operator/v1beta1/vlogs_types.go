@@ -310,7 +310,3 @@ func (cr *VLogs) Paused() bool {
 func (cr *VLogs) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VLogs{}, &VLogsList{})
-}

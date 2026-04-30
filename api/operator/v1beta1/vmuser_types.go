@@ -428,7 +428,3 @@ func (cr *VMUser) Validate() error {
 	}
 	return nil
 }
-
-func init() {
-	SchemeBuilder.Register(&VMUser{}, &VMUserList{})
-}

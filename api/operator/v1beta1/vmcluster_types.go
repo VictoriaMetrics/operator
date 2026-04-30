@@ -253,10 +253,6 @@ type VMClusterList struct {
 	Items           []VMCluster `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&VMCluster{}, &VMClusterList{})
-}
-
 // VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 type VMSelect struct {
 	// ComponentVersion defines default images tag for this component.

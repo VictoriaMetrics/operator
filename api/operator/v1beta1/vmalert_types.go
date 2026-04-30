@@ -503,7 +503,3 @@ func (cr *VMAlert) Paused() bool {
 func (cr *VMAlert) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
-}

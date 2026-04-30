@@ -73,7 +73,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				var latestCR vmv1beta1.VMAgent
 				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
 				latestCR.Kind = "VMAgent"
-				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				latestCR.APIVersion = vmv1beta1.SchemeGroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
 				Expect(vmagent.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
 			}

@@ -2238,7 +2238,6 @@ func validateReceiver(recv Receiver) error {
 
 func init() {
 	compat.InitFromFlags(slog.New(&amNoopLogger{}), &alertmanagerFlags{})
-	SchemeBuilder.Register(&VMAlertmanagerConfig{}, &VMAlertmanagerConfigList{})
 }
 
 type alertmanagerFlags struct{}

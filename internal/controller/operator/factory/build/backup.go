@@ -55,9 +55,7 @@ func VMBackupManager(
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 	}
-	if cr.AcceptEULA {
-		args = append(args, "-eula")
-	}
+	// -eula flag was deprecated and removed from VictoriaMetrics; no longer passed.
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}
@@ -179,9 +177,7 @@ func VMRestore(
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
 	}
-	if cr.AcceptEULA {
-		args = append(args, "-eula")
-	}
+	// -eula flag was deprecated and removed from VictoriaMetrics; no longer passed.
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}

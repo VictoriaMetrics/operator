@@ -98,12 +98,19 @@ var (
 	webhookCertDir  = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
 	webhookCertName = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
 	webhookCertKey  = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	tlsEnable       = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
-	tlsCertDir      = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
-	tlsCertName     = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
-	tlsCertKey      = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
-	mtlsEnable      = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
-	mtlsCAFile      = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
+
+	webhookConfigName            = managerFlags.String("webhook.configName", "", "Name of the ValidatingWebhookConfiguration to create/update on startup and delete on shutdown. Empty disables self-management.")
+	webhookServiceName           = managerFlags.String("webhook.serviceName", "", "Kubernetes Service name that fronts the webhook server (required when webhook.configName is set).")
+	webhookServiceNamespace      = managerFlags.String("webhook.serviceNamespace", "", "Kubernetes Service namespace (defaults to the operator's own namespace).")
+	webhookCACertName            = managerFlags.String("webhook.caCertName", "ca.crt", "CA certificate filename inside webhook.certDir, embedded as caBundle in the ValidatingWebhookConfiguration.")
+	webhookFailurePolicy         = managerFlags.String("webhook.failurePolicy", "Fail", "FailurePolicy for the ValidatingWebhookConfiguration: Fail or Ignore.")
+	webhookCertManagerInjectFrom = managerFlags.String("webhook.certManager.injectFrom", "", "If non-empty, skips reading the CA from disk and instead adds the cert-manager CA injection annotation (format: namespace/certificateName).")
+	tlsEnable                    = managerFlags.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
+	tlsCertDir                   = managerFlags.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertName                  = managerFlags.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
+	tlsCertKey                   = managerFlags.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	mtlsEnable                   = managerFlags.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set.")
+	mtlsCAFile                   = managerFlags.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
 		"By default the host system TLS Root CA is used for client certificate verification. ")
 	metricsAddr                   = managerFlags.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
 	pprofAddr                     = managerFlags.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
@@ -318,6 +325,12 @@ func RunManager(ctx context.Context) error {
 	baseClient, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
+	}
+
+	if *enableWebhook && len(*webhookConfigName) > 0 {
+		if err := registerWebhookConfig(mgr, baseClient); err != nil {
+			return err
+		}
 	}
 
 	if *dryRun {

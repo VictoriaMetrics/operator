@@ -286,7 +286,7 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))
-		b.SetSelectorLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
+		b.SetSelectorLabels(r.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
 		return b
 	}
 	b := builder(cr)

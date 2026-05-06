@@ -388,6 +388,9 @@ type VMAgentRemoteWriteSpec struct {
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// AWS describes params specific to AWS cloud
 	AWS *AWS `json:"aws,omitempty"`
+	// The number of concurrent queues
+	// +optional
+	Queues *int32 `json:"queues,omitempty"`
 }
 
 // AsConfigMapKey key for kubernetes configmap

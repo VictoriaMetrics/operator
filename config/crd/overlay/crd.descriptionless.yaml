@@ -5622,6 +5622,9 @@ spec:
                       type: object
                     proxyURL:
                       type: string
+                    queues:
+                      format: int32
+                      type: integer
                     sendTimeout:
                       pattern: '[0-9]+(ms|s|m|h)'
                       type: string

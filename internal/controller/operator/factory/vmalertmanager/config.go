@@ -105,7 +105,7 @@ type parsedObjects struct {
 }
 
 func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, data []byte, ac *build.AssetsCache) ([]byte, error) {
-	if len(pos.configs.All()) == 0 && cr.Spec.TracingConfig == nil {
+	if len(pos.configs.All()) == 0 && cr.Spec.TracingConfig == nil && len(cr.Spec.Templates) == 0 {
 		return data, nil
 	}
 	var baseCfg amConfig

@@ -62,6 +62,48 @@ func TestBuildConfig(t *testing.T) {
 		assert.Equal(t, o.want, string(data))
 	}
 
+	// templates only
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EnforcedNamespaceLabel:  "alert-namespace",
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				Templates: []vmv1beta1.ConfigMapKeyReference{
+					{LocalObjectReference: corev1.LocalObjectReference{Name: "test-am"}, Key: "test_1.tmpl"},
+				},
+			},
+		},
+		baseCfg: []byte(`global:
+ time_out: 1min
+ smtp_smarthost: some:443
+`),
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ca",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"key": []byte("value"),
+				},
+			},
+		},
+		want: `global:
+  smtp_smarthost: some:443
+  time_out: 1min
+route:
+  receiver: blackhole
+receivers:
+- name: blackhole
+templates:
+- /etc/vm/templates/test-am/test_1.tmpl
+`,
+	})
+
 	// tracing without discovered objects
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{

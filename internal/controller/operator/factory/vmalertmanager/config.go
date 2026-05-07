@@ -246,19 +246,19 @@ func (r *rawValue) set(k string, v any) {
 			r.items = append(r.items, yaml.MapItem{Key: k, Value: item})
 		}
 	case int:
-		if item > 0 {
+		if item != 0 {
 			r.items = append(r.items, yaml.MapItem{Key: k, Value: item})
 		}
 	case int32:
-		if item > 0 {
+		if item != 0 {
 			r.items = append(r.items, yaml.MapItem{Key: k, Value: item})
 		}
 	case int64:
-		if item > 0 {
+		if item != 0 {
 			r.items = append(r.items, yaml.MapItem{Key: k, Value: item})
 		}
 	case float64:
-		if item > 0 {
+		if item != 0 {
 			r.items = append(r.items, yaml.MapItem{Key: k, Value: item})
 		}
 	case bool:

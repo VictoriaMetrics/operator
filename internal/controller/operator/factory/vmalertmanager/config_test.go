@@ -982,7 +982,7 @@ templates: []
 							TelegramConfigs: []vmv1beta1.TelegramConfig{
 								{
 									SendResolved: ptr.To(true),
-									ChatID:       125,
+									ChatID:       -1123123123125,
 									BotToken: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "tg-secret",
@@ -1017,7 +1017,7 @@ receivers:
   telegram_configs:
   - bot_token: some-token
     send_resolved: true
-    chat_id: 125
+    chat_id: -1123123123125
     message: some-templated message
 templates: []
 `,

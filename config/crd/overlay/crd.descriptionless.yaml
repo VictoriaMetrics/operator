@@ -13770,6 +13770,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VMAnomaly
                           type: string
                         name:
                           type: string
@@ -14848,6 +14849,7 @@ spec:
                               - VTCluster/vtselect
                               - VTCluster/vtstorage
                               - VTSingle
+                              - VMAnomaly
                               type: string
                             name:
                               type: string
@@ -19114,6 +19116,7 @@ spec:
                                   - VTCluster/vtselect
                                   - VTCluster/vtstorage
                                   - VTSingle
+                                  - VMAnomaly
                                   type: string
                                 name:
                                   type: string
@@ -22005,6 +22008,7 @@ spec:
                                       - VTCluster/vtselect
                                       - VTCluster/vtstorage
                                       - VTSingle
+                                      - VMAnomaly
                                       type: string
                                     name:
                                       type: string
@@ -42966,6 +42970,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VMAnomaly
                           type: string
                         name:
                           type: string

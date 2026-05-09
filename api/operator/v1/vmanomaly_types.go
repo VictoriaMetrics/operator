@@ -235,7 +235,7 @@ type VMAnomalyMonitoringSpec struct {
 }
 
 // VMAnomalyMonitoringPullSpec defines pull monitoring configuration
-// which is enabled by default and served at POD_IP:8490/metrics
+// which is enabled by default and served at POD_IP:8080/metrics
 type VMAnomalyMonitoringPullSpec struct {
 	// Port defines a port for metrics scrape
 	Port string `json:"port"`
@@ -397,7 +397,10 @@ func (cr *VMAnomaly) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 
 // Port returns port for accessing anomaly UI
 func (cr *VMAnomaly) Port() string {
-	return cr.Spec.Port
+	if cr == nil || cr.Spec.Server == nil || len(cr.Spec.Server.Port) == 0 {
+		return "8490"
+	}
+	return cr.Spec.Server.Port
 }
 
 // GetVolumeName returns volume name for persistent storage
@@ -428,12 +431,22 @@ func (cr *VMAnomaly) ProbeScheme() string {
 
 // ProbePort implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePort() string {
-	return cr.Port()
+	if cr == nil || cr.Spec.Monitoring == nil || cr.Spec.Monitoring.Pull == nil || len(cr.Spec.Monitoring.Pull.Port) == 0 {
+		return "8080"
+	}
+	return cr.Spec.Monitoring.Pull.Port
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface
 func (*VMAnomaly) ProbeNeedLiveness() bool {
 	return true
+}
+
+// AsURL returns url for http access to the first replica.
+// Returns empty string if spec.server.port is not configured.
+func (cr *VMAnomaly) AsURL() string {
+	port := cr.Port()
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
 
 // Validate performs semantic validation for component

@@ -318,11 +318,15 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VLInsert != nil {
 		prevSvc = buildVLInsertService(prevCR)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VLInsert.ServiceSpec)
+		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VLInsert.ServiceSpec)
 	}
 	owner := cr.AsOwner()
 	if err := cr.Spec.VLInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		additionalSvcBase := *svc
+		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("VLInsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}

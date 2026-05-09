@@ -503,7 +503,3 @@ type VMAnomalyList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMAnomaly `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&VMAnomaly{}, &VMAnomalyList{})
-}

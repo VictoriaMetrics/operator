@@ -262,7 +262,3 @@ type VMRuleList struct {
 	// Items list of VMRule
 	Items []VMRule `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&VMRule{}, &VMRuleList{})
-}

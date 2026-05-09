@@ -20,7 +20,7 @@ func TestWaitForStatus(t *testing.T) {
 	f := func(status vmv1beta1.UpdateStatus, isErr bool) {
 		vmc := &vmv1beta1.VMCluster{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: vmv1beta1.GroupVersion.String(),
+				APIVersion: vmv1beta1.SchemeGroupVersion.String(),
 				Kind:       "VMCluster",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -57,7 +57,7 @@ func TestWaitForStatus_MinGeneration(t *testing.T) {
 	f := func(observedGen, minGen int64, isErr bool) {
 		vmc := &vmv1beta1.VMCluster{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: vmv1beta1.GroupVersion.String(),
+				APIVersion: vmv1beta1.SchemeGroupVersion.String(),
 				Kind:       "VMCluster",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -98,7 +98,7 @@ func TestWaitForStatus_GenerationChangesOnGet(t *testing.T) {
 	minGen := int64(2)
 	vmc := &vmv1beta1.VMCluster{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: vmv1beta1.GroupVersion.String(),
+			APIVersion: vmv1beta1.SchemeGroupVersion.String(),
 			Kind:       "VMCluster",
 		},
 		ObjectMeta: metav1.ObjectMeta{

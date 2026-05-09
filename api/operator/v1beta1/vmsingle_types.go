@@ -438,7 +438,3 @@ func (cr *VMSingle) GetStatusMetadata() *StatusMetadata {
 func (cr *VMSingle) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
-}

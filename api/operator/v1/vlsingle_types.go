@@ -331,7 +331,3 @@ func (cr *VLSingle) Paused() bool {
 func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VLSingle{}, &VLSingleList{})
-}

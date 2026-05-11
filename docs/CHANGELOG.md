@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
 
 ## [v0.68.5](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.5)
 **Release date:** 27 May 2026

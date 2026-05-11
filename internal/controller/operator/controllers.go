@@ -358,6 +358,8 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		resultStatus = vmv1beta1.UpdateStatusFailed
 		if reconcile.IsRetryable(err) {
 			resultStatus = vmv1beta1.UpdateStatusExpanding
+		} else {
+			resultStatus = vmv1beta1.UpdateStatusFailed
 		}
 		resultErr = err
 		return

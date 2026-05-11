@@ -25,6 +25,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Add acceptEula support for VMBackup/VMRestore.
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): change default load balancing policy for write requests from `first_available` to `least_loaded`. This should allow to evenly distribute write load across all VMAgents.
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/) and [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fixed infinite non-default additional service recreation, when requestsLoadBalancer.enabled: true
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
 
 ## [v0.68.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.4)
 **Release date:** 09 April 2026

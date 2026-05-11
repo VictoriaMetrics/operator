@@ -701,7 +701,3 @@ type APIServerConfig struct {
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&VMAgent{}, &VMAgentList{})
-}

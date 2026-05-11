@@ -98,7 +98,3 @@ func (cr *VMNodeScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
 func (cr *VMNodeScrape) AsKey(_ bool) string {
 	return cr.Namespace + "/" + cr.Name
 }
-
-func init() {
-	SchemeBuilder.Register(&VMNodeScrape{}, &VMNodeScrapeList{})
-}

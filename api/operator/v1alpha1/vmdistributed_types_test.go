@@ -90,7 +90,7 @@ func TestValidateVMDistributed(t *testing.T) {
 func TestEnsureNoVMOwners(t *testing.T) {
 	cr := &VMDistributed{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: GroupVersion.String(),
+			APIVersion: SchemeGroupVersion.String(),
 			Kind:       "VMDistributed",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -101,7 +101,7 @@ func TestEnsureNoVMOwners(t *testing.T) {
 	}
 	otherCR := &VMDistributed{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: GroupVersion.String(),
+			APIVersion: SchemeGroupVersion.String(),
 			Kind:       "VMDistributed",
 		},
 		ObjectMeta: metav1.ObjectMeta{

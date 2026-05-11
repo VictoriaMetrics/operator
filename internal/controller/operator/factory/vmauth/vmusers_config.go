@@ -654,7 +654,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		case len(ref.Static.URL) > 0:
 			urlPrefixes = append(urlPrefixes, ref.Static.URL)
 		case len(ref.Static.URLs) > 0:
-			urlPrefixes = ref.Static.URLs
+			urlPrefixes = append(urlPrefixes, ref.Static.URLs...)
 		default:
 			return nil, fmt.Errorf("static.url, static.urls and ref.crd cannot be empty for user: %s", userName)
 		}

@@ -392,10 +392,6 @@ type VMDistributedList struct {
 	Items           []VMDistributed `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&VMDistributed{}, &VMDistributedList{})
-}
-
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMDistributed) GetStatus() *VMDistributedStatus {
 	return &cr.Status

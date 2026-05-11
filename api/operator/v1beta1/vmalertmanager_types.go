@@ -644,7 +644,3 @@ type VMAlertmanagerHTTPConfig struct {
 func (cr *VMAlertmanager) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VMAlertmanager{}, &VMAlertmanagerList{})
-}

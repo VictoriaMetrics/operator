@@ -180,7 +180,3 @@ func (cr *VMServiceScrape) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMServiceScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
-
-func init() {
-	SchemeBuilder.Register(&VMServiceScrape{}, &VMServiceScrapeList{})
-}

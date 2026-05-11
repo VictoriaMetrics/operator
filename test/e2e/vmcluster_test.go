@@ -100,7 +100,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				var latestCR vmv1beta1.VMCluster
 				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
 				latestCR.Kind = "VMCluster"
-				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				latestCR.APIVersion = vmv1beta1.SchemeGroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
 				Expect(vmcluster.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
 			}

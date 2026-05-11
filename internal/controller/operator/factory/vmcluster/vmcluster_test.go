@@ -2,6 +2,9 @@ package vmcluster
 
 import (
 	"context"
+	"io"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -700,37 +704,35 @@ func TestCreateOrUpdate(t *testing.T) {
 }
 
 func TestCreatOrUpdateClusterServices(t *testing.T) {
-	f := func(component vmv1beta1.ClusterComponent, cr *vmv1beta1.VMCluster, wantSvcYAML string, predefinedObjects ...runtime.Object) {
+	f := func(cr *vmv1beta1.VMCluster, wantSvcYAML string, predefinedObjects ...runtime.Object) {
 		t.Helper()
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
-
-		var builderF func(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error
-		var svc *corev1.Service
-		switch component {
-		case vmv1beta1.ClusterComponentInsert:
-			builderF = createOrUpdateVMInsertService
-			svc = buildVMInsertService(cr)
-		case vmv1beta1.ClusterComponentStorage:
-			builderF = createOrUpdateVMStorageService
-			svc = buildVMStorageService(cr)
-		case vmv1beta1.ClusterComponentSelect:
-			builderF = createOrUpdateVMSelectService
-			svc = buildVMSelectService(cr)
-		default:
-			t.Fatalf("BUG not expected component for test: %q", component)
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		var ls corev1.ServiceList
+		selector := cr.SelectorLabels(vmv1beta1.ClusterComponentRoot)
+		delete(selector, "app.kubernetes.io/name")
+		assert.NoError(t, fclient.List(ctx, &ls, &client.ListOptions{LabelSelector: labels.SelectorFromSet(selector)}))
+		sort.Slice(ls.Items, func(i, j int) bool {
+			return strings.ToLower(ls.Items[i].Name) < strings.ToLower(ls.Items[j].Name)
+		})
+		decoder := yaml.NewDecoder(strings.NewReader(wantSvcYAML))
+		var wantServices []corev1.Service
+		for {
+			var wantService corev1.Service
+			err := decoder.Decode(&wantService)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			wantServices = append(wantServices, wantService)
 		}
-		assert.NoError(t, builderF(ctx, fclient, cr, nil))
-		var actualService corev1.Service
-		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}, &actualService))
-		var wantService corev1.Service
-		assert.NoError(t, yaml.Unmarshal([]byte(wantSvcYAML), &wantService))
-		assert.Equal(t, wantService, actualService)
+		assert.Equal(t, wantServices, ls.Items)
 	}
 
-	f(vmv1beta1.ClusterComponentStorage, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -747,8 +749,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -778,7 +779,7 @@ spec:
     publishnotreadyaddresses: true
 `)
 	// with vmbackup and additional service ports
-	f(vmv1beta1.ClusterComponentStorage, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			License: &vmv1beta1.License{
@@ -813,8 +814,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -853,7 +853,7 @@ spec:
     publishnotreadyaddresses: true
 `)
 
-	f(vmv1beta1.ClusterComponentSelect, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -875,8 +875,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -894,9 +893,49 @@ spec:
     clusterip: None
     type: ClusterIP
     publishnotreadyaddresses: true
+---
+objectmeta:
+    name: vmstorage-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8482
+          targetport:
+            intval: 8482
+        - name: vminsert
+          protocol: TCP
+          port: 8400
+          targetport:
+            intval: 8400
+        - name: vmselect
+          protocol: TCP
+          port: 8401
+          targetport:
+            intval: 8401
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
+    publishnotreadyaddresses: true
 `)
 	// with native and extra service
-	f(vmv1beta1.ClusterComponentSelect, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
@@ -915,8 +954,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -939,8 +977,82 @@ spec:
     clusterip: None
     type: ClusterIP
     publishnotreadyaddresses: true
+---
+objectmeta:
+    name: vmselect-test-additional-service
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/additional-service: managed
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8352
+          targetport:
+            intval: 8352
+        - name: clusternative
+          protocol: TCP
+          port: 8477
+          targetport:
+            intval: 8477
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        managed-by: vm-operator
+    type: LoadBalancer
+---
+objectmeta:
+    name: vmstorage-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8482
+          targetport:
+            intval: 8482
+        - name: vminsert
+          protocol: TCP
+          port: 8400
+          targetport:
+            intval: 8400
+        - name: vmselect
+          protocol: TCP
+          port: 8401
+          targetport:
+            intval: 8401
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
+    publishnotreadyaddresses: true
 `)
-	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -961,8 +1073,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -982,11 +1093,10 @@ spec:
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
-    clusterip: ""
     type: ClusterIP
 `)
 	// transit to headless
-	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -1015,8 +1125,7 @@ objectmeta:
         app.kubernetes.io/part-of: vmcluster
         managed-by: vm-operator
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -1060,7 +1169,7 @@ spec:
 		},
 	})
 	// transit to loadbalancer
-	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMInsert: &vmv1beta1.VMInsert{
@@ -1075,7 +1184,6 @@ spec:
 						},
 					},
 					Spec: corev1.ServiceSpec{
-						ClusterIP:         "",
 						Type:              "LoadBalancer",
 						LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
 					},
@@ -1100,8 +1208,7 @@ objectmeta:
     annotations:
       "service.beta.kubernetes.io/aws-load-balancer-type": "external"
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -1144,8 +1251,9 @@ spec:
 			},
 		},
 	})
-	// insert with load-balanacer
-	f(vmv1beta1.ClusterComponentInsert, &vmv1beta1.VMCluster{
+
+	// insert with load-balancer and additional service
+	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
@@ -1153,7 +1261,6 @@ spec:
 			},
 			VMInsert: &vmv1beta1.VMInsert{
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-					UseAsDefault: true,
 					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 						Labels: map[string]string{
 							"app.kubernetes.io/instance": "incorrect-label",
@@ -1163,7 +1270,6 @@ spec:
 						},
 					},
 					Spec: corev1.ServiceSpec{
-						ClusterIP:         "",
 						Type:              "LoadBalancer",
 						LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
 					},
@@ -1176,21 +1282,82 @@ spec:
 		},
 	}, `
 objectmeta:
-    name: vminsertinternal-test
+    name: vmclusterlb-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-name: vmauth
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8427
+          targetport:
+            intval: 8427
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    type: ClusterIP
+---
+objectmeta:
+    name: vminsert-test
+    namespace: default-1
+    resourceversion: "1000"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-name: insert
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8427
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    clusterip: 10.0.0.5
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+---
+objectmeta:
+    name: vminsert-test-additional-service
     namespace: default-1
     resourceversion: "1"
     labels:
         app.kubernetes.io/component: monitoring
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
-        managed-by: vm-operator
         app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/additional-service: managed
         operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
     annotations:
-      "service.beta.kubernetes.io/aws-load-balancer-type": "external"
+        service.beta.kubernetes.io/aws-load-balancer-type: external
     ownerreferences:
-        - apiversion: ""
-          name: test
+        - name: test
           controller: true
           blockownerdeletion: true
 spec:
@@ -1215,8 +1382,207 @@ spec:
         app.kubernetes.io/instance: test
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
+    type: LoadBalancer
+    loadbalancerclass: service.k8s.aws/nlb
+---
+objectmeta:
+    name: vminsertinternal-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8480
+        - name: opentsdb-http
+          protocol: TCP
+          port: 8087
+          targetport:
+            intval: 8087
+        - name: clusternative
+          protocol: TCP
+          port: 8055
+          targetport:
+            intval: 8055
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        managed-by: vm-operator
+    clusterip: None
     type: ClusterIP
-    clusterip: "None"
+`, &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vminsert-test",
+			Namespace: "default-1",
+		},
+		Spec: corev1.ServiceSpec{
+			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP: "10.0.0.5",
+			Selector: map[string]string{
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/instance":  "test",
+				"app.kubernetes.io/name":      "vminsert",
+				"managed-by":                  "vm-operator",
+			},
+		},
+	})
+
+	// insert with load-balancer and custom service spec
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+						Labels: map[string]string{
+							"app.kubernetes.io/instance": "incorrect-label",
+						},
+						Annotations: map[string]string{
+							"service.beta.kubernetes.io/aws-load-balancer-type": "external",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Type:              "LoadBalancer",
+						LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+					},
+				},
+				ClusterNativePort: "8055",
+				InsertPorts: &vmv1beta1.InsertPorts{
+					OpenTSDBHTTPPort: "8087",
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vmclusterlb-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-name: vmauth
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8427
+          targetport:
+            intval: 8427
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    type: ClusterIP
+---
+objectmeta:
+    name: vminsert-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-name: insert
+    annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: external
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8480
+        - name: opentsdb-http
+          protocol: TCP
+          port: 8087
+          targetport:
+            intval: 8087
+        - name: clusternative
+          protocol: TCP
+          port: 8055
+          targetport:
+            intval: 8055
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmclusterlb-vmauth-balancer
+        managed-by: vm-operator
+    type: LoadBalancer
+    loadbalancerclass: service.k8s.aws/nlb
+---
+objectmeta:
+    name: vminsertinternal-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+        operator.victoriametrics.com/vmauthlb-proxy-job-name: vminsert-test
+    annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: external
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8480
+          targetport:
+            intval: 8480
+        - name: opentsdb-http
+          protocol: TCP
+          port: 8087
+          targetport:
+            intval: 8087
+        - name: clusternative
+          protocol: TCP
+          port: 8055
+          targetport:
+            intval: 8055
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vminsert
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

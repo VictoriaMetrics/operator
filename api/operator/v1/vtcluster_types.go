@@ -804,7 +804,3 @@ type VTClusterList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VTCluster `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&VTCluster{}, &VTClusterList{})
-}

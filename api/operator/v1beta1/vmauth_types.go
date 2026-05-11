@@ -761,7 +761,3 @@ func (cr *VMAuth) Paused() bool {
 func (cr *VMAuth) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VMAuth{}, &VMAuthList{})
-}

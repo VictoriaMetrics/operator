@@ -74,7 +74,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					var latestCR vmv1beta1.VMSingle
 					Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
 					latestCR.Kind = "VMSingle"
-					latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+					latestCR.APIVersion = vmv1beta1.SchemeGroupVersion.String()
 					k8sClient.Scheme().Default(&latestCR)
 					Expect(vmsingle.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
 				}

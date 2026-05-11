@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,9 +114,6 @@ const (
 	// ConditionDomainTypeAppliedSuffix defines type suffix for ConditionParsingReason reason
 	ConditionDomainTypeAppliedSuffix = ".victoriametrics.com/Applied"
 )
-
-// SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
 // skip validation, if object has annotation.
 func MustSkipCRValidation(cr client.Object) bool {

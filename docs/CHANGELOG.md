@@ -14,7 +14,7 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.142.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.142.0) version
-* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
 
 * BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): change default load balancing policy for write requests from `first_available` to `least_loaded`. This should allow to evenly distribute write load across all VMAgents.
@@ -51,7 +51,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): introduce `VMAnomalyConfig` CRD to enable dynamic configuration and hot-reload support starting from VMAnomaly version `1.25.0`.
-* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): introduce arbitrary fs access feature for VMAlertmanager. See [#899](https://github.com/VictoriaMetrics/operator/issues/899)
+* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): introduce arbitrary fs access feature for VMAlertmanager. See [#899](https://github.com/VictoriaMetrics/operator/issues/899)
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
 
 * BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).

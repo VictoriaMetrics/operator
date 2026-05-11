@@ -21,6 +21,7 @@ aliases:
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): fix previously ignored negative values in VMAlertmanagerConfig. See [#2132](https://github.com/VictoriaMetrics/operator/issues/2132).
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fixed ignored alertmanager template if it has no discovered VMAlertmanagerconfig CRs or tracing config defined. See [#2121](https://github.com/VictoriaMetrics/operator/issues/2121).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/) and [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fixed infinite non-default additional service recreation, when requestsLoadBalancer.enabled: true
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): fixed case, when target_path_suffix can be appended multiple times.
 
 ## [v0.69.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.69.0)
 **Release date:** 22 April 2026

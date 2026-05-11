@@ -190,6 +190,7 @@ func createOrUpdateVLSelectDeployment(ctx context.Context, rclient client.Client
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VLSelect.HPA != nil {
 				newSpec.Replicas = existingSpec.Replicas
+				cr.Spec.VLSelect.ReplicaCount = existingSpec.Replicas
 			}
 		},
 	}
@@ -245,12 +246,9 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	storageNodeFlag := build.NewFlag("-storageNode", "")
-	storageNodeIds := cr.AvailableStorageNodeIDs("select")
-	if cr.Spec.VLStorage != nil && cr.Spec.VLStorage.ReplicaCount != nil {
-		// TODO: check TLS
-		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
-		}
+	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
+	for idx, i := range storageNodeIds {
+		storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 	}
 	if len(cr.Spec.VLSelect.ExtraStorageNodes) > 0 {
 		for i, node := range cr.Spec.VLSelect.ExtraStorageNodes {

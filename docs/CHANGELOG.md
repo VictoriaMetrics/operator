@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.143.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.143.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.142.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.142.0) version
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
 

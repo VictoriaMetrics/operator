@@ -90,7 +90,7 @@ func beforeEach(o opts) *testData {
 	cr := &vmv1alpha1.VMDistributed{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VMDistributed",
-			APIVersion: vmv1alpha1.GroupVersion.String(),
+			APIVersion: vmv1alpha1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-vdc",

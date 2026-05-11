@@ -44,7 +44,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 - [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe/)
 - [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/)
 
-These objects specify which targets VMSingle should scrape and how to collect metrics, and generate part of [VMSingle](https://docs.victoriametrics.com/victoriametrics/vmsingle/) scrape configuration.
+These objects specify which targets VMSingle should scrape and how to collect metrics, and generate part of [VMSingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) scrape configuration.
 
 To enable scraping on VMSingle, set `spec.ingestOnlyMode` to `false`.
 

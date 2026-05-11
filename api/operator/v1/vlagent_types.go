@@ -492,7 +492,3 @@ func (cr *VLAgent) Paused() bool {
 func (cr *VLAgent) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
-
-func init() {
-	SchemeBuilder.Register(&VLAgent{}, &VLAgentList{})
-}

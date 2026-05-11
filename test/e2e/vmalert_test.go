@@ -74,7 +74,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				var latestCR vmv1beta1.VMAlert
 				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
 				latestCR.Kind = "VMAlert"
-				latestCR.APIVersion = vmv1beta1.GroupVersion.String()
+				latestCR.APIVersion = vmv1beta1.SchemeGroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
 				Expect(vmalert.CreateOrUpdate(ctx, &latestCR, k8sClient, []string{})).ToNot(HaveOccurred())
 			}

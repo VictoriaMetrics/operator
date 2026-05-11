@@ -210,7 +210,3 @@ func (cr *VMProbe) Validate() error {
 	}
 	return cr.Spec.Targets.Ingress.validate("spec.targets.ingress")
 }
-
-func init() {
-	SchemeBuilder.Register(&VMProbe{}, &VMProbeList{})
-}

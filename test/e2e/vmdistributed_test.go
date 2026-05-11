@@ -940,7 +940,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Expect(k8sClient.Get(ctx, nsn, &latestCR)).ToNot(HaveOccurred())
 				// Ensure that TypeMeta is set for ownership check to pass
 				latestCR.Kind = "VMDistributed"
-				latestCR.APIVersion = vmv1alpha1.GroupVersion.String()
+				latestCR.APIVersion = vmv1alpha1.SchemeGroupVersion.String()
 				k8sClient.Scheme().Default(&latestCR)
 				Expect(vmdistributed.CreateOrUpdate(ctx, &latestCR, k8sClient)).ToNot(HaveOccurred())
 			}

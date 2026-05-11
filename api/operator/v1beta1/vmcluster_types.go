@@ -715,21 +715,27 @@ func (cr *VMCluster) Validate() error {
 }
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
-func (cr *VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
+func (cr *VMCluster) AvailableStorageNodeIDs(kind ClusterComponent) []int32 {
 	var result []int32
-	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.ReplicaCount == nil {
+	if cr.Spec.VMStorage == nil || (cr.Spec.VMStorage.ReplicaCount == nil && cr.Spec.VMStorage.HPA == nil) {
 		return result
 	}
 	maintenanceNodes := sets.New[int32]()
-	switch requestsType {
-	case "select":
+	switch kind {
+	case ClusterComponentSelect:
 		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
-	case "insert":
+	case ClusterComponentInsert:
 		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
 	default:
-		panic("BUG unsupported requestsType: " + requestsType)
+		panic("BUG unsupported kind: " + string(kind))
 	}
-	for i := int32(0); i < *cr.Spec.VMStorage.ReplicaCount; i++ {
+	var replicaCount int32
+	if cr.Spec.VMStorage.ReplicaCount != nil {
+		replicaCount = *cr.Spec.VMStorage.ReplicaCount
+	} else if cr.Spec.VMStorage.HPA != nil {
+		replicaCount = cr.Spec.VMStorage.HPA.GetMinReplicas()
+	}
+	for i := int32(0); i < replicaCount; i++ {
 		if maintenanceNodes.Has(i) {
 			continue
 		}

@@ -435,6 +435,14 @@ type EmbeddedHPA struct {
 	Behaviour   *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
 }
 
+// GetMinReplicas returns default minReplicas value
+func (cr *EmbeddedHPA) GetMinReplicas() int32 {
+	if cr.MinReplicas != nil {
+		return *cr.MinReplicas
+	}
+	return 1
+}
+
 // Validate validates resource configuration
 func (cr *EmbeddedHPA) Validate() error {
 	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {

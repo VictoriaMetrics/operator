@@ -776,21 +776,27 @@ func (cr *VLCluster) Validate() error {
 }
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
-func (cr *VLCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
+func (cr *VLCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []int32 {
 	var result []int32
-	if cr.Spec.VLStorage == nil || cr.Spec.VLStorage.ReplicaCount == nil {
+	if cr.Spec.VLStorage == nil || (cr.Spec.VLStorage.ReplicaCount == nil && cr.Spec.VLStorage.HPA == nil) {
 		return result
 	}
 	maintenanceNodes := sets.New[int32]()
-	switch requestsType {
-	case "select":
+	switch kind {
+	case vmv1beta1.ClusterComponentSelect:
 		maintenanceNodes.Insert(cr.Spec.VLStorage.MaintenanceSelectNodeIDs...)
-	case "insert":
+	case vmv1beta1.ClusterComponentInsert:
 		maintenanceNodes.Insert(cr.Spec.VLStorage.MaintenanceInsertNodeIDs...)
 	default:
-		panic("BUG unsupported requestsType: " + requestsType)
+		panic("BUG unsupported kind: " + string(kind))
 	}
-	for i := int32(0); i < *cr.Spec.VLStorage.ReplicaCount; i++ {
+	var replicaCount int32
+	if cr.Spec.VLStorage.ReplicaCount != nil {
+		replicaCount = *cr.Spec.VLStorage.ReplicaCount
+	} else if cr.Spec.VLStorage.HPA != nil {
+		replicaCount = cr.Spec.VLStorage.HPA.GetMinReplicas()
+	}
+	for i := int32(0); i < replicaCount; i++ {
 		if maintenanceNodes.Has(i) {
 			continue
 		}

@@ -13,6 +13,12 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
+
+
+## [v0.68.5](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.5)
+**Release date:** 27 May 2026
+
 **Update note 1**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.144.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.144.0) version

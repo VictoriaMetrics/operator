@@ -71,45 +71,42 @@ jobs:
         run: |
           if [ ! -d bundle ]; then
             echo "No bundle directory found"
-            exit 1;
+            exit 1
           fi
-          CATALOGS_DIR=__operatorhub-repo/catalogs
+
+          export OPERATOR_NAME="victoriametrics-operator"
+          export OPERATOR_DIR=__operatorhub-repo/operators/${OPERATOR_NAME}
+          mkdir -p ${OPERATOR_DIR}
+
           NEW_VERSION=$(ls bundle | head -1)
-          CATALOG_FILE=${CATALOGS_DIR}/latest/victoriametrics-operator/catalog.yaml
-          mkdir -p ${CATALOGS_DIR}/latest/victoriametrics-operator
+          export OLD_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
+          export OLD_ENTRY="${OPERATOR_NAME}.v${OLD_VERSION}"
 
-          # Save existing catalog as PREV_CATALOG before overwriting
-          if [ -f "${CATALOG_FILE}" ]; then
-            cp "${CATALOG_FILE}" /tmp/vm-prev-catalog.yaml
-            PREV_CATALOG=/tmp/vm-prev-catalog.yaml
+          if [ ! -z $OLD_VERSION ]; then
+            export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
+            yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(OLD_VERSION)' $MANIFEST_PATH
           fi
 
-          PREVIOUS_VERSION=$(yq 'select(.schema == "olm.channel") | .entries[0].name' \
-            ${PREV_CATALOG} 2>/dev/null || true)
+          mv bundle/${NEW_VERSION} ${OPERATOR_DIR}/
+          if [ -f ${OPERATOR_DIR}/Makefile ]; then
+            opm render ${OPERATOR_DIR}/${NEW_VERSION} --output=yaml \
+              | yq 'select(.schema == "olm.bundle")' > /tmp/new-bundle.yaml
 
-          opm render bundle/${NEW_VERSION} --output=yaml > /tmp/vm-bundle-rendered.yaml
-          yq 'select(.schema == "olm.package")' "${PREV_CATALOG}" > /tmp/vm-catalog-header.yaml
-          echo "---" >> /tmp/vm-catalog-header.yaml
-          yq '.entries[] | select(.schema == "olm.channel")' \
-            bundle/${NEW_VERSION}/catalog-templates/latest.yaml >> /tmp/vm-catalog-header.yaml
-
-          # Include previous bundles from PREV_CATALOG (excludes current version to avoid duplicates)
-          yq "select(.schema == \"olm.bundle\" and .name != \"victoriametrics-operator.v${NEW_VERSION}\")" \
-            "${PREV_CATALOG}" > /tmp/vm-prev-bundles.yaml
-          yq eval-all '.' /tmp/vm-catalog-header.yaml /tmp/vm-bundle-rendered.yaml /tmp/vm-prev-bundles.yaml > ${CATALOG_FILE}
-
-          if [ -n "${PREVIOUS_VERSION}" ]; then
-            yq -i '(select(.schema == "olm.channel") | .entries[0]).replaces = strenv(PREVIOUS_VERSION)' ${CATALOG_FILE}
+            for TEMPLATE in ${OPERATOR_DIR}/catalog-templates/*.yaml; do
+              PREV_HEAD=$(yq '.entries[] | select(.schema == "olm.channel") | .entries[-1].name' "${TEMPLATE}")
+              NEW_VERSION="${NEW_VERSION}" PREV_HEAD="${PREV_HEAD}" \
+                yq -i '(.entries[] | select(.schema == "olm.channel") | .entries) += [{"name": "victoriametrics-operator.v" + strenv(NEW_VERSION), "replaces": strenv(PREV_HEAD)}]' "${TEMPLATE}"
+              yq -i '.entries += [load("/tmp/new-bundle.yaml")]' "${TEMPLATE}"
+            done
           fi
-          opm validate ${CATALOGS_DIR}/latest/victoriametrics-operator
 
-          echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}
         uses: peter-evans/create-pull-request@v7
         with:
-          add-paths: catalogs
+          add-paths: operators/victoriametrics-operator
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
           committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"

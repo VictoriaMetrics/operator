@@ -47,6 +47,7 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj runtime.
 	r, ok := obj.(*vmv1beta1.VMSingle)
 	if !ok {
 		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+		return
 	}
 	if r.Status.ParsingSpecError != "" {
 		err = errors.New(r.Status.ParsingSpecError)
@@ -67,6 +68,7 @@ func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj ru
 	r, ok := newObj.(*vmv1beta1.VMSingle)
 	if !ok {
 		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+		return
 	}
 	if r.Status.ParsingSpecError != "" {
 		err = errors.New(r.Status.ParsingSpecError)

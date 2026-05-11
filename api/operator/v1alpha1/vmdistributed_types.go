@@ -436,9 +436,6 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMDistributedSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-                return err
-        }
 	return nil
 }
 

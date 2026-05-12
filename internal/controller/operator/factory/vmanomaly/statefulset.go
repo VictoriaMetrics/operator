@@ -188,13 +188,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
-	isUpscaling := false
+	isUpscaling := prevShardCount < shardCount
 	if prevCR.IsSharded() {
-		if prevShardCount < shardCount {
-			logger.WithContext(ctx).Info(fmt.Sprintf("%T shard upscaling from=%d to=%d", cr, prevShardCount, shardCount))
-			isUpscaling = true
-		} else {
-			logger.WithContext(ctx).Info(fmt.Sprintf("%T shard downscaling from=%d to=%d", cr, prevShardCount, shardCount))
+		if prevShardCount != shardCount {
+			action := "downscaling"
+			if isUpscaling {
+				action = "upscaling"
+			}
+			logger.WithContext(ctx).Info(fmt.Sprintf("VMAnomaly shard %s from=%d to=%d", action, prevShardCount, shardCount))
 		}
 	}
 

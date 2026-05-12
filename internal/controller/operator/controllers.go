@@ -341,10 +341,9 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	if err != nil {
 		// do not change status on conflict to failed
 		// it should be retried on the next loop
+		resultStatus = vmv1beta1.UpdateStatusFailed
 		if reconcile.IsRetryable(err) {
 			resultStatus = vmv1beta1.UpdateStatusExpanding
-		} else {
-			resultStatus = vmv1beta1.UpdateStatusFailed
 		}
 		resultErr = err
 		return

@@ -89,9 +89,9 @@ func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 }
 
 func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
-	f := func(cr *VMCluster, requestsType string, want []int32) {
+	f := func(cr *VMCluster, kind ClusterComponent, want []int32) {
 		t.Helper()
-		assert.Equal(t, want, cr.AvailableStorageNodeIDs(requestsType))
+		assert.Equal(t, want, cr.AvailableStorageNodeIDs(kind))
 	}
 
 	cr := &VMCluster{
@@ -107,10 +107,10 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 	}
 
 	// select excludes maintenance nodes
-	f(cr, "select", []int32{0, 2, 4})
+	f(cr, ClusterComponentSelect, []int32{0, 2, 4})
 
 	// insert excludes maintenance nodes
-	f(cr, "insert", []int32{1, 2, 3})
+	f(cr, ClusterComponentInsert, []int32{1, 2, 3})
 
 	// no maintenance nodes
 	f(&VMCluster{
@@ -119,5 +119,5 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 				CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
 			},
 		},
-	}, "select", []int32{0, 1, 2})
+	}, ClusterComponentSelect, []int32{0, 1, 2})
 }

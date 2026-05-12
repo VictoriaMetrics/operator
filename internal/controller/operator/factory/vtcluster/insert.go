@@ -78,6 +78,7 @@ func createOrUpdateVTInsertDeployment(ctx context.Context, rclient client.Client
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.Insert.HPA != nil {
 				newSpec.Replicas = existingSpec.Replicas
+				cr.Spec.Insert.ReplicaCount = existingSpec.Replicas
 			}
 		},
 	}
@@ -136,16 +137,13 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.Insert.LogFormat))
 	}
 
-	if cr.Spec.Storage != nil && cr.Spec.Storage.ReplicaCount != nil {
-		// TODO: check TLS
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs("insert")
-		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName), idx)
-		}
-		totalNodes := len(storageNodeIds)
-		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
+	storageNodeFlag := build.NewFlag("-storageNode", "")
+	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
+	for idx, i := range storageNodeIds {
+		storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.Storage.Port, cr.Spec.ClusterDomainName), idx)
 	}
+	totalNodes := len(storageNodeIds)
+	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 
 	if len(cr.Spec.Insert.ExtraEnvs) > 0 || len(cr.Spec.Insert.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")

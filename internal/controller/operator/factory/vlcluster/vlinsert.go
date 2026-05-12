@@ -79,6 +79,7 @@ func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VLInsert.HPA != nil {
 				newSpec.Replicas = existingSpec.Replicas
+				cr.Spec.VLInsert.ReplicaCount = existingSpec.Replicas
 			}
 		},
 	}
@@ -138,16 +139,14 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VLInsert.LogFormat))
 	}
 
-	if cr.Spec.VLStorage != nil && cr.Spec.VLStorage.ReplicaCount != nil {
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs("insert")
-		for idx, i := range storageNodeIds {
-			// TODO: introduce TLS webserver config for storage nodes
-			storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
-		}
-		totalNodes := len(storageNodeIds)
-		args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
+	storageNodeFlag := build.NewFlag("-storageNode", "")
+	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
+	for idx, i := range storageNodeIds {
+		// TODO: introduce TLS webserver config for storage nodes
+		storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 	}
+	totalNodes := len(storageNodeIds)
+	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 	if len(cr.Spec.VLInsert.ExtraEnvs) > 0 || len(cr.Spec.VLInsert.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}

@@ -13,8 +13,12 @@ aliases:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.3. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3+label%3ACherryPickApproved).
+
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.143.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.143.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.142.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.142.0) version
-* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
+
+* FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support VMAnomaly CRD in VMUser targetRefs. See [#2141](https://github.com/VictoriaMetrics/operator/issues/2141).
 
 * BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
@@ -22,6 +26,9 @@ aliases:
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): fix previously ignored negative values in VMAlertmanagerConfig. See [#2132](https://github.com/VictoriaMetrics/operator/issues/2132).
 * BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fixed ignored alertmanager template if it has no discovered VMAlertmanagerconfig CRs or tracing config defined. See [#2121](https://github.com/VictoriaMetrics/operator/issues/2121).
 * BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/) and [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fixed infinite non-default additional service recreation, when requestsLoadBalancer.enabled: true
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): fixed case, when target_path_suffix can be appended multiple times.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): when storage HPA was enabled, generated `-storageNode` flags could become incorrect after scaling, which could break expected routing to storage nodes; now the operator derives storage node count from the current StatefulSet state so generated flags stay correct during HPA-driven scaling. See [#2117](https://github.com/VictoriaMetrics/operator/issues/2117).
 
 ## [v0.69.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.69.0)
 **Release date:** 22 April 2026
@@ -52,7 +59,7 @@ aliases:
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): VMAgent CRs running in DaemonSet mode now support configuring rolling update strategy behavior.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): introduce `VMAnomalyConfig` CRD to enable dynamic configuration and hot-reload support starting from VMAnomaly version `1.25.0`.
-* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): introduce arbitrary fs access feature for VMAlertmanager. See [#899](https://github.com/VictoriaMetrics/operator/issues/899)
+* FEATURE: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): introduce arbitrary fs access feature for VMAlertmanager. See [#899](https://github.com/VictoriaMetrics/operator/issues/899)
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `update_message` field to `SlackConfig`. This allows alertmanager to edit the original Slack message in-place when alert status changes instead of sending a new one. Requires alertmanager v0.32.0+. See [#2064](https://github.com/VictoriaMetrics/operator/issues/2064).
 
 * BUGFIX: [vmbackupmanager](https://docs.victoriametrics.com/operator/): remove deprecated `-eula` flag from vmbackupmanager and vmrestore container args. See [#1319](https://github.com/VictoriaMetrics/operator/issues/1319).

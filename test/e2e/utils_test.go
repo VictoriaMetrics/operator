@@ -128,6 +128,13 @@ func expectObjectStatusPaused(ctx context.Context,
 	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusPaused)
 }
 
+func expectObjectStatusFailed(ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	name types.NamespacedName) error {
+	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusFailed)
+}
+
 type httpRequestOpts struct {
 	dstURL       string
 	method       string

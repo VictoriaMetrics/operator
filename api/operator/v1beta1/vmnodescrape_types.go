@@ -7,12 +7,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ json.Unmarshaler = (*VMNodeScrapeSpec)(nil)
+var _ json.Unmarshaler = (*VMNodeScrape)(nil)
 
 // VMNodeScrapeSpec defines specification for VMNodeScrape.
 type VMNodeScrapeSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// The label to use to retrieve the job name from.
 	// +optional
 	JobLabel string `json:"jobLabel,omitempty"`
@@ -35,16 +33,6 @@ type VMNodeScrapeSpec struct {
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMNodeScrapeSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMNodeScrapeSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // VMNodeScrape defines discovery for targets placed on kubernetes nodes,
@@ -94,6 +82,25 @@ func (cr *VMNodeScrape) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMNodeScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMNodeScrape) UnmarshalJSON(src []byte) error {
+	type pcr VMNodeScrape
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMNodeScrapeSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 // AsKey returns unique key for object
 func (cr *VMNodeScrape) AsKey(_ bool) string {

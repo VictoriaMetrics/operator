@@ -35,8 +35,6 @@ import (
 // VMAnomalySpec defines the desired state of VMAnomaly.
 // +k8s:openapi-gen=true
 type VMAnomalySpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmanomaly pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -178,6 +176,8 @@ type VMAnomalyStatus struct {
 	// Shards represents total number of vmanomaly statefulsets with uniq scrape targets
 	Shards                   int32 `json:"shards,omitempty"`
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -309,6 +309,28 @@ func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 		shardCnt = *cr.Spec.ShardCount
 	}
 	vs.Shards = shardCnt
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
+	type pcr VMAnomaly
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAnomalySpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SelectorLabels returns selector labels for vmanomaly
@@ -466,28 +488,6 @@ func (cr *VMAnomaly) Paused() bool {
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAnomaly) UseProxyProtocol() bool {
 	return false
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
-	type pcr VMAnomaly
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAnomalySpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAnomalySpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmanomaly spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // +kubebuilder:object:root=true

@@ -17,8 +17,6 @@ import (
 // VMClusterSpec defines the desired state of VMCluster
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
 	// Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
 	// The default value is 1 (one month).
@@ -180,28 +178,6 @@ func (cr *VMCluster) SetLastSpec(prevSpec VMClusterSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMCluster) UnmarshalJSON(src []byte) error {
-	type pcr VMCluster
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMClusterSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmcluster spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VMCluster is fast, cost-effective and scalable time-series database.
 // Cluster version with
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMCluster App"
@@ -239,6 +215,28 @@ func (cr *VMCluster) GetStatus() *VMClusterStatus {
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMCluster) DefaultStatusFields(vs *VMClusterStatus) {}
 
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMCluster) UnmarshalJSON(src []byte) error {
+	type pcr VMCluster
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMClusterSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
 // AsOwner returns owner references with current object as owner
 func (cr *VMCluster) AsOwner() metav1.OwnerReference {
 	return metav1.OwnerReference{
@@ -254,6 +252,8 @@ func (cr *VMCluster) AsOwner() metav1.OwnerReference {
 // VMClusterStatus defines the observed state of VMCluster
 type VMClusterStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status

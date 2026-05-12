@@ -7,12 +7,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ json.Unmarshaler = (*VMStaticScrapeSpec)(nil)
+var _ json.Unmarshaler = (*VMStaticScrape)(nil)
 
 // VMStaticScrapeSpec defines the desired state of VMStaticScrape.
 type VMStaticScrapeSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// JobName name of job.
 	JobName string `json:"jobName,omitempty"`
 	// A list of target endpoints to scrape metrics from.
@@ -27,16 +25,6 @@ type VMStaticScrapeSpec struct {
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMStaticScrapeSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMStaticScrapeSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // TargetEndpoint defines single static target endpoint.
@@ -100,6 +88,25 @@ func (cr *VMStaticScrape) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMStaticScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMStaticScrape) UnmarshalJSON(src []byte) error {
+	type pcr VMStaticScrape
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMStaticScrapeSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 // AsKey returns unique key for object
 func (cr *VMStaticScrape) AsKey(_ bool) string {

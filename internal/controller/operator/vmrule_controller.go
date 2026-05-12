@@ -74,8 +74,8 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	RegisterObjectStat(&instance, "vmrule")
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmrule"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmrule"}
 		return
 	}
 	if alertReconcileLimit.Throttle() {
@@ -94,7 +94,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if item.DeletionTimestamp != nil || item.Spec.ParsingError != "" {
+		if item.DeletionTimestamp != nil || item.Status.ParsingSpecError != "" {
 			continue
 		}
 		l := l.WithValues("vmalert", item.Name, "parent_namespace", item.Namespace)

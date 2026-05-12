@@ -14,8 +14,6 @@ import (
 
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// Name of the VMUser object.
 	// +optional
 	Name *string `json:"name,omitempty"`
@@ -191,6 +189,8 @@ type TargetRefBasicAuth struct {
 // VMUserStatus defines the observed state of VMUser
 type VMUserStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // VMUser is the Schema for the vmusers API
@@ -262,16 +262,6 @@ func (cr *VMUser) SelectorLabels() map[string]string {
 	}
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMUserSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMUserSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmuserspec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // FinalLabels returns combination of selector and managed labels
 func (cr *VMUser) FinalLabels() map[string]string {
 	v := cr.SelectorLabels()
@@ -293,6 +283,25 @@ func (cr *VMUser) GetStatus() *VMUserStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMUser) DefaultStatusFields(vs *VMUserStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMUser) UnmarshalJSON(src []byte) error {
+	type pcr VMUser
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMUserSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 func (cr *VMUser) AsKey(hide bool) string {
 	var id string

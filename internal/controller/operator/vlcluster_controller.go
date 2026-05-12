@@ -74,8 +74,8 @@ func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vlcluster"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vlcluster"}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

@@ -41,12 +41,10 @@ type VMScrapeConfig struct {
 	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
-var _ json.Unmarshaler = (*VMScrapeConfigSpec)(nil)
+var _ json.Unmarshaler = (*VMScrapeConfig)(nil)
 
 // VMScrapeConfigSpec defines the desired state of VMScrapeConfig
 type VMScrapeConfigSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// StaticConfigs defines a list of static targets with a common label set.
 	// +optional
 	StaticConfigs []StaticConfig `json:"staticConfigs,omitempty"`
@@ -89,16 +87,6 @@ type VMScrapeConfigSpec struct {
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMScrapeConfigSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMScrapeConfigSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // StaticConfig defines a static configuration.
@@ -598,6 +586,25 @@ func (cr *VMScrapeConfig) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMScrapeConfig) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMScrapeConfig) UnmarshalJSON(src []byte) error {
+	type pcr VMScrapeConfig
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMScrapeConfigSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 func init() {
 	SchemeBuilder.Register(&VMScrapeConfig{}, &VMScrapeConfigList{})

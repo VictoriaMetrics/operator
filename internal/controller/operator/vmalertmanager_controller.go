@@ -92,8 +92,8 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmalertmanager"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmalertmanager"}
 		return
 	}
 

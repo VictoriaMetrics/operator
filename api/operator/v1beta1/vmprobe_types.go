@@ -23,13 +23,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ json.Unmarshaler = (*VMProbeSpec)(nil)
+var _ json.Unmarshaler = (*VMProbe)(nil)
 
 // VMProbeSpec contains specification parameters for a Probe.
 // +k8s:openapi-gen=true
 type VMProbeSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// The job name assigned to scraped metrics by default.
 	JobName string `json:"jobName,omitempty"`
 	// Specification for the prober to use for probing targets.
@@ -50,16 +48,6 @@ type VMProbeSpec struct {
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMProbeSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMProbeSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
@@ -174,6 +162,25 @@ func (cr *VMProbe) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMProbe) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMProbe) UnmarshalJSON(src []byte) error {
+	type pcr VMProbe
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMProbeSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 // AsKey returns unique key for object
 func (cr *VMProbe) AsKey(_ bool) string {

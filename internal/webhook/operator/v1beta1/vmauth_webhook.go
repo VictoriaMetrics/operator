@@ -47,8 +47,8 @@ func (*VMAuthCustomValidator) ValidateCreate(_ context.Context, obj runtime.Obje
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (*VMAuthCustomValidator) ValidateUpdate(_ context.Context, _, newObj runtim
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err

@@ -33,8 +33,6 @@ import (
 // VTSingleSpec defines the desired state of VTSingle
 // +k8s:openapi-gen=true
 type VTSingleSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VTSingle pods.
 	// +optional
@@ -102,6 +100,8 @@ type VTSingleSpec struct {
 // VTSingleStatus defines the observed state of VTSingle
 type VTSingleStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -143,6 +143,28 @@ func (cr *VTSingle) GetStatus() *VTSingleStatus {
 func (cr *VTSingle) DefaultStatusFields(vs *VTSingleStatus) {
 }
 
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VTSingle) UnmarshalJSON(src []byte) error {
+	type pcr VTSingle
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VTSingleSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
 // +kubebuilder:object:root=true
 
 // VTSingleList contains a list of VTSingle
@@ -177,29 +199,6 @@ func (r *VTSingle) AsOwner() metav1.OwnerReference {
 // SetLastSpec implements objectWithLastAppliedState interface
 func (cr *VTSingle) SetLastSpec(prevSpec VTSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTSingle) UnmarshalJSON(src []byte) error {
-	type pcr VTSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTSingleSpec) UnmarshalJSON(src []byte) error {
-	type pcr VTSingleSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vtsingle spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // ProbePath implements build.probeCRD interface

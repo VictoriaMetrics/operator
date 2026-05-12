@@ -18,8 +18,6 @@ import (
 // VLAgentSpec defines the desired state of VLAgent
 // +k8s:openapi-gen=true
 type VLAgentSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vlagent pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -188,28 +186,6 @@ func (cr *VLAgent) UseProxyProtocol() bool {
 	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLAgent) UnmarshalJSON(src []byte) error {
-	type pcr VLAgent
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLAgentSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLAgentSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlagent spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VLAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 type VLAgentRemoteWriteSettings struct {
 	// The maximum size of unpacked request to send to remote storage
@@ -285,6 +261,8 @@ type VLAgentStatus struct {
 	// ReplicaCount Total number of pods targeted by this VLAgent
 	Replicas                 int32 `json:"replicas,omitempty"`
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -364,6 +342,28 @@ func (cr *VLAgent) DefaultStatusFields(vs *VLAgentStatus) {
 		replicaCount = *cr.Spec.ReplicaCount
 	}
 	vs.Replicas = replicaCount
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VLAgent) UnmarshalJSON(src []byte) error {
+	type pcr VLAgent
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VLAgentSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // FinalAnnotations implements build.builderOpts interface

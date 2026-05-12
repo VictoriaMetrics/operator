@@ -33,8 +33,6 @@ import (
 // VLSingleSpec defines the desired state of VLSingle
 // +k8s:openapi-gen=true
 type VLSingleSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VLSingle pods.
 	// +optional
@@ -108,6 +106,8 @@ type VLSingleSpec struct {
 // VLSingleStatus defines the observed state of VLSingle
 type VLSingleStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -151,7 +151,28 @@ func (cr *VLSingle) UseProxyProtocol() bool {
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
-func (cr *VLSingle) DefaultStatusFields(vs *VLSingleStatus) {
+func (cr *VLSingle) DefaultStatusFields(vs *VLSingleStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VLSingle) UnmarshalJSON(src []byte) error {
+	type pcr VLSingle
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VLSingleSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // +kubebuilder:object:root=true
@@ -188,29 +209,6 @@ func (r *VLSingle) AsOwner() metav1.OwnerReference {
 // SetLastSpec implements objectWithLastAppliedState interface
 func (cr *VLSingle) SetLastSpec(prevSpec VLSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLSingle) UnmarshalJSON(src []byte) error {
-	type pcr VLSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLSingleSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLSingleSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlsingle spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 func (cr *VLSingle) ProbePath() string {

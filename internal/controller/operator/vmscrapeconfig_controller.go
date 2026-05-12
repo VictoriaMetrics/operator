@@ -69,8 +69,8 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return
 	}
 	RegisterObjectStat(&instance, "vmscrapeconfig")
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmscrapeconfig"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmscrapeconfig"}
 		return
 	}
 	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {

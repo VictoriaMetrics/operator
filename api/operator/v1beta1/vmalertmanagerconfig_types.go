@@ -56,8 +56,6 @@ type VMAlertmanagerConfigSpec struct {
 	// See https://prometheus.io/docs/alerting/latest/configuration/#time_interval
 	// +optional
 	TimeIntervals []TimeIntervals `json:"time_intervals,omitempty" yaml:"time_intervals,omitempty"`
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 }
 
 // TimeIntervals for alerts
@@ -173,6 +171,8 @@ type VMAlertmanagerConfigStatus struct {
 	// reconcile
 	StatusMetadata                  `json:",inline"`
 	LastErrorParentAlertmanagerName string `json:"lastErrorParentAlertmanagerName,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
@@ -280,18 +280,26 @@ func parseNestedRoutes(src *Route) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (r *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
-	type amcfg VMAlertmanagerConfig
-	if err := json.Unmarshal(src, (*amcfg)(r)); err != nil {
-		r.Spec.ParsingError = fmt.Sprintf("cannot parse alertmanager config: %s, err: %s", string(src), err)
-		return nil
+func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
+	type pcr VMAlertmanagerConfig
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
 	}
-
-	if err := parseNestedRoutes(r.Spec.Route); err != nil {
-		r.Spec.ParsingError = fmt.Sprintf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %s", r.Name, r.Namespace, err)
-		return nil
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
 	}
-
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAlertmanagerConfigSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := parseNestedRoutes(cr.Spec.Route); err != nil {
+		if len(cr.Status.ParsingSpecError) == 0 {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse routes for VMAlertmanagerConfig: %s at namespace: %s, err: %s", cr.Name, cr.Namespace, err)
+		}
+	}
 	return nil
 }
 

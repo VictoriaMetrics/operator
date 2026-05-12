@@ -47,8 +47,8 @@ func (*VMScrapeConfigCustomValidator) ValidateCreate(_ context.Context, obj runt
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err
@@ -61,6 +61,9 @@ func (*VMScrapeConfigCustomValidator) ValidateUpdate(_ context.Context, oldObj, 
 	r, ok := newObj.(*vmv1beta1.VMScrapeConfig)
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err

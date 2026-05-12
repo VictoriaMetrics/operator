@@ -46,18 +46,14 @@ func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj run
 	r, ok := obj.(*vmv1alpha1.VMDistributed)
 	if !ok {
 		err = fmt.Errorf("BUG: unexpected type: %T", obj)
+	}
+	if r.Status.ParsingSpecError != "" {
+		err = errors.New(r.Status.ParsingSpecError)
 		return
 	}
-
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
-		return
-	}
-
 	if err = r.Validate(); err != nil {
 		return
 	}
-
 	return
 }
 
@@ -66,18 +62,14 @@ func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newO
 	r, ok := newObj.(*vmv1alpha1.VMDistributed)
 	if !ok {
 		err = fmt.Errorf("BUG: unexpected type: %T", newObj)
+	}
+	if r.Status.ParsingSpecError != "" {
+		err = errors.New(r.Status.ParsingSpecError)
 		return
 	}
-
-	if r.Spec.ParsingError != "" {
-		err = errors.New(r.Spec.ParsingError)
-		return
-	}
-
 	if err = r.Validate(); err != nil {
 		return
 	}
-
 	return
 }
 

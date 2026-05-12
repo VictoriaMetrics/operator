@@ -3039,7 +3039,23 @@ unauthorized_user:
 							},
 							Paths: []string{"/internal.*"},
 						},
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMAnomaly",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
+							},
+							Paths: []string{"/anomaly.*"},
+						},
 					},
+				},
+			},
+			&vmv1.VMAnomaly{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
 				},
 			},
 			&vmv1.VLCluster{
@@ -3068,6 +3084,10 @@ unauthorized_user:
     - http://vlstorage-test.default.svc:9491
     src_paths:
     - /internal.*
+  - url_prefix:
+    - http://vmanomaly-test.default.svc:8490
+    src_paths:
+    - /anomaly.*
   name: user1
   bearer_token: bearer
 `,

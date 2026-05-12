@@ -310,6 +310,8 @@ monitoring:
       label1: value1
 settings:
   restore_state: true
+server:
+  port: "8490"
 `,
 	})
 
@@ -388,6 +390,8 @@ settings:
   retention:
     ttl: 24h
     check_interval: 30m
+server:
+  port: "8490"
 `,
 	})
 
@@ -543,6 +547,8 @@ writer:
 monitoring:
   pull:
     port: "8080"
+server:
+  port: "8490"
 `,
 	})
 
@@ -617,6 +623,8 @@ writer:
 monitoring:
   pull:
     port: "8080"
+server:
+  port: "8490"
 `,
 	})
 
@@ -838,6 +846,8 @@ monitoring:
     port: "8080"
 settings:
   restore_state: true
+server:
+  port: "8490"
 `,
 	})
 }

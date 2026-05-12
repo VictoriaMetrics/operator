@@ -142,6 +142,8 @@ schedulers:
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmanomalyName},
 				{Verb: "Create", Kind: "ServiceAccount", Resource: vmanomalyName},
+				{Verb: "Get", Kind: "Service", Resource: vmanomalyName},
+				{Verb: "Create", Kind: "Service", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "VMPodScrape", Resource: vmanomalyName},
 				{Verb: "Create", Kind: "VMPodScrape", Resource: vmanomalyName},
 				// Secrets
@@ -195,6 +197,7 @@ schedulers:
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmanomalyName},
+				{Verb: "Get", Kind: "Service", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "VMPodScrape", Resource: vmanomalyName},
 				// Secrets
 				{Verb: "Get", Kind: "Secret", Resource: tlsAssetName},
@@ -245,6 +248,7 @@ schedulers:
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmanomalyName},
+				{Verb: "Get", Kind: "Service", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "VMPodScrape", Resource: vmanomalyName},
 				// Secrets
 				{Verb: "Get", Kind: "Secret", Resource: tlsAssetName},

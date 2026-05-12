@@ -17,7 +17,9 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.143.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.143.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.142.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.142.0) version
+
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support VMAnomaly CRD in VMUser targetRefs. See [#2141](https://github.com/VictoriaMetrics/operator/issues/2141).
 
 * BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): change default load balancing policy for write requests from `first_available` to `least_loaded`. This should allow to evenly distribute write load across all VMAgents.

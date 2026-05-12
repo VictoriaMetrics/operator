@@ -616,7 +616,7 @@ Appears in: [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnom
 #### VMAnomalyMonitoringPullSpec
 
 VMAnomalyMonitoringPullSpec defines pull monitoring configuration
-which is enabled by default and served at POD_IP:8490/metrics
+which is enabled by default and served at POD_IP:8080/metrics
 
 Appears in: [VMAnomalyMonitoringSpec](#vmanomalymonitoringspec)
 
@@ -1453,7 +1453,7 @@ Appears in: [TargetRef](#targetref)
 
 | Field | Description |
 | --- | --- |
-| kind<a href="#crdref-kind" id="crdref-kind">#</a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent |
+| kind<a href="#crdref-kind" id="crdref-kind">#</a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent |
 | name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
 | objects<a href="#crdref-objects" id="crdref-objects">#</a><br/>_[NamespacedName](#namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |

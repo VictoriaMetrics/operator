@@ -318,6 +318,7 @@ var crdNameToObject = map[string]objectWithURL{
 	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
 	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
 	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
+	"VMAnomaly":           &vmv1.VMAnomaly{},
 	"VLSingle":            &vmv1.VLSingle{},
 	"VLCluster/vlselect":  newClusterWithURL("vlselect"),
 	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),

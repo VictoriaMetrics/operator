@@ -195,8 +195,8 @@ type NamespacedName struct {
 // CRDRef describe CRD target reference.
 type CRDRef struct {
 	// Kind one of:
-	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage and VLAgent
-	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle
+	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle;VMAnomaly
 	Kind           string `json:"kind"`
 	NamespacedName `json:",inline"`
 	// Objects defines list of name/namespace pairs that define existing k8s object

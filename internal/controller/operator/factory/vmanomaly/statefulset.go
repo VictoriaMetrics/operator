@@ -23,6 +23,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+func buildService(cr *vmv1.VMAnomaly) *corev1.Service {
+	return build.Service(cr, cr.Spec.Server.Port, func(svc *corev1.Service) {
+		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
+	})
+}
+
 func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
@@ -52,6 +59,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
+	}
+
+	svc := buildService(cr)
+	var prevSvc *corev1.Service
+	if prevCR != nil {
+		prevSvc = buildService(prevCR)
+	}
+	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile headless service for vmanomaly: %w", err)
 	}
 
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -125,6 +141,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*appsv1.StatefulSet, 
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.StatefulSetSpec{
+			ServiceName: cr.PrefixedName(),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: build.ShardSelectorLabels(cr),
 			},

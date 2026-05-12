@@ -28,6 +28,7 @@ func OnVMAnomalyDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMAn
 	}
 	objsToRemove := []client.Object{
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
 		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.GetServiceAccountName(),
 			Namespace: ns,

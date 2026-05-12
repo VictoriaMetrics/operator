@@ -458,7 +458,7 @@ $(MIRRORD_BIN): $(LOCALBIN)
 
 .PHONY: allure-report
 allure-report:
-	npx allure awesome --single-file ./allure-results -o ./allure-report
+	@[ -d ./allure-results ] && npx allure awesome --single-file ./allure-results -o ./allure-report || echo "allure-results dir not found, skipping report generation"
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

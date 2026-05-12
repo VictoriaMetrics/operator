@@ -79,8 +79,8 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return
 	}
 	// Check parsing error
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "VMDistributed"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "VMDistributed"}
 		return
 	}
 

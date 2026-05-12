@@ -41,8 +41,8 @@ var _ admission.Validator[*vmv1beta1.VMSingle] = &VMSingleCustomValidator{}
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1beta1.VMSingle) (warnings admission.Warnings, err error) {
-	if obj.Spec.ParsingError != "" {
-		err = errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		err = errors.New(obj.Status.ParsingSpecError)
 		return
 	}
 	if err = obj.Validate(); err != nil {
@@ -57,8 +57,8 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1bet
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMSingle) (warnings admission.Warnings, err error) {
-	if newObj.Spec.ParsingError != "" {
-		err = errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
 	if err = newObj.Validate(); err != nil {

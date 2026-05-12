@@ -80,8 +80,8 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vlagent"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vlagent"}
 		return
 	}
 

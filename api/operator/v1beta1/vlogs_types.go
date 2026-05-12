@@ -34,9 +34,6 @@ import (
 // +kubebuilder:validation:Schemaless
 // +kubebuilder:pruning:PreserveUnknownFields
 type VLogsSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
-
 	// PodMetadata configures Labels and Annotations which are propagated to the VLogs pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -102,6 +99,8 @@ type VLogsStatus struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VLogsSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -172,11 +171,20 @@ func (r *VLogs) AsOwner() metav1.OwnerReference {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
-	type pcr VLogsSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vlogs spec: %s, err: %s", string(src), err)
-		return nil
+func (cr *VLogs) UnmarshalJSON(src []byte) error {
+	type pcr VLogs
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VLogsSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	return nil
 }

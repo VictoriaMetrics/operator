@@ -92,8 +92,8 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return
 	}
 
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmanomaly"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmanomaly"}
 		return
 	}
 

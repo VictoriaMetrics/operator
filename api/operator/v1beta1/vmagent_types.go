@@ -19,8 +19,6 @@ import (
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
 type VMAgentSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -269,11 +267,20 @@ func (cr *VMAgent) AutomountServiceAccountToken() bool {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAgentSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAgentSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmagent spec: %s, err: %s", string(src), err)
-		return nil
+func (cr *VMAgent) UnmarshalJSON(src []byte) error {
+	type pcr VMAgent
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAgentSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	return nil
 }
@@ -401,6 +408,8 @@ type VMAgentStatus struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VMAgentSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -605,7 +614,7 @@ func (cr *VMAgent) ScrapeSelectors(scrape client.Object) (*metav1.LabelSelector,
 
 // IsUnmanaged checks if object should managed any config objects
 func (cr *VMAgent) IsUnmanaged(scrape client.Object) bool {
-	if !cr.DeletionTimestamp.IsZero() || cr.Spec.ParsingError != "" {
+	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
 		return true
 	}
 	if scrape == nil {

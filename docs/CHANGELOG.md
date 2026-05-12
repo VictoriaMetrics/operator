@@ -29,6 +29,7 @@ aliases:
 * BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): fixed case, when target_path_suffix can be appended multiple times.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): when storage HPA was enabled, generated `-storageNode` flags could become incorrect after scaling, which could break expected routing to storage nodes; now the operator derives storage node count from the current StatefulSet state so generated flags stay correct during HPA-driven scaling. See [#2117](https://github.com/VictoriaMetrics/operator/issues/2117).
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): expose VMClusterSpec parsing error in status, previously it was just swallowed and led to infinite reconciles. See [#2113](https://github.com/VictoriaMetrics/operator/issues/2113).
 
 ## [v0.69.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.69.0)
 **Release date:** 22 April 2026

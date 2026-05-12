@@ -40,8 +40,8 @@ var _ admission.Validator[*vmv1beta1.VMScrapeConfig] = &VMScrapeConfigCustomVali
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (*VMScrapeConfigCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMScrapeConfig) (admission.Warnings, error) {
-	if obj.Spec.ParsingError != "" {
-		return nil, errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
 	if err := obj.Validate(); err != nil {
 		return nil, err

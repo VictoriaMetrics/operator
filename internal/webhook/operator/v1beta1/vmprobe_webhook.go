@@ -40,8 +40,8 @@ var _ admission.Validator[*vmv1beta1.VMProbe] = &VMProbeCustomValidator{}
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMProbeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMProbe) (admission.Warnings, error) {
-	if obj.Spec.ParsingError != "" {
-		return nil, errors.New(obj.Spec.ParsingError)
+	if obj.Status.ParsingSpecError != "" {
+		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
 
 	if err := obj.Validate(); err != nil {
@@ -52,8 +52,8 @@ func (*VMProbeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMProbeCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMProbe) (admission.Warnings, error) {
-	if newObj.Spec.ParsingError != "" {
-		return nil, errors.New(newObj.Spec.ParsingError)
+	if newObj.Status.ParsingSpecError != "" {
+		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {
 		return nil, err

@@ -39,8 +39,6 @@ const (
 // VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
 	// +optional
@@ -156,8 +154,6 @@ type VMDistributedZoneAgent struct {
 // VMDistributedZoneAgentSpec is a customized specification of a new VMAgent.
 // It includes selected options from the original VMAgentSpec.
 type VMDistributedZoneAgentSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -317,6 +313,8 @@ type VMDistributedStatus struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VMDistributedSpec `json:"lastAppliedSpec,omitempty"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributed App"
@@ -424,11 +422,20 @@ func (cr *VMDistributed) SelectorLabels() map[string]string {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMDistributedSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse VMDistributed spec: %s, err: %s", string(src), err)
-		return nil
+func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
+	type pcr VMDistributed
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMDistributedSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	return nil
 }

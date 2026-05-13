@@ -279,8 +279,8 @@ sign: $(COSIGN)
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-ubi && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-fips && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/config-reloader:config-reloader-$(TAG) && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/config-reloader:config-reloader-$(TAG)-fips ; \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG)-fips ; \
 	done
 
 .PHONY: build-installer

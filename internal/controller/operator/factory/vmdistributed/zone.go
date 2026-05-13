@@ -219,10 +219,12 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
 	}
 
-	// wait for empty persistent queue
-	zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-	if ctx.Err() != nil {
-		return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
+	// wait for empty persistent queue only if VMAgent already existed (skip on first create)
+	if !vmAgent.CreationTimestamp.IsZero() {
+		zs.waitForEmptyPQ(ctx, rclient, MetricsCheckInterval, i)
+		if ctx.Err() != nil {
+			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
+		}
 	}
 
 	// restore zone in VMAuth LB

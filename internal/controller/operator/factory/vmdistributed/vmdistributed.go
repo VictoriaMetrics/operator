@@ -17,7 +17,6 @@ const (
 	vmAgentQueueMetricName         = "vm_persistentqueue_bytes_pending"
 	httpTimeout                    = 10 * time.Second
 	defaultEndpointsUpdateInterval = 5 * time.Second
-	defaultMetricsCheckInterval    = 50 * time.Second
 	defaultStatusCheckInterval     = 5 * time.Second
 )
 

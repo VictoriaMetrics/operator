@@ -1,5 +1,5 @@
 ---
-weight: 15
+weight: 23
 title: VMAnomalyConfig
 menu:
   docs:

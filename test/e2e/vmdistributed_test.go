@@ -21,6 +21,20 @@ import (
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
+var defaultCommonZone = vmv1alpha1.VMDistributedZoneCommon{
+	ReadyTimeout:         &metav1.Duration{Duration: 2 * time.Minute},
+	UpdatePause:          &metav1.Duration{Duration: 1 * time.Second},
+	MetricsCheckInterval: &metav1.Duration{Duration: time.Second},
+}
+
+func genZoneCommon(opts ...func(*vmv1alpha1.VMDistributedZoneCommon)) vmv1alpha1.VMDistributedZoneCommon {
+	zc := *defaultCommonZone.DeepCopy()
+	for _, opt := range opts {
+		opt(&zc)
+	}
+	return zc
+}
+
 func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) vmv1beta1.VMClusterSpec {
 	commonAppsParams := vmv1beta1.CommonAppsParams{
 		ReplicaCount: ptr.To[int32](1),
@@ -188,17 +202,15 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 					},
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+					ZoneCommon: genZoneCommon(func(zc *vmv1alpha1.VMDistributedZoneCommon) {
+						zc.VMAgent = vmv1alpha1.VMDistributedZoneAgent{
 							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
 								CommonAppsParams: vmv1beta1.CommonAppsParams{
 									ReplicaCount: ptr.To[int32](2),
 								},
 							},
-						},
-					},
+						}
+					}),
 					Zones: zs,
 				},
 			}
@@ -278,12 +290,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -369,10 +378,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
+					ZoneCommon: genZoneCommon(),
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
@@ -454,12 +460,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -534,16 +537,14 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
 					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+					ZoneCommon: genZoneCommon(func(zc *vmv1alpha1.VMDistributedZoneCommon) {
+						zc.VMCluster = vmv1alpha1.VMDistributedZoneCluster{
 							Name: "%ZONE%",
 							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
 								s.RetentionPeriod = "60d"
 							}),
-						},
-					},
+						}
+					}),
 					Zones: zs,
 				},
 			}
@@ -610,12 +611,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					Zones: zs,
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					ZoneCommon: genZoneCommon(),
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -690,12 +688,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -776,12 +771,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -906,12 +898,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			DeferCleanup(func() {
@@ -934,6 +923,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			var beforeVMAuth vmv1beta1.VMAuth
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: nsn.Name, Namespace: namespace}, &beforeVMAuth)).ToNot(HaveOccurred())
 			authDeploymentSpec := beforeVMAuth.Spec
+			// Stub waitForEmptyPQ to avoid slow metric polling
+			vmdistributed.WaitForEmptyPQStub = func() {}
+			defer func() { vmdistributed.WaitForEmptyPQStub = nil }()
+
 			// Call CreateOrUpdate multiple times and ensure it succeeds and doesn't modify child resources
 			for i := 0; i < attempts; i++ {
 				var latestCR vmv1alpha1.VMDistributed
@@ -1000,12 +993,9 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 
@@ -1050,10 +1040,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      "missing-cluster",
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
+					ZoneCommon: genZoneCommon(),
 					Zones: []vmv1alpha1.VMDistributedZone{
 						{
 							Name: "test",
@@ -1070,10 +1057,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      "zone-spec-missing-name",
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
+					ZoneCommon: genZoneCommon(),
 					Zones: []vmv1alpha1.VMDistributedZone{
 						{
 							VMCluster: vmv1alpha1.VMDistributedZoneCluster{
@@ -1110,10 +1094,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
+					ZoneCommon: genZoneCommon(),
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
@@ -1207,13 +1188,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1alpha1.VMDistributedSpec{
-					Retain: true,
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					VMAuth: vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
-					Zones:  zs,
+					Retain:     true,
+					ZoneCommon: genZoneCommon(),
+					VMAuth:     vmv1alpha1.VMDistributedAuth{Name: nsn.Name},
+					Zones:      zs,
 				},
 			}
 			By("creating the VMDistributed")
@@ -1296,11 +1274,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						Name:    nsn.Name,
 						Enabled: ptr.To(false),
 					},
-					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
-						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
-					},
-					Zones: zs,
+					ZoneCommon: genZoneCommon(),
+					Zones:      zs,
 				},
 			}
 			By("creating the VMDistributed")

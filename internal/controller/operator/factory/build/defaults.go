@@ -63,6 +63,11 @@ func addVMDistributedDefaults(objI any) {
 			Duration: 1 * time.Minute,
 		}
 	}
+	if cr.Spec.ZoneCommon.MetricsCheckInterval == nil {
+		cr.Spec.ZoneCommon.MetricsCheckInterval = &metav1.Duration{
+			Duration: 50 * time.Second,
+		}
+	}
 	if cr.Spec.License.IsProvided() {
 		if !cr.Spec.VMAuth.Spec.License.IsProvided() {
 			cr.Spec.VMAuth.Spec.License = cr.Spec.License.DeepCopy()

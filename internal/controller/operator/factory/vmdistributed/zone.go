@@ -197,7 +197,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 	if needsLBUpdate {
 		// wait for empty persistent queue
-		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
+		zs.waitForEmptyPQ(ctx, rclient, cr.Spec.ZoneCommon.MetricsCheckInterval.Duration, i)
 		if ctx.Err() != nil {
 			return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty", item, nsnCluster.String())
 		}
@@ -221,7 +221,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 
 	// wait for empty persistent queue only if VMAgent already existed (skip on first create)
 	if !vmAgent.CreationTimestamp.IsZero() {
-		zs.waitForEmptyPQ(ctx, rclient, MetricsCheckInterval, i)
+		zs.waitForEmptyPQ(ctx, rclient, cr.Spec.ZoneCommon.MetricsCheckInterval.Duration, i)
 		if ctx.Err() != nil {
 			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
 		}
@@ -297,6 +297,10 @@ func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1be
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
+	if WaitForEmptyPQStub != nil {
+		WaitForEmptyPQStub()
+		return
+	}
 	vmCluster := zs.vmclusters[clusterIdx]
 	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
 

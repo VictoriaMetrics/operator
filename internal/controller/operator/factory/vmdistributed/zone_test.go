@@ -49,6 +49,7 @@ func TestGetZones(t *testing.T) {
 			},
 			Spec: vmv1alpha1.VMDistributedSpec{
 				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+					MetricsCheckInterval: &metav1.Duration{Duration: 1 * time.Second},
 					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 						Spec: vmv1beta1.VMClusterSpec{
 							ClusterVersion: "v0.2.0",
@@ -88,6 +89,7 @@ func TestGetZones(t *testing.T) {
 			},
 			Spec: vmv1alpha1.VMDistributedSpec{
 				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+					MetricsCheckInterval: &metav1.Duration{Duration: 1 * time.Second},
 					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 						Spec: vmv1beta1.VMClusterSpec{
 							ClusterVersion: "v0.2.0",

@@ -352,7 +352,7 @@ var (
 				},
 			},
 			ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
-				ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
+				ReadyTimeout: &metav1.Duration{Duration: 90 * time.Second},
 				UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
 				VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 					Spec: vmv1beta1.VMClusterSpec{

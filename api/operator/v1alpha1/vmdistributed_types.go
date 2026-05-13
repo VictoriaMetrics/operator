@@ -80,6 +80,10 @@ type VMDistributedZoneCommon struct {
 	// UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition.
 	// +optional
 	UpdatePause *metav1.Duration `json:"updatePause,omitempty"`
+	// MetricsCheckInterval defines polling interval for VMAgent persistent queue drain check.
+	// Intended for testing and advanced tuning only.
+	// +optional
+	MetricsCheckInterval *metav1.Duration `json:"-" yaml:"-"`
 }
 
 // +k8s:openapi-gen=true

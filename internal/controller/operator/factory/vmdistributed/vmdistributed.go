@@ -20,6 +20,9 @@ const (
 	defaultStatusCheckInterval     = 5 * time.Second
 )
 
+// WaitForEmptyPQStub is a function which checks that persistent queue is empty. In most e2e tests its a stub to speed up execution
+var WaitForEmptyPQStub func()
+
 // CreateOrUpdate handles VM deployment reconciliation.
 func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient client.Client) error {
 	// No actions performed if CR is paused

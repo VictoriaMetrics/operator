@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -90,6 +91,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			ctx := context.TODO()
 			build.AddDefaults(fclient.Scheme())
 			fclient.Scheme().Default(args.cr)
+			args.cr.Spec.ZoneCommon.MetricsCheckInterval = &metav1.Duration{Duration: 1 * time.Second}
 			if args.preRun != nil {
 				args.preRun(ctx, fclient, args.cr)
 			}

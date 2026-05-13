@@ -399,6 +399,177 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 		},
 	})
+
+	zoneSpec := vmv1alpha1.VMDistributedZoneCluster{
+		Spec: vmv1beta1.VMClusterSpec{
+			RetentionPeriod: "1",
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	}
+	vmAuthSpec := vmv1alpha1.VMDistributedAuth{
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+		},
+	}
+
+	// switching from read-write to read-only: pre-reconcile PQ drain, no post-reconcile drain
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name:        zoneName,
+						TrafficMode: vmv1alpha1.VMDistributedTrafficModeReadOnly,
+						VMCluster:   zoneSpec,
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmAuthSpec,
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
+			crCopy := cr.DeepCopy()
+			crCopy.Spec.Zones[0].TrafficMode = ""
+			assert.NoError(t, CreateOrUpdate(ctx, crCopy, c))
+			c.Actions = nil
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// prevAcceptsWrites=true: drain PQ (no k8s actions), then exclude zone from LB
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+
+			// reconcile VMCluster: VMInsert.ReplicaCount 1 → 0
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Update", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+			// reconcile VMAgent: no changes
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// newAcceptsWrites=false: no PQ drain; restore LB with read-only config
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
+
+	// switching from read-only to read-write: no pre-reconcile drain, post-reconcile PQ drain
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name:        zoneName,
+						TrafficMode: vmv1alpha1.VMDistributedTrafficModeReadWrite,
+						VMCluster:   zoneSpec,
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmAuthSpec,
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
+			crCopy := cr.DeepCopy()
+			crCopy.Spec.Zones[0].TrafficMode = vmv1alpha1.VMDistributedTrafficModeReadOnly
+			assert.NoError(t, CreateOrUpdate(ctx, crCopy, c))
+			c.Actions = nil
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// prevAcceptsWrites=false: no pre-reconcile drain; exclude zone from LB
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+
+			// reconcile VMCluster: VMInsert.ReplicaCount 0 → 1
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Update", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+			// reconcile VMAgent: no changes
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// newAcceptsWrites=true: drain PQ (no k8s actions), then restore LB
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Update", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
+
+	// read-only mode with no spec changes: no reconcile, no PQ drains
+	f(args{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: objectMeta,
+			Spec: vmv1alpha1.VMDistributedSpec{
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name:        zoneName,
+						TrafficMode: vmv1alpha1.VMDistributedTrafficModeReadOnly,
+						VMCluster:   zoneSpec,
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{},
+							},
+						},
+					},
+				},
+				VMAuth: vmAuthSpec,
+			},
+		},
+		preRun: func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1alpha1.VMDistributed) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), c))
+			c.Actions = nil
+		},
+	}, want{
+		actions: []k8stools.ClientAction{
+			// getZones
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// no spec changes: no LB exclude, no PQ drains
+			// reconcile VMCluster: no changes
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+			{Verb: "Get", Kind: "VMCluster", Resource: vmClusterName},
+
+			// reconcile VMAgent: no changes
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+			{Verb: "Get", Kind: "VMAgent", Resource: vmAgentName},
+
+			// restore LB: no changes
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
+		},
+	})
 }
 
 func Test_CreateOrUpdate_Paused(t *testing.T) {

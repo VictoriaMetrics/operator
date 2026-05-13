@@ -17,12 +17,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
       - name: Prepare binary cache
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
         with:
           path: ./bin
           key: binary
       - name: Setup Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
         with:
           go-version-file: 'go.mod'
           check-latest: true
@@ -51,7 +51,7 @@ jobs:
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber || echo "fix me NOT enough security permissions"
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           name: olm
           path: bundle

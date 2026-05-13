@@ -89,7 +89,7 @@ func ConsistentlyShouldNotHaveFinalizer(namespace string, listProtos ...client.O
 
 func GetListObjectType(list client.ObjectList) reflect.Type {
 	objType := reflect.ValueOf(list).Elem().FieldByName("Items").Type().Elem()
-	if objType.Kind() == reflect.Ptr {
+	if objType.Kind() == reflect.Pointer {
 		objType = objType.Elem()
 	}
 
@@ -104,7 +104,7 @@ func listObjectsByListProto(namespace string, listProto client.ObjectList) []cli
 	itemsValue := reflect.ValueOf(list).Elem().FieldByName("Items")
 	for i := 0; i < itemsValue.Len(); i++ {
 		itemValue := itemsValue.Index(i)
-		if itemValue.Kind() != reflect.Ptr {
+		if itemValue.Kind() != reflect.Pointer {
 			itemValue = itemValue.Addr()
 		}
 

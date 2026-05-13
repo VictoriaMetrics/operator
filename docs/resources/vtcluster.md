@@ -1,5 +1,5 @@
 ---
-weight: 22
+weight: 24
 title: VTCluster
 menu:
   docs:

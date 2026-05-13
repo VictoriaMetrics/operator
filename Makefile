@@ -21,7 +21,7 @@ BASEIMAGE ?=scratch
 BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.36.0
+ENVTEST_K8S_VERSION = 1.36.1
 PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -266,6 +266,23 @@ publish:
 	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG)-fips COMPONENT=config-reloader GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
+COSIGN ?= $(shell which cosign 2>/dev/null || echo $(COSIGN_BIN))
+
+.PHONY: cosign
+cosign: $(COSIGN_BIN)
+$(COSIGN_BIN): $(LOCALBIN)
+	$(call download-github-release,$(COSIGN_BIN),sigstore/cosign,$(COSIGN_VERSION),cosign-$(OS)-$(ARCH),cosign-$(OS)-$(ARCH))
+
+.PHONY: sign
+sign: $(COSIGN)
+	for registry in $(PUBLISH_REGISTRIES); do \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-ubi && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-fips && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG)-fips ; \
+	done
+
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist && rm -rf dist/*
@@ -358,22 +375,24 @@ CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
 CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
 MIRRORD_BIN ?= $(LOCALBIN)/mirrord-$(MIRRORD_VERSION)
+COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
-CONTROLLER_TOOLS_VERSION ?= v0.20.1
+CONTROLLER_TOOLS_VERSION ?= v0.21.0
 ENVTEST_VERSION ?= release-0.23
-GOLANGCI_LINT_VERSION ?= v2.11.4
-CODEGENERATOR_VERSION ?= v0.36.0
+GOLANGCI_LINT_VERSION ?= v2.12.2
+CODEGENERATOR_VERSION ?= v0.36.1
 KIND_VERSION ?= v0.31.0
 OLM_VERSION ?= 0.42.0
 
 OPERATOR_SDK_VERSION ?= v1.42.2
-OPM_VERSION ?= v1.66.0
+OPM_VERSION ?= v1.68.0
 YQ_VERSION ?= v4.53.2
 GINKGO_VERSION ?= v2.28.3
-CRUST_GATHER_VERSION ?= v0.14.3
+CRUST_GATHER_VERSION ?= v0.15.0
 MIRRORD_VERSION ?= 3.209.2
+COSIGN_VERSION ?= v3.0.6
 
 CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
 
@@ -463,7 +482,7 @@ $(MIRRORD_BIN): $(LOCALBIN)
 
 .PHONY: allure-report
 allure-report:
-	npx allure awesome --single-file ./allure-results -o ./allure-report
+	@[ -d ./allure-results ] && npx allure awesome --single-file ./allure-results -o ./allure-report || echo "allure-results dir not found, skipping report generation"
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

@@ -2,20 +2,20 @@ module github.com/VictoriaMetrics/operator/api
 
 // NOTE: modify go version only if it's really needed
 // and api package is no longer compatible with previous go versions.
-go 1.26.2
+go 1.26.3
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.141.0
-	github.com/prometheus/alertmanager v0.32.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.143.0
+	github.com/prometheus/alertmanager v0.32.1
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.36.0
-	k8s.io/apiextensions-apiserver v0.36.0
-	k8s.io/apimachinery v0.36.0
+	k8s.io/api v0.36.1
+	k8s.io/apiextensions-apiserver v0.36.1
+	k8s.io/apimachinery v0.36.1
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.6.0
-	k8s.io/client-go v0.36.0
-	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
-	sigs.k8s.io/controller-runtime v0.24.0
+	k8s.io/client-go v0.36.1
+	k8s.io/utils v0.0.0-20260507154919-ff6756f316d2
+	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/gateway-api v1.5.1
 )
 

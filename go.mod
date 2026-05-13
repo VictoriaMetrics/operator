@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator
 go 1.26.3
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/VictoriaMetrics/VictoriaMetrics v1.143.0
 	github.com/VictoriaMetrics/metrics v1.43.2
 	github.com/VictoriaMetrics/metricsql v0.87.0

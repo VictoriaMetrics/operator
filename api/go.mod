@@ -6,7 +6,7 @@ go 1.26.3
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.143.0
-	github.com/prometheus/alertmanager v0.32.0
+	github.com/prometheus/alertmanager v0.32.1
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.36.0

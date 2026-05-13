@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -12,6 +13,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -418,6 +420,128 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				},
 			),
 		)
+
+		It("should reconcile VMAnomalyConfig", func() {
+			nsn.Name = "configs"
+			cr := &vmv1.VMAnomaly{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1.VMAnomalySpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+					License: &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					},
+					ConfigRawYaml: anomalyConfig,
+					Reader: &vmv1.VMAnomalyReadersSpec{
+						DatasourceURL:  anomalyDatasourceURL,
+						QueryRangePath: "/api/v1/query_range",
+						SamplingPeriod: "10s",
+					},
+					Writer: &vmv1.VMAnomalyWritersSpec{
+						DatasourceURL: anomalyDatasourceURL,
+					},
+					ConfigSelector: metav1.SetAsLabelSelector(map[string]string{
+						"vmanomaly-config": "selected",
+					}),
+				},
+			}
+			selectedConfig := &vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "selected",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"vmanomaly-config": "selected",
+					},
+				},
+				Spec: runtime.RawExtension{Raw: []byte(`{
+  "models": {
+    "extra-model": {
+      "class": "zscore",
+      "queries": ["extra-query"],
+      "schedulers": ["extra-scheduler"],
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "extra-scheduler": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  },
+  "queries": {
+    "extra-query": {
+      "expr": "vm_selected_metric"
+    }
+  }
+}`)},
+			}
+			missedConfig := &vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "missed",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"vmanomaly-config": "missed",
+					},
+				},
+				Spec: runtime.RawExtension{Raw: []byte(`{
+  "queries": {
+    "missed-query": {
+      "expr": "vm_missed_metric"
+    }
+  }
+}`)},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, selectedConfig)).ToNot(HaveOccurred())
+				Expect(finalize.SafeDelete(ctx, k8sClient, missedConfig)).ToNot(HaveOccurred())
+			})
+
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			Expect(k8sClient.Create(ctx, selectedConfig)).ToNot(HaveOccurred())
+			Expect(k8sClient.Create(ctx, missedConfig)).ToNot(HaveOccurred())
+			Eventually(func() string {
+				var secret corev1.Secret
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
+				return string(secret.Data["vmanomaly.env.yaml"])
+			}, anomalyReadyTimeout).Should(And(
+				ContainSubstring("vm_selected_metric"),
+				ContainSubstring(fmt.Sprintf("%s-selected-extra-model", namespace)),
+				Not(ContainSubstring("vm_missed_metric")),
+			))
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomalyConfig{}, types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace})
+			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace}, selectedConfig)).ToNot(HaveOccurred())
+			selectedConfig.Spec.Raw = []byte(strings.ReplaceAll(string(selectedConfig.Spec.Raw), "vm_selected_metric", "vm_updated_metric"))
+			Expect(k8sClient.Update(ctx, selectedConfig)).ToNot(HaveOccurred())
+			Eventually(func() string {
+				var secret corev1.Secret
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
+				return string(secret.Data["vmanomaly.env.yaml"])
+			}, anomalyReadyTimeout).Should(And(
+				ContainSubstring("vm_updated_metric"),
+				Not(ContainSubstring("vm_selected_metric")),
+			))
+
+			Expect(k8sClient.Delete(ctx, missedConfig)).ToNot(HaveOccurred())
+			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: missedConfig.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+		})
 
 		It("should skip reconciliation when VMAnomaly is paused", func() {
 			nsn.Name = "vmanomaly-paused"

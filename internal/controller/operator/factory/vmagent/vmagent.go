@@ -916,11 +916,18 @@ func sortMap(m map[string]string) []item {
 
 func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
 	maxDiskUsage := defaultMaxDiskUsage
-	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
-		maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
+	var queues int32
+	if cr.Spec.RemoteWriteSettings != nil {
+		if cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
+			maxDiskUsage = cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL.String()
+		}
+		if cr.Spec.RemoteWriteSettings.Queues != nil {
+			queues = *cr.Spec.RemoteWriteSettings.Queues
+		}
 	}
 
 	var args []string
+	var hasAnyQueuesSet bool
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
 
@@ -970,6 +977,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 		var relabelKeys []string
 
 		var maxDiskUsagesPerRW []string
+		var queuesPerRW []int32
 
 		if storageLimit > 0 && maxDiskUsage == defaultMaxDiskUsage {
 			// conditionally change default value of maxDiskUsage
@@ -1017,6 +1025,12 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 					return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
 				}
 				bearerTokenFile.Add(strconv.Quote(value), i)
+			}
+			if rw.Queues != nil {
+				queuesPerRW = append(queuesPerRW, *rw.Queues)
+				hasAnyQueuesSet = true
+			} else {
+				queuesPerRW = append(queuesPerRW, queues)
 			}
 			var relabelConfig *vmv1beta1.CommonRelabelParams
 			if rw.UrlRelabelConfig != nil || len(rw.InlineUrlRelabelConfig) > 0 {
@@ -1090,9 +1104,15 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 				maxDiskUsagePerURL.Add(usage, i)
 			}
 		}
+		rwQueues := build.NewFlag("-remoteWrite.queues", strconv.Itoa(int(queues)))
+		if hasAnyQueuesSet {
+			for i, q := range queuesPerRW {
+				rwQueues.Add(strconv.Itoa(int(q)), i)
+			}
+		}
 
 		totalCount := len(remoteTargets)
-		args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile)
+		args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile, rwQueues)
 		args = build.RelabelArgsTo(args, "remoteWrite.urlRelabelConfig", relabelKeys, relabelConfigs...)
 		args = build.AppendFlagsToArgs(args, totalCount, tlsInsecure, sendTimeout, proxyURL)
 		args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
@@ -1110,7 +1130,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 		if rws.FlushInterval != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))
 		}
-		if rws.Queues != nil {
+		if rws.Queues != nil && !hasAnyQueuesSet {
 			args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
 		}
 		if rws.ShowURL != nil {

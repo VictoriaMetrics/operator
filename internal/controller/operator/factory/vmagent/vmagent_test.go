@@ -892,6 +892,36 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		},
 	})
 
+	// queues
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL:    "localhost:8429",
+						Queues: ptr.To[int32](5),
+					},
+					{
+						URL: "localhost:8430",
+					},
+				},
+				RemoteWriteSettings: &vmv1beta1.VMAgentRemoteWriteSettings{
+					Queues: ptr.To[int32](10),
+				},
+			},
+		},
+		want: []string{
+			`-remoteWrite.maxDiskUsagePerURL=1073741824`,
+			`-remoteWrite.url=localhost:8429,localhost:8430`,
+			`-remoteWrite.queues=5,10`,
+			`-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data`,
+		},
+	})
+
 	// test insecure with key only
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

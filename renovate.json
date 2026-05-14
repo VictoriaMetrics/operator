@@ -5,6 +5,12 @@
   ],
   "packageRules": [
     {
+      "matchDepTypes": [
+        "action"
+      ],
+      "minimumReleaseAge": "21 days"
+    },
+    {
       "matchManagers": [
         "gomod"
       ],

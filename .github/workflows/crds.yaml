@@ -16,14 +16,26 @@ jobs:
       name: docs
     steps:
       - name: Check out operator code
+<<<<<<< HEAD
         uses: actions/checkout@v5
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+=======
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           repository: VictoriaMetrics/operator
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator-repo
 
       - name: Check out VM code
+<<<<<<< HEAD
         uses: actions/checkout@v5
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+=======
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           repository: VictoriaMetrics/helm-charts
           ref: master
@@ -31,7 +43,13 @@ jobs:
           path: __vm-charts-repo
 
       - name: Import GPG key
+<<<<<<< HEAD
         uses: crazy-max/ghaction-import-gpg@v6
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd
+=======
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd  # v7.0.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -52,7 +70,13 @@ jobs:
         working-directory: __vm-charts-repo
 
       - name: Create Pull Request
+<<<<<<< HEAD
         uses: peter-evans/create-pull-request@v7
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
+=======
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0  # v8.1.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           add-paths: charts
           commit-message: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}

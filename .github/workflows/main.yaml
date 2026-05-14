@@ -60,14 +60,32 @@ jobs:
           SAVED=$((AFTER-BEFORE))
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
+<<<<<<< HEAD
         uses: actions/checkout@v5
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+=======
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
       - name: Prepare binary cache
+<<<<<<< HEAD
         uses: actions/cache@v4
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+=======
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           path: ./bin
           key: binary
       - name: Setup Go
+<<<<<<< HEAD
         uses: actions/setup-go@v6
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
+=======
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           go-version-file: "go.mod"
           check-latest: true
@@ -75,7 +93,13 @@ jobs:
         id: go
 
       - name: Run Trivy vulnerability scanner in repo mode
+<<<<<<< HEAD
         uses: aquasecurity/trivy-action@master
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+=======
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           scan-type: "fs"
           ignore-unfixed: true
@@ -83,7 +107,13 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
+<<<<<<< HEAD
         uses: github/codeql-action/upload-sarif@v4
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: github/codeql-action/upload-sarif@c6f931105cb2c34c8f901cc885ba1e2e259cf745
+=======
+        uses: github/codeql-action/upload-sarif@c6f931105cb2c34c8f901cc885ba1e2e259cf745  # v4.34.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           sarif_file: "trivy-results.sarif"
 
@@ -119,7 +149,13 @@ jobs:
           git fetch origin ${{ github.base_ref || 'master' }}
           BASE_REF=origin/${{ github.base_ref || 'master' }} TAG=${TAG} make test-e2e
       - name: Publish Test Report
+<<<<<<< HEAD
         uses: mikepenz/action-junit-report@v6
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4
+=======
+        uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4  # v6.3.1
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         if: success() || failure()
         with:
           report_paths: 'report.xml'
@@ -128,7 +164,13 @@ jobs:
         run: make allure-report
       - name: Archive Allure report
         if: github.event.pull_request.draft == false && failure()
+<<<<<<< HEAD
         uses: actions/upload-artifact@v4
+||||||| parent of 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+=======
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+>>>>>>> 34bf0a5895 (pin actions to full-length commit SHAs (#2168))
         with:
           name: allure-report
           path: ./allure-report

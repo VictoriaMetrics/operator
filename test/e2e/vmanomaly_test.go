@@ -222,6 +222,49 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 
 				},
 			),
+			Entry("with ui preset and no monitoring config", "ui-preset-no-monitoring",
+				&vmv1.VMAnomaly{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1.VMAnomalySpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						License: &vmv1beta1.License{
+							KeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "license",
+								},
+								Key: "key",
+							},
+						},
+						// ui preset ignores reader/writer at runtime, but CRD requires them.
+						// Monitoring is intentionally omitted to exercise the nil-deref fix.
+						ConfigRawYaml: "preset: ui",
+						Reader: &vmv1.VMAnomalyReadersSpec{
+							DatasourceURL:  anomalyDatasourceURL,
+							SamplingPeriod: "1m",
+						},
+						Writer: &vmv1.VMAnomalyWritersSpec{
+							DatasourceURL: anomalyDatasourceURL,
+						},
+						Server: &vmv1.VMAnomalyServerSpec{
+							PathPrefix: "/",
+						},
+					},
+				}, nil, func(cr *vmv1.VMAnomaly) {
+					Eventually(func() error {
+						return expectPodCount(ctx, k8sClient, &appsv1.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
+					}, anomalyReadyTimeout, 1).ShouldNot(HaveOccurred())
+				},
+			),
 			Entry("with strict security", "strict-security",
 				&vmv1.VMAnomaly{
 					ObjectMeta: metav1.ObjectMeta{

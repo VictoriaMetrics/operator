@@ -214,7 +214,7 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 		c.Monitoring = &monitoring{
 			Pull: &endpoint{
 				Addr: "0.0.0.0",
-				Port: cr.Spec.Monitoring.Pull.Port,
+				Port: cr.ProbePort(),
 			},
 		}
 		return nil

@@ -251,26 +251,34 @@ func (c *cfgWatcher) start(ctx context.Context) {
 		for {
 			select {
 			case <-c.updates:
-				go func() {
-					if *delayInterval > 0 {
-						t := time.NewTimer(*delayInterval)
-						defer t.Stop()
-						select {
-						case <-t.C:
-						case <-ctx.Done():
-							return
-						}
-					}
-					if err := c.reloader(ctx); err != nil {
-						logger.Errorf("cannot trigger api reload: %s", err.Error())
-						configLastReloadSuccess.Set(0)
-						configReloadErrorsTotal.Inc()
+				if *delayInterval > 0 {
+					t := time.NewTimer(*delayInterval)
+					select {
+					case <-t.C:
+						t.Stop()
+					case <-ctx.Done():
+						t.Stop()
 						return
 					}
-					configLastReloadSuccess.Set(1)
-					configLastOkReloadTime.Set(uint64(time.Now().UnixMilli()))
-					logger.Infof("reload config ok.")
-				}()
+				}
+				// drain any updates that accumulated during the delay
+				for {
+					select {
+					case <-c.updates:
+					default:
+						goto doReload
+					}
+				}
+			doReload:
+				if err := c.reloader(ctx); err != nil {
+					logger.Errorf("cannot trigger api reload: %s", err.Error())
+					configLastReloadSuccess.Set(0)
+					configReloadErrorsTotal.Inc()
+					continue
+				}
+				configLastReloadSuccess.Set(1)
+				configLastOkReloadTime.Set(uint64(time.Now().UnixMilli()))
+				logger.Infof("reload config ok.")
 
 			case <-ctx.Done():
 				return

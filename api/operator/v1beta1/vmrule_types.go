@@ -26,7 +26,11 @@ var initVMAlertTemplatesOnce sync.Once
 // VMRuleSpec defines the desired state of VMRule
 type VMRuleSpec struct {
 	// Groups list of group rules
-	Groups []RuleGroup `json:"groups"`
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=name
+	Groups []RuleGroup `json:"groups" patchStrategy:"merge" patchMergeKey:"name"`
 }
 
 // RuleGroup is a list of sequentially evaluated recording and alerting rules.

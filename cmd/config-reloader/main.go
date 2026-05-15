@@ -275,15 +275,14 @@ func (c *cfgWatcher) close() {
 }
 
 func (c *cfgWatcher) waitDelay(ctx context.Context) bool {
-	if *delayInterval <= 0 {
-		return true
-	}
-	t := time.NewTimer(*delayInterval)
-	defer t.Stop()
-	select {
-	case <-t.C:
-	case <-ctx.Done():
-		return false
+	if *delayInterval > 0 {
+		t := time.NewTimer(*delayInterval)
+		defer t.Stop()
+		select {
+		case <-t.C:
+		case <-ctx.Done():
+			return false
+		}
 	}
 	for {
 		select {

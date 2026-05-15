@@ -628,6 +628,96 @@ server:
 `,
 	})
 
+	// ui preset with nil monitoring - must not panic
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly-ui",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `preset: ui`,
+				Server: &vmv1.VMAnomalyServerSpec{
+					PathPrefix: "/",
+				},
+				// Monitoring intentionally nil to reproduce the panic
+			},
+		},
+		expected: `
+models:
+  placeholder:
+    class: zscore
+    schedulers:
+    - noop
+schedulers:
+  noop:
+    class: noop
+reader:
+  class: noop
+  datasource_url: ""
+  sampling_period: null
+writer:
+  class: noop
+  datasource_url: ""
+monitoring:
+  pull:
+    addr: 0.0.0.0
+    port: "8080"
+server:
+  port: "8490"
+  path_prefix: /
+preset: ui
+`,
+	})
+
+	// ui preset with explicit monitoring pull port
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly-ui-monitoring",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `preset: ui`,
+				Monitoring: &vmv1.VMAnomalyMonitoringSpec{
+					Pull: &vmv1.VMAnomalyMonitoringPullSpec{
+						Port: "9999",
+					},
+				},
+			},
+		},
+		expected: `
+models:
+  placeholder:
+    class: zscore
+    schedulers:
+    - noop
+schedulers:
+  noop:
+    class: noop
+reader:
+  class: noop
+  datasource_url: ""
+  sampling_period: null
+writer:
+  class: noop
+  datasource_url: ""
+monitoring:
+  pull:
+    addr: 0.0.0.0
+    port: "9999"
+server:
+  port: "8490"
+preset: ui
+`,
+	})
+
 	// server section validation error - maxConcurrentTasks out of range
 	f(opts{
 		cr: &vmv1.VMAnomaly{

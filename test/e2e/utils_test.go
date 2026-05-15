@@ -3,19 +3,24 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/utils/ptr"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -116,34 +121,6 @@ func getRevisionHistoryLimit(ctx context.Context, rclient client.Client, name ty
 	return *app.Spec.RevisionHistoryLimit
 }
 
-func expectObjectStatusExpanding(ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusExpanding)
-}
-
-func expectObjectStatusOperational(ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusOperational)
-}
-
-func expectObjectStatusPaused(ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusPaused)
-}
-
-func expectObjectStatusFailed(ctx context.Context,
-	rclient client.Client,
-	object client.Object,
-	name types.NamespacedName) error {
-	return suite.ExpectObjectStatus(ctx, rclient, object, name, vmv1beta1.UpdateStatusFailed)
-}
-
 type httpRequestOpts struct {
 	dstURL       string
 	method       string
@@ -151,91 +128,65 @@ type httpRequestOpts struct {
 	payload      string
 }
 
-type httpRequestCRDObject interface {
-	GetName() string
-	GetNamespace() string
-}
-
-//nolint:dupl,lll
-func expectHTTPRequestToSucceed(ctx context.Context, object httpRequestCRDObject, opts httpRequestOpts) {
+func expectHTTPRequestToSucceed(ctx context.Context, opts httpRequestOpts) {
 	GinkgoHelper()
 	By("making http request to: " + opts.dstURL)
 	if opts.method == "" {
-		opts.method = "GET"
+		if opts.payload != "" {
+			opts.method = "POST"
+		} else {
+			opts.method = "GET"
+		}
 	}
 	if opts.expectedCode == 0 {
 		opts.expectedCode = 200
 	}
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-http-request-for-" + object.GetName(),
-			Namespace: object.GetNamespace(),
-		},
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					Containers: []corev1.Container{
-						{
-							Name:    "curl",
-							Image:   "curlimages/curl:7.85.0",
-							Command: []string{"sh", "-c"},
-							Args: []string{
-								fmt.Sprintf(`
-set -e 
-set -o pipefail
-set -x
-response_code=$(curl --write-out %%{http_code} -X %s '%s' -d '%s' -o /tmp/curl_log --connect-timeout 5 --max-time 6 --silent --show-error 2>>/tmp/curl_log)
-if [[ "$response_code" -ne %d ]] ; then
-  echo "unexpected status code: $response_code" | tee >> /tmp/curl_log
-  cat /tmp/curl_log | tr '\n' ' ' | tee > /dev/termination-log
-  exit 1
-else
-  echo "status code: $response_code is ok"
-  cat /tmp/curl_log
-  exit 0
-fi
-`, opts.method, opts.dstURL, opts.payload, opts.expectedCode),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	Expect(k8sClient.Create(ctx, job)).ToNot(HaveOccurred())
-	nss := types.NamespacedName{Name: job.Name, Namespace: job.Namespace}
-	defer func() {
-		Expect(k8sClient.Delete(ctx, job, &client.DeleteOptions{
-			PropagationPolicy: ptr.To(metav1.DeletePropagationForeground),
-		})).ToNot(HaveOccurred())
-		waitResourceDeleted(ctx, k8sClient, nss, &batchv1.Job{})
-	}()
+	proxyURL, err := buildServiceProxyURL(&k8sCfg, opts.dstURL)
+	Expect(err).ToNot(HaveOccurred())
+	hc, err := rest.HTTPClientFor(&k8sCfg)
+	Expect(err).ToNot(HaveOccurred())
+	hc.Timeout = 10 * time.Second
 	Eventually(func() error {
-		var jb batchv1.Job
-		if err := k8sClient.Get(ctx, nss, &jb); err != nil {
+		var body io.Reader
+		if opts.payload != "" {
+			body = strings.NewReader(opts.payload)
+		}
+		req, err := http.NewRequestWithContext(ctx, opts.method, proxyURL, body)
+		if err != nil {
 			return err
 		}
-		if jb.Status.Succeeded > 0 {
-			return nil
-		}
-		var pds corev1.PodList
-		if err := k8sClient.List(ctx, &pds, &client.ListOptions{
-			LabelSelector: labels.SelectorFromSet(jb.Spec.Selector.MatchLabels),
-		}); err != nil {
+		resp, err := hc.Do(req)
+		if err != nil {
 			return err
 		}
-		var firstStatus string
-		for _, pd := range pds.Items {
-			for _, ps := range pd.Status.ContainerStatuses {
-				if ps.State.Terminated != nil && firstStatus == "" {
-					firstStatus = fmt.Sprintf("exit_code=%d with message: %s", ps.State.Terminated.ExitCode, ps.State.Terminated.Message)
-					break
-				}
-			}
+		defer resp.Body.Close()
+		if resp.StatusCode != opts.expectedCode {
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("unexpected status code: got %d, want %d, body: %s", resp.StatusCode, opts.expectedCode, b)
 		}
-		return fmt.Errorf("unexpected job status, want Succeeded pod > 0 , pod status: %s", firstStatus)
-	}, 60).ShouldNot(HaveOccurred())
+		return nil
+	}, 60*time.Second).ShouldNot(HaveOccurred())
+}
+
+// buildServiceProxyURL converts a cluster-internal service URL to a Kubernetes
+// API server proxy URL so tests can reach in-cluster services without a Job.
+// Input:  "http://svcname.namespace.svc:port/path?query"
+// Output: "{apiserver}/api/v1/namespaces/{namespace}/services/{svcname}:{port}/proxy/{path}?query"
+func buildServiceProxyURL(cfg *rest.Config, svcURL string) (string, error) {
+	u, err := url.Parse(svcURL)
+	if err != nil {
+		return "", err
+	}
+	parts := strings.SplitN(u.Hostname(), ".", 3)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("cannot parse namespace from service URL: %s", svcURL)
+	}
+	proxyPath := u.Path
+	if u.RawQuery != "" {
+		proxyPath += "?" + u.RawQuery
+	}
+	return fmt.Sprintf("%s/api/v1/namespaces/%s/services/%s:%s/proxy%s",
+		strings.TrimRight(cfg.Host, "/"), parts[1], parts[0], u.Port(), proxyPath), nil
 }
 
 //nolint:dupl,lll
@@ -319,4 +270,37 @@ func waitResourceDeleted(ctx context.Context, rclient client.Client, nss types.N
 	Eventually(func() error {
 		return rclient.Get(ctx, nss, r)
 	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+}
+
+// expectStatusAfterAction starts a watch on the named object, runs action, then waits for
+// each status in sequence. Start the watch before the action to capture transient states.
+// After the action, we fetch the current generation so WatchUntilStatusSeen can ignore
+// stale pre-action ADDED events that satisfy the target status but predate the action.
+func expectStatusAfterAction(ctx context.Context, list client.ObjectList, nsn types.NamespacedName, timeout time.Duration, action func(), statuses ...vmv1beta1.UpdateStatus) {
+	GinkgoHelper()
+	watcher, err := k8sClient.Watch(ctx, list, &client.ListOptions{
+		Namespace:     nsn.Namespace,
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", nsn.Name),
+	})
+	Expect(err).ToNot(HaveOccurred())
+	defer watcher.Stop()
+	action()
+	// Fetch the post-action generation to skip stale pre-action watch events.
+	var minGen int64
+	if err := k8sClient.List(ctx, list, &client.ListOptions{
+		Namespace:     nsn.Namespace,
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", nsn.Name),
+	}); err == nil {
+		if items, err := k8smeta.ExtractList(list); err == nil && len(items) > 0 {
+			if obj, ok := items[0].(client.Object); ok {
+				minGen = obj.GetGeneration()
+			}
+		}
+	}
+	for _, status := range statuses {
+		watchCtx, cancel := context.WithTimeout(ctx, timeout)
+		err := suite.WatchUntilStatusSeen(watchCtx, watcher, nsn.Name, minGen, status)
+		cancel()
+		Expect(err).ToNot(HaveOccurred())
+	}
 }

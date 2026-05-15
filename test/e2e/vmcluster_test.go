@@ -76,10 +76,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				},
 			}
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			var vmStorageSTS appsv1.StatefulSet
 			storageSTSName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
@@ -121,10 +120,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 		DescribeTable("should create vmcluster", func(name string, cr *vmv1beta1.VMCluster, verify func(cr *vmv1beta1.VMCluster)) {
 			nsn.Name = name
 			cr.Name = name
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 			if verify != nil {
 				var createdCluster vmv1beta1.VMCluster
 				Expect(k8sClient.Get(ctx, nsn, &createdCluster)).ToNot(HaveOccurred())
@@ -451,10 +449,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			By("pausing the VMCluster")
 			Eventually(func() error {
@@ -539,10 +536,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				nsn.Name = name
 				initCR.Namespace = namespace
 				initCR.Name = name
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -551,13 +547,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					var toUpdate vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
 					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusExpanding(ctx, k8sClient, initCR, nsn)
-					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
-					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 					var updated vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
 					step.verify(&updated)
@@ -1099,14 +1091,14 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				},
 				testStep{
 					setup: func(cr *vmv1beta1.VMCluster) {
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 					},
@@ -1136,14 +1128,14 @@ up{baz="bar"} 123
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
 							Namespace: namespace,
 						}, &vmv1beta1.VMServiceScrape{})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 					},
@@ -1174,14 +1166,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 					},
@@ -1217,14 +1209,14 @@ up{baz="bar"} 123
 						cr.Spec.RequestsLoadBalancer.DisableInsertBalancing = true
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 						var lbDep appsv1.Deployment
@@ -1268,14 +1260,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 					},
@@ -1305,14 +1297,14 @@ up{baz="bar"} 123
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
 						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 					},
@@ -1362,14 +1354,14 @@ up{baz="bar"} 123
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 						var lbDep appsv1.Deployment
@@ -1410,14 +1402,14 @@ up{baz="bar"} 123
 						cr.Spec.RequestsLoadBalancer.Spec.Port = ""
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
 up{baz="bar"} 123
               `,
 							expectedCode: 204,
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8481/select/0/prometheus/api/v1/query?query=up", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 						})
 						var lbDep appsv1.Deployment
@@ -1598,10 +1590,9 @@ up{baz="bar"} 123
 				initCR.Namespace = namespace
 				initCR.Name = name
 				ctx = context.Background()
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -1609,14 +1600,13 @@ up{baz="bar"} 123
 					// update and verify immediately
 					var toUpdate vmv1beta1.VMCluster
 					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					var updated vmv1beta1.VMCluster
-					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
-					step.verify(&updated)
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, initCR, nsn)
-					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+						var updated vmv1beta1.VMCluster
+						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
+						step.verify(&updated)
+					}, vmv1beta1.UpdateStatusOperational)
 				}
 			},
 			Entry("configures vmstorage with MaxUnavailable 2", "maxunavailable-2-integer",
@@ -1846,11 +1836,9 @@ up{baz="bar"} 123
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			By("waiting for operational status after creation")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 		})
 
 		It("should transition operational→expanding→operational on spec update", func() {
@@ -1879,30 +1867,20 @@ up{baz="bar"} 123
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			By("waiting for operational status before update")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			By("updating the spec to trigger reconcile")
-			Eventually(func() error {
-				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-					return err
-				}
-				cr.Spec.RetentionPeriod = "2"
-				return k8sClient.Update(ctx, cr)
-			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-			By("waiting for expanding status")
-			Eventually(func() error {
-				return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-			By("waiting for operational status after update")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.RetentionPeriod = "2"
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 		})
 
 		It("should transition operational→paused when paused", func() {
@@ -1925,25 +1903,20 @@ up{baz="bar"} 123
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			By("waiting for operational status before pause")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			By("pausing the VMCluster")
-			Eventually(func() error {
-				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-					return err
-				}
-				cr.Spec.Paused = true
-				return k8sClient.Update(ctx, cr)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-			By("waiting for paused status")
-			Eventually(func() error {
-				return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualExpandingTimeout, func() {
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = true
+					return k8sClient.Update(ctx, cr)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusPaused)
 		})
 
 		It("should transition paused→operational when unpaused", func() {
@@ -1967,25 +1940,20 @@ up{baz="bar"} 123
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			By("waiting for paused status after creation")
-			Eventually(func() error {
-				return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualExpandingTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusPaused)
 
 			By("unpausing the VMCluster")
-			Eventually(func() error {
-				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-					return err
-				}
-				cr.Spec.Paused = false
-				return k8sClient.Update(ctx, cr)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-			By("waiting for operational status after unpause")
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = false
+					return k8sClient.Update(ctx, cr)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 		})
 	})
 })

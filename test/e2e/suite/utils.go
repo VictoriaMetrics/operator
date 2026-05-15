@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //nolint
 	. "github.com/onsi/gomega"    //nolint
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	watchapi "k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -52,6 +53,46 @@ func ExpectObjectStatus(ctx context.Context,
 	}
 
 	return nil
+}
+
+// WatchUntilStatusSeen reads events from w until it observes an object with the given name,
+// observedGeneration >= minGen, and target status, or the context deadline is reached.
+// Start the watch before triggering the action, then pass the post-action generation as minGen
+// to avoid matching stale pre-action ADDED events that share the same name and status.
+func WatchUntilStatusSeen(ctx context.Context, w watchapi.Interface, name string, minGen int64, targetStatus vmv1beta1.UpdateStatus) error {
+	for {
+		select {
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				return fmt.Errorf("watch closed before observing status %q for %q", targetStatus, name)
+			}
+			if event.Type == watchapi.Error {
+				return fmt.Errorf("watch error: %v", event.Object)
+			}
+			obj, ok := event.Object.(client.Object)
+			if !ok || obj.GetName() != name {
+				continue
+			}
+			jsD, err := json.Marshal(obj)
+			if err != nil {
+				continue
+			}
+			type statusHolder struct {
+				Status struct {
+					vmv1beta1.StatusMetadata `json:",inline"`
+				} `json:"status"`
+			}
+			var sh statusHolder
+			if err := json.Unmarshal(jsD, &sh); err != nil {
+				continue
+			}
+			if sh.Status.UpdateStatus == targetStatus && sh.Status.ObservedGeneration >= minGen {
+				return nil
+			}
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for status %q for object %q: %w", targetStatus, name, ctx.Err())
+		}
+	}
 }
 
 func CollectK8SResources() {

@@ -59,10 +59,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				cr.Name = name
 				cr.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				if verify != nil {
 					var created vmv1.VLCluster
 					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -146,10 +145,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 				initCR.Namespace = namespace
 				nsn.Name = name
 				// setup test
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				for _, step := range steps {
 					if step.setup != nil {
@@ -157,12 +155,11 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					}
 					// perform update
 					var toUpdate vmv1.VLCluster
-					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-					}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 
 					var updated vmv1.VLCluster
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
@@ -247,15 +244,15 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer)))
 
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
-							payload: `{\"log\": {\"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream1\" }
-{ \"log\": { \"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream2\" }
-              `,
+							payload: `{"log": {"level": "info", "message": "hello world" }, "date": "0", "stream": "stream1" }
+{"log": {"level": "info", "message": "hello world" }, "date": "0", "stream": "stream2" }
+`,
 							expectedCode: 200,
 							method:       "POST",
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 							payload:      ``,
 							expectedCode: 200,
@@ -277,15 +274,15 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.Selector).To(Equal(cr.SelectorLabels(vmv1beta1.ClusterComponentInsert)))
 
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:9481/insert/jsonline?_stream_fields=stream&_time_field=date&_msg_field=log.message", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
-							payload: `{\"log\": {\"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream1\" }
-{ \"log\": { \"level\": \"info\", \"message\": \"hello world\" }, \"date\": \"0\", \"stream\": \"stream2\" }
-              `,
+							payload: `{"log": {"level": "info", "message": "hello world" }, "date": "0", "stream": "stream1" }
+{"log": {"level": "info", "message": "hello world" }, "date": "0", "stream": "stream2" }
+`,
 							expectedCode: 200,
 							method:       "POST",
 						})
-						expectHTTPRequestToSucceed(ctx, cr, httpRequestOpts{
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL:       fmt.Sprintf("http://%s.%s.svc:9471/select/logsql/query?query=*", cr.PrefixedName(vmv1beta1.ClusterComponentSelect), namespace),
 							payload:      ``,
 							expectedCode: 200,
@@ -459,11 +456,9 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→expanding→operational on spec update", func() {
@@ -492,30 +487,20 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
-				By("updating the spec to trigger reconcile")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.VLStorage.RetentionPeriod = "2"
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for expanding status")
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					By("updating the spec to trigger reconcile")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.VLStorage.RetentionPeriod = "2"
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→paused when paused", func() {
@@ -536,25 +521,20 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before pause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
-				By("pausing the VLCluster")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = true
-					return k8sClient.Update(ctx, cr)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for paused status")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualExpandingTimeout, func() {
+					By("pausing the VLCluster")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = true
+						return k8sClient.Update(ctx, cr)
+					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 			})
 
 			It("should transition paused→operational when unpaused", func() {
@@ -576,25 +556,20 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for paused status after creation")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualExpandingTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 
-				By("unpausing the VLCluster")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = false
-					return k8sClient.Update(ctx, cr)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after unpause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLCluster{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLClusterList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					By("unpausing the VLCluster")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = false
+						return k8sClient.Update(ctx, cr)
+					}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 		})
 	})

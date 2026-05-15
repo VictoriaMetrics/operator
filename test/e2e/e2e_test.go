@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
@@ -36,11 +37,13 @@ var (
 	eventualDeploymentPodTimeout        = 25 * time.Second
 	eventualExpandingTimeout            = 25 * time.Second
 	eventualDistributedExpandingTimeout = 5 * time.Minute
+	eventualPollingInterval             = 2 * time.Second
 )
 
 // Run e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
+	SetDefaultEventuallyPollingInterval(eventualPollingInterval)
 	fmt.Fprintf(GinkgoWriter, "Starting vm-operator suite\n")
 	suiteConfig, reporterConfig := GinkgoConfiguration()
 	RunSpecs(t, "End2End Suite", suiteConfig, reporterConfig)
@@ -48,11 +51,13 @@ func TestE2E(t *testing.T) {
 
 var (
 	k8sClient client.WithWatch
+	k8sCfg    rest.Config
 
 	_ = SynchronizedBeforeSuite(func() []byte {
 		return suite.InitOperatorProcess()
 	}, func(data []byte) {
 		k8sClient = suite.GetClient(data)
+		k8sCfg = suite.GetRestConfig(data)
 	})
 
 	_ = SynchronizedAfterSuite(func() {}, func() {

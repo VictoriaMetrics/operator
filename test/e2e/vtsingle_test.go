@@ -38,7 +38,7 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VTSingle{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VTSingleList{})
 		})
 		Context("crud", func() {
 			DescribeTable("should create",

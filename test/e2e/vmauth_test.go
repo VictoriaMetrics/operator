@@ -44,7 +44,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 						Namespace: nsn.Namespace,
 					},
 				})).ToNot(HaveOccurred())
-				waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAuth{})
+				waitResourceDeleted(ctx, nsn, &vmv1beta1.VMAuthList{})
 			})
 			DescribeTable("should create vmauth", func(name string, cr *vmv1beta1.VMAuth, verify func(cr *vmv1beta1.VMAuth)) {
 				cr.Name = name
@@ -514,7 +514,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							}, eventualDeploymentPodTimeout).ShouldNot(HaveOccurred())
 							nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 							Expect(k8sClient.Get(ctx, nsn, &networkingv1.Ingress{})).ToNot(HaveOccurred())
-							waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
+							waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
 						},
 					},
 					testStep{

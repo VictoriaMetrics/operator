@@ -42,10 +42,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Name:      nsn.Name,
 				},
 			})).ToNot(HaveOccurred(), "must delete vmcluster after test")
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+			waitResourceDeleted(ctx, types.NamespacedName{
 				Name:      nsn.Name,
 				Namespace: namespace,
-			}, &vmv1beta1.VMCluster{})
+			}, &vmv1beta1.VMClusterList{})
 		})
 
 		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
@@ -500,10 +500,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 					Name:      nsn.Name,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+			waitResourceDeleted(ctx, types.NamespacedName{
 				Name:      nsn.Name,
 				Namespace: namespace,
-			}, &vmv1beta1.VMCluster{})
+			}, &vmv1beta1.VMClusterList{})
 			DeleteLicenseSecret(ctx, k8sClient, namespace)
 		})
 
@@ -824,9 +824,9 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentSelect),
 							Namespace: namespace,
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
-						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nss, &appsv1.StatefulSetList{})
+						waitResourceDeleted(ctx, nss, &corev1.ServiceList{})
+						waitResourceDeleted(ctx, nss, &vmv1beta1.VMServiceScrapeList{})
 					},
 				},
 				testStep{
@@ -887,12 +887,12 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							Namespace: namespace,
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.StatefulSet{})
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
-						waitResourceDeleted(ctx, k8sClient, nss, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nss, &appsv1.StatefulSetList{})
+						waitResourceDeleted(ctx, nss, &corev1.ServiceList{})
+						waitResourceDeleted(ctx, nss, &vmv1beta1.VMServiceScrapeList{})
 
 						nss.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, nss, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{
@@ -977,12 +977,12 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 							Namespace: namespace,
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentSelect) + "-additional-service",
 						}
-						waitResourceDeleted(ctx, k8sClient, nss, &corev1.Service{})
+						waitResourceDeleted(ctx, nss, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name + "-additional-service"}, &corev1.Service{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      "my-service-name",
-						}, &corev1.Service{})
+						}, &corev1.ServiceList{})
 					},
 				},
 				testStep{
@@ -1005,10 +1005,10 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 						}
 					},
 					verify: func(cr *vmv1beta1.VMCluster) {
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentStorage) + "-additional-service",
-						}, &corev1.Service{})
+						}, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "my-service-name-v2"}, &corev1.Service{})).ToNot(HaveOccurred())
 						var stSvc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmstorage-" + cr.Name}, &stSvc)).ToNot(HaveOccurred())
@@ -1120,14 +1120,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentSelect),
 							Namespace: namespace,
-						}, &vmv1beta1.VMServiceScrape{})
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						}, &vmv1beta1.VMServiceScrapeList{})
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Name:      cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
 							Namespace: namespace,
-						}, &vmv1beta1.VMServiceScrape{})
+						}, &vmv1beta1.VMServiceScrapeList{})
 						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
@@ -1147,25 +1147,25 @@ up{baz="bar"} 123
 					verify: func(cr *vmv1beta1.VMCluster) {
 						By("disabling loadbalancer")
 						nss := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)}
-						waitResourceDeleted(ctx, k8sClient, nss, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, nss, &appsv1.DeploymentList{})
 						var svc corev1.Service
-						waitResourceDeleted(ctx, k8sClient, nss, &svc)
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						waitResourceDeleted(ctx, nss, &corev1.ServiceList{})
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert),
-						}, &svc)
+						}, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{
+						waitResourceDeleted(ctx, types.NamespacedName{
 							Namespace: namespace,
 							Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect),
-						}, &svc)
+						}, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
 						var vss vmv1beta1.VMServiceScrape
-						waitResourceDeleted(ctx, k8sClient, nss, &vss)
+						waitResourceDeleted(ctx, nss, &vmv1beta1.VMServiceScrapeList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vmv1beta1.VMServiceScrapeList{})
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vmv1beta1.VMServiceScrapeList{})
 						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
@@ -1224,15 +1224,15 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &lbDep)).ToNot(HaveOccurred())
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, nss, &svc)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &svc)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
 						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vmv1beta1.VMServiceScrapeList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vmv1beta1.VMServiceScrapeList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)).ToNot(HaveOccurred())
 
 					},
@@ -1258,8 +1258,8 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vmv1beta1.VMServiceScrapeList{})
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vmv1beta1.VMServiceScrapeList{})
 						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
@@ -1289,14 +1289,14 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &svc)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &svc)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &corev1.ServiceList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc)).ToNot(HaveOccurred())
 						var vss vmv1beta1.VMServiceScrape
 						Expect(k8sClient.Get(ctx, nss, &vss)).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)}, &vmv1beta1.VMServiceScrapeList{})
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vmv1beta1.VMServiceScrapeList{})
 						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
 							dstURL: fmt.Sprintf("http://%s.%s.svc:8480/insert/0/prometheus/api/v1/import/prometheus", cr.PrefixedName(vmv1beta1.ClusterComponentInsert), namespace),
 							payload: `up{bar="baz"} 123
@@ -1387,8 +1387,8 @@ up{baz="bar"} 123
 							Namespace: namespace,
 							Name:      cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect),
 						}, &vss)).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vss)
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vss)
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &vmv1beta1.VMServiceScrapeList{})
+						waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &vmv1beta1.VMServiceScrapeList{})
 						var pdb policyv1.PodDisruptionBudget
 						Expect(k8sClient.Get(ctx, nss, &pdb)).ToNot(HaveOccurred())
 					},
@@ -1422,7 +1422,7 @@ up{baz="bar"} 123
 						Expect(k8sClient.Get(ctx, nss, &svc)).ToNot(HaveOccurred())
 						Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone))
 						Expect(svc.Spec.Ports[0].TargetPort).To(Equal(intstr.Parse("8427")))
-						waitResourceDeleted(ctx, k8sClient, nss, &policyv1.PodDisruptionBudget{})
+						waitResourceDeleted(ctx, nss, &policyv1.PodDisruptionBudgetList{})
 					},
 				},
 			),
@@ -1575,7 +1575,7 @@ up{baz="bar"} 123
 					Name:      nsn.Name,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Namespace: namespace, Name: nsn.Name}, &vmv1beta1.VMCluster{})
+			waitResourceDeleted(ctx, types.NamespacedName{Namespace: namespace, Name: nsn.Name}, &vmv1beta1.VMClusterList{})
 		})
 
 		type testStep struct {

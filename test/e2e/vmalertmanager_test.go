@@ -54,7 +54,7 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlertmanager{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMAlertmanagerList{})
 		})
 		DescribeTable("should create alertmanager",
 			func(name string, cr *vmv1beta1.VMAlertmanager, verify func(*vmv1beta1.VMAlertmanager)) {

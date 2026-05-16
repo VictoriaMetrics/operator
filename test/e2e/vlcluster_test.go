@@ -37,7 +37,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLCluster{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VLClusterList{})
 		})
 		baseVLCluster := &vmv1.VLCluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -264,8 +264,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						cr.Spec.RequestsLoadBalancer.Enabled = false
 					},
 					verify: func(cr *vmv1.VLCluster) {
-						var dep appsv1.Deployment
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &dep)
+						waitResourceDeleted(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &appsv1.DeploymentList{})
 
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
@@ -372,7 +371,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 
 						// vlselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
-						waitResourceDeleted(ctx, k8sClient, nsn, dep)
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{
@@ -398,7 +397,7 @@ var _ = Describe("test vlcluster Controller", Label("vl", "cluster", "vlcluster"
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vlinsert must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
-						waitResourceDeleted(ctx, k8sClient, nsn, dep)
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{

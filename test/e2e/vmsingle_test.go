@@ -40,7 +40,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMSingle{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMSingleList{})
 			DeleteLicenseSecret(ctx, k8sClient, namespace)
 		})
 		Context("crud", func() {

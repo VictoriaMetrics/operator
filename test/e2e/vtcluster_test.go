@@ -37,7 +37,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VTCluster{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VTClusterList{})
 		})
 
 		DescribeTable("should create", func(name string, cr *vmv1.VTCluster, verify func(cr *vmv1.VTCluster)) {
@@ -231,8 +231,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						cr.Spec.RequestsLoadBalancer.Enabled = false
 					},
 					verify: func(cr *vmv1.VTCluster) {
-						var dep appsv1.Deployment
-						waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &dep)
+						waitResourceDeleted(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: namespace}, &appsv1.DeploymentList{})
 
 						var svc corev1.Service
 						Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
@@ -276,7 +275,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 
 						// vtselect must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
-						waitResourceDeleted(ctx, k8sClient, nsn, dep)
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{
@@ -302,7 +301,7 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						Expect(*dep.Spec.Replicas).To(Equal(int32(2)))
 						// vtinsert must be removed
 						nsn = types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}
-						waitResourceDeleted(ctx, k8sClient, nsn, dep)
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{

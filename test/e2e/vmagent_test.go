@@ -38,7 +38,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 			},
 			)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAgent{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMAgentList{})
 		})
 
 		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
@@ -578,7 +578,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{
@@ -586,7 +586,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.StatefulSetList{})
 					},
 				},
 			),
@@ -617,8 +617,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMServiceScrapeList{})
 					},
 				},
 				testStep{
@@ -651,8 +651,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMServiceScrapeList{})
 					},
 				},
 				testStep{
@@ -664,9 +664,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DaemonSetList{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMPodScrapeList{})
 					},
 				},
 			),

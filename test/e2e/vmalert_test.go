@@ -35,7 +35,7 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				},
 			},
 			)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAlert{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMAlertList{})
 		})
 		tlsSecretName := "vmalert-remote-tls"
 

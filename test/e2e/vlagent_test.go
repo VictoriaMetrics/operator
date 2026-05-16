@@ -37,7 +37,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLAgent{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VLAgentList{})
 		})
 
 		DescribeTable("should create vlagent",
@@ -473,8 +473,8 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
+						waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMPodScrapeList{})
 					},
 				},
 				testStep{
@@ -507,7 +507,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.StatefulSetList{})
 					},
 				},
 				testStep{
@@ -517,7 +517,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DaemonSetList{})
 					},
 				},
 			),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -57,13 +58,12 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 			}
 
 			for _, alert := range args.alerts {
-				Eventually(func() error {
-					return suite.ExpectObjectStatus(ctx,
-						k8sClient,
-						&vmv1beta1.VMAlert{},
-						types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace},
-						vmv1beta1.UpdateStatusOperational)
-				}, eventualReadyTimeout).ShouldNot(HaveOccurred())
+				Expect(suite.WatchUntilStatusReached(ctx, k8sClient,
+					&vmv1beta1.VMAlertList{},
+					types.NamespacedName{Name: alert.Name, Namespace: alert.Namespace},
+					eventualReadyTimeout*time.Second,
+					vmv1beta1.UpdateStatusOperational,
+					vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 			}
 			if step.modify != nil {
 				step.modify()

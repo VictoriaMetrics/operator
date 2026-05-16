@@ -44,7 +44,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 	AfterEach(func() {
 		DeleteLicenseSecret(ctx, k8sClient, namespace)
 		Expect(k8sClient.Delete(ctx, &anomalyConfigSingle)).ToNot(HaveOccurred())
-		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
+		waitResourceDeleted(ctx, types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace}, &vmv1beta1.VMSingleList{})
 	})
 
 	// baseVMAnomaly returns a VMAnomaly with configSelector set, ready for config-injection tests.
@@ -88,7 +88,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1.VMAnomaly{
 				ObjectMeta: metav1.ObjectMeta{Name: nsn.Name, Namespace: nsn.Namespace},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VMAnomaly{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VMAnomalyList{})
 			nsn.Name = ""
 		})
 
@@ -127,7 +127,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			}
 			DeferCleanup(func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, cfg)).ToNot(HaveOccurred())
-				waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+				waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 			})
 
 			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
@@ -258,7 +258,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			}, anomalyReadyTimeout).Should(ContainSubstring("vm_delete_metric"))
 
 			Expect(k8sClient.Delete(ctx, cfg)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+			waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 
 			Eventually(func() string {
 				var secret corev1.Secret

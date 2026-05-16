@@ -53,9 +53,7 @@ func createVMClusters(ctx context.Context, wg *sync.WaitGroup, k8sClient client.
 		wg.Go(func() {
 			DeferCleanup(func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, vmCluster)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return k8sClient.Get(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, &vmv1beta1.VMCluster{})
-				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				waitResourceDeleted(ctx, types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}, &vmv1beta1.VMClusterList{})
 			})
 			clusterNsn := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
 			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, clusterNsn, eventualDistributedExpandingTimeout, func() {
@@ -82,9 +80,7 @@ func createVMAgents(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Cl
 		wg.Go(func() {
 			DeferCleanup(func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, vmAgent)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return k8sClient.Get(ctx, types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}, &vmv1beta1.VMAgent{})
-				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				waitResourceDeleted(ctx, types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}, &vmv1beta1.VMAgentList{})
 			})
 			agentNsn := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
 			expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, agentNsn, eventualDistributedExpandingTimeout, func() {
@@ -118,14 +114,9 @@ func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Clie
 		}
 		DeferCleanup(func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, vmAuth)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: ns}, &vmv1beta1.VMAuth{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: ns}, &vmv1beta1.VMAuthList{})
 		})
 		Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
-		Eventually(func() error {
-			return k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, vmAuth)
-		}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
 	})
 }
 
@@ -307,19 +298,19 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			By("verifying that the inline VMClusters are created and operational")
 			nsn := types.NamespacedName{Name: vmClusters[0].Name, Namespace: namespace}
+			Expect(suite.WatchUntilStatusReached(ctx, k8sClient, &vmv1beta1.VMClusterList{}, nsn, eventualDistributedExpandingTimeout,
+				vmv1beta1.UpdateStatusOperational, vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 			vmCluster1 := &vmv1beta1.VMCluster{}
-			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualDistributedExpandingTimeout, func() {
-				Expect(k8sClient.Get(ctx, nsn, vmCluster1)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
+			Expect(k8sClient.Get(ctx, nsn, vmCluster1)).ToNot(HaveOccurred())
 			Expect(*vmCluster1.Spec.VMSelect.ReplicaCount).To(Equal(int32(1)))
 			Expect(*vmCluster1.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster1.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
 
 			nsn = types.NamespacedName{Name: vmClusters[1].Name, Namespace: namespace}
+			Expect(suite.WatchUntilStatusReached(ctx, k8sClient, &vmv1beta1.VMClusterList{}, nsn, eventualDistributedExpandingTimeout,
+				vmv1beta1.UpdateStatusOperational, vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 			vmCluster2 := &vmv1beta1.VMCluster{}
-			expectStatusAfterAction(ctx, &vmv1beta1.VMClusterList{}, nsn, eventualDistributedExpandingTimeout, func() {
-				Expect(k8sClient.Get(ctx, nsn, vmCluster2)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
+			Expect(k8sClient.Get(ctx, nsn, vmCluster2)).ToNot(HaveOccurred())
 			Expect(*vmCluster2.Spec.VMSelect.ReplicaCount).To(Equal(int32(2)))
 			Expect(*vmCluster2.Spec.VMInsert.ReplicaCount).To(Equal(int32(0)))
 			Expect(*vmCluster2.Spec.VMStorage.ReplicaCount).To(Equal(int32(1)))
@@ -572,7 +563,6 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				zs[i].Name = objMeta.Name
 				zs[i].VMCluster.Spec = genVMClusterSpec()
 				zs[i].VMCluster.Name = objMeta.Name
-				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
 					ObjectMeta: objMeta,
 					Spec:       genVMClusterSpec(),
@@ -1107,9 +1097,8 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
 			})
 			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return suite.ExpectObjectStatus(ctx, k8sClient, &vmv1alpha1.VMDistributed{}, nsn, vmv1beta1.UpdateStatusFailed)
-			}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
+			Expect(suite.WatchUntilStatusReached(ctx, k8sClient, &vmv1alpha1.VMDistributedList{}, nsn,
+				eventualDistributedExpandingTimeout, vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 		},
 			Entry("with invalid VMCluster", &vmv1alpha1.VMDistributed{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1213,23 +1202,15 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
 
 			By("ensuring VMAuth is eventually removed")
-			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Name: nsn.Name, Namespace: cr.Namespace}, &vmv1beta1.VMAuth{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, types.NamespacedName{Name: nsn.Name, Namespace: cr.Namespace}, &vmv1beta1.VMAuthList{})
 
 			By("ensuring VMDistributed is eventually removed")
-			Eventually(func() error {
-				return k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, nsn, &vmv1alpha1.VMDistributedList{})
 
 			By("ensuring VMClusters and VMAgents are eventually removed")
 			for _, zone := range cr.Spec.Zones {
-				Eventually(func() error {
-					return k8sClient.Get(ctx, types.NamespacedName{Name: zone.VMAgent.Name, Namespace: namespace}, &vmv1beta1.VMAgent{})
-				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
-				Eventually(func() error {
-					return k8sClient.Get(ctx, types.NamespacedName{Name: zone.VMCluster.Name, Namespace: namespace}, &vmv1beta1.VMCluster{})
-				}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				waitResourceDeleted(ctx, types.NamespacedName{Name: zone.VMAgent.Name, Namespace: namespace}, &vmv1beta1.VMAgentList{})
+				waitResourceDeleted(ctx, types.NamespacedName{Name: zone.VMCluster.Name, Namespace: namespace}, &vmv1beta1.VMClusterList{})
 			}
 		})
 
@@ -1314,9 +1295,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			}, eventualDeletionTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
 
 			By("ensuring VMDistributed is eventually removed")
-			Eventually(func() error {
-				return k8sClient.Get(ctx, nsn, &vmv1alpha1.VMDistributed{})
-			}, eventualDeletionTimeout).WithContext(ctx).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, nsn, &vmv1alpha1.VMDistributedList{})
 
 			By("ensuring VMCluster is not removed")
 			Consistently(func() error {

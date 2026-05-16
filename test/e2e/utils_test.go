@@ -264,42 +264,67 @@ func mustGetFirstPod(ctx context.Context, rclient client.Client, obj client.Obje
 	return &pods[0]
 }
 
-//nolint:dupl,lll
-func waitResourceDeleted(ctx context.Context, rclient client.Client, nss types.NamespacedName, r client.Object) {
+func waitObjectDeleted(ctx context.Context, obj client.Object) {
 	GinkgoHelper()
+	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	Eventually(func() error {
-		return rclient.Get(ctx, nss, r)
-	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+		return k8sClient.Get(ctx, nsn, obj.DeepCopyObject().(client.Object))
+	}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
+}
+
+//nolint:dupl,lll
+func waitResourceDeleted(ctx context.Context, nss types.NamespacedName, list client.ObjectList) {
+	GinkgoHelper()
+	listOpts := &client.ListOptions{
+		Namespace:     nss.Namespace,
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", nss.Name),
+	}
+	watcher, err := k8sClient.Watch(ctx, list, listOpts)
+	Expect(err).ToNot(HaveOccurred())
+	defer watcher.Stop()
+	// Check after starting the watch to avoid a race: object may have been deleted before watch started.
+	if err := k8sClient.List(ctx, list, listOpts); err == nil {
+		items, _ := k8smeta.ExtractList(list)
+		if len(items) == 0 {
+			return
+		}
+	}
+	watchCtx, cancel := context.WithTimeout(ctx, eventualDeletionTimeout)
+	defer cancel()
+	Expect(suite.WatchUntilDeleted(watchCtx, watcher, nss.Name)).ToNot(HaveOccurred())
 }
 
 // expectStatusAfterAction starts a watch on the named object, runs action, then waits for
-// each status in sequence. Start the watch before the action to capture transient states.
-// After the action, we fetch the current generation so WatchUntilStatusSeen can ignore
-// stale pre-action ADDED events that satisfy the target status but predate the action.
+// each status in sequence. The watch is started before the action to capture transient states.
+//
+// minGen is derived from the pre-action state: minGen = preActionGen + 1. Both Create
+// (K8s sets Gen=1) and Update (always increments by 1) advance the generation by exactly 1,
+// so this reliably filters out stale ADDED events that reflect the pre-action object state.
+// Reading the generation before the action avoids any cache-lag risk from a just-written object.
 func expectStatusAfterAction(ctx context.Context, list client.ObjectList, nsn types.NamespacedName, timeout time.Duration, action func(), statuses ...vmv1beta1.UpdateStatus) {
 	GinkgoHelper()
-	watcher, err := k8sClient.Watch(ctx, list, &client.ListOptions{
+	listOpts := &client.ListOptions{
 		Namespace:     nsn.Namespace,
 		FieldSelector: fields.OneTermEqualSelector("metadata.name", nsn.Name),
-	})
-	Expect(err).ToNot(HaveOccurred())
-	defer watcher.Stop()
-	action()
-	// Fetch the post-action generation to skip stale pre-action watch events.
+	}
+	// Read pre-action generation before the watch starts (stable state, no cache-lag risk).
 	var minGen int64
-	if err := k8sClient.List(ctx, list, &client.ListOptions{
-		Namespace:     nsn.Namespace,
-		FieldSelector: fields.OneTermEqualSelector("metadata.name", nsn.Name),
-	}); err == nil {
+	if err := k8sClient.List(ctx, list, listOpts); err == nil {
 		if items, err := k8smeta.ExtractList(list); err == nil && len(items) > 0 {
 			if obj, ok := items[0].(client.Object); ok {
-				minGen = obj.GetGeneration()
+				minGen = obj.GetGeneration() + 1
 			}
 		}
 	}
+	// minGen stays 0 only if List failed; in that case WatchUntilStatusSeen falls back to
+	// the status-only check, which is no worse than the pre-minGen behavior.
+	watcher, err := k8sClient.Watch(ctx, list, listOpts)
+	Expect(err).ToNot(HaveOccurred())
+	defer watcher.Stop()
+	action()
 	for _, status := range statuses {
 		watchCtx, cancel := context.WithTimeout(ctx, timeout)
-		err := suite.WatchUntilStatusSeen(watchCtx, watcher, nsn.Name, minGen, status)
+		err := suite.WatchUntilStatusSeen(watchCtx, watcher, nsn.Name, minGen, status, vmv1beta1.UpdateStatusFailed)
 		cancel()
 		Expect(err).ToNot(HaveOccurred())
 	}

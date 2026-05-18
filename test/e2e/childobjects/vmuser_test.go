@@ -3,6 +3,7 @@ package childobjects
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -58,13 +59,12 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 			}
 
 			for _, am := range args.vmauths {
-				Eventually(func() error {
-					return suite.ExpectObjectStatus(ctx,
-						k8sClient,
-						&vmv1beta1.VMAuth{},
-						types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
-						vmv1beta1.UpdateStatusOperational)
-				}, eventualReadyTimeout).ShouldNot(HaveOccurred())
+				Expect(suite.WatchUntilStatusReached(ctx, k8sClient,
+					&vmv1beta1.VMAuthList{},
+					types.NamespacedName{Name: am.Name, Namespace: am.Namespace},
+					eventualReadyTimeout*time.Second,
+					vmv1beta1.UpdateStatusOperational,
+					vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 			}
 			if step.modify != nil {
 				step.modify()

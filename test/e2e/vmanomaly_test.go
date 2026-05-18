@@ -21,6 +21,7 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
 
 const anomalyConfig = `
@@ -56,7 +57,6 @@ schedulers:
 
 var (
 	anomalyReadyTimeout  = 120 * time.Second
-	anomalyDeleteTimeout = 60 * time.Second
 	anomalyExpandTimeout = 240 * time.Second
 )
 
@@ -77,17 +77,16 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 		}
 		CreateLicenseSecret(ctx, k8sClient, namespace)
 
-		Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).ToNot(HaveOccurred())
-		Eventually(func() error {
-			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace})
-		}, eventualDeploymentAppReadyTimeout,
-		).ShouldNot(HaveOccurred())
+		anomalySingleNsn := types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}
+		expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, anomalySingleNsn, eventualDeploymentAppReadyTimeout, func() {
+			Expect(k8sClient.Create(ctx, anomalySingle.DeepCopy())).ToNot(HaveOccurred())
+		}, vmv1beta1.UpdateStatusOperational)
 
 	})
 	AfterEach(func() {
 		DeleteLicenseSecret(ctx, k8sClient, namespace)
 		Expect(k8sClient.Delete(ctx, &anomalySingle)).ToNot(HaveOccurred())
-		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
+		waitResourceDeleted(ctx, types.NamespacedName{Name: anomalySingle.Name, Namespace: namespace}, &vmv1beta1.VMSingleList{})
 	})
 	Context("e2e vmanomaly", func() {
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
@@ -104,12 +103,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 				},
 			)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return k8sClient.Get(context.Background(), types.NamespacedName{
-					Name:      nsn.Name,
-					Namespace: nsn.Namespace,
-				}, &vmv1.VMAnomaly{})
-			}, anomalyDeleteTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			waitResourceDeleted(ctx, nsn, &vmv1.VMAnomalyList{})
 		})
 		DescribeTable("should create vmanomaly",
 			func(name string, cr *vmv1.VMAnomaly, setup func(), verify func(*vmv1.VMAnomaly)) {
@@ -118,11 +112,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				if setup != nil {
 					setup()
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-				}, anomalyReadyTimeout,
-				).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				var created vmv1.VMAnomaly
 				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -336,10 +328,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				initCR.Name = name
 				initCR.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-				}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -347,11 +338,10 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					// update and wait ready
 					var toUpdate vmv1.VMAnomaly
 					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-					}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 					// verify
 					var updated vmv1.VMAnomaly
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
@@ -442,8 +432,8 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 					verify: func(cr *vmv1.VMAnomaly) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
+						waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMPodScrapeList{})
 					},
 				},
 				testStep{
@@ -550,10 +540,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Expect(finalize.SafeDelete(ctx, k8sClient, missedConfig)).ToNot(HaveOccurred())
 			})
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			Expect(k8sClient.Create(ctx, selectedConfig)).ToNot(HaveOccurred())
 			Expect(k8sClient.Create(ctx, missedConfig)).ToNot(HaveOccurred())
@@ -566,9 +555,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				ContainSubstring(fmt.Sprintf("%s-selected-extra-model", namespace)),
 				Not(ContainSubstring("vm_missed_metric")),
 			))
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomalyConfig{}, types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace})
-			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+			cfgNsn := types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace}
+			Expect(suite.WatchUntilStatusReached(ctx, k8sClient, &vmv1.VMAnomalyConfigList{}, cfgNsn, anomalyReadyTimeout,
+				vmv1beta1.UpdateStatusOperational, vmv1beta1.UpdateStatusFailed)).ToNot(HaveOccurred())
 
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace}, selectedConfig)).ToNot(HaveOccurred())
 			selectedConfig.Spec.Raw = []byte(strings.ReplaceAll(string(selectedConfig.Spec.Raw), "vm_selected_metric", "vm_updated_metric"))
@@ -583,7 +572,7 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 			))
 
 			Expect(k8sClient.Delete(ctx, missedConfig)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: missedConfig.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+			waitResourceDeleted(ctx, types.NamespacedName{Name: missedConfig.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 		})
 
 		It("should skip reconciliation when VMAnomaly is paused", func() {
@@ -618,10 +607,9 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			By("pausing the VMAnomaly")
 			Eventually(func() error {

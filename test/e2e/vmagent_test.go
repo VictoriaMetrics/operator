@@ -38,7 +38,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 			},
 			)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMAgent{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMAgentList{})
 		})
 
 		It("should be idempotent when calling CreateOrUpdate multiple times", func() {
@@ -59,10 +59,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				},
 			}
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			var agentDep appsv1.Deployment
 			agentDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
@@ -91,11 +90,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				if setup != nil {
 					setup()
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout,
-				).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				var created vmv1beta1.VMAgent
 				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -458,10 +455,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 				initCR.Name = name
 				initCR.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
@@ -469,11 +465,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					// update and wait ready
 					var toUpdate vmv1beta1.VMAgent
 					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-					}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 					// verify
 					var updated vmv1beta1.VMAgent
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
@@ -583,7 +578,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
 					},
 				},
 				testStep{
@@ -591,7 +586,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.Deployment{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.StatefulSetList{})
 					},
 				},
 			),
@@ -622,8 +617,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 					verify: func(cr *vmv1beta1.VMAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMServiceScrapeList{})
 					},
 				},
 				testStep{
@@ -656,8 +651,8 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMPodScrape{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMServiceScrape{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMServiceScrapeList{})
 					},
 				},
 				testStep{
@@ -669,9 +664,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
 						Expect(k8sClient.Get(ctx, nsn, &vmv1beta1.VMServiceScrape{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.Deployment{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DaemonSetList{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DeploymentList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMPodScrapeList{})
 					},
 				},
 			),
@@ -696,11 +691,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 			deploymentName := types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
 
 			By("pausing the VMAgent")
 			Eventually(func() error {
@@ -763,11 +757,9 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→expanding→operational on spec update", func() {
@@ -786,30 +778,20 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("updating the spec to trigger reconcile")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.LogLevel = "WARN"
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for expanding status")
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.LogLevel = "WARN"
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→paused when paused", func() {
@@ -828,25 +810,20 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before pause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("pausing the VMAgent")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = true
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for paused status")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualExpandingTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = true
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 			})
 
 			It("should transition paused→operational when unpaused", func() {
@@ -866,25 +843,20 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for paused status after creation")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualExpandingTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 
 				By("unpausing the VMAgent")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = false
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after unpause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = false
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 		})
 	})

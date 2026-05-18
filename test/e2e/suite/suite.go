@@ -43,6 +43,13 @@ var (
 	stopped       = make(chan struct{})
 )
 
+func GetRestConfig(data []byte) rest.Config {
+	var cfg rest.Config
+	dec := gob.NewDecoder(bytes.NewReader(data))
+	Expect(dec.Decode(&cfg)).To(Succeed())
+	return cfg
+}
+
 func GetClient(data []byte) client.WithWatch {
 	var cfg rest.Config
 	dec := gob.NewDecoder(bytes.NewReader(data))

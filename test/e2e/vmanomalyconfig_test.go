@@ -35,17 +35,16 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 		}
 		CreateLicenseSecret(ctx, k8sClient, namespace)
 
-		Expect(k8sClient.Create(ctx, anomalyConfigSingle.DeepCopy())).ToNot(HaveOccurred())
-		Eventually(func() error {
-			return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace})
-		}, eventualDeploymentAppReadyTimeout,
-		).ShouldNot(HaveOccurred())
+		singleNsn := types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace}
+		expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, singleNsn, eventualDeploymentAppReadyTimeout, func() {
+			Expect(k8sClient.Create(ctx, anomalyConfigSingle.DeepCopy())).ToNot(HaveOccurred())
+		}, vmv1beta1.UpdateStatusOperational)
 	})
 
 	AfterEach(func() {
 		DeleteLicenseSecret(ctx, k8sClient, namespace)
 		Expect(k8sClient.Delete(ctx, &anomalyConfigSingle)).ToNot(HaveOccurred())
-		waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace}, &vmv1beta1.VMSingle{})
+		waitResourceDeleted(ctx, types.NamespacedName{Name: anomalyConfigSingle.Name, Namespace: namespace}, &vmv1beta1.VMSingleList{})
 	})
 
 	// baseVMAnomaly returns a VMAnomaly with configSelector set, ready for config-injection tests.
@@ -89,7 +88,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			Expect(finalize.SafeDelete(ctx, k8sClient, &vmv1.VMAnomaly{
 				ObjectMeta: metav1.ObjectMeta{Name: nsn.Name, Namespace: nsn.Namespace},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VMAnomaly{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VMAnomalyList{})
 			nsn.Name = ""
 		})
 
@@ -128,19 +127,17 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			}
 			DeferCleanup(func() {
 				Expect(finalize.SafeDelete(ctx, k8sClient, cfg)).ToNot(HaveOccurred())
-				waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+				waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 			})
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
-			Expect(k8sClient.Create(ctx, cfg)).ToNot(HaveOccurred())
-
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomalyConfig{}, types.NamespacedName{Name: cfg.Name, Namespace: namespace})
-			}, anomalyReadyTimeout).ShouldNot(HaveOccurred())
+			cfgNsn := types.NamespacedName{Name: cfg.Name, Namespace: namespace}
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyConfigList{}, cfgNsn, anomalyReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cfg)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 		})
 
 		It("should merge multiple VMAnomalyConfigs into single secret", func() {
@@ -211,10 +208,9 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 				Expect(finalize.SafeDelete(ctx, k8sClient, cfg2)).ToNot(HaveOccurred())
 			})
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			Expect(k8sClient.Create(ctx, cfg1)).ToNot(HaveOccurred())
 			Expect(k8sClient.Create(ctx, cfg2)).ToNot(HaveOccurred())
@@ -250,10 +246,9 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 }`)},
 			}
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			Expect(k8sClient.Create(ctx, cfg)).ToNot(HaveOccurred())
 			Eventually(func() string {
@@ -263,7 +258,7 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			}, anomalyReadyTimeout).Should(ContainSubstring("vm_delete_metric"))
 
 			Expect(k8sClient.Delete(ctx, cfg)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfig{})
+			waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 
 			Eventually(func() string {
 				var secret corev1.Secret
@@ -308,10 +303,9 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 				Expect(finalize.SafeDelete(ctx, k8sClient, unselectedCfg)).ToNot(HaveOccurred())
 			})
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			Expect(k8sClient.Create(ctx, selectedCfg)).ToNot(HaveOccurred())
 			Expect(k8sClient.Create(ctx, unselectedCfg)).ToNot(HaveOccurred())
@@ -388,10 +382,9 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 				Expect(finalize.SafeDelete(ctx, k8sClient, cfg2)).ToNot(HaveOccurred())
 			})
 
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VMAnomaly{}, nsn)
-			}, anomalyExpandTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			Expect(k8sClient.Create(ctx, cfg1)).ToNot(HaveOccurred())
 			Expect(k8sClient.Create(ctx, cfg2)).ToNot(HaveOccurred())

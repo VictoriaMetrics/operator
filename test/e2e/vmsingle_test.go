@@ -40,7 +40,7 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMSingle{})
+			waitResourceDeleted(ctx, nsn, &vmv1beta1.VMSingleList{})
 			DeleteLicenseSecret(ctx, k8sClient, namespace)
 		})
 		Context("crud", func() {
@@ -60,10 +60,9 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					},
 				}
 
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				var singleDep appsv1.Deployment
 				singleDepName := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
@@ -103,11 +102,9 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					}
 					cr.Name = name
 					nsn.Name = name
-					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-					}, eventualDeploymentAppReadyTimeout,
-					).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+						Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 
 					var created vmv1beta1.VMSingle
 					Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -387,10 +384,9 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					initCR.Namespace = namespace
 					nsn.Name = name
 					// setup test
-					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-					}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+						Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 
 					for _, step := range steps {
 						if step.setup != nil {
@@ -399,14 +395,10 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						// perform update
 						var toUpdate vmv1beta1.VMSingle
 						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-						step.modify(&toUpdate)
-						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-						Eventually(func() error {
-							return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-						}, eventualExpandingTimeout).ShouldNot(HaveOccurred())
-						Eventually(func() error {
-							return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-						}, eventualDeploymentAppReadyTimeout).ShouldNot(HaveOccurred())
+						expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+							step.modify(&toUpdate)
+							Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+						}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 
 						var updated vmv1beta1.VMSingle
 						Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
@@ -501,10 +493,9 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 					RetentionPeriod: "1",
 				},
 			}
-			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-			}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+			expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
 
 			By("pausing the VMSingle")
 			Eventually(func() error {
@@ -565,11 +556,9 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→expanding→operational on spec update", func() {
@@ -586,30 +575,20 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("updating the spec to trigger reconcile")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.RetentionPeriod = "2"
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for expanding status")
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.RetentionPeriod = "2"
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→paused when paused", func() {
@@ -626,25 +605,20 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before pause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("pausing the VMSingle")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = true
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for paused status")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualExpandingTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = true
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 			})
 
 			It("should transition paused→operational when unpaused", func() {
@@ -662,25 +636,20 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for paused status after creation")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualExpandingTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 
 				By("unpausing the VMSingle")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = false
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after unpause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = false
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→failed→operational on non-retryable error", func() {
@@ -697,35 +666,27 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("updating with invalid spec to trigger failure (non-retryable error)")
-				Expect(k8sClient.Get(ctx, nsn, cr)).ToNot(HaveOccurred())
-				cr.Spec.ServiceAccountName = "invalid_name!"
-				Expect(k8sClient.Update(ctx, cr)).ToNot(HaveOccurred())
-
-				By("waiting for failed status")
-				Eventually(func() error {
-					return expectObjectStatusFailed(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualExpandingTimeout, func() {
+					Expect(k8sClient.Get(ctx, nsn, cr)).ToNot(HaveOccurred())
+					cr.Spec.ServiceAccountName = "invalid_name!"
+					Expect(k8sClient.Update(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusFailed)
 
 				By("fixing the spec to recover")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.ServiceAccountName = ""
-					return k8sClient.Update(ctx, cr)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after recovery")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.ServiceAccountName = ""
+						return k8sClient.Update(ctx, cr)
+					}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→expanding→operational on retryable error", func() {
@@ -742,40 +703,32 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						RetentionPeriod: "1",
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				By("updating with unsatisfiable nodeSelector to trigger timeout (retryable wait.Interrupted error)")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					// Change both spec and node selector to force a reconcile
-					cr.Spec.NodeSelector = map[string]string{"non-existent-node-label": "true"}
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for expanding status due to Pending pods")
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						// Change both spec and node selector to force a reconcile
+						cr.Spec.NodeSelector = map[string]string{"non-existent-node-label": "true"}
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusExpanding)
 
 				By("fixing the spec to recover")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.NodeSelector = nil
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after recovery")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1beta1.VMSingleList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.NodeSelector = nil
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 		})
 	})

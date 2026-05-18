@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -310,16 +309,10 @@ var _ = Describe("test prometheusConverter Controller", func() {
 			Context(fmt.Sprintf("crud %s", testCase.name), func() {
 				AfterEach(func() {
 					k8sClient.Delete(ctx, testCase.source) // nolint:errcheck
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.source)
-						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+					waitObjectDeleted(ctx, testCase.source)
 
 					k8sClient.Delete(ctx, testCase.targetTpl) // nolint:errcheck
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						return err
-					}, 60, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+					waitObjectDeleted(ctx, testCase.targetTpl)
 				})
 
 				It("Should convert the object", func() {
@@ -388,10 +381,7 @@ var _ = Describe("test prometheusConverter Controller", func() {
 						return nil
 					}()).ToNot(HaveOccurred())
 					Expect(k8sClient.Delete(ctx, source)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						_, err := getObject(ctx, testCase.targetTpl)
-						return err
-					}, eventualDeletionTimeout, 1).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+					waitObjectDeleted(ctx, testCase.targetTpl)
 				})
 			})
 		}

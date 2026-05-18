@@ -37,7 +37,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					Namespace: nsn.Namespace,
 				},
 			})).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, k8sClient, nsn, &vmv1.VLAgent{})
+			waitResourceDeleted(ctx, nsn, &vmv1.VLAgentList{})
 		})
 
 		DescribeTable("should create vlagent",
@@ -48,11 +48,9 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				if setup != nil {
 					setup()
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout,
-				).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
 				var created vmv1.VLAgent
 				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
@@ -406,22 +404,20 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 				initCR.Name = name
 				initCR.Namespace = namespace
 				nsn.Name = name
-				Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, initCR)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 				for _, step := range steps {
 					if step.setup != nil {
 						step.setup(initCR)
 					}
 					// update and wait ready
 					var toUpdate vmv1.VLAgent
-					Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
-					step.modify(&toUpdate)
-					Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
-					Eventually(func() error {
-						return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-					}, eventualStatefulsetAppReadyTimeout).ShouldNot(HaveOccurred())
+					expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+						Expect(k8sClient.Get(ctx, nsn, &toUpdate)).ToNot(HaveOccurred())
+						step.modify(&toUpdate)
+						Expect(k8sClient.Update(ctx, &toUpdate)).ToNot(HaveOccurred())
+					}, vmv1beta1.UpdateStatusOperational)
 					// verify
 					var updated vmv1.VLAgent
 					Expect(k8sClient.Get(ctx, nsn, &updated)).ToNot(HaveOccurred())
@@ -477,8 +473,8 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
-						waitResourceDeleted(ctx, k8sClient, nsn, &policyv1.PodDisruptionBudget{})
-						waitResourceDeleted(ctx, k8sClient, nsn, &vmv1beta1.VMPodScrape{})
+						waitResourceDeleted(ctx, nsn, &policyv1.PodDisruptionBudgetList{})
+						waitResourceDeleted(ctx, nsn, &vmv1beta1.VMPodScrapeList{})
 					},
 				},
 				testStep{
@@ -511,7 +507,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.DaemonSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.StatefulSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.StatefulSetList{})
 					},
 				},
 				testStep{
@@ -521,7 +517,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					verify: func(cr *vmv1.VLAgent) {
 						nsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
 						Expect(k8sClient.Get(ctx, nsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
-						waitResourceDeleted(ctx, k8sClient, nsn, &appsv1.DaemonSet{})
+						waitResourceDeleted(ctx, nsn, &appsv1.DaemonSetList{})
 					},
 				},
 			),
@@ -547,11 +543,9 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status after creation")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→expanding→operational on spec update", func() {
@@ -570,30 +564,20 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
-				By("updating the spec to trigger reconcile")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.LogLevel = "WARN"
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for expanding status")
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after update")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					By("updating the spec to trigger reconcile")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.LogLevel = "WARN"
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusExpanding, vmv1beta1.UpdateStatusOperational)
 			})
 
 			It("should transition operational→paused when paused", func() {
@@ -612,25 +596,20 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for operational status before pause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 
-				By("pausing the VLAgent")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = true
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for paused status")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualExpandingTimeout, func() {
+					By("pausing the VLAgent")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = true
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 			})
 
 			It("should transition paused→operational when unpaused", func() {
@@ -650,25 +629,20 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						},
 					},
 				}
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-				By("waiting for paused status after creation")
-				Eventually(func() error {
-					return expectObjectStatusPaused(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualExpandingTimeout, func() {
+					Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusPaused)
 
-				By("unpausing the VLAgent")
-				Eventually(func() error {
-					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
-						return err
-					}
-					cr.Spec.Paused = false
-					return k8sClient.Update(ctx, cr)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
-
-				By("waiting for operational status after unpause")
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &vmv1.VLAgent{}, nsn)
-				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				expectStatusAfterAction(ctx, &vmv1.VLAgentList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+					By("unpausing the VLAgent")
+					Eventually(func() error {
+						if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+							return err
+						}
+						cr.Spec.Paused = false
+						return k8sClient.Update(ctx, cr)
+					}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
 			})
 		})
 	})

@@ -13,10 +13,14 @@ aliases:
 
 ## tip
 
+## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
+**Release date:** 18 May 2026
+
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.3. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3+label%3ACherryPickApproved).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.143.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.143.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.142.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.142.0) version
+
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): previously VMAuth could read configuration only from predefined locations; now VMAuth supports arbitrary filesystem access configuration, allowing users to reference required files directly and reducing configuration workarounds. See [#899](https://github.com/VictoriaMetrics/operator/issues/899).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): support VMAnomaly CRD in VMUser targetRefs. See [#2141](https://github.com/VictoriaMetrics/operator/issues/2141).

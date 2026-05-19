@@ -553,6 +553,84 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+
+	// vlcluster with load-balancing
+	f(opts{
+		cr: &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLClusterSpec{
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VLSelect: &vmv1.VLSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VLStorage: &vmv1.VLStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+			var dep appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			}, &dep))
+		},
+	})
+
+	// vlcluster with load-balancing and HPA
+	f(opts{
+		cr: &vmv1.VLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLClusterSpec{
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+						HPA: &vmv1beta1.EmbeddedHPA{
+							MinReplicas: ptr.To(int32(1)),
+							MaxReplicas: 3,
+						},
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VLSelect: &vmv1.VLSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VLStorage: &vmv1.VLStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+			var hpa autoscalingv2.HorizontalPodAutoscaler
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			}, &hpa))
+			assert.Equal(t, int32(3), hpa.Spec.MaxReplicas)
+			assert.Equal(t, "Deployment", hpa.Spec.ScaleTargetRef.Kind)
+		},
+	})
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

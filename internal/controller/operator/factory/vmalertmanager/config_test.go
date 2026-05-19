@@ -1542,6 +1542,56 @@ receivers:
 templates: []
 `,
 	})
+
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "base",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+					Receivers: []vmv1beta1.Receiver{
+						{
+							Name: "blackhole",
+						},
+					},
+					Route: &vmv1beta1.Route{
+						Receiver: "blackhole",
+						RawRoutes: []apiextensionsv1.JSON{
+							mustRouteToJSON(t, vmv1beta1.SubRoute{
+								// No receiver defined; inherits from parent in alertmanager
+								Matchers: []string{`namespace=~"ns1|ns2"`},
+								RawRoutes: []apiextensionsv1.JSON{
+									mustRouteToJSON(t, vmv1beta1.SubRoute{
+										Matchers: []string{`team!~"team1"`},
+									}),
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+		want: `route:
+  receiver: blackhole
+  routes:
+  - routes:
+    - routes:
+      - matchers:
+        - team!~"team1"
+      matchers:
+      - namespace=~"ns1|ns2"
+    matchers:
+    - namespace = "default"
+    receiver: default-base-blackhole
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-blackhole
+templates: []
+`,
+	})
 }
 
 func TestAddConfigTemplates(t *testing.T) {

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): skip replica count update, when VMAgent is in a stateful mode. See [#2190](https://github.com/VictoriaMetrics/operator/issues/2190).
+
 ## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 18 May 2026
 

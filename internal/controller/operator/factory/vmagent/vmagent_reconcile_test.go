@@ -219,6 +219,53 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		})
 }
 
+func TestCreateOrUpdate_StatefulSetWithHPA(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmagent",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			StatefulMode:                  true,
+			StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: "http://remote-write"},
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 5,
+			},
+		},
+	}
+	stsNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	// initial creation: StatefulSet created with 1 replica
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var sts appsv1.StatefulSet
+	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
+	assert.Equal(t, int32(1), *sts.Spec.Replicas)
+
+	// simulate HPA scaling the StatefulSet to 3 replicas
+	sts.Spec.Replicas = ptr.To(int32(3))
+	assert.NoError(t, fclient.Update(ctx, &sts))
+
+	// reconcile with a different desired replica count in the spec
+	cr.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// HPA-managed replica count must not be overwritten
+	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
+	assert.Equal(t, int32(3), *sts.Spec.Replicas)
+}
+
 func TestCreateOrUpdate_Paused(t *testing.T) {
 	cr := &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{

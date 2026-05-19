@@ -383,6 +383,9 @@ func buildInhibitRule(ns string, rule vmv1beta1.InhibitRule, mustAddNamespaceMat
 }
 
 func buildCRPrefixedName(cr *vmv1beta1.VMAlertmanagerConfig, name string) string {
+	if len(name) == 0 {
+		return name
+	}
 	return fmt.Sprintf("%s-%s-%s", cr.Namespace, cr.Name, name)
 }
 

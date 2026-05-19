@@ -222,7 +222,7 @@ func (r *VMAlertmanagerConfig) Validate() error {
 			return fmt.Errorf("notification config name %q is not unique", recv.Name)
 		}
 		receivers.Insert(recv.Name)
-		if err := validateReceiver(recv); err != nil {
+		if err := recv.validate(); err != nil {
 			return fmt.Errorf("receivers[%d]: %w", idx, err)
 		}
 	}
@@ -2147,96 +2147,96 @@ func validateTimeIntervalsEntry(ti *TimeIntervals) error {
 	return nil
 }
 
-func validateReceiver(recv Receiver) error {
-	if recv.Name == "" {
+func (r *Receiver) validate() error {
+	if r.Name == "" {
 		return fmt.Errorf("name field cannot be empty")
 	}
-	for i, c := range recv.EmailConfigs {
+	for i, c := range r.EmailConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("email_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.PagerDutyConfigs {
+	for i, c := range r.PagerDutyConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("pagerduty_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.PushoverConfigs {
+	for i, c := range r.PushoverConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("pushover_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.SlackConfigs {
+	for i, c := range r.SlackConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("slack_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.OpsGenieConfigs {
+	for i, c := range r.OpsGenieConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("opsgenie_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.WebhookConfigs {
+	for i, c := range r.WebhookConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("webhook_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.VictorOpsConfigs {
+	for i, c := range r.VictorOpsConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("victorops_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.WechatConfigs {
+	for i, c := range r.WechatConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("wechat_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.TelegramConfigs {
+	for i, c := range r.TelegramConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("telegram_configs[%d]: %w", i, err)
 		}
 	}
-	for i, c := range recv.MattermostConfigs {
+	for i, c := range r.MattermostConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("mattermost_configs[%d]: %w", i, err)
 		}
 	}
-	for idx, c := range recv.MSTeamsConfigs {
+	for idx, c := range r.MSTeamsConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("msteams_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.DiscordConfigs {
+	for idx, c := range r.DiscordConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("discord_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.SNSConfigs {
+	for idx, c := range r.SNSConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("sns_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.WebexConfigs {
+	for idx, c := range r.WebexConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("webex_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.JiraConfigs {
+	for idx, c := range r.JiraConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("jira_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.IncidentioConfigs {
+	for idx, c := range r.IncidentioConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("incidentio_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.RocketchatConfigs {
+	for idx, c := range r.RocketchatConfigs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("rocketchat_configs[%d]: %w", idx, err)
 		}
 	}
-	for idx, c := range recv.MSTeamsV2Configs {
+	for idx, c := range r.MSTeamsV2Configs {
 		if err := c.validate(); err != nil {
 			return fmt.Errorf("msteamsv2_configs[%d]: %w", idx, err)
 		}

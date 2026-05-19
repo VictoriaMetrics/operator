@@ -1407,6 +1407,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
 		}
+		if newLB.Spec.HPA != nil {
+			cc.KeepHPA(commonName)
+		}
 		cc.KeepService(commonName)
 		if newLB.Spec.AdditionalServiceSpec != nil && !newLB.Spec.AdditionalServiceSpec.UseAsDefault {
 			cc.KeepService(newLB.Spec.AdditionalServiceSpec.NameOrDefault(commonName))

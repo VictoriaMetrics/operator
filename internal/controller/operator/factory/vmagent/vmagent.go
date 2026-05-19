@@ -310,6 +310,11 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			o := reconcile.StatefulSetOpts{
 				SelectorLabels: selectorLabels,
 				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
+				PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+					if cr.Spec.HPA != nil {
+						newSpec.Replicas = existingSpec.Replicas
+					}
+				},
 			}
 			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)

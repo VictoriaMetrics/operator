@@ -15,6 +15,7 @@ aliases:
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): support HPA for requests load balancer.
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): skip replica count update when VMAgent is in stateful mode and HPA is enabled. See [#2190](https://github.com/VictoriaMetrics/operator/issues/2190).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): Remove prefix from empty subroute receiver. See [#2185](https://github.com/VictoriaMetrics/operator/issues/2185).
 
 ## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)

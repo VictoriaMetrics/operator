@@ -5472,6 +5472,11 @@ func (in *VMAuthLoadBalancerSpec) DeepCopyInto(out *VMAuthLoadBalancerSpec) {
 		*out = new(License)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.HPA != nil {
+		in, out := &in.HPA, &out.HPA
+		*out = new(EmbeddedHPA)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonAppsParams.DeepCopyInto(&out.CommonAppsParams)
 }
 

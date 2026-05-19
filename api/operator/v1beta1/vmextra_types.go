@@ -1185,6 +1185,11 @@ type CommonAppsParams struct {
 	// configuration based on DNSPolicy.
 	// +optional
 	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
+	// EnableServiceLinks indicates whether information about services should be injected into pod's
+	// environment variables, matching the syntax of Docker links.
+	// Optional: Defaults to true.
+	// +optional
+	EnableServiceLinks *bool `json:"enableServiceLinks,omitempty"`
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`

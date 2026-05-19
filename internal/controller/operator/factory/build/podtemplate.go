@@ -29,6 +29,7 @@ func PodTemplateAddCommonParams(dst *corev1.PodTemplateSpec, params *vmv1beta1.C
 	dst.Spec.TopologySpreadConstraints = params.TopologySpreadConstraints
 	dst.Spec.ImagePullSecrets = params.ImagePullSecrets
 	dst.Spec.ReadinessGates = params.ReadinessGates
+	dst.Spec.EnableServiceLinks = params.EnableServiceLinks
 	if params.DisableAutomountServiceAccountToken {
 		dst.Spec.AutomountServiceAccountToken = ptr.To(false)
 	}

@@ -329,6 +329,11 @@ func (in *CommonAppsParams) DeepCopyInto(out *CommonAppsParams) {
 		*out = new(v1.PodDNSConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.EnableServiceLinks != nil {
+		in, out := &in.EnableServiceLinks, &out.EnableServiceLinks
+		*out = new(bool)
+		**out = **in
+	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
 		*out = make(map[string]string, len(*in))

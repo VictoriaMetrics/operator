@@ -58,14 +58,6 @@ jobs:
           run_id: ${{ github.event.workflow_run.id }}
           path: bundle
 
-      - name: Install opm
-        run: |
-          OPM_VERSION=v1.65.0
-          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/linux-amd64-opm
-          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/checksums.txt
-          grep ' linux-amd64-opm$' checksums.txt | sha256sum -c -
-          install -m 0755 linux-amd64-opm /usr/local/bin/opm
-
       - name: Add operatorhub bundle
         id: update
         run: |
@@ -89,17 +81,11 @@ jobs:
 
           mv bundle/${NEW_VERSION} ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            opm render ${OPERATOR_DIR}/${NEW_VERSION} --output=yaml \
-              | yq 'select(.schema == "olm.bundle")' > /tmp/new-bundle.yaml
-
             yq -n '.catalog_templates = []' > ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
             for TEMPLATE in ${OPERATOR_DIR}/catalog-templates/*.yaml; do
               export TPL=$(basename ${TEMPLATE})
               export PREV_HEAD=$(yq '.entries[] | select(.schema == "olm.channel") | .entries[-1].name' "${TEMPLATE}")
               yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": ["beta"], "replaces": strenv(PREV_HEAD)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
-              NEW_VERSION="${NEW_VERSION}" PREV_HEAD="${PREV_HEAD}" \
-                yq -i '(.entries[] | select(.schema == "olm.channel") | .entries) += [{"name": "victoriametrics-operator.v" + strenv(NEW_VERSION), "replaces": strenv(PREV_HEAD)}]' "${TEMPLATE}"
-              yq -i '.entries += [load("/tmp/new-bundle.yaml")]' "${TEMPLATE}"
             done
           fi
 

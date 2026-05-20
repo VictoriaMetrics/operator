@@ -16,7 +16,7 @@ import (
 // HTTPRoute creates HTTPRoute object
 func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRoute) (*gwapiv1.HTTPRoute, error) {
 
-	lbls := labels.Merge(labels.Merge(cr.FinalLabels(), httpRoute.Labels), cr.SelectorLabels())
+	lbls := labels.Merge(cr.FinalLabels(), httpRoute.Labels)
 
 	spec := gwapiv1.HTTPRouteSpec{
 		CommonRouteSpec: gwapiv1.CommonRouteSpec{

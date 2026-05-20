@@ -297,3 +297,60 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int32(1), *sts.Spec.Replicas)
 }
+
+func TestCreateOrUpdate_LBDeploymentWithHPA(t *testing.T) {
+	cr := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-cluster",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMClusterSpec{
+			RetentionPeriod: "1",
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					HPA: &vmv1beta1.EmbeddedHPA{
+						MinReplicas: ptr.To(int32(1)),
+						MaxReplicas: 5,
+					},
+				},
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+			},
+		},
+	}
+	depNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	// initial - 1 replica
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var dep appsv1.Deployment
+	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+	assert.Equal(t, int32(1), *dep.Spec.Replicas)
+
+	// simulate HPA scaling the Deployment to 3 replicas
+	dep.Spec.Replicas = ptr.To(int32(3))
+	assert.NoError(t, fclient.Update(ctx, &dep))
+
+	// set desired replica count to 2
+	cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To(int32(2))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	// HPA-managed replica count must not be overwritten
+	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+	assert.Equal(t, int32(3), *dep.Spec.Replicas)
+}

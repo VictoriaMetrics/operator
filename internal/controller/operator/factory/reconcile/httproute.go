@@ -21,6 +21,7 @@ func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwap
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	rclient.Scheme().Default(newObj)
 	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj gwapiv1.HTTPRoute

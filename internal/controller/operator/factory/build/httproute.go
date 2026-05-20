@@ -13,11 +13,13 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+type httpRouteOpts interface {
+	builderOpts
+	ResourceLabels(map[string]string) map[string]string
+}
+
 // HTTPRoute creates HTTPRoute object
-func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRoute) (*gwapiv1.HTTPRoute, error) {
-
-	lbls := labels.Merge(cr.FinalLabels(), httpRoute.Labels)
-
+func HTTPRoute(cr httpRouteOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRoute) (*gwapiv1.HTTPRoute, error) {
 	spec := gwapiv1.HTTPRouteSpec{
 		CommonRouteSpec: gwapiv1.CommonRouteSpec{
 			ParentRefs: httpRoute.ParentRefs,
@@ -34,7 +36,7 @@ func HTTPRoute(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTTPRou
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          lbls,
+			Labels:          cr.ResourceLabels(httpRoute.Labels),
 			Annotations:     labels.Merge(cr.FinalAnnotations(), httpRoute.Annotations),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},

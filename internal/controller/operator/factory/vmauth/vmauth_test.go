@@ -491,16 +491,46 @@ func TestCreateOrUpdate(t *testing.T) {
 		cfgMutator: func(c *config.BaseOperatorConf) {
 			c.CommonLabels = map[string]string{"env": "prod"}
 			c.CommonAnnotations = map[string]string{"controller": "true"}
+			c.GatewayAPIEnabled = true
 		},
 		cr: &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base",
 				Namespace: "default",
 			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Port: "8427",
+				},
+				Ingress: &vmv1beta1.EmbeddedIngress{
+					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+						Labels: map[string]string{
+							"gw": "ingress",
+						},
+					},
+					Host: "example.com",
+				},
+				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
+					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+						Labels: map[string]string{
+							"gw": "route",
+						},
+					},
+					ParentRefs: []gwapiv1.ParentReference{
+						{
+							Group:     ptr.To(gwapiv1.Group("gateway.networking.k8s.io")),
+							Kind:      ptr.To(gwapiv1.Kind("Gateway")),
+							Namespace: ptr.To(gwapiv1.Namespace("default")),
+							Name:      gwapiv1.ObjectName("test"),
+						},
+					},
+				},
+			},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 			var set appsv1.Deployment
-			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmauth-base"}, &set))
+			assert.NoError(t, rclient.Get(ctx, nsn, &set))
 			assert.Equal(t, map[string]string{
 				"env":                         "prod",
 				"app.kubernetes.io/name":      "vmauth",
@@ -509,8 +539,9 @@ func TestCreateOrUpdate(t *testing.T) {
 				"managed-by":                  "vm-operator",
 			}, set.Labels)
 			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+
 			var svc corev1.Service
-			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+			assert.NoError(t, rclient.Get(ctx, nsn, &svc))
 			assert.Equal(t, map[string]string{
 				"env":                         "prod",
 				"app.kubernetes.io/name":      "vmauth",
@@ -518,6 +549,31 @@ func TestCreateOrUpdate(t *testing.T) {
 				"app.kubernetes.io/component": "monitoring",
 				"managed-by":                  "vm-operator",
 			}, svc.Labels)
+
+			var ing networkingv1.Ingress
+			assert.NoError(t, rclient.Get(ctx, nsn, &ing))
+			assert.Equal(t, map[string]string{
+				"gw":                          "ingress",
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, ing.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, ing.Annotations)
+
+			var route gwapiv1.HTTPRoute
+			assert.NoError(t, rclient.Get(ctx, nsn, &route))
+			assert.Equal(t, map[string]string{
+				"gw":                          "route",
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmauth",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, route.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, route.Annotations)
+
 			var secret corev1.Secret
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &secret))
 			assert.Equal(t, map[string]string{

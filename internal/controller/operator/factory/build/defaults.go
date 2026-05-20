@@ -6,11 +6,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -54,6 +56,8 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&corev1.ConfigMap{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.Namespace{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.PersistentVolumeClaim{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&networkingv1.Ingress{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&gwapiv1.HTTPRoute{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.Secret{}, addDefaultMetadata)
 }
 

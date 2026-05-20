@@ -384,6 +384,50 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// vmcluster with load-balancing and HPA
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "cluster-1",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod:   "2",
+				ReplicationFactor: ptr.To(int32(2)),
+				RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+					Enabled: true,
+					Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
+						HPA: &vmv1beta1.EmbeddedHPA{
+							MinReplicas: ptr.To(int32(1)),
+							MaxReplicas: 3,
+						},
+					},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			var hpa autoscalingv2.HorizontalPodAutoscaler
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentBalancer),
+			}, &hpa))
+			assert.Equal(t, int32(3), hpa.Spec.MaxReplicas)
+			assert.Equal(t, "Deployment", hpa.Spec.ScaleTargetRef.Kind)
+		},
+	})
+
 	// with select VPA
 	f(opts{
 		cr: &vmv1beta1.VMCluster{

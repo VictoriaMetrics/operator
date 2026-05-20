@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +54,30 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}
 	}
+	if err := createOrUpdateVMAuthLBHPA(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update HPA for vmauth lb: %w", err)
+	}
 	return nil
+}
+
+func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
+	if cr.Spec.RequestsLoadBalancer.Spec.HPA == nil {
+		return nil
+	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	targetRef := autoscalingv2.CrossVersionObjectReference{
+		Name:       b.PrefixedName(),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	newHPA := build.HPA(b, targetRef, cr.Spec.RequestsLoadBalancer.Spec.HPA)
+	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.HPA != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		prevHPA = build.HPA(b, targetRef, prevCR.Spec.RequestsLoadBalancer.Spec.HPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
 }
 
 func buildLBConfigSecretMeta(cr *vmv1.VTCluster) metav1.ObjectMeta {

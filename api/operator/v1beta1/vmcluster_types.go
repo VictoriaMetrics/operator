@@ -1013,7 +1013,10 @@ type VMAuthLoadBalancerSpec struct {
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// License configures enterprise features license key
 	// +optional
-	License          *License `json:"license,omitempty"`
+	License *License `json:"license,omitempty"`
+	// HPA defines HorizontalPodAutoscaler configuration for vmauth lb deployment
+	// +optional
+	HPA              *EmbeddedHPA `json:"hpa,omitempty"`
 	CommonAppsParams `json:",inline"`
 }
 

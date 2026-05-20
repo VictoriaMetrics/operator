@@ -13,10 +13,14 @@ aliases:
 
 ## tip
 
+## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
+**Release date:** 20 May 2026
+
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): support HPA for requests load balancer.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): skip replica count update when VMAgent is in stateful mode and HPA is enabled. See [#2190](https://github.com/VictoriaMetrics/operator/issues/2190).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): Remove prefix from empty subroute receiver. See [#2185](https://github.com/VictoriaMetrics/operator/issues/2185).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): updated OLM configuration to fix OpenShift catalog publishing. See [#]
 
 ## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 18 May 2026

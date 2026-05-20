@@ -1647,7 +1647,15 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot build prev deployment for vmauth loadbalancing: %w", err)
 		}
 	}
-	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, &owner, nil); err != nil {
+	o := reconcile.DeploymentOpts{
+		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+			if cr.Spec.RequestsLoadBalancer.Spec.HPA != nil {
+				newSpec.Replicas = existingSpec.Replicas
+				cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = existingSpec.Replicas
+			}
+		},
+	}
+	if err := reconcile.Deployment(ctx, rclient, lbDep, prevLB, &owner, &o); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb deployment: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {

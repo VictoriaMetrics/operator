@@ -6,10 +6,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -48,10 +51,21 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
+
+	scheme.AddTypeDefaultingFunc(&appsv1.DaemonSet{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&corev1.ConfigMap{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&corev1.Namespace{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&corev1.PersistentVolumeClaim{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&networkingv1.Ingress{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&gwapiv1.HTTPRoute{}, addDefaultMetadata)
+	scheme.AddTypeDefaultingFunc(&corev1.Secret{}, addDefaultMetadata)
 }
 
 func addVMDistributedDefaults(objI any) {
 	cr := objI.(*vmv1alpha1.VMDistributed)
+
+	addDefaultMetadata(cr)
+
 	if cr.Spec.ZoneCommon.ReadyTimeout == nil {
 		cr.Spec.ZoneCommon.ReadyTimeout = &metav1.Duration{
 			Duration: 5 * time.Minute,
@@ -85,6 +99,8 @@ func addVMDistributedDefaults(objI any) {
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/apps/v1/defaults.go
 func addStatefulsetDefaults(objI any) {
 	obj := objI.(*appsv1.StatefulSet)
+
+	addDefaultMetadata(obj)
 
 	// special case for vm operator defaults
 	if obj.Spec.UpdateStrategy.Type == "" {
@@ -123,6 +139,9 @@ func addStatefulsetDefaults(objI any) {
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/apps/v1/defaults.go
 func addDeploymentDefaults(objI any) {
 	obj := objI.(*appsv1.Deployment)
+
+	addDefaultMetadata(obj)
+
 	// Set DeploymentSpec.Replicas to 1 if it is not set.
 	if obj.Spec.Replicas == nil {
 		obj.Spec.Replicas = new(int32)
@@ -163,6 +182,9 @@ func addDeploymentDefaults(objI any) {
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/v1/defaults.go
 func addServiceDefaults(objI any) {
 	obj := objI.(*corev1.Service)
+
+	addDefaultMetadata(obj)
+
 	if obj.Spec.SessionAffinity == "" {
 		obj.Spec.SessionAffinity = corev1.ServiceAffinityNone
 	}
@@ -221,6 +243,8 @@ func addVMAuthDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAuth)
 	c := getCfg()
 
+	addDefaultMetadata(cr)
+
 	if cr.Spec.ConfigSecret != "" {
 		// Removed if later with ConfigSecret field later
 		cr.Spec.SecretRef = &corev1.SecretKeySelector{
@@ -243,6 +267,8 @@ func addVMAlertDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAlert)
 	c := getCfg()
 
+	addDefaultMetadata(cr)
+
 	cv := config.ApplicationDefaults(c.VMAlert)
 	cp := commonParams{
 		tag:     cr.Spec.ComponentVersion,
@@ -258,6 +284,7 @@ func addVMAlertDefaults(objI any) {
 func addVMAgentDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAgent)
 	c := getCfg()
+	addDefaultMetadata(cr)
 
 	cv := config.ApplicationDefaults(c.VMAgent)
 	cp := commonParams{
@@ -274,6 +301,7 @@ func addVMAgentDefaults(objI any) {
 func addVLAgentDefaults(objI any) {
 	cr := objI.(*vmv1.VLAgent)
 	c := getCfg()
+	addDefaultMetadata(cr)
 
 	cv := config.ApplicationDefaults(c.VLAgent)
 	cp := commonParams{
@@ -286,6 +314,7 @@ func addVLAgentDefaults(objI any) {
 func addVMSingleDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMSingle)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cv := config.ApplicationDefaults(c.VMSingle)
 	cp := commonParams{
 		tag:     cr.Spec.ComponentVersion,
@@ -307,6 +336,7 @@ func addVMSingleDefaults(objI any) {
 func addVLogsDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VLogs)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cv := config.ApplicationDefaults(c.VLogs)
 	cp := commonParams{tag: cr.Spec.ComponentVersion}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -314,6 +344,8 @@ func addVLogsDefaults(objI any) {
 
 func addVMAnomalyDefaults(objI any) {
 	cr := objI.(*vmv1.VMAnomaly)
+
+	addDefaultMetadata(cr)
 
 	// vmanomaly takes up to 2 minutes to start
 	if cr.Spec.LivenessProbe == nil {
@@ -357,6 +389,7 @@ func addVMAnomalyDefaults(objI any) {
 func addVLSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VLSingle)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cv := config.ApplicationDefaults(c.VLSingle)
 	cp := commonParams{
 		tag:     cr.Spec.ComponentVersion,
@@ -368,6 +401,7 @@ func addVLSingleDefaults(objI any) {
 func addVTSingleDefaults(objI any) {
 	cr := objI.(*vmv1.VTSingle)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cv := config.ApplicationDefaults(c.VTSingle)
 	cp := commonParams{tag: cr.Spec.ComponentVersion}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
@@ -376,6 +410,7 @@ func addVTSingleDefaults(objI any) {
 func addVMAlertmanagerDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMAlertmanager)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cv := config.ApplicationDefaults(c.VMAlertmanager)
 	if cr.Spec.ClusterDomainName == "" {
 		cr.Spec.ClusterDomainName = c.ClusterDomainName
@@ -414,6 +449,7 @@ func addRequestsLoadBalancerDefaults(lb *vmv1beta1.VMAuthLoadBalancer, cp *commo
 func addVMClusterDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMCluster)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	if cr.Spec.ClusterDomainName == "" {
 		cr.Spec.ClusterDomainName = c.ClusterDomainName
 	}
@@ -464,6 +500,20 @@ func addVMClusterDefaults(objI any) {
 		cpLB := cp
 		cpLB.tag = cr.Spec.RequestsLoadBalancer.Spec.ComponentVersion
 		addRequestsLoadBalancerDefaults(&cr.Spec.RequestsLoadBalancer, &cpLB)
+	}
+}
+
+func addDefaultMetadata(objI any) {
+	cfg := config.MustGetBaseConfig()
+	obj, ok := objI.(metav1.Object)
+	if !ok {
+		return
+	}
+	if len(cfg.CommonLabels) > 0 {
+		obj.SetLabels(labels.Merge(cfg.CommonLabels, obj.GetLabels()))
+	}
+	if len(cfg.CommonAnnotations) > 0 {
+		obj.SetAnnotations(labels.Merge(cfg.CommonAnnotations, obj.GetAnnotations()))
 	}
 }
 
@@ -537,6 +587,7 @@ func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, app
 		return
 	}
 	c := getCfg()
+	addDefaultMetadata(cr)
 
 	if cr.Image.Repository == "" {
 		cr.Image.Repository = appDefaults.Image
@@ -562,6 +613,7 @@ func addVMServiceScrapeDefaults(objI any) {
 	if cr == nil {
 		return
 	}
+	addDefaultMetadata(cr)
 	c := getCfg()
 	if cr.Spec.DiscoveryRole == "" && c.VMServiceScrape.EnforceEndpointSlices {
 		cr.Spec.DiscoveryRole = "endpointslice"
@@ -576,6 +628,7 @@ const (
 func addVTClusterDefaults(objI any) {
 	cr := objI.(*vmv1.VTCluster)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
 		tag:               cr.Spec.ClusterVersion,
@@ -619,6 +672,7 @@ func addVTClusterDefaults(objI any) {
 func addVLClusterDefaults(objI any) {
 	cr := objI.(*vmv1.VLCluster)
 	c := getCfg()
+	addDefaultMetadata(cr)
 	cp := commonParams{
 		useStrictSecurity: cr.Spec.UseStrictSecurity,
 		tag:               cr.Spec.ClusterVersion,

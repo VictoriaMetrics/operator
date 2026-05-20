@@ -248,11 +248,17 @@ func (cr *VTSingle) PodLabels() map[string]string {
 
 // FinalLabels returns combination of selector and managed labels
 func (cr *VTSingle) FinalLabels() map[string]string {
-	v := cr.SelectorLabels()
+	return cr.ResourceLabels(nil)
+}
+
+// ResourceLabels returns combination of selector, resource and managed labels
+func (cr *VTSingle) ResourceLabels(input map[string]string) map[string]string {
+	var v map[string]string
 	if cr.Spec.ManagedMetadata != nil {
-		v = labels.Merge(cr.Spec.ManagedMetadata.Labels, v)
+		v = cr.Spec.ManagedMetadata.Labels
 	}
-	return v
+	v = labels.Merge(v, input)
+	return labels.Merge(v, cr.SelectorLabels())
 }
 
 // PrefixedName format name of the component with hard-coded prefix

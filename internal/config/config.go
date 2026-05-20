@@ -39,7 +39,7 @@ var (
 		"VM_LOGS_VERSION":     "v1.50.0",
 		"VM_ANOMALY_VERSION":  "v1.29.3",
 		"VM_TRACES_VERSION":   "v0.7.0",
-		"VM_OPERATOR_VERSION": getVersion("v0.69.0"),
+		"VM_OPERATOR_VERSION": getVersion("v0.70.1"),
 	}
 )
 
@@ -623,6 +623,15 @@ type BaseOperatorConf struct {
 	//        - all
 	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
 	EnableStrictSecurity bool `default:"false" env:"VM_ENABLESTRICTSECURITY"`
+
+	// CommonLabels are added to every Kubernetes resource created by the operator.
+	// They cannot override labels already set by the operator or via spec.managedMetadata.
+	// Format: key=value,key2=value2
+	CommonLabels map[string]string `default:"" env:"VM_COMMON_LABELS" envSeparator:"," envKeyValSeparator:"="`
+	// CommonAnnotations are added to every Kubernetes resource created by the operator.
+	// They cannot override annotations already set by the operator or via spec.managedMetadata.
+	// Format: key=value,key2=value2
+	CommonAnnotations map[string]string `default:"" env:"VM_COMMON_ANNOTATIONS" envSeparator:"," envKeyValSeparator:"="`
 }
 
 // ResyncAfterDuration returns requeue duration for object period reconcile

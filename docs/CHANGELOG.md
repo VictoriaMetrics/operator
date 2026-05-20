@@ -36,6 +36,8 @@ aliases:
 * FEATURE: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed): introduce `spec.zones[*].trafficMode` property, which allows disable read, write or whole traffic to a zone. See [#1995](https://github.com/VictoriaMetrics/operator/issues/1995).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): support per remote write queues configuration. See [#2138](https://github.com/VictoriaMetrics/operator/issues/2138).
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_COMMON_LABELS` and `VM_COMMON_ANNOTATIONS` environment variables to apply common labels/annotations to all Kubernetes resources managed by the operator. These cannot override labels/annotations already set by the operator or via `spec.managedMetadata`. This also ensures HTTPRoutes and PVCs include ManagedMetadata labels and annotations
+
 * BUGFIX: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): disable all prometheus controllers if CRD group was not found. See [#2838](https://github.com/VictoriaMetrics/helm-charts/issues/2838).
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): change default load balancing policy for write requests from `first_available` to `least_loaded`. This should allow to evenly distribute write load across all VMAgents.
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): fix previously ignored negative values in VMAlertmanagerConfig. See [#2132](https://github.com/VictoriaMetrics/operator/issues/2132).

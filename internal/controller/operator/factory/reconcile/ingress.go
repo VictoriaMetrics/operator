@@ -21,6 +21,7 @@ func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networ
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	rclient.Scheme().Default(newObj)
 	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj networkingv1.Ingress

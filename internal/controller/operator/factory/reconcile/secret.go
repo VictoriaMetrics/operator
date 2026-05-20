@@ -18,6 +18,7 @@ import (
 func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
+	rclient.Scheme().Default(newObj)
 	return retryOnConflict(func() error {
 		var existingObj corev1.Secret
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {

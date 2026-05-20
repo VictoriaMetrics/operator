@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -548,4 +550,43 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 			expectedTag:      "v1.2.0",
 		})
 	}
+}
+
+func TestAddDefaultMetadata(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	defer func() {
+		*config.MustGetBaseConfig() = defaultCfg
+	}()
+
+	cfg.CommonLabels = map[string]string{
+		"common-label":   "common-value",
+		"existing-label": "should-not-overwrite",
+	}
+	cfg.CommonAnnotations = map[string]string{
+		"common-annotation":   "common-value",
+		"existing-annotation": "should-not-overwrite",
+	}
+
+	obj := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"existing-label": "existing-value",
+			},
+			Annotations: map[string]string{
+				"existing-annotation": "existing-value",
+			},
+		},
+	}
+
+	addDefaultMetadata(obj)
+
+	assert.Equal(t, map[string]string{
+		"common-label":   "common-value",
+		"existing-label": "existing-value",
+	}, obj.Labels)
+	assert.Equal(t, map[string]string{
+		"common-annotation":   "common-value",
+		"existing-annotation": "existing-value",
+	}, obj.Annotations)
 }

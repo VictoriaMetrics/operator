@@ -479,9 +479,15 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, nsn, &vpaGot))
 			vpaExpected := vpav1.VerticalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            selectName,
-					Namespace:       cr.Namespace,
-					Labels:          cr.FinalLabels(component),
+					Name:      selectName,
+					Namespace: cr.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "vmselect",
+						"app.kubernetes.io/part-of":   "vmcluster",
+						"app.kubernetes.io/instance":  "test",
+						"app.kubernetes.io/component": "monitoring",
+						"managed-by":                  "vm-operator",
+					},
 					ResourceVersion: "1",
 					OwnerReferences: []metav1.OwnerReference{{Name: "test", Controller: ptr.To(true), BlockOwnerDeletion: ptr.To(true)}},
 				},
@@ -745,6 +751,113 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, k8serrors.IsNotFound(err))
 		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmselect-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmselect",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/part-of":   "vmcluster",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmselect",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/part-of":   "vmcluster",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMClusterSpec{
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "vmselect-base"}, &set))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmselect",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/part-of":   "vmcluster",
+				"managed-by":                  "vm-operator",
+			}, set.Labels)
+			assert.Equal(t, map[string]string{"controller": "true"}, set.Annotations)
+			var svc corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmselect",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"app.kubernetes.io/part-of":   "vmcluster",
+				"managed-by":                  "vm-operator",
+			}, svc.Labels)
+		}})
 }
 
 func TestCreatOrUpdateClusterServices(t *testing.T) {
@@ -820,6 +933,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	// with vmbackup and additional service ports
@@ -864,6 +979,7 @@ objectmeta:
 spec:
     ports:
         - name: web-rpc
+          protocol: TCP
           port: 8011
           targetport:
             intval: 8011
@@ -894,6 +1010,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 
@@ -936,6 +1054,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 ---
 objectmeta:
@@ -976,6 +1096,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	// with native and extra service
@@ -1020,6 +1142,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 ---
 objectmeta:
@@ -1055,6 +1179,10 @@ spec:
         app.kubernetes.io/name: vmselect
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vmstorage-test
@@ -1094,6 +1222,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
     publishnotreadyaddresses: true
 `)
 	f(&vmv1beta1.VMCluster{
@@ -1138,6 +1268,8 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `)
 	// transit to headless
 	f(&vmv1beta1.VMCluster{
@@ -1196,6 +1328,8 @@ spec:
         managed-by: vm-operator
     clusterip: "None"
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",
@@ -1278,6 +1412,10 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1353,6 +1491,8 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vminsert-test
@@ -1427,6 +1567,10 @@ spec:
         app.kubernetes.io/name: vminsert
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 ---
 objectmeta:
@@ -1468,6 +1612,8 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "vminsert-test",
@@ -1543,6 +1689,8 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
 ---
 objectmeta:
     name: vminsert-test
@@ -1584,6 +1732,10 @@ spec:
         app.kubernetes.io/name: vmclusterlb-vmauth-balancer
         managed-by: vm-operator
     type: LoadBalancer
+    sessionaffinity: None
+    externaltrafficpolicy: Cluster
+    allocateloadbalancernodeports: true
+    internaltrafficpolicy: Cluster
     loadbalancerclass: service.k8s.aws/nlb
 ---
 objectmeta:
@@ -1627,6 +1779,9 @@ spec:
         managed-by: vm-operator
     clusterip: None
     type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+    clusterip: "None"
     loadbalancerclass: service.k8s.aws/nlb
 `, &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

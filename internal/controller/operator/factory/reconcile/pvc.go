@@ -24,6 +24,7 @@ import (
 func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
 	var existingObj corev1.PersistentVolumeClaim
+	rclient.Scheme().Default(newObj)
 	err := retryOnConflict(func() error {
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {

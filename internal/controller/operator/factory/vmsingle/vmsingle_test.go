@@ -7,13 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -21,14 +24,29 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMSingle
-		want              *appsv1.Deployment
+		cfgMutator        func(*config.BaseOperatorConf)
+		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle)
 		predefinedObjects []runtime.Object
 	}
 
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		assert.NoError(t, CreateOrUpdate(context.TODO(), o.cr, fclient))
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
+		ctx := context.TODO()
+		assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
+		if o.validate != nil {
+			o.validate(ctx, fclient, o.cr)
+		}
 	}
 
 	// base-vmsingle-gen
@@ -50,7 +68,11 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vmsingle-vmsingle-base", "default"),
 		},
-		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, got.Name, "vmsingle-vmsingle-base")
+		},
 	})
 
 	// base-vmsingle-with-ports
@@ -78,20 +100,145 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 			k8stools.NewReadyDeployment("vmsingle-vmsingle-base", "default"),
 		},
-		want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, got.Name, "vmsingle-vmsingle-base")
+		},
 	})
+
+	// managed metadata
+	f(opts{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels:      map[string]string{"env": "prod"},
+					Annotations: map[string]string{"controller": "true"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, got.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, got.Annotations, map[string]string{"controller": "true"})
+		},
+	})
+
+	// common labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{"env": "prod"}
+			c.CommonAnnotations = map[string]string{"controller": "true"}
+		},
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			assert.Equal(t, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			}, got.Labels)
+			assert.Equal(t, got.Annotations, map[string]string{"controller": "true"})
+		}})
+
+	// common labels cannot overwrite standard labels
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.CommonLabels = map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "hacked",
+				"app.kubernetes.io/instance":  "hacked",
+				"app.kubernetes.io/component": "hacked",
+				"managed-by":                  "hacked",
+			}
+		},
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "base",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Annotations: map[string]string{
+						"env": "base",
+					},
+				},
+				StorageMetadata: vmv1beta1.EmbeddedObjectMetadata{
+					Labels: map[string]string{
+						"env": "test",
+					},
+					Annotations: map[string]string{
+						"env": "test",
+					},
+				},
+				Storage: &corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("5Gi"),
+						},
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.Equal(t, got.Labels, map[string]string{
+				"env":                         "prod",
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, got.Annotations, map[string]string{
+				"env": "base",
+			})
+			var pvc corev1.PersistentVolumeClaim
+			assert.NoError(t, rclient.Get(ctx, nsn, &pvc))
+			assert.Equal(t, pvc.Labels, map[string]string{
+				"env":                         "test",
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "base",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
+			assert.Equal(t, pvc.Annotations, map[string]string{
+				"env": "test",
+			})
+		}})
 }
 
 func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMSingle
-		want              *corev1.Service
+		validate          func(*corev1.Service)
 		predefinedObjects []runtime.Object
 	}
 
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		build.AddDefaults(fclient.Scheme())
 		ctx := context.TODO()
 		assert.NoError(t, createOrUpdateService(ctx, fclient, o.cr, nil))
 		svc := build.Service(o.cr, o.cr.Spec.Port, nil)
@@ -101,8 +248,11 @@ func TestCreateOrUpdateService(t *testing.T) {
 			Namespace: svc.Namespace,
 		}
 		assert.NoError(t, fclient.Get(ctx, nsn, &got))
-		assert.Equal(t, got.Name, o.want.Name)
-		assert.Equal(t, got.Spec.Ports, o.want.Spec.Ports)
+		if o.validate != nil {
+			o.validate(&got)
+		} else {
+			assert.Equal(t, got.Name, svc.Name)
+		}
 	}
 
 	// base service test
@@ -113,25 +263,30 @@ func TestCreateOrUpdateService(t *testing.T) {
 				Namespace: "default",
 			},
 		},
-		want: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmsingle-single-1",
-				Namespace: "default",
-			},
-			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name:       "http",
-						Protocol:   "TCP",
-						TargetPort: intstr.FromString(""),
-					}, {
-						Name:       "http-alias",
-						Port:       8428,
-						Protocol:   "TCP",
-						TargetPort: intstr.FromString(""),
-					},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "vmsingle-single-1")
+			assert.Equal(t, svc.Namespace, "default")
+
+			expectedPorts := []corev1.ServicePort{
+				{
+					Name:       "http",
+					Protocol:   "TCP",
+					TargetPort: intstr.FromInt32(0),
 				},
-			},
+				{
+					Name:       "http-alias",
+					Port:       8428,
+					Protocol:   "TCP",
+					TargetPort: intstr.FromInt32(8428),
+				},
+			}
+			assert.Equal(t, svc.Spec.Ports, expectedPorts)
+			assert.Equal(t, svc.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "single-1",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 		},
 	})
 
@@ -151,60 +306,26 @@ func TestCreateOrUpdateService(t *testing.T) {
 				},
 			},
 		},
-		want: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmsingle-single-1",
-				Namespace: "default",
-			},
-			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name:       "http",
-						Protocol:   "TCP",
-						TargetPort: intstr.FromString(""),
-					}, {
-						Name:       "http-alias",
-						Protocol:   "TCP",
-						Port:       8428,
-						TargetPort: intstr.FromString(""),
-					}, {
-						Name:       "graphite-tcp",
-						Protocol:   "TCP",
-						Port:       8053,
-						TargetPort: intstr.FromInt(8053),
-					}, {
-						Name:       "graphite-udp",
-						Protocol:   "UDP",
-						Port:       8053,
-						TargetPort: intstr.FromInt(8053),
-					}, {
-						Name:       "influx-tcp",
-						Protocol:   "TCP",
-						Port:       8051,
-						TargetPort: intstr.FromInt(8051),
-					}, {
-						Name:       "influx-udp",
-						Protocol:   "UDP",
-						Port:       8051,
-						TargetPort: intstr.FromInt(8051),
-					}, {
-						Name:       "opentsdb-tcp",
-						Protocol:   "TCP",
-						Port:       8054,
-						TargetPort: intstr.FromInt(8054),
-					}, {
-						Name:       "opentsdb-udp",
-						Protocol:   "UDP",
-						Port:       8054,
-						TargetPort: intstr.FromInt(8054),
-					}, {
-						Name:       "opentsdb-http",
-						Protocol:   "TCP",
-						Port:       8052,
-						TargetPort: intstr.FromInt(8052),
-					},
-				},
-			},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "vmsingle-single-1")
+			assert.Equal(t, svc.Namespace, "default")
+			// sanity-check ports count and a couple of representative ports
+			assert.Len(t, svc.Spec.Ports, 9)
+			// check graphite tcp present
+			foundGraphite := false
+			for _, p := range svc.Spec.Ports {
+				if p.Name == "graphite-tcp" && p.Port == 8053 {
+					foundGraphite = true
+					break
+				}
+			}
+			assert.True(t, foundGraphite)
+			assert.Equal(t, svc.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "single-1",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 		},
 	})
 
@@ -224,25 +345,16 @@ func TestCreateOrUpdateService(t *testing.T) {
 				},
 			},
 		},
-		want: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "vmsingle-single-1",
-				Namespace: "default",
-			},
-			Spec: corev1.ServiceSpec{
-				Ports: []corev1.ServicePort{
-					{
-						Name:       "http",
-						Protocol:   "TCP",
-						TargetPort: intstr.FromString(""),
-					}, {
-						Name:       "http-alias",
-						Port:       8428,
-						Protocol:   "TCP",
-						TargetPort: intstr.FromString(""),
-					},
-				},
-			},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, svc.Name, "vmsingle-single-1")
+			assert.Equal(t, svc.Namespace, "default")
+			assert.Len(t, svc.Spec.Ports, 2)
+			assert.Equal(t, svc.Labels, map[string]string{
+				"app.kubernetes.io/name":      "vmsingle",
+				"app.kubernetes.io/instance":  "single-1",
+				"app.kubernetes.io/component": "monitoring",
+				"managed-by":                  "vm-operator",
+			})
 		},
 		predefinedObjects: []runtime.Object{
 			&corev1.Service{

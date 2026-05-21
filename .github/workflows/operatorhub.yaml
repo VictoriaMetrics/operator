@@ -15,6 +15,8 @@ jobs:
   update:
     name: Publish new OperatorHub release
     runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ startsWith(github.event.release.target_commitish, 'release') && 'stable' || 'beta' }}
     if: ${{ (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) || github.event_name == 'workflow_dispatch' && github.event.workflow_run.release != 'prereleased' }}
     strategy:
       matrix:
@@ -85,7 +87,7 @@ jobs:
             for TEMPLATE in ${OPERATOR_DIR}/catalog-templates/*.yaml; do
               export TPL=$(basename ${TEMPLATE})
               export PREV_HEAD=$(yq '.entries[] | select(.schema == "olm.channel") | .entries[-1].name' "${TEMPLATE}")
-              yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": ["beta"], "replaces": strenv(PREV_HEAD)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+              yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": [strenv(CHANNEL)], "replaces": strenv(PREV_HEAD)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
             done
           fi
 

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
+
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026
 

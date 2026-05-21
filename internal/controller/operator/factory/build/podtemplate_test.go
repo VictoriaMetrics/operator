@@ -170,6 +170,32 @@ func TestPodTemplateParams(t *testing.T) {
 			HostNetwork: true,
 		},
 	)
+
+	// EnableServiceLinks nil (not set)
+	f(
+		&vmv1beta1.CommonAppsParams{},
+		corev1.PodSpec{},
+	)
+
+	// EnableServiceLinks explicitly true
+	f(
+		&vmv1beta1.CommonAppsParams{
+			EnableServiceLinks: ptr.To(true),
+		},
+		corev1.PodSpec{
+			EnableServiceLinks: ptr.To(true),
+		},
+	)
+
+	// EnableServiceLinks explicitly false
+	f(
+		&vmv1beta1.CommonAppsParams{
+			EnableServiceLinks: ptr.To(false),
+		},
+		corev1.PodSpec{
+			EnableServiceLinks: ptr.To(false),
+		},
+	)
 }
 
 func TestDeploymentAddCommonParams(t *testing.T) {

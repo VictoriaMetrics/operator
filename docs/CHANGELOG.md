@@ -18,6 +18,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): enable strict CR spec unmarshalling. See [#2882](https://github.com/VictoriaMetrics/helm-charts/issues/2882).
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026
@@ -26,7 +27,7 @@ aliases:
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): skip replica count update when VMAgent is in stateful mode and HPA is enabled. See [#2190](https://github.com/VictoriaMetrics/operator/issues/2190).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): Remove prefix from empty subroute receiver. See [#2185](https://github.com/VictoriaMetrics/operator/issues/2185).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): updated OLM configuration to fix OpenShift catalog publishing. See [#]
+
 
 ## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 18 May 2026

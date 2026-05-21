@@ -55,7 +55,7 @@ func (*VLogsCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VL
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VLogsCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VLogs) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {

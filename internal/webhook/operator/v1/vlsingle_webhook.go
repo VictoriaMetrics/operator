@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // SetupVLSingleWebhookWithManager will setup the manager to manage the webhooks
@@ -51,7 +52,7 @@ func (*VLSingleCustomValidator) ValidateCreate(_ context.Context, obj *vmv1.VLSi
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VLSingleCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1.VLSingle) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {

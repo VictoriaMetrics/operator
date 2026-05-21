@@ -55,7 +55,7 @@ func (*VMServiceScrapeCustomValidator) ValidateCreate(ctx context.Context, obj *
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMServiceScrapeCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMServiceScrape) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {

@@ -57,7 +57,7 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1bet
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMSingle) (warnings admission.Warnings, err error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}

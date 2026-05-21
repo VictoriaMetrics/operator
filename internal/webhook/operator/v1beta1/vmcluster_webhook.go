@@ -57,7 +57,7 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1be
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}

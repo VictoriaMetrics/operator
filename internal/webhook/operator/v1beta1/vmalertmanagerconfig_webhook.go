@@ -51,7 +51,7 @@ func (*VMAlertmanagerConfigCustomValidator) ValidateCreate(_ context.Context, ob
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMAlertmanagerConfigCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMAlertmanagerConfig) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 

@@ -52,7 +52,7 @@ func (*VMPodScrapeCustomValidator) ValidateCreate(_ context.Context, obj *vmv1be
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
 func (*VMPodScrapeCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMPodScrape) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 

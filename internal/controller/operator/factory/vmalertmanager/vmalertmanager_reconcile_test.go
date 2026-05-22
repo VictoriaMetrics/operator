@@ -162,7 +162,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Service", Resource: vmalertmanagerName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertmanagerName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName},
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName}, // patchSTSCurrentRevision
 			},
 		})
 
@@ -192,7 +193,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Service", Resource: vmalertmanagerName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertmanagerName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName},
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmalertmanagerName}, // patchSTSCurrentRevision
 			},
 		})
 }

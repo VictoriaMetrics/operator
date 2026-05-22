@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
+
 ## [v0.68.5](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.5)
 **Release date:** 27 May 2026
 

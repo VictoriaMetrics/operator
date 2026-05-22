@@ -60,6 +60,7 @@ func (r *VLAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runti
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vlagent", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

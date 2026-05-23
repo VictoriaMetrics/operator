@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_COMMON_LABELS` and `VM_COMMON_ANNOTATIONS` environment variables to apply common labels/annotations to all Kubernetes resources managed by the operator. These cannot override labels/annotations already set by the operator or via `spec.managedMetadata`. This also ensures HTTPRoutes and PVCs include ManagedMetadata labels and annotations
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026

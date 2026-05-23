@@ -251,6 +251,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               extraArgs:
                 additionalProperties:
                   type: string
@@ -1301,6 +1303,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -1859,6 +1863,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -2353,6 +2359,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -3402,6 +3410,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               extraArgs:
                 additionalProperties:
                   type: string
@@ -4474,6 +4484,8 @@ spec:
               dnsPolicy:
                 type: string
               enableKubernetesAPISelectors:
+                type: boolean
+              enableServiceLinks:
                 type: boolean
               enforcedNamespaceLabel:
                 type: string
@@ -10137,6 +10149,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               enforcedNamespaceLabel:
                 type: string
               enforcedTopRouteMatchers:
@@ -11267,6 +11281,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               enforcedNamespaceLabel:
                 type: string
               evaluationInterval:
@@ -12449,6 +12465,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               extraArgs:
                 additionalProperties:
                   type: string
@@ -13925,6 +13943,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               externalConfig:
                 properties:
                   localPath:
@@ -15521,6 +15541,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -16020,6 +16042,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -16693,6 +16717,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -19269,6 +19295,8 @@ spec:
                         type: object
                       dnsPolicy:
                         type: string
+                      enableServiceLinks:
+                        type: boolean
                       externalConfig:
                         properties:
                           localPath:
@@ -24626,6 +24654,8 @@ spec:
                             type: object
                           dnsPolicy:
                             type: string
+                          enableServiceLinks:
+                            type: boolean
                           extraArgs:
                             additionalProperties:
                               type: string
@@ -28890,6 +28920,8 @@ spec:
                               type: object
                             dnsPolicy:
                               type: string
+                            enableServiceLinks:
+                              type: boolean
                             extraArgs:
                               additionalProperties:
                                 type: string
@@ -40319,6 +40351,8 @@ spec:
                 type: string
               enableKubernetesAPISelectors:
                 type: boolean
+              enableServiceLinks:
+                type: boolean
               enforcedNamespaceLabel:
                 type: string
               externalLabelName:
@@ -43371,6 +43405,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -43876,6 +43912,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -44372,6 +44410,8 @@ spec:
                     type: object
                   dnsPolicy:
                     type: string
+                  enableServiceLinks:
+                    type: boolean
                   extraArgs:
                     additionalProperties:
                       type: string
@@ -45327,6 +45367,8 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              enableServiceLinks:
+                type: boolean
               extraArgs:
                 additionalProperties:
                   type: string

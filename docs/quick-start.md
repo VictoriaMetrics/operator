@@ -759,6 +759,8 @@ It distributes workloads across multiple storage pods, making it well-suited for
 If you're running at a larger scale, check out the [enterprise features](https://docs.victoriametrics.com/operator/enterprise/).
 These include multitenancy, downsampling, automated backups, advanced security and much more. All built for serious production use.
 
+When you're ready to move to production, the VictoriaMetrics [productionization guide](https://docs.victoriametrics.com/victoriametrics/quick-start/#productionization) covers key recommendations for capacity planning, security aspects, monitoring, and more.
+
 If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq/), or ask in one of our communities:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)

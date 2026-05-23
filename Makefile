@@ -268,6 +268,8 @@ publish:
 
 COSIGN ?= $(shell which cosign 2>/dev/null || echo $(COSIGN_BIN))
 
+digest = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(1) --format "{{print .Manifest.Digest}}")
+
 .PHONY: cosign
 cosign: $(COSIGN_BIN)
 $(COSIGN_BIN): $(LOCALBIN)
@@ -276,11 +278,11 @@ $(COSIGN_BIN): $(LOCALBIN)
 .PHONY: sign
 sign: $(COSIGN)
 	for registry in $(PUBLISH_REGISTRIES); do \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG) && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-ubi && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):$(TAG)-fips && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG) && \
-		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO):config-reloader-$(TAG)-fips ; \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-ubi) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-fips) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)-fips) ; \
 	done
 
 .PHONY: build-installer
@@ -391,7 +393,7 @@ OPM_VERSION ?= v1.68.0
 YQ_VERSION ?= v4.53.2
 GINKGO_VERSION ?= v2.29.0
 CRUST_GATHER_VERSION ?= v0.15.1
-MIRRORD_VERSION ?= 3.211.0
+MIRRORD_VERSION ?= 3.212.0
 COSIGN_VERSION ?= v3.0.6
 
 CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33

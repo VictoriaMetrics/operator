@@ -15,6 +15,8 @@ jobs:
   update:
     name: Publish new OperatorHub release
     runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ startsWith(github.event.workflow_run.head_branch, 'release') && 'stable' || 'beta' }}
     if: ${{ (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) || github.event_name == 'workflow_dispatch' && github.event.workflow_run.release != 'prereleased' }}
     strategy:
       matrix:
@@ -58,14 +60,6 @@ jobs:
           run_id: ${{ github.event.workflow_run.id }}
           path: bundle
 
-      - name: Install opm
-        run: |
-          OPM_VERSION=v1.65.0
-          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/linux-amd64-opm
-          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/checksums.txt
-          grep ' linux-amd64-opm$' checksums.txt | sha256sum -c -
-          install -m 0755 linux-amd64-opm /usr/local/bin/opm
-
       - name: Add operatorhub bundle
         id: update
         run: |
@@ -78,8 +72,12 @@ jobs:
           export OPERATOR_DIR=__operatorhub-repo/operators/${OPERATOR_NAME}
           mkdir -p ${OPERATOR_DIR}
 
-          NEW_VERSION=$(ls bundle | head -1)
-          export OLD_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
+          export NEW_VERSION=$(ls bundle | head -1)
+          export OLD_VERSION=$(
+            { find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \;
+              echo "${NEW_VERSION}"
+            } | sort -V | grep -B1 "^${NEW_VERSION}$" | grep -v "^${NEW_VERSION}$"
+          )
           export OLD_ENTRY="${OPERATOR_NAME}.v${OLD_VERSION}"
 
           if [ ! -z $OLD_VERSION ]; then
@@ -89,17 +87,16 @@ jobs:
 
           mv bundle/${NEW_VERSION} ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            opm render ${OPERATOR_DIR}/${NEW_VERSION} --output=yaml \
-              | yq 'select(.schema == "olm.bundle")' > /tmp/new-bundle.yaml
-
             yq -n '.catalog_templates = []' > ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
             for TEMPLATE in ${OPERATOR_DIR}/catalog-templates/*.yaml; do
               export TPL=$(basename ${TEMPLATE})
-              export PREV_HEAD=$(yq '.entries[] | select(.schema == "olm.channel") | .entries[-1].name' "${TEMPLATE}")
-              yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": ["beta"], "replaces": strenv(PREV_HEAD)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
-              NEW_VERSION="${NEW_VERSION}" PREV_HEAD="${PREV_HEAD}" \
-                yq -i '(.entries[] | select(.schema == "olm.channel") | .entries) += [{"name": "victoriametrics-operator.v" + strenv(NEW_VERSION), "replaces": strenv(PREV_HEAD)}]' "${TEMPLATE}"
-              yq -i '.entries += [load("/tmp/new-bundle.yaml")]' "${TEMPLATE}"
+              if [ "$CHANNEL" = "stable" ] && ! yq -e '.entries[] | select(.schema == "olm.channel" and .name == "stable")' "$TEMPLATE" > /dev/null 2>&1 && [ -n "$OLD_VERSION" ]; then
+                yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": ["stable","beta"], "replaces": strenv(OLD_ENTRY)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+              elif [ -n "$OLD_VERSION" ]; then
+                yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": [strenv(CHANNEL)], "replaces": strenv(OLD_ENTRY)}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+              else
+                yq -i '.catalog_templates += [{"template_name": strenv(TPL), "channels": [strenv(CHANNEL)]}]' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+              fi
             done
           fi
 

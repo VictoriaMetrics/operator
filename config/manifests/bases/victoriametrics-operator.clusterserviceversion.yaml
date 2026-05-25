@@ -22,7 +22,7 @@ metadata:
     operatorhub.io/ui-metadata-max-k8s-version: "1.30"
     operators.openshift.io/infrastructure-features: '[fips]'
     operators.operatorframework.io.bundle.channel.default.v1: beta
-    operators.operatorframework.io.bundle.channels.v1: beta
+    operators.operatorframework.io.bundle.channels.v1: beta,stable
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/VictoriaMetrics/operator

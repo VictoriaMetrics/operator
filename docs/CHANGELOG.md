@@ -15,7 +15,7 @@ aliases:
 
 **Update note 1**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.143.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.143.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.144.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.144.0) version
 
 * SECURITY: upgrade Go builder from Go1.25.8 to Go1.25.10. See [the list of issues addressed in Go1.25.10](https://github.com/golang/go/issues?q=milestone%3AGo1.25.10+label%3ACherryPickApproved).
 

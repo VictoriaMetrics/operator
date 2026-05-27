@@ -196,13 +196,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 				// VMStorage
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // wait for ready
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // wait for ready
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
 
@@ -230,13 +232,15 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 				// VMStorage
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // wait for ready
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmstorageName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // wait for ready
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
 

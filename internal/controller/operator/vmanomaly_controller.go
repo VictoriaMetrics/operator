@@ -56,6 +56,7 @@ func (r *VMAnomalyReconciler) Init(rclient client.Client, l logr.Logger, sc *run
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalies/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=events,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods,verbs=*

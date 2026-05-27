@@ -205,7 +205,8 @@ schedulers:
 				// StatefulSet
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName},
 				{Verb: "Update", Kind: "StatefulSet", Resource: vmanomalyName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName},
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName}, // patchSTSCurrentRevision
 			},
 		})
 
@@ -255,7 +256,8 @@ schedulers:
 				{Verb: "Get", Kind: "Secret", Resource: vmanomalyName},
 				// StatefulSet
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName},
-				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName},
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName}, // getLatestStsState
+				{Verb: "Get", Kind: "StatefulSet", Resource: vmanomalyName}, // patchSTSCurrentRevision
 			},
 		})
 }

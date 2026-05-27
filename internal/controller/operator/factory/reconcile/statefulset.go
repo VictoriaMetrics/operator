@@ -212,13 +212,32 @@ type rollingUpdateOpts struct {
 	delete         bool
 }
 
+// patchSTSCurrentRevision patches statefulset status.currentRevision to match status.updateRevision
+// after all pods are updated. This is needed because Kubernetes does not update currentRevision
+// for OnDelete strategy, leaving stale data visible to monitoring tools.
+// See https://github.com/VictoriaMetrics/operator/issues/1242
+func patchSTSCurrentRevision(ctx context.Context, rclient client.Client, nsn types.NamespacedName, updateRevision string, replicas int32) error {
+	var sts appsv1.StatefulSet
+	if err := rclient.Get(ctx, nsn, &sts); err != nil {
+		return fmt.Errorf("cannot get statefulset for status update: %w", err)
+	}
+	if sts.Status.CurrentRevision == updateRevision {
+		return nil
+	}
+	logger.WithContext(ctx).Info(fmt.Sprintf("updating statefulset=%s/%s status currentRevision from %q to %q", nsn.Namespace, nsn.Name, sts.Status.CurrentRevision, updateRevision))
+	sts.Status.CurrentRevision = updateRevision
+	// currentReplicas is not updated with OnDelete strategy too
+	sts.Status.CurrentReplicas = replicas
+	if err := rclient.Status().Update(ctx, &sts); err != nil {
+		return fmt.Errorf("cannot update statefulset=%s/%s currentRevision status: %w", nsn.Namespace, nsn.Name, err)
+	}
+	return nil
+}
+
 // we perform rolling update on sts by manually evicting pods one by one or in batches
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
 // if it doesn't match - updated is needed
-//
-// we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
-// see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
 func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
 	time.Sleep(podWaitReadyInterval)
 	nsn := types.NamespacedName{
@@ -278,10 +297,10 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 		return fmt.Errorf("actual pod count: %d less than needed: %d, possible statefulset misconfiguration", totalPodsCount, neededPodCount)
 	}
 
-	updatedNeeded := len(podsForUpdate) != 0 || len(updatedPods) != 0
-	if !updatedNeeded {
+	updateNeeded := len(podsForUpdate) != 0 || len(updatedPods) != 0
+	if !updateNeeded {
 		l.V(1).Info("no pod needs to be updated")
-		return nil
+		return patchSTSCurrentRevision(ctx, rclient, nsn, stsVersion, int32(neededPodCount))
 	}
 
 	l.Info(fmt.Sprintf("discovered already updated pods=%d, pods needed to be update=%d", len(updatedPods), len(podsForUpdate)))
@@ -355,7 +374,7 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 
 	l.Info(fmt.Sprintf("finished statefulset update from revision=%q to revision=%q", sts.Status.CurrentRevision, stsVersion))
 
-	return nil
+	return patchSTSCurrentRevision(ctx, rclient, nsn, stsVersion, int32(neededPodCount))
 }
 
 // PodIsReady check is pod is ready

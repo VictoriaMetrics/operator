@@ -1,15 +1,13 @@
 name: Publish OperatorHub release
 
-permissions:
-  contents: read
-  pull-requests: write
-
 on:
   workflow_run:
     workflows:
       - Release
     types:
       - completed
+
+permissions: {}
 
 jobs:
   update:

@@ -15,9 +15,7 @@ on:
         default: master
         type: string
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   update:
@@ -29,6 +27,7 @@ jobs:
         with:
           repository: VictoriaMetrics/operator
           ref: ${{ github.event.inputs.branch }}
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Publish image
         id: publish

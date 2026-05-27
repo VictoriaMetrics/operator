@@ -1,12 +1,10 @@
 name: Update CRDs for chart repo
 
-permissions:
-  contents: read
-  pull-requests: write
-
 on:
   release:
     types: [published]
+
+permissions: {}
 
 jobs:
   update-crds:

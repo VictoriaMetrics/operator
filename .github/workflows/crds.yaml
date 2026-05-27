@@ -32,7 +32,6 @@ jobs:
 
       - name: Check operator chart app version
         id: chart
-        continue-on-error: true
         env:
           RELEASE_VERSION: ${{ github.event.release.tag_name }}
         run: |
@@ -42,17 +41,24 @@ jobs:
             exit 1
           fi
 
-          release_version="$RELEASE_VERSION"
-          if python3 ../__vm-operator-repo/hack/compare_versions.py "$chart_app_version" "$release_version"; then
+          set +e
+          python3 ../__vm-operator-repo/hack/compare_versions.py "$chart_app_version" "$RELEASE_VERSION"
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -eq 0 ]; then
+            touch .update-crds
             exit 0
           fi
 
+          if [ "$exit_code" -ne 10 ]; then
+            exit "$exit_code"
+          fi
+
           echo "Skipping CRD update for $release_version, chart appVersion is $chart_app_version"
-          exit 1
         working-directory: __vm-charts-repo
 
       - name: Import GPG key
-        if: steps.chart.outcome == 'success'
+        if: hashFiles('__vm-charts-repo/.update-crds') != ''
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd  # v7.0.0
         id: import-gpg
         with:
@@ -63,7 +69,7 @@ jobs:
           workdir: __vm-charts-repo
 
       - name: Update crd yaml in chart repo
-        if: steps.chart.outcome == 'success'
+        if: hashFiles('__vm-charts-repo/.update-crds') != ''
         id: update
         run: |
           cp ../__vm-operator-repo/config/crd/overlay/crd.descriptionless.yaml charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
@@ -75,7 +81,7 @@ jobs:
         working-directory: __vm-charts-repo
 
       - name: Create Pull Request
-        if: steps.chart.outcome == 'success'
+        if: hashFiles('__vm-charts-repo/.update-crds') != ''
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           add-paths: charts

@@ -17,9 +17,14 @@ def main():
         )
         return 2
 
-    current_version = parse_version(sys.argv[1])
-    release_version = parse_version(sys.argv[2])
-    return 0 if release_version >= current_version else 1
+    try:
+        current_version = parse_version(sys.argv[1])
+        release_version = parse_version(sys.argv[2])
+    except ValueError as e:
+        print(f"failed to parse version: {e}", file=sys.stderr)
+        return 2
+
+    return 0 if release_version >= current_version else 10
 
 
 if __name__ == "__main__":

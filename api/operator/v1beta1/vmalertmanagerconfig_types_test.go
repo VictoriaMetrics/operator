@@ -13,11 +13,11 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
 		t.Helper()
 		var amc VMAlertmanagerConfig
 		assert.NoError(t, json.Unmarshal([]byte(src), &amc))
-		if len(amc.Spec.ParsingError) > 0 {
-			if strings.Contains(amc.Spec.ParsingError, expectedReason) {
+		if len(amc.Status.ParsingSpecError) > 0 {
+			if strings.Contains(amc.Status.ParsingSpecError, expectedReason) {
 				return
 			}
-			t.Fatalf("unexpected parsing error: %s", amc.Spec.ParsingError)
+			t.Fatalf("unexpected parsing error: %s", amc.Status.ParsingSpecError)
 		}
 		err := amc.Validate()
 		if assert.Error(t, err, "expect error:\n%s\n got nil", expectedReason) {
@@ -403,7 +403,7 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
 		t.Helper()
 		var amc VMAlertmanagerConfig
 		assert.NoError(t, json.Unmarshal([]byte(src), &amc))
-		assert.Empty(t, amc.Spec.ParsingError)
+		assert.Empty(t, amc.Status.ParsingSpecError)
 		assert.NoError(t, amc.Validate())
 	}
 	f(`{

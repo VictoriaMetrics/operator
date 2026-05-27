@@ -66,7 +66,7 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var instance vmv1.VMAnomaly
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VMAnomaly instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -80,8 +80,8 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return
 	}
 
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmanomaly"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmanomaly"}
 		return
 	}
 

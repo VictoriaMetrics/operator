@@ -1,8 +1,8 @@
 | Environment variables |
 | --- |
-| VM_METRICS_VERSION: `v1.136.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
-| VM_LOGS_VERSION: `v1.47.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
-| VM_ANOMALY_VERSION: `v1.28.5` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
+| VM_METRICS_VERSION: `v1.144.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
+| VM_LOGS_VERSION: `v1.50.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
+| VM_ANOMALY_VERSION: `v1.29.3` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
 | VM_TRACES_VERSION: `v0.7.0` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |
 | VM_OPERATOR_VERSION: `v0.68.3` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a> |
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |

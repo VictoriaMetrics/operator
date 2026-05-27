@@ -67,7 +67,7 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 	var instance vmv1beta1.VLogs
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -80,8 +80,8 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 		err = finalize.OnVLogsDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vlogs"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vlogs"}
 		return
 	}
 	l.Info("VLogs CustomResource transited into read-only state. Please migrate to the VLSingle.")

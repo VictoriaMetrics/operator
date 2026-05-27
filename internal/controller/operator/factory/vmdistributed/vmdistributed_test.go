@@ -404,17 +404,22 @@ func TestCreateOrUpdate(t *testing.T) {
 					Static: &vmv1beta1.StaticRef{
 						URLs: vmAgentURLs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("least_loaded"),
+					},
 				},
 				{
 					Paths: []string{"/select/.+", "/admin/tenants"},
 					Static: &vmv1beta1.StaticRef{
 						URLs: vmClusterURLs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("first_available"),
+					},
 				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
-				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
 			}
 			var got vmv1beta1.VMAuth
@@ -527,17 +532,22 @@ func TestCreateOrUpdate(t *testing.T) {
 					Static: &vmv1beta1.StaticRef{
 						URLs: vmAgentURLs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("least_loaded"),
+					},
 				},
 				{
 					Paths: []string{"/select/.+", "/admin/tenants"},
 					Static: &vmv1beta1.StaticRef{
 						URLs: vmClusterURLs,
 					},
+					URLMapCommon: vmv1beta1.URLMapCommon{
+						LoadBalancingPolicy: ptr.To("first_available"),
+					},
 				},
 			}
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
-				targetRef.LoadBalancingPolicy = ptr.To("first_available")
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
 			}
 			var got vmv1beta1.VMAuth

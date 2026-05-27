@@ -14,6 +14,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/fsnotify/fsnotify"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type fileWatcher struct {
@@ -114,13 +115,13 @@ func readFileContent(src string) ([]byte, error) {
 }
 
 type dirWatcher struct {
-	dirs map[string]struct{}
+	dirs sets.Set[string]
 	wg   sync.WaitGroup
 	w    *fsnotify.Watcher
 }
 
 func newDirWatchers(dirs []string) (*dirWatcher, error) {
-	dws := map[string]struct{}{}
+	dws := sets.New[string]()
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("cannot create new dir watcher: %w", err)
@@ -130,7 +131,7 @@ func newDirWatchers(dirs []string) (*dirWatcher, error) {
 		if err := w.Add(dir); err != nil {
 			return nil, fmt.Errorf("cannot dir: %s to watcher: %w", dir, err)
 		}
-		dws[dir] = struct{}{}
+		dws.Insert(dir)
 	}
 	return &dirWatcher{
 		w:    w,

@@ -72,7 +72,7 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 		wantStatus: vmv1beta1.UpdateStatusOperational,
 	})
 
-	// retryable conflict error, operational → expanding
+	// retryable conflict error, operational → expanding, error propagated for requeue
 	opSpec := vmv1beta1.VMAlertSpec{SelectAllByDefault: true}
 	f(opts{
 		object: &vmv1beta1.VMAlert{
@@ -87,9 +87,10 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 			return ctrl.Result{}, k8serrors.NewConflict(schema.GroupResource{Group: "apps", Resource: "deployments"}, "test", fmt.Errorf("conflict"))
 		},
 		wantStatus: vmv1beta1.UpdateStatusExpanding,
+		wantErr:    true,
 	})
 
-	// retryable wait interrupted, operational → expanding
+	// retryable wait interrupted, operational → expanding, error propagated for requeue
 	f(opts{
 		object: &vmv1beta1.VMAlert{
 			ObjectMeta:            metav1.ObjectMeta{Name: "test-vmalert", Namespace: "default"},
@@ -103,6 +104,7 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 			return ctrl.Result{}, wait.ErrorInterrupted(fmt.Errorf("timeout"))
 		},
 		wantStatus: vmv1beta1.UpdateStatusExpanding,
+		wantErr:    true,
 	})
 
 	// operational → expanding → operational
@@ -235,7 +237,7 @@ func TestVMClusterRemainsExpandingDuringPVCResize(t *testing.T) {
 	_, err := reconcileAndTrackStatus(context.Background(), fclient, cluster, func() (ctrl.Result, error) {
 		return ctrl.Result{}, wait.ErrorInterrupted(fmt.Errorf("pvc resize still in progress"))
 	})
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	got := &vmv1beta1.VMCluster{}
 	assert.NoError(t, fclient.Get(context.Background(), types.NamespacedName{Name: "test-vmcluster", Namespace: "default"}, got))

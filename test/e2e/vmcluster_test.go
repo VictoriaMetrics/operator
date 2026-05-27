@@ -1839,6 +1839,178 @@ up{baz="bar"} 123
 			),
 		)
 	})
+
+	Context("status transitions", func() {
+		var nsn types.NamespacedName
+		var ctx context.Context
+		BeforeEach(func() {
+			ctx = context.Background()
+			ctx = context.Background()
+			nsn = types.NamespacedName{Namespace: namespace}
+		})
+
+		It("should reach operational after creation", func() {
+			nsn.Name = "vmcluster-status-created"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			By("waiting for operational status after creation")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+		})
+
+		It("should transition operational→expanding→operational on spec update", func() {
+			nsn.Name = "vmcluster-status-update"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			By("waiting for operational status before update")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("updating the spec to trigger reconcile")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.RetentionPeriod = "2"
+				return k8sClient.Update(ctx, cr)
+			}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("waiting for expanding status")
+			Eventually(func() error {
+				return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("waiting for operational status after update")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+		})
+
+		It("should transition operational→paused when paused", func() {
+			nsn.Name = "vmcluster-status-pause"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			By("waiting for operational status before pause")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("pausing the VMCluster")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = true
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("waiting for paused status")
+			Eventually(func() error {
+				return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+		})
+
+		It("should transition paused→operational when unpaused", func() {
+			nsn.Name = "vmcluster-status-unpause"
+			cr := &vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1beta1.VMClusterSpec{
+					RetentionPeriod: "1",
+					Paused:          true,
+					VMStorage: &vmv1beta1.VMStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMSelect: &vmv1beta1.VMSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+					VMInsert: &vmv1beta1.VMInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			By("waiting for paused status after creation")
+			Eventually(func() error {
+				return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("unpausing the VMCluster")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+					return err
+				}
+				cr.Spec.Paused = false
+				return k8sClient.Update(ctx, cr)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+			By("waiting for operational status after unpause")
+			Eventually(func() error {
+				return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMCluster{}, nsn)
+			}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+		})
+	})
 })
 
 func assertStrictSecurity(podSpec corev1.PodSpec) {

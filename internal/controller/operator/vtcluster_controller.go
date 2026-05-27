@@ -61,7 +61,7 @@ func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var instance vmv1.VTCluster
 
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -74,8 +74,8 @@ func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vtcluster"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vtcluster"}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

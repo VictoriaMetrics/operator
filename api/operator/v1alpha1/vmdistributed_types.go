@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,8 +38,6 @@ const (
 // VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
 	// +optional
@@ -154,8 +153,6 @@ type VMDistributedZoneAgent struct {
 // VMDistributedZoneAgentSpec is a customized specification of a new VMAgent.
 // It includes selected options from the original VMAgentSpec.
 type VMDistributedZoneAgentSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -308,6 +305,8 @@ type VMDistributedAuth struct {
 // VMDistributedStatus defines the observed state of VMDistributedStatus
 type VMDistributedStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMDistributed App"
@@ -422,20 +421,29 @@ func (cr *VMDistributed) SelectorLabels() map[string]string {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMDistributedSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMDistributedSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse VMDistributed spec: %s, err: %s", string(src), err)
-		return nil
+func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
+	type pcr VMDistributed
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMDistributedSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	return nil
 }
 
 // Validate validates the VMDistributed resource
 func (cr *VMDistributed) Validate() error {
-	zones := make(map[string]struct{})
-	clusters := make(map[string]struct{})
-	agents := make(map[string]struct{})
+	zones := sets.New[string]()
+	clusters := sets.New[string]()
+	agents := sets.New[string]()
 	spec := cr.Spec
 	hasCommonVMInsert := cr.Spec.ZoneCommon.VMCluster.Spec.VMInsert != nil
 	hasCommonVMSelect := cr.Spec.ZoneCommon.VMCluster.Spec.VMSelect != nil
@@ -444,23 +452,23 @@ func (cr *VMDistributed) Validate() error {
 		if len(zone.Name) == 0 {
 			return fmt.Errorf("spec.zones[%d].name is required", i)
 		}
-		if _, ok := zones[zone.Name]; ok {
+		if zones.Has(zone.Name) {
 			return fmt.Errorf("spec.zones[%d].name=%s is duplicated, zone names must be unique", i, zone.Name)
 		}
-		zones[zone.Name] = struct{}{}
+		zones.Insert(zone.Name)
 		clusterName := zone.VMClusterName(cr)
 		agentName := zone.VMAgentName(cr)
 		if len(clusterName) > 0 {
-			if _, ok := clusters[clusterName]; ok {
+			if clusters.Has(clusterName) {
 				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
 			}
-			clusters[clusterName] = struct{}{}
+			clusters.Insert(clusterName)
 		}
 		if len(agentName) > 0 {
-			if _, ok := agents[agentName]; ok {
+			if agents.Has(agentName) {
 				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
 			}
-			agents[agentName] = struct{}{}
+			agents.Insert(agentName)
 		}
 		if zone.VMAgent.Spec.StatefulMode {
 			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {

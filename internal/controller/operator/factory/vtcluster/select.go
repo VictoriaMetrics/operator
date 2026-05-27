@@ -113,12 +113,16 @@ func createOrUpdateVTSelectService(ctx context.Context, rclient client.Client, c
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.Select != nil {
 		prevSvc = buildVTSelectService(prevCR)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.Select.ServiceSpec)
+		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.Select.ServiceSpec)
 	}
 	svc := buildVTSelectService(cr)
 	owner := cr.AsOwner()
 	if err := cr.Spec.Select.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		additionalSvcBase := *svc
+		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("VTSelect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}

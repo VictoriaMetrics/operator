@@ -62,7 +62,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMAlertmanagerConfig
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -71,8 +71,8 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	RegisterObjectStat(&instance, "vmalertmanagerconfig")
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmalertmanagerconfig"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmalertmanagerconfig"}
 		return
 	}
 	if alertmanagerReconcileLimit.Throttle() {
@@ -91,7 +91,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || item.Status.ParsingSpecError != "" || item.IsUnmanaged() {
 			continue
 		}
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
 func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
@@ -85,4 +86,38 @@ func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
 		},
 		want: "http://localhost:8429/prefix/custom/snapshot/create?authKey=some-auth-key",
 	})
+}
+
+func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
+	f := func(cr *VMCluster, requestsType string, want []int32) {
+		t.Helper()
+		assert.Equal(t, want, cr.AvailableStorageNodeIDs(requestsType))
+	}
+
+	cr := &VMCluster{
+		Spec: VMClusterSpec{
+			VMStorage: &VMStorage{
+				CommonAppsParams: CommonAppsParams{
+					ReplicaCount: ptr.To(int32(5)),
+				},
+				MaintenanceSelectNodeIDs: []int32{1, 3},
+				MaintenanceInsertNodeIDs: []int32{0, 4},
+			},
+		},
+	}
+
+	// select excludes maintenance nodes
+	f(cr, "select", []int32{0, 2, 4})
+
+	// insert excludes maintenance nodes
+	f(cr, "insert", []int32{1, 2, 3})
+
+	// no maintenance nodes
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			VMStorage: &VMStorage{
+				CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+			},
+		},
+	}, "select", []int32{0, 1, 2})
 }

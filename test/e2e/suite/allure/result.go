@@ -8,7 +8,6 @@ package allure
 import (
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"reflect"
 	"runtime"
@@ -18,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const descriptionReportEntryName = "DESCRIPTION"
@@ -97,11 +97,11 @@ func (r *result) createFromSpecReport(specReport ginkgo.SpecReport) *result {
 	}
 
 	attachmentEntries := filterForAttachments(specReport.ReportEntries)
-	var toSkip map[int]struct{}
+	var toSkip sets.Set[int]
 	r.Steps, toSkip = createSteps(specReport.SpecEvents, attachmentEntries)
 
 	for i, entry := range attachmentEntries {
-		if _, ok := toSkip[i]; !ok {
+		if !toSkip.Has(i) {
 
 			var att attachment
 			err := json.Unmarshal([]byte(entry.Value.GetRawValue().(string)), &att)
@@ -135,9 +135,9 @@ func (r *result) createFromSpecReport(specReport ginkgo.SpecReport) *result {
 	return r
 }
 
-func createSteps(events types.SpecEvents, entries types.ReportEntries) (steps []stepObject, indicesToSkip map[int]struct{}) {
+func createSteps(events types.SpecEvents, entries types.ReportEntries) (steps []stepObject, indicesToSkip sets.Set[int]) {
 	currentEndIndex := -1
-	indicesToSkip = make(map[int]struct{})
+	indicesToSkip = sets.New[int]()
 	steps = []stepObject{}
 
 	for startEventIndex, startEvent := range events {
@@ -162,7 +162,7 @@ func createSteps(events types.SpecEvents, entries types.ReportEntries) (steps []
 				step.ChildrenSteps = childrenSteps
 
 				for i, entry := range entries {
-					if _, ok := toSkip[i]; !ok {
+					if !toSkip.Has(i) {
 						if entry.TimelineLocation.Order > startEvent.TimelineLocation.Order &&
 							entry.TimelineLocation.Order < endEvent.TimelineLocation.Order {
 							var att attachment
@@ -174,12 +174,12 @@ func createSteps(events types.SpecEvents, entries types.ReportEntries) (steps []
 							}
 							step.addAttachment(&att)
 
-							toSkip[i] = struct{}{}
+							toSkip.Insert(i)
 						}
 					}
 				}
 
-				maps.Copy(indicesToSkip, toSkip)
+				indicesToSkip.Insert(toSkip.UnsortedList()...)
 				currentEndIndex = endIndex
 			}
 

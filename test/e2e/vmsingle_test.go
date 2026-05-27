@@ -569,5 +569,237 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 				return *dep.Spec.Replicas
 			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
 		})
+
+		Context("status transitions", func() {
+			JustBeforeEach(func() {
+				ctx = context.Background()
+			})
+			It("should reach operational after creation", func() {
+				nsn.Name = "vmsingle-status-created"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status after creation")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→expanding→operational on spec update", func() {
+				nsn.Name = "vmsingle-status-update"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("updating the spec to trigger reconcile")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.RetentionPeriod = "2"
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for expanding status")
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→paused when paused", func() {
+				nsn.Name = "vmsingle-status-pause"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before pause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("pausing the VMSingle")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = true
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for paused status")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition paused→operational when unpaused", func() {
+				nsn.Name = "vmsingle-status-unpause"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Paused:       true,
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for paused status after creation")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("unpausing the VMSingle")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = false
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after unpause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→failed→operational on non-retryable error", func() {
+				nsn.Name = "vmsingle-status-failed"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status after creation")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("updating with invalid spec to trigger failure (non-retryable error)")
+				Expect(k8sClient.Get(ctx, nsn, cr)).ToNot(HaveOccurred())
+				cr.Spec.ServiceAccountName = "invalid_name!"
+				Expect(k8sClient.Update(ctx, cr)).ToNot(HaveOccurred())
+
+				By("waiting for failed status")
+				Eventually(func() error {
+					return expectObjectStatusFailed(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("fixing the spec to recover")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.ServiceAccountName = ""
+					return k8sClient.Update(ctx, cr)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after recovery")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→expanding→operational on retryable error", func() {
+				nsn.Name = "vmsingle-status-retryable"
+				cr := &vmv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RetentionPeriod: "1",
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status after creation")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("updating with unsatisfiable nodeSelector to trigger timeout (retryable wait.Interrupted error)")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					// Change both spec and node selector to force a reconcile
+					cr.Spec.NodeSelector = map[string]string{"non-existent-node-label": "true"}
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for expanding status due to Pending pods")
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("fixing the spec to recover")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.NodeSelector = nil
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after recovery")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMSingle{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+		})
 	})
 })

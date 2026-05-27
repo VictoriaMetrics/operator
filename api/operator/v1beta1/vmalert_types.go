@@ -23,8 +23,6 @@ const (
 // VMAlertSpec defines the desired state of VMAlert
 // +k8s:openapi-gen=true
 type VMAlertSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
@@ -179,22 +177,21 @@ func (cr *VMAlert) AutomountServiceAccountToken() bool {
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAlert) UnmarshalJSON(src []byte) error {
 	type pcr VMAlert
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
 		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAlertSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	if err := ParseLastAppliedStateTo(cr); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMAlertSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMAlertSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmalert spec: %s, err: %s", string(src), err)
-		return nil
 	}
 	return nil
 }
@@ -276,6 +273,8 @@ type VMAlertRemoteWriteSpec struct {
 // +k8s:openapi-gen=true
 type VMAlertStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -498,6 +497,9 @@ func (cr *VMAlert) AsURL() string {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAlert) IsUnmanaged() bool {
+	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+		return true
+	}
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil
 }
 

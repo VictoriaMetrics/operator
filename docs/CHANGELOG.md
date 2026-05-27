@@ -13,6 +13,22 @@ aliases:
 
 ## tip
 
+**Update note 1**: `-eula` flag is not set by default anymore for VMBackup and VMRestore. To avoid VMCluster/VMSingle rollouts set `spec.vmstorage.vmBackup.acceptEula: true` for VMCluster and `spec.vmBackup.acceptEula: true` for VMSingle and replace it with `spec.license` during VMSingle/VMCluster upgrade.
+
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.144.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.144.0) version
+
+* SECURITY: upgrade Go builder from Go1.25.8 to Go1.25.10. See [the list of issues addressed in Go1.25.10](https://github.com/golang/go/issues?q=milestone%3AGo1.25.10+label%3ACherryPickApproved).
+
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): use volume from spec.volumes as persistent queue volume if its name is `persistent-queue-data`, previously emptyDir was mounted. See [#1677](https://github.com/VictoriaMetrics/operator/issues/1677).
+* BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): use volume from spec.vmstorage.volumes and spec.vmselect.volumes as data and cache volumes if its name is `vmstorage-db` and `vmselect-cachedir` respectively. See [#784](https://github.com/VictoriaMetrics/operator/issues/784).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Improve reconcile error handling for Prometheus and VictoriaMetrics controllers.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): Add acceptEula support for VMBackup/VMRestore.
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): change default load balancing policy for write requests from `first_available` to `least_loaded`. This should allow to evenly distribute write load across all VMAgents.
+* BUGFIX: [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/) and [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fixed infinite non-default additional service recreation, when requestsLoadBalancer.enabled: true
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): retry reconcile errors, that may lead to expanding state, before resource could hang in expanding state.
+* BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): expose VMClusterSpec parsing error in status, previously it was just swallowed and led to infinite reconciles. See [#2113](https://github.com/VictoriaMetrics/operator/issues/2113).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Fix incorrect scaling logs for sharded vmagent and vmanomaly.
+
 ## [v0.68.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.4)
 **Release date:** 09 April 2026
 

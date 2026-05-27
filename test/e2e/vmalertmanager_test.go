@@ -301,5 +301,138 @@ var _ = Describe("test vmalertmanager Controller", Label("vm", "alertmanager"), 
 				return *sts.Spec.Replicas
 			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
 		})
+
+		Context("status transitions", func() {
+			BeforeEach(func() {
+				ctx = context.Background()
+			})
+			It("should reach operational after creation", func() {
+				nsn.Name = "vmalertmanager-status-created"
+				cr := &vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status after creation")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→expanding→operational on spec update", func() {
+				nsn.Name = "vmalertmanager-status-update"
+				cr := &vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("updating the spec to trigger reconcile")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.LogLevel = "debug"
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for expanding status")
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→paused when paused", func() {
+				nsn.Name = "vmalertmanager-status-pause"
+				cr := &vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before pause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("pausing the VMAlertmanager")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = true
+					return k8sClient.Update(ctx, cr)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for paused status")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition paused→operational when unpaused", func() {
+				nsn.Name = "vmalertmanager-status-unpause"
+				cr := &vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Paused:       true,
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for paused status after creation")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("unpausing the VMAlertmanager")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = false
+					return k8sClient.Update(ctx, cr)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after unpause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlertmanager{}, nsn)
+				}, eventualStatefulsetAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+		})
 	})
 })

@@ -3,7 +3,7 @@ ARG BUILDINFO
 ARG BASEIMAGE=scratch
 
 # Build the manager binary
-FROM golang:1.25.8 AS builder
+FROM golang:1.25.10 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

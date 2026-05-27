@@ -15,8 +15,6 @@ import (
 // VMSingleSpec defines the desired state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -95,19 +93,6 @@ func (cr *VMSingle) SetLastSpec(prevSpec VMSingleSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMSingle) UnmarshalJSON(src []byte) error {
-	type pcr VMSingle
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMSingle) UseProxyProtocol() bool {
 	return UseProxyProtocol(cr.Spec.ExtraArgs)
@@ -118,20 +103,12 @@ func (cr *VMSingle) AutomountServiceAccountToken() bool {
 	return !cr.Spec.DisableAutomountServiceAccountToken
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMSingleSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vmsingle spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
@@ -164,6 +141,28 @@ func (cr *VMSingle) GetStatus() *VMSingleStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMSingle) DefaultStatusFields(_ *VMSingleStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMSingle) UnmarshalJSON(src []byte) error {
+	type pcr VMSingle
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMSingleSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (cr *VMSingle) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)

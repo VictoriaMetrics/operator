@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -244,7 +245,7 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 	return reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner)
 }
 
-func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1beta1.VMAgent) map[string]struct{} {
+func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1beta1.VMAgent) sets.Set[string] {
 	var esl discoveryv1.EndpointSliceList
 	o := client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: vmAgent.PrefixedName()}),
@@ -257,7 +258,7 @@ func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1be
 	if len(esl.Items) == 0 {
 		return nil
 	}
-	addrs := make(map[string]struct{})
+	addrs := sets.New[string]()
 	for i := range esl.Items {
 		es := &esl.Items[i]
 		var port int32
@@ -286,7 +287,7 @@ func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1be
 					Scheme: strings.ToLower(vmAgent.ProbeScheme()),
 					Path:   vmAgent.GetMetricsPath(),
 				}
-				addrs[u.String()] = struct{}{}
+				addrs.Insert(u.String())
 			}
 		}
 	}

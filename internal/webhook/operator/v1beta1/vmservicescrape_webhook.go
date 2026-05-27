@@ -48,8 +48,8 @@ func (*VMServiceScrapeCustomValidator) ValidateCreate(ctx context.Context, obj r
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", obj)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if err := r.Validate(); err != nil {
 		return nil, err
@@ -66,11 +66,8 @@ func (*VMServiceScrapeCustomValidator) ValidateUpdate(ctx context.Context, oldOb
 	if !ok {
 		return nil, fmt.Errorf("BUG: unexpected type: %T", newObj)
 	}
-	if r.Spec.ParsingError != "" {
-		return nil, errors.New(r.Spec.ParsingError)
-	}
-	if err := r.Validate(); err != nil {
-		return nil, err
+	if r.Status.ParsingSpecError != "" {
+		return nil, errors.New(r.Status.ParsingSpecError)
 	}
 	if r.Spec.DiscoveryRole == "endpointslices" {
 		logger.WithContext(ctx).Info("deprecated discoverRole value `endpointslices`, use `endpointslice` instead.")

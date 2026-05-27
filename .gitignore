@@ -6,6 +6,7 @@ report.xml
 /bin/
 /build*
 /bundle*
+/catalog*
 release
 operator.zip
 coverage.txt

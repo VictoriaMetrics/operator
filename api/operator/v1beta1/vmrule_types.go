@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
@@ -26,8 +27,6 @@ var initVMAlertTemplatesOnce sync.Once
 type VMRuleSpec struct {
 	// Groups list of group rules
 	Groups []RuleGroup `json:"groups"`
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 }
 
 // RuleGroup is a list of sequentially evaluated recording and alerting rules.
@@ -134,6 +133,8 @@ type Rule struct {
 // VMRuleStatus defines the observed state of VMRule
 type VMRuleStatus struct {
 	StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata implements reconcile.objectWithStatus interface
@@ -165,7 +166,7 @@ func (cr *VMRule) Validate() error {
 			panic(fmt.Sprintf("cannot init vmalert templates for validation: %s", err))
 		}
 	})
-	uniqNames := make(map[string]struct{})
+	uniqNames := sets.New[string]()
 	var totalSize int
 	for i := range cr.Spec.Groups {
 		// make a copy
@@ -179,10 +180,10 @@ func (cr *VMRule) Validate() error {
 			group.Tenant = ""
 		}
 		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", cr.Namespace, cr.Name, group.Name)
-		if _, ok := uniqNames[group.Name]; ok {
+		if uniqNames.Has(group.Name) {
 			return fmt.Errorf("duplicate group name: %s", errContext)
 		}
-		uniqNames[group.Name] = struct{}{}
+		uniqNames.Insert(group.Name)
 		groupBytes, err := yaml.Marshal(group)
 		if err != nil {
 			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)
@@ -242,11 +243,20 @@ type VMRule struct {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
-func (r *VMRule) UnmarshalJSON(src []byte) error {
-	type rcfg VMRule
-	if err := json.Unmarshal(src, (*rcfg)(r)); err != nil {
-		r.Spec.ParsingError = fmt.Sprintf("cannot parse vmrule config: %s, err: %s", string(src), err)
-		return nil
+func (cr *VMRule) UnmarshalJSON(src []byte) error {
+	type pcr VMRule
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMRuleSpec: %s, err: %s", string(s.Spec), err)
+		}
 	}
 	return nil
 }

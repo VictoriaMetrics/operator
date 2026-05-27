@@ -1,5 +1,0 @@
-catalog_templates:
-  - template_name: v4.12-v4.16.yaml
-    channels: [beta]
-  - template_name: latest.yaml
-    channels: [beta]

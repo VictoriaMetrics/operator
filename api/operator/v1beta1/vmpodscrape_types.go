@@ -8,12 +8,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var _ json.Unmarshaler = (*VMPodScrapeSpec)(nil)
+var _ json.Unmarshaler = (*VMPodScrape)(nil)
 
 // VMPodScrapeSpec defines the desired state of VMPodScrape
 type VMPodScrapeSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 	// The label to use to retrieve the job name from.
 	// +optional
 	JobLabel string `json:"jobLabel,omitempty"`
@@ -44,16 +42,6 @@ type VMPodScrapeSpec struct {
 	// ScrapeClass defined scrape class to apply
 	// +optional
 	ScrapeClassName *string `json:"scrapeClass,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VMPodScrapeSpec) UnmarshalJSON(src []byte) error {
-	type pcr VMPodScrapeSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
 }
 
 // VMPodScrape is scrape configuration for pods,
@@ -159,6 +147,25 @@ func (cr *VMPodScrape) GetStatus() *ScrapeObjectStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMPodScrape) DefaultStatusFields(vs *ScrapeObjectStatus) {}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMPodScrape) UnmarshalJSON(src []byte) error {
+	type pcr VMPodScrape
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMPodScrapeSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	return nil
+}
 
 func init() {
 	SchemeBuilder.Register(&VMPodScrape{}, &VMPodScrapeList{})

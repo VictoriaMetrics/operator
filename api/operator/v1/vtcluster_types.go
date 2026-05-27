@@ -34,8 +34,6 @@ import (
 
 // VTClusterSpec defines the desired state of VTCluster
 type VTClusterSpec struct {
-	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-" yaml:"-"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VTSelect, VTInsert and VTStorage Pods.
@@ -190,19 +188,11 @@ func (cr *VTCluster) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]str
 	return v
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTClusterSpec) UnmarshalJSON(src []byte) error {
-	type pcr VTClusterSpec
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		cr.ParsingError = fmt.Sprintf("cannot parse vtcluster spec: %s, err: %s", string(src), err)
-		return nil
-	}
-	return nil
-}
-
 // VTClusterStatus defines the observed state of VTCluster
 type VTClusterStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
+	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -569,18 +559,6 @@ func (cr *VTCluster) SetLastSpec(prevSpec VTClusterSpec) {
 	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
-// UnmarshalJSON implements json.Unmarshaler interface
-func (cr *VTCluster) UnmarshalJSON(src []byte) error {
-	type pcr VTCluster
-	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
-		return err
-	}
-	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
 // GetStatus implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VTCluster) GetStatus() *VTClusterStatus {
 	return &cr.Status
@@ -588,6 +566,28 @@ func (cr *VTCluster) GetStatus() *VTClusterStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VTCluster) DefaultStatusFields(vs *VTClusterStatus) {
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VTCluster) UnmarshalJSON(src []byte) error {
+	type pcr VTCluster
+	type shadow struct {
+		*pcr
+		Spec json.RawMessage `json:"spec"`
+	}
+	s := shadow{pcr: (*pcr)(cr)}
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	if len(s.Spec) > 0 {
+		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VTClusterSpec: %s, err: %s", string(s.Spec), err)
+		}
+	}
+	if err := vmv1beta1.ParseLastAppliedStateTo(cr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // AsOwner returns owner references with current object as owner
@@ -692,21 +692,17 @@ func (cr *VTCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
 	if cr.Spec.Storage == nil || cr.Spec.Storage.ReplicaCount == nil {
 		return result
 	}
-	maintenanceNodes := make(map[int32]struct{})
+	maintenanceNodes := sets.New[int32]()
 	switch requestsType {
 	case "select":
-		for _, i := range cr.Spec.Storage.MaintenanceSelectNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceSelectNodeIDs...)
 	case "insert":
-		for _, i := range cr.Spec.Storage.MaintenanceInsertNodeIDs {
-			maintenanceNodes[i] = struct{}{}
-		}
+		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceInsertNodeIDs...)
 	default:
 		panic("BUG unsupported requestsType: " + requestsType)
 	}
 	for i := int32(0); i < *cr.Spec.Storage.ReplicaCount; i++ {
-		if _, ok := maintenanceNodes[i]; ok {
+		if maintenanceNodes.Has(i) {
 			continue
 		}
 		result = append(result, i)

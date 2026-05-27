@@ -38,7 +38,7 @@ jobs:
           repository: ${{ matrix.repo.upstream }}
           ref: main
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: __k8s-operatorhub-repo
+          path: __operatorhub-repo
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -48,58 +48,69 @@ jobs:
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
-          workdir: __k8s-operatorhub-repo
+          workdir: __operatorhub-repo
 
       - uses: dawidd6/action-download-artifact@v11
         with:
           name: olm
-          workflow: main.yaml
+          workflow: release.yaml
           github_token: ${{ secrets.VM_BOT_GH_TOKEN }}
           run_id: ${{ github.event.workflow_run.id }}
           path: bundle
+
+      - name: Install opm
+        run: |
+          OPM_VERSION=v1.65.0
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/linux-amd64-opm
+          curl -fsSLO https://github.com/operator-framework/operator-registry/releases/download/${OPM_VERSION}/checksums.txt
+          grep ' linux-amd64-opm$' checksums.txt | sha256sum -c -
+          install -m 0755 linux-amd64-opm /usr/local/bin/opm
 
       - name: Add operatorhub bundle
         id: update
         run: |
           if [ ! -d bundle ]; then
             echo "No bundle directory found"
-            exit 1;
+            exit 1
           fi
-          OPERATOR_DIR=__k8s-operatorhub-repo/operators/victoriametrics-operator
-          CATALOGS_DIR=__k8s-operatorhub-repo/catalogs
 
-          mkdir -p ${CATALOGS_DIR}
+          export OPERATOR_NAME="victoriametrics-operator"
+          export OPERATOR_DIR=__operatorhub-repo/operators/${OPERATOR_NAME}
           mkdir -p ${OPERATOR_DIR}
 
+          NEW_VERSION=$(ls bundle | head -1)
           export OLD_VERSION=$(find ${OPERATOR_DIR}/* ! -path "*/catalog-templates" -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
-          export OLD_ENTRY="victoriametrics-operator.v${OLD_VERSION}"
-
-          export NEW_VERSION=$(ls bundle | head -1)
+          export OLD_ENTRY="${OPERATOR_NAME}.v${OLD_VERSION}"
 
           if [ ! -z $OLD_VERSION ]; then
             export MANIFEST_PATH=bundle/${NEW_VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
             yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(OLD_VERSION)' $MANIFEST_PATH
           fi
 
-          mv bundle/* ${OPERATOR_DIR}/
+          mv bundle/${NEW_VERSION} ${OPERATOR_DIR}/
           if [ -f ${OPERATOR_DIR}/Makefile ]; then
-            if [ ! -z $OLD_VERSION ]; then
-              yq -i -I2 '.catalog_templates.[].replaces = strenv(OLD_ENTRY)' ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
-            fi
-          else
-            rm -f ${OPERATOR_DIR}/${NEW_VERSION}/release-config.yaml
+            opm render ${OPERATOR_DIR}/${NEW_VERSION} --output=yaml \
+              | yq 'select(.schema == "olm.bundle")' > /tmp/new-bundle.yaml
+
+            for TEMPLATE in ${OPERATOR_DIR}/catalog-templates/*.yaml; do
+              PREV_HEAD=$(yq '.entries[] | select(.schema == "olm.channel") | .entries[-1].name' "${TEMPLATE}")
+              NEW_VERSION="${NEW_VERSION}" PREV_HEAD="${PREV_HEAD}" \
+                yq -i '(.entries[] | select(.schema == "olm.channel") | .entries) += [{"name": "victoriametrics-operator.v" + strenv(NEW_VERSION), "replaces": strenv(PREV_HEAD)}]' "${TEMPLATE}"
+              yq -i '.entries += [load("/tmp/new-bundle.yaml")]' "${TEMPLATE}"
+            done
           fi
-          echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
         if: ${{ steps.update.outputs.VERSION != '' }}
         uses: peter-evans/create-pull-request@v7
         with:
-          add-paths: operators/victoriametrics-operator,catalogs
+          add-paths: operators/victoriametrics-operator
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
           committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
-          path: __k8s-operatorhub-repo
+          path: __operatorhub-repo
           push-to-fork: ${{ matrix.repo.fork }}
           branch: vm-operator-release-${{ steps.update.outputs.VERSION }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}

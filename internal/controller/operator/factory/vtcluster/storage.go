@@ -207,7 +207,9 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.Storage.CommonAppsParams)
 	storageSpec := cr.Spec.Storage.Storage
-	storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec)
+	if err := storageSpec.IntoSTSVolume(cr.Spec.Storage.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
+		return nil, err
+	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.Storage.ClaimTemplates...)
 
 	return stsSpec, nil

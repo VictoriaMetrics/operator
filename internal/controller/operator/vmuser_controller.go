@@ -65,7 +65,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMUser
 	defer func() {
-		result, err = handleReconcileErr(ctx, r.Client, &instance, result, err)
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -80,8 +80,8 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return
 	}
 	RegisterObjectStat(&instance, "vmuser")
-	if instance.Spec.ParsingError != "" {
-		err = &parsingError{instance.Spec.ParsingError, "vmuser"}
+	if instance.Status.ParsingSpecError != "" {
+		err = &parsingError{instance.Status.ParsingSpecError, "vmuser"}
 		return
 	}
 
@@ -105,7 +105,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Spec.ParsingError != "" || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || item.Status.ParsingSpecError != "" || item.IsUnmanaged() {
 			continue
 		}
 		// reconcile users for given vmauth.

@@ -471,5 +471,162 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 				return *dep.Spec.Replicas
 			}, eventualStatefulsetAppReadyTimeout).Should(Equal(updatedReplicas))
 		})
+
+		Context("status transitions", func() {
+			JustBeforeEach(func() {
+				ctx = context.Background()
+			})
+			It("should reach operational after creation", func() {
+				nsn.Name = "vmalert-status-created"
+				cr := &vmv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						Datasource: vmv1beta1.VMAlertDatasourceSpec{
+							URL: "http://localhost:8428",
+						},
+						Notifier: &vmv1beta1.VMAlertNotifierSpec{
+							URL: "http://localhost:9093",
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status after creation")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→expanding→operational on spec update", func() {
+				nsn.Name = "vmalert-status-update"
+				cr := &vmv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						Datasource: vmv1beta1.VMAlertDatasourceSpec{
+							URL: "http://localhost:8428",
+						},
+						Notifier: &vmv1beta1.VMAlertNotifierSpec{
+							URL: "http://localhost:9093",
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("updating the spec to trigger reconcile")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.LogLevel = "WARN"
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for expanding status")
+				Eventually(func() error {
+					return expectObjectStatusExpanding(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after update")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition operational→paused when paused", func() {
+				nsn.Name = "vmalert-status-pause"
+				cr := &vmv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						Datasource: vmv1beta1.VMAlertDatasourceSpec{
+							URL: "http://localhost:8428",
+						},
+						Notifier: &vmv1beta1.VMAlertNotifierSpec{
+							URL: "http://localhost:9093",
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for operational status before pause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("pausing the VMAlert")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = true
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for paused status")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+
+			It("should transition paused→operational when unpaused", func() {
+				nsn.Name = "vmalert-status-unpause"
+				cr := &vmv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAlertSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+							Paused:       true,
+						},
+						Datasource: vmv1beta1.VMAlertDatasourceSpec{
+							URL: "http://localhost:8428",
+						},
+						Notifier: &vmv1beta1.VMAlertNotifierSpec{
+							URL: "http://localhost:9093",
+						},
+					},
+				}
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+				By("waiting for paused status after creation")
+				Eventually(func() error {
+					return expectObjectStatusPaused(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualExpandingTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("unpausing the VMAlert")
+				Eventually(func() error {
+					if err := k8sClient.Get(ctx, nsn, cr); err != nil {
+						return err
+					}
+					cr.Spec.Paused = false
+					return k8sClient.Update(ctx, cr)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+
+				By("waiting for operational status after unpause")
+				Eventually(func() error {
+					return expectObjectStatusOperational(ctx, k8sClient, &vmv1beta1.VMAlert{}, nsn)
+				}, eventualDeploymentAppReadyTimeout).WithContext(ctx).ShouldNot(HaveOccurred())
+			})
+		})
 	})
 })

@@ -218,11 +218,15 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VMSelect != nil {
 		prevSvc = buildVMSelectService(prevCR)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VMSelect.ServiceSpec)
+		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VMSelect.ServiceSpec)
 	}
 	owner := cr.AsOwner()
 	if err := cr.Spec.VMSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		additionalSvcBase := *svc
+		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
@@ -275,7 +279,7 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))
-		b.SetSelectorLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
+		b.SetSelectorLabels(r.SelectorLabels(vmv1beta1.ClusterComponentBalancer))
 		return b
 	}
 	b := builder(cr)
@@ -361,11 +365,15 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VMInsert != nil {
 		prevSvc = buildVMInsertService(prevCR)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VMInsert.ServiceSpec)
+		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VMInsert.ServiceSpec)
 	}
 	owner := cr.AsOwner()
 	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+		additionalSvcBase := *svc
+		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
 		}
@@ -533,7 +541,9 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMSelect.CommonAppsParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
-		cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
+		if err := cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec); err != nil {
+			return nil, err
+		}
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMSelect.ClaimTemplates...)
 	return stsSpec, nil
@@ -959,7 +969,9 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VMStorage.Storage
-	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
+	if err := storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
+		return nil, err
+	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
 
 	return stsSpec, nil

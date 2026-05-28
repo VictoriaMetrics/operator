@@ -9,8 +9,7 @@ on:
       - 'README.md'
       - '.github/workflows/docs.yaml'
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   update-docs:
@@ -22,6 +21,7 @@ jobs:
       - name: Checkout operator repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator
 
       - name: Checkout docs repo

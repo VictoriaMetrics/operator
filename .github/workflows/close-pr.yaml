@@ -1,8 +1,5 @@
 name: Close PR
 
-permissions:
-  pull-requests: write
-
 on:
   workflow_dispatch:
     inputs:
@@ -18,6 +15,8 @@ on:
         description: PR number to close
         required: true
         type: string
+
+permissions: {}
 
 jobs:
   update:

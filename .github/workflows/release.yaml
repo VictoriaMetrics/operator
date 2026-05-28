@@ -4,6 +4,9 @@ on:
     types:
       - created
       - prereleased
+
+permissions: {}
+
 jobs:
   release:
     name: Release on GitHub

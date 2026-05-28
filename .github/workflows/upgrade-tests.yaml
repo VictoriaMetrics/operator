@@ -1,14 +1,13 @@
 name: Upgrade Tests
 on:
   workflow_dispatch:
+permissions: {}
 jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: read
-      security-events: write
       checks: write
     steps:
       - name: Free space

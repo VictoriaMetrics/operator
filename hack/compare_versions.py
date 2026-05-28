@@ -24,7 +24,8 @@ def main():
         print(f"failed to parse version: {e}", file=sys.stderr)
         return 2
 
-    return 0 if release_version >= current_version else 10
+    print("true" if release_version >= current_version else "false")
+    return 0
 
 
 if __name__ == "__main__":

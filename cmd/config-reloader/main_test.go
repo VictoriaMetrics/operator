@@ -183,3 +183,39 @@ func TestCfgWatcherDelayIntervalCancelledContext(t *testing.T) {
 		t.Fatalf("expected 0 reload calls after context cancel, got %d", got)
 	}
 }
+
+func TestCfgWatcherSuccessTimestampUsesSeconds(t *testing.T) {
+	origDelay := *delayInterval
+	*delayInterval = 0
+	defer func() { *delayInterval = origDelay }()
+
+	configLastOkReloadTime.Set(0)
+	configLastReloadSuccess.Set(0)
+
+	updates := make(chan struct{}, 1)
+	w := cfgWatcher{
+		updates: updates,
+		reloader: func(_ context.Context) error {
+			return nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	w.start(ctx)
+	start := time.Now().Unix()
+
+	updates <- struct{}{}
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+	w.close()
+
+	got := int64(configLastOkReloadTime.Get())
+	end := time.Now().Unix()
+
+	if got < start || got > end {
+		t.Fatalf("expected success timestamp in unix seconds between %d and %d, got %d", start, end, got)
+	}
+	if configLastReloadSuccess.Get() != 1 {
+		t.Fatalf("expected reload success metric to be 1, got %d", configLastReloadSuccess.Get())
+	}
+}

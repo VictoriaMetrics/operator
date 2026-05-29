@@ -41,7 +41,7 @@ so user can set custom configuration while still benefiting from the Operator's 
 You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api/#vmagent)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/vmagent/#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmagent/#examples) section.
 

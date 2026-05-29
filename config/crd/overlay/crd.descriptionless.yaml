@@ -7587,6 +7587,8 @@ spec:
                             - key
                             type: object
                             x-kubernetes-map-type: atomic
+                          alert_source_token_file:
+                            type: string
                           http_config:
                             x-kubernetes-preserve-unknown-fields: true
                           max_alerts:
@@ -7596,6 +7598,8 @@ spec:
                           timeout:
                             type: string
                           url:
+                            type: string
+                          url_file:
                             type: string
                         type: object
                       type: array

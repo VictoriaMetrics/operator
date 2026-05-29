@@ -2165,12 +2165,14 @@ Appears in: [Receiver](#receiver)
 
 | Field | Description |
 | --- | --- |
-| alert_source_token<a href="#incidentioconfig-alert_source_token" id="incidentioconfig-alert_source_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AlertSourceToken is used to authenticate with incident.io |
+| alert_source_token<a href="#incidentioconfig-alert_source_token" id="incidentioconfig-alert_source_token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>AlertSourceToken is used to authenticate with incident.io.<br />Mutually exclusive with AlertSourceTokenFile. |
+| alert_source_token_file<a href="#incidentioconfig-alert_source_token_file" id="incidentioconfig-alert_source_token_file">#</a><br/>_string_ | _(Optional)_<br/>AlertSourceTokenFile defines the path to a file that contains the alert source token.<br />Mutually exclusive with AlertSourceToken. |
 | http_config<a href="#incidentioconfig-http_config" id="incidentioconfig-http_config">#</a><br/>_[HTTPConfig](#httpconfig)_ | _(Optional)_<br/> |
 | max_alerts<a href="#incidentioconfig-max_alerts" id="incidentioconfig-max_alerts">#</a><br/>_integer_ | _(Optional)_<br/>MaxAlerts defines maximum number of alerts to be sent per incident.io message. |
 | send_resolved<a href="#incidentioconfig-send_resolved" id="incidentioconfig-send_resolved">#</a><br/>_boolean_ | _(Optional)_<br/>SendResolved controls notify about resolved alerts. |
 | timeout<a href="#incidentioconfig-timeout" id="incidentioconfig-timeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout is the maximum time allowed to invoke incident.io |
-| url<a href="#incidentioconfig-url" id="incidentioconfig-url">#</a><br/>_string_ | _(Required)_<br/>The URL to send the incident.io alert. This would typically be provided by the<br />incident.io team when setting up an alert source. |
+| url<a href="#incidentioconfig-url" id="incidentioconfig-url">#</a><br/>_string_ | _(Optional)_<br/>The URL to send the incident.io alert. This would typically be provided by the<br />incident.io team when setting up an alert source.<br />Mutually exclusive with URLFile. |
+| url_file<a href="#incidentioconfig-url_file" id="incidentioconfig-url_file">#</a><br/>_string_ | _(Optional)_<br/>URLFile defines the path to a file that holds the incident.io alert URL.<br />Mutually exclusive with URL. |
 
 #### InhibitRule
 

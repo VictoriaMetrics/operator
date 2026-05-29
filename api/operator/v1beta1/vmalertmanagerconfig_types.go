@@ -189,7 +189,7 @@ func (cr *VMAlertmanagerConfig) ValidateArbitraryFSAccess() error {
 			}
 		}
 		for j, rc := range r.IncidentioConfigs {
-			if err := rc.HTTPConfig.validateArbitraryFSAccess(); err != nil {
+			if err := rc.validateArbitraryFSAccess(); err != nil {
 				return fmt.Errorf("spec.receivers[%d].incidentio_configs[%d]: found prohibited properties: %w", i, j, err)
 			}
 		}
@@ -1449,10 +1449,21 @@ type IncidentioConfig struct {
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The URL to send the incident.io alert. This would typically be provided by the
 	// incident.io team when setting up an alert source.
+	// Mutually exclusive with URLFile.
+	// +optional
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
-	// AlertSourceToken is used to authenticate with incident.io
+	// URLFile defines the path to a file that holds the incident.io alert URL.
+	// Mutually exclusive with URL.
+	// +optional
+	URLFile string `json:"url_file,omitempty" yaml:"url_file,omitempty"`
+	// AlertSourceToken is used to authenticate with incident.io.
+	// Mutually exclusive with AlertSourceTokenFile.
 	// +optional
 	AlertSourceToken *corev1.SecretKeySelector `yaml:"alert_source_token,omitempty" json:"alert_source_token,omitempty"`
+	// AlertSourceTokenFile defines the path to a file that contains the alert source token.
+	// Mutually exclusive with AlertSourceToken.
+	// +optional
+	AlertSourceTokenFile string `json:"alert_source_token_file,omitempty" yaml:"alert_source_token_file,omitempty"`
 	// MaxAlerts defines maximum number of alerts to be sent per incident.io message.
 	// +optional
 	MaxAlerts int `json:"max_alerts,omitempty" yaml:"max_alerts,omitempty"`
@@ -1466,6 +1477,12 @@ type IncidentioConfig struct {
 }
 
 func (c *IncidentioConfig) validate() error {
+	if len(c.URL) != 0 && len(c.URLFile) != 0 {
+		return fmt.Errorf("url and url_file are mutually exclusive")
+	}
+	if c.AlertSourceToken != nil && len(c.AlertSourceTokenFile) != 0 {
+		return fmt.Errorf("alert_source_token and alert_source_token_file are mutually exclusive")
+	}
 	if len(c.URL) != 0 {
 		if _, err := url.Parse(c.URL); err != nil {
 			return fmt.Errorf("incorrect url=%q: %w", c.URL, err)
@@ -1475,6 +1492,13 @@ func (c *IncidentioConfig) validate() error {
 		return fmt.Errorf("incorrect http_config: %w", err)
 	}
 	return nil
+}
+
+func (c *IncidentioConfig) validateArbitraryFSAccess() error {
+	if c.AlertSourceTokenFile != "" {
+		return fmt.Errorf("alertSourceTokenFile is prohibited")
+	}
+	return c.HTTPConfig.validateArbitraryFSAccess()
 }
 
 // RocketchatConfig configures notifications via Rocketchat.

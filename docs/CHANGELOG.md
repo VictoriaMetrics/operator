@@ -821,7 +821,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11020)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v0280)
 
-**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0471---23-aug-2024) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
+**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0472) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
 
 - [operator](https://docs.victoriametrics.com/operator/): properly update statefulset on `revisionHistoryLimitCount` change. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1070) for details.
 - [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): properly construct `tls_config` for `emails` notifications. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1080) for details.
@@ -1018,7 +1018,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - scrape CRDs: fix scrape_config filed `disable_keep_alive`, before it's misconfigured as `disable_keepalive` and won't work.
 - scrape CRDs: deprecated option `relabel_debug` and  `metric_relabel_debug`, they were deprecated since [v1.85.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.85.0).
 
-## [v0.43.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3)
+## [v0.42.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3)
 
 **Release date:** 12 Mar 2024
 

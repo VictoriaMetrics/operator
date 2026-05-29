@@ -1,6 +1,6 @@
 resources:
 - ../examples
-- ../default-with-webhook
+- ../default-with-certmanager
 - scorecard.yaml
 patches:
 - patch: |-

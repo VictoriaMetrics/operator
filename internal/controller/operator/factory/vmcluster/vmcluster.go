@@ -584,12 +584,27 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 				replicationFactorIsSet = true
 			}
 		}
-		if !dedupIsSet {
+		if !dedupIsSet && (cr.Spec.Downsampling == nil || cr.Spec.Downsampling.DedupInterval == "") {
 			args = append(args, "-dedup.minScrapeInterval=1ms")
 		}
 		if !replicationFactorIsSet {
 			args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 		}
+	}
+
+	if cr.Spec.Downsampling.HasAnyRule() {
+		for _, rule := range cr.Spec.Downsampling.Rules {
+			for _, p := range rule.Periods {
+				period := fmt.Sprintf("%s:%s", p.Offset, p.Interval)
+				if rule.Filter != "" {
+					period = rule.Filter + ":" + period
+				}
+				args = append(args, fmt.Sprintf("-downsampling.period=%s", period))
+			}
+		}
+	}
+	if cr.Spec.Downsampling != nil && cr.Spec.Downsampling.DedupInterval != "" {
+		args = append(args, fmt.Sprintf("-dedup.minScrapeInterval=%s", cr.Spec.Downsampling.DedupInterval))
 	}
 
 	storageNodeFlag := build.NewFlag("-storageNode", "")
@@ -1012,8 +1027,29 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 				dedupIsSet = true
 			}
 		}
-		if !dedupIsSet {
+		if !dedupIsSet && (cr.Spec.Downsampling == nil || cr.Spec.Downsampling.DedupInterval == "") {
 			args = append(args, "-dedup.minScrapeInterval=1ms")
+		}
+	}
+
+	if cr.Spec.Downsampling.HasAnyRule() {
+		for _, rule := range cr.Spec.Downsampling.Rules {
+			for _, p := range rule.Periods {
+				period := fmt.Sprintf("%s:%s", p.Offset, p.Interval)
+				if rule.Filter != "" {
+					period = rule.Filter + ":" + period
+				}
+				args = append(args, fmt.Sprintf("-downsampling.period=%s", period))
+			}
+		}
+	}
+	if cr.Spec.Downsampling != nil && cr.Spec.Downsampling.DedupInterval != "" {
+		args = append(args, fmt.Sprintf("-dedup.minScrapeInterval=%s", cr.Spec.Downsampling.DedupInterval))
+	}
+
+	if cr.Spec.VMStorage.RetentionFilters != nil {
+		for _, rf := range *cr.Spec.VMStorage.RetentionFilters {
+			args = append(args, fmt.Sprintf("-retentionFilter=%s:%s", rf.Filter, rf.Retention))
 		}
 	}
 

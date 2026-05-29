@@ -1738,6 +1738,42 @@ Appears in: [VMAlertNotifierSpec](#vmalertnotifierspec)
 | labelSelector<a href="#discoveryselector-labelselector" id="discoveryselector-labelselector">#</a><br/>_[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta)_ | _(Required)_<br/> |
 | namespaceSelector<a href="#discoveryselector-namespaceselector" id="discoveryselector-namespaceselector">#</a><br/>_[NamespaceSelector](#namespaceselector)_ | _(Required)_<br/> |
 
+#### DownsamplingConfig
+
+DownsamplingConfig defines downsampling configuration for VMSingle and VMCluster
+Requires enterprise license.
+See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling
+
+Appears in: [VMClusterSpec](#vmclusterspec), [VMSingleSpec](#vmsinglespec)
+
+| Field | Description |
+| --- | --- |
+| dedupInterval<a href="#downsamplingconfig-dedupinterval" id="downsamplingconfig-dedupinterval">#</a><br/>_string_ | _(Optional)_<br/>DedupInterval sets the deduplication interval used with downsampling.<br />It corresponds to -dedup.minScrapeInterval flag.<br />Must be a multiple of all configured downsampling intervals. |
+| rules<a href="#downsamplingconfig-rules" id="downsamplingconfig-rules">#</a><br/>_[DownsamplingRule](#downsamplingrule) array_ | _(Optional)_<br/>Rules defines downsampling rules.<br />Each rule matches time series by an optional filter and applies downsampling after a given offset. |
+
+#### DownsamplingPeriod
+
+DownsamplingPeriod defines a single downsampling time horizon.
+
+Appears in: [DownsamplingRule](#downsamplingrule)
+
+| Field | Description |
+| --- | --- |
+| interval<a href="#downsamplingperiod-interval" id="downsamplingperiod-interval">#</a><br/>_string_ | _(Required)_<br/>Interval is the target downsampling resolution; only the last sample per interval is kept.<br />Example: "10m" |
+| offset<a href="#downsamplingperiod-offset" id="downsamplingperiod-offset">#</a><br/>_string_ | _(Required)_<br/>Offset is the minimum age of data before downsampling is applied.<br />Example: "30d" |
+
+#### DownsamplingRule
+
+DownsamplingRule defines downsampling periods for an optional label filter.
+All period intervals must be pairwise multiples of each other.
+
+Appears in: [DownsamplingConfig](#downsamplingconfig)
+
+| Field | Description |
+| --- | --- |
+| filter<a href="#downsamplingrule-filter" id="downsamplingrule-filter">#</a><br/>_string_ | _(Optional)_<br/>Filter is an optional MetricsQL label filter for matching time series.<br />If not set, the rule is applied to all time series.<br />Example: '\{env="prod"\}' |
+| periods<a href="#downsamplingrule-periods" id="downsamplingrule-periods">#</a><br/>_[DownsamplingPeriod](#downsamplingperiod) array_ | _(Required)_<br/>Periods defines the downsampling time horizons applied to matching series. |
+
 #### EC2Filter
 
 EC2Filter is the configuration for filtering EC2 instances.
@@ -2774,6 +2810,34 @@ Appears in: [CommonRelabelParams](#commonrelabelparams), [CommonScrapeParams](#c
 | source_labels<a href="#relabelconfig-source_labels" id="relabelconfig-source_labels">#</a><br/>_string array_ | _(Optional)_<br/>UnderScoreSourceLabels - additional form of source labels source_labels<br />for compatibility with original relabel config.<br />if set both sourceLabels and source_labels, sourceLabels has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
 | targetLabel<a href="#relabelconfig-targetlabel" id="relabelconfig-targetlabel">#</a><br/>_string_ | _(Optional)_<br/>Label to which the resulting value is written in a replace action.<br />It is mandatory for replace actions. Regex capture groups are available. |
 | target_label<a href="#relabelconfig-target_label" id="relabelconfig-target_label">#</a><br/>_string_ | _(Optional)_<br/>UnderScoreTargetLabel - additional form of target label - target_label<br />for compatibility with original relabel config.<br />if set both targetLabel and target_label, targetLabel has priority.<br />for details https://github.com/VictoriaMetrics/operator/issues/131 |
+
+#### RetentionFilter
+
+RetentionFilter defines per-series retention based on a label filter.
+Requires enterprise license.
+See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
+
+Appears in: [RetentionFiltersConfig](#retentionfiltersconfig)
+
+| Field | Description |
+| --- | --- |
+| filter<a href="#retentionfilter-filter" id="retentionfilter-filter">#</a><br/>_string_ | _(Required)_<br/>Filter is a MetricsQL label filter for matching time series.<br />Example: '\{env="dev"\}' |
+| retention<a href="#retentionfilter-retention" id="retentionfilter-retention">#</a><br/>_string_ | _(Required)_<br/>Retention is the retention period for matching time series.<br />Must not exceed the global retentionPeriod.<br />Example: "3d", "1w" |
+
+#### RetentionFiltersConfig
+
+_Underlying type:_ _[RetentionFilter](#retentionfilter)_
+
+RetentionFiltersConfig defines configuration section for per-series retention based on a label filter.
+Requires enterprise license.
+See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
+
+Appears in: [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage)
+
+| Field | Description |
+| --- | --- |
+| filter<a href="#retentionfiltersconfig-filter" id="retentionfiltersconfig-filter">#</a><br/>_string_ | _(Required)_<br/>Filter is a MetricsQL label filter for matching time series.<br />Example: '\{env="dev"\}' |
+| retention<a href="#retentionfiltersconfig-retention" id="retentionfiltersconfig-retention">#</a><br/>_string_ | _(Required)_<br/>Retention is the retention period for matching time series.<br />Must not exceed the global retentionPeriod.<br />Example: "3d", "1w" |
 
 #### RocketchatAttachmentAction
 
@@ -4185,6 +4249,7 @@ Appears in: [VMCluster](#vmcluster), [VMDistributedZoneCluster](#vmdistributedzo
 | --- | --- |
 | clusterDomainName<a href="#vmclusterspec-clusterdomainname" id="vmclusterspec-clusterdomainname">#</a><br/>_string_ | _(Optional)_<br/>ClusterDomainName defines domain name suffix for in-cluster dns addresses<br />aka .cluster.local<br />used by vminsert and vmselect to build vmstorage address |
 | clusterVersion<a href="#vmclusterspec-clusterversion" id="vmclusterspec-clusterversion">#</a><br/>_string_ | _(Optional)_<br/>ClusterVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
+| downsampling<a href="#vmclusterspec-downsampling" id="vmclusterspec-downsampling">#</a><br/>_[DownsamplingConfig](#downsamplingconfig)_ | _(Optional)_<br/>Downsampling defines downsampling rules applied to vmselect and vmstorage components.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling |
 | imagePullSecrets<a href="#vmclusterspec-imagepullsecrets" id="vmclusterspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod |
 | license<a href="#vmclusterspec-license" id="vmclusterspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | managedMetadata<a href="#vmclusterspec-managedmetadata" id="vmclusterspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
@@ -4690,6 +4755,7 @@ Appears in: [VMSingle](#vmsingle)
 | disableSelfServiceScrape<a href="#vmsinglespec-disableselfservicescrape" id="vmsinglespec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
 | dnsConfig<a href="#vmsinglespec-dnsconfig" id="vmsinglespec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
 | dnsPolicy<a href="#vmsinglespec-dnspolicy" id="vmsinglespec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
+| downsampling<a href="#vmsinglespec-downsampling" id="vmsinglespec-downsampling">#</a><br/>_[DownsamplingConfig](#downsamplingconfig)_ | _(Optional)_<br/>Downsampling defines downsampling rules for VMSingle.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling |
 | enableKubernetesAPISelectors<a href="#vmsinglespec-enablekubernetesapiselectors" id="vmsinglespec-enablekubernetesapiselectors">#</a><br/>_boolean_ | _(Optional)_<br/>EnableKubernetesAPISelectors instructs vmagent or vmsingle to use CRD scrape objects spec.selectors for<br />Kubernetes API list and watch requests.<br />https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#list-and-watch-filtering<br />It could be useful to reduce Kubernetes API server resource usage for serving less than 100 CRD scrape objects in total. |
 | enableServiceLinks<a href="#vmsinglespec-enableservicelinks" id="vmsinglespec-enableservicelinks">#</a><br/>_boolean_ | _(Optional)_<br/>EnableServiceLinks indicates whether information about services should be injected into pod's<br />environment variables, matching the syntax of Docker links.<br />Optional: Defaults to true. |
 | enforcedNamespaceLabel<a href="#vmsinglespec-enforcednamespacelabel" id="vmsinglespec-enforcednamespacelabel">#</a><br/>_string_ | _(Optional)_<br/>EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert<br />and metric that is user created. The label value will always be the namespace of the object that is<br />being created. |
@@ -4741,6 +4807,7 @@ Appears in: [VMSingle](#vmsingle)
 | removePvcAfterDelete<a href="#vmsinglespec-removepvcafterdelete" id="vmsinglespec-removepvcafterdelete">#</a><br/>_boolean_ | _(Optional)_<br/>RemovePvcAfterDelete - if true, controller adds ownership to pvc<br />and after VMSingle object deletion - pvc will be garbage collected<br />by controller manager |
 | replicaCount<a href="#vmsinglespec-replicacount" id="vmsinglespec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vmsinglespec-resources" id="vmsinglespec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| retentionFilters<a href="#vmsinglespec-retentionfilters" id="vmsinglespec-retentionfilters">#</a><br/>_[RetentionFiltersConfig](#retentionfiltersconfig)_ | _(Optional)_<br/>RetentionFilters defines per-series retention filters for VMSingle.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters |
 | retentionPeriod<a href="#vmsinglespec-retentionperiod" id="vmsinglespec-retentionperiod">#</a><br/>_string_ | _(Optional)_<br/>RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").<br />Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.<br />The default value is 1 (one month).<br />See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details. |
 | revisionHistoryLimitCount<a href="#vmsinglespec-revisionhistorylimitcount" id="vmsinglespec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
 | runtimeClassName<a href="#vmsinglespec-runtimeclassname" id="vmsinglespec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
@@ -4848,6 +4915,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | readinessProbe<a href="#vmstorage-readinessprobe" id="vmstorage-readinessprobe">#</a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>ReadinessProbe that will be added to CR pod |
 | replicaCount<a href="#vmstorage-replicacount" id="vmstorage-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vmstorage-resources" id="vmstorage-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| retentionFilters<a href="#vmstorage-retentionfilters" id="vmstorage-retentionfilters">#</a><br/>_[RetentionFiltersConfig](#retentionfiltersconfig)_ | _(Optional)_<br/>RetentionFilters defines per-series retention filters for vmstorage.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters |
 | revisionHistoryLimitCount<a href="#vmstorage-revisionhistorylimitcount" id="vmstorage-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
 | rollingUpdateStrategy<a href="#vmstorage-rollingupdatestrategy" id="vmstorage-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy defines strategy for application updates<br />Default is OnDelete, in this case operator handles update process<br />Can be changed for RollingUpdate |
 | rollingUpdateStrategyBehavior<a href="#vmstorage-rollingupdatestrategybehavior" id="vmstorage-rollingupdatestrategybehavior">#</a><br/>_[StatefulSetUpdateStrategyBehavior](#statefulsetupdatestrategybehavior)_ | _(Optional)_<br/>RollingUpdateStrategyBehavior defines customized behavior for rolling updates.<br />It applies if the RollingUpdateStrategy is set to OnDelete, which is the default. |

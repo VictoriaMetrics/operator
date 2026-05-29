@@ -352,10 +352,11 @@ For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/vic
 
 ### Downsampling
 
-After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling)
-flag to `VMCluster/vmselect` and `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) too.
-
-Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling):
+Use `spec.downsampling` to configure [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling).
+The operator automatically applies the rules to both `vmselect` and `vmstorage`. Note that it would overwrite the downsampling configuration set via `extraArgs`
+Each rule requires `offset` (how far back to downsample) and `interval` (target resolution).
+An optional `filter` restricts the rule to matching time series.
+The optional `dedupInterval` sets `-dedup.minScrapeInterval` on both components.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -363,34 +364,38 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  # enabling enterprise features
   license:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
   clusterVersion: v1.110.13-enterprise-cluster
-  vmselect:
-    # enabling enterprise features for vmselect
-    extraArgs:
-      # using enterprise features: Downsampling
-      # more details about downsampling you can read on https://docs.victoriametrics.com/victoriametrics/cluster-victoriaMetrics/#downsampling
-      downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
-  vmstorage:
-    # enabling enterprise features for vmstorage
-    extraArgs:
-      # using enterprise features: Downsampling
-      # more details about downsampling you can read on https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling
-      downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
+  downsampling:
+    dedupInterval: 1m
+    rules:
+      - periods:
+          - offset: 30d
+            interval: 5m
+          - offset: 180d
+            interval: 1h
+          - offset: 1y
+            interval: 6h
+      - filter: '{env="prod"}'
+        periods:
+          - offset: 30d
+            interval: 1m
+          - offset: 180d
+            interval: 10m
 
   # ...other fields...
 ```
+
+You can read more about downsampling configuration on the [VictoriaMetrics cluster downsampling page](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling).
 
 ### Retention filters
 
-You can pass [Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters)
-flag to  `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
-
-Here are complete example for [Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters):
+Use `spec.vmstorage.retentionFilters` to configure [Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters) on `vmstorage`. Note that it would overwrite the retention filters configuration set via `extraArgs`
+Each entry requires a MetricsQL label `filter` and a `retention` duration.
+The global `spec.retentionPeriod` applies to all series that don't match any filter.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -398,20 +403,23 @@ kind: VMCluster
 metadata:
   name: ent-example
 spec:
-  # enabling enterprise features
   license:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
   clusterVersion: v1.110.13-enterprise-cluster
+  retentionPeriod: "12"
   vmstorage:
-    extraArgs:
-      # using enterprise features: Retention filters
-      # more details about retention filters you can read on https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters
-      retentionFilter: '{vm_account_id="5",env="dev"}:5d,{vm_account_id="5",env="prod"}:5y'
+    retentionFilters:
+      - filter: '{vm_account_id="5",env="dev"}'
+        retention: 5d
+      - filter: '{vm_account_id="5",env="prod"}'
+        retention: 5y
 
   # ...other fields...
 ```
+
+You can read more about retention filters configuration on the [VictoriaMetrics cluster retention filters page](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters).
 
 ### Advanced per-tenant statistic
 

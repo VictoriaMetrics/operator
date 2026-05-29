@@ -218,10 +218,10 @@ For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/vict
 
 ### Downsampling
 
-After that you can pass [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling)
-flag to `VMSingle` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments) too.
-
-Here are complete example for [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling):
+Use `spec.downsampling` to configure [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling).
+Each rule requires `offset` (how far back to downsample) and `interval` (target resolution).
+An optional `filter` restricts the rule to matching time series.
+The optional `dedupInterval` sets `-dedup.minScrapeInterval` for the instance.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -229,24 +229,39 @@ kind: VMSingle
 metadata:
   name: ent-example
 spec:
-  # enabling enterprise features
   license:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
   image:
     tag: v1.110.13-enterprise
-  extraArgs:
-    # using enterprise features: Downsampling
-    # more details about downsampling you can read on https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling
-    downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
+  downsampling:
+    dedupInterval: 1m
+    rules:
+      - periods:
+          - offset: 30d
+            interval: 5m
+          - offset: 180d
+            interval: 1h
+          - offset: 1y
+            interval: 6h
+      - filter: '{env="prod"}'
+        periods:
+          - offset: 30d
+            interval: 1m
+          - offset: 180d
+            interval: 10m
 
   # ...other fields...
 ```
+
+You can read more about downsampling configuration on the [VictoriaMetrics downsampling page](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling).
 
 ### Retention filters
 
-The same method is used to enable retention filters - here are complete example for [Retention filters](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters).
+Use `spec.retentionFilters` to configure [Retention filters](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters).
+Each entry requires a MetricsQL label `filter` and a `retention` duration.
+The global `spec.retentionPeriod` applies to all series that don't match any filter.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -254,20 +269,23 @@ kind: VMSingle
 metadata:
   name: ent-example
 spec:
-  # enabling enterprise features
   license:
     keyRef:
       name: k8s-secret-that-contains-license
       key: key-in-a-secret-that-contains-license
   image:
     tag: v1.110.13-enterprise
-  extraArgs:
-    # using enterprise features: Retention filters
-    # more details about retention filters you can read on https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
-    retentionFilter: '{team="juniors"}:3d,{env=~"dev|staging"}:30d'
+  retentionPeriod: "12"
+  retentionFilters:
+    - filter: '{team="juniors"}'
+      retention: 3d
+    - filter: '{env=~"dev|staging"}'
+      retention: 30d
 
   # ...other fields...
 ```
+
+You can read more about retention filters configuration on the [VictoriaMetrics retention filters page](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters).
 
 ### Backup automation
 

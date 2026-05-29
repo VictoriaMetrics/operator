@@ -77,6 +77,14 @@ type VMSingleSpec struct {
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// Downsampling defines downsampling rules for VMSingle.
+	// Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling
+	// +optional
+	Downsampling *DownsamplingConfig `json:"downsampling,omitempty"`
+	// RetentionFilters defines per-series retention filters for VMSingle.
+	// Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
+	// +optional
+	RetentionFilters *RetentionFiltersConfig `json:"retentionFilters,omitempty"`
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMSingle is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
@@ -386,11 +394,16 @@ func (cr *VMSingle) Validate() error {
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
-
 	if cr.Spec.VMBackup != nil {
 		if err := cr.Spec.VMBackup.validate(cr.Spec.License); err != nil {
 			return err
 		}
+	}
+	if err := cr.Spec.Downsampling.validate(cr.Spec.License); err != nil {
+		return err
+	}
+	if err := cr.Spec.RetentionFilters.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
+		return err
 	}
 	scrapeClassNames := sets.New[string]()
 	defaultScrapeClass := false

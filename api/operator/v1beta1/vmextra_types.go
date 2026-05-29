@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promrelabel"
+	"github.com/VictoriaMetrics/metricsql"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -671,6 +674,214 @@ func (config *StreamAggrConfig) HasAnyRule() bool {
 		return true
 	}
 	return false
+}
+
+// DownsamplingConfig defines downsampling configuration for VMSingle and VMCluster
+// Requires enterprise license.
+// See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling
+// +k8s:openapi-gen=true
+type DownsamplingConfig struct {
+	// Rules defines downsampling rules.
+	// Each rule matches time series by an optional filter and applies downsampling after a given offset.
+	// +optional
+	Rules []DownsamplingRule `json:"rules,omitempty"`
+	// DedupInterval sets the deduplication interval used with downsampling.
+	// It corresponds to -dedup.minScrapeInterval flag.
+	// Must be a multiple of all configured downsampling intervals.
+	// +optional
+	DedupInterval string `json:"dedupInterval,omitempty"`
+}
+
+// HasAnyRule returns true if at least one downsampling rule is configured
+func (dc *DownsamplingConfig) HasAnyRule() bool {
+	return dc != nil && len(dc.Rules) > 0
+}
+
+// validate checks DownsamplingConfig for correctness.
+// It requires a valid enterprise license and uses the same parsing primitives
+// as the VictoriaMetrics storage layer.
+func (dc *DownsamplingConfig) validate(l *License) error {
+	if dc == nil {
+		return nil
+	}
+	if !l.IsProvided() {
+		return fmt.Errorf("license key is required for downsampling. See https://docs.victoriametrics.com/victoriametrics/enterprise/")
+	}
+	if err := l.validate(); err != nil {
+		return err
+	}
+	seenFilters := make(map[string]struct{})
+	for i, rule := range dc.Rules {
+		if _, dup := seenFilters[rule.Filter]; dup {
+			return fmt.Errorf("downsampling.rules[%d]: duplicate filter %q", i, rule.Filter)
+		}
+		seenFilters[rule.Filter] = struct{}{}
+		if err := rule.validate(); err != nil {
+			return fmt.Errorf("downsampling.rules[%d]: %w", i, err)
+		}
+	}
+	if dc.DedupInterval != "" {
+		dedupMs, err := metricsql.PositiveDurationValue(dc.DedupInterval, 0)
+		if err != nil {
+			return fmt.Errorf("downsampling.dedupInterval: invalid value %q: %w", dc.DedupInterval, err)
+		}
+		for i, rule := range dc.Rules {
+			for j, p := range rule.Periods {
+				intervalMs, err := metricsql.PositiveDurationValue(p.Interval, 0)
+				if err != nil {
+					continue
+				}
+				if dedupMs != 0 && intervalMs%dedupMs != 0 {
+					return fmt.Errorf("downsampling.rules[%d].periods[%d]: interval %q must be a multiple of dedupInterval %q", i, j, p.Interval, dc.DedupInterval)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (rule *DownsamplingRule) validate() error {
+	if rule.Filter != "" {
+		var ie promrelabel.IfExpression
+		if err := ie.Parse(rule.Filter); err != nil {
+			return fmt.Errorf("invalid filter %q: %w", rule.Filter, err)
+		}
+	}
+	if len(rule.Periods) == 0 {
+		return fmt.Errorf("periods must not be empty")
+	}
+	for i, p := range rule.Periods {
+		if err := p.validate(); err != nil {
+			return fmt.Errorf("periods[%d]: %w", i, err)
+		}
+	}
+	for i := 0; i < len(rule.Periods); i++ {
+		iMs, err := metricsql.PositiveDurationValue(rule.Periods[i].Interval, 0)
+		if err != nil || iMs == 0 {
+			continue
+		}
+		for j := i + 1; j < len(rule.Periods); j++ {
+			jMs, err := metricsql.PositiveDurationValue(rule.Periods[j].Interval, 0)
+			if err != nil || jMs == 0 {
+				continue
+			}
+			if iMs%jMs != 0 && jMs%iMs != 0 {
+				return fmt.Errorf("periods[%d] interval %q and periods[%d] interval %q must be multiples of each other",
+					i, rule.Periods[i].Interval, j, rule.Periods[j].Interval)
+			}
+		}
+	}
+	return nil
+}
+
+func (p *DownsamplingPeriod) validate() error {
+	if p.Offset == "" {
+		return fmt.Errorf("offset must not be empty")
+	}
+	offsetMs, err := metricsql.PositiveDurationValue(p.Offset, 0)
+	if err != nil {
+		return fmt.Errorf("invalid offset %q: %w", p.Offset, err)
+	}
+	if p.Interval == "" {
+		return fmt.Errorf("interval must not be empty")
+	}
+	intervalMs, err := metricsql.PositiveDurationValue(p.Interval, 0)
+	if err != nil {
+		return fmt.Errorf("invalid interval %q: %w", p.Interval, err)
+	}
+	if intervalMs == 0 && offsetMs != 0 {
+		return fmt.Errorf("interval must be greater than 0 when offset is not 0")
+	}
+	if intervalMs != 0 && offsetMs%intervalMs != 0 {
+		return fmt.Errorf("offset %q must be a multiple of interval %q", p.Offset, p.Interval)
+	}
+	return nil
+}
+
+// DownsamplingRule defines downsampling periods for an optional label filter.
+// All period intervals must be pairwise multiples of each other.
+// +k8s:openapi-gen=true
+type DownsamplingRule struct {
+	// Filter is an optional MetricsQL label filter for matching time series.
+	// If not set, the rule is applied to all time series.
+	// Example: '{env="prod"}'
+	// +optional
+	Filter string `json:"filter,omitempty"`
+	// Periods defines the downsampling time horizons applied to matching series.
+	Periods []DownsamplingPeriod `json:"periods"`
+}
+
+// DownsamplingPeriod defines a single downsampling time horizon.
+// +k8s:openapi-gen=true
+type DownsamplingPeriod struct {
+	// Offset is the minimum age of data before downsampling is applied.
+	// Example: "30d"
+	Offset string `json:"offset"`
+	// Interval is the target downsampling resolution; only the last sample per interval is kept.
+	// Example: "10m"
+	Interval string `json:"interval"`
+}
+
+// RetentionFiltersConfig defines configuration section for per-series retention based on a label filter.
+// Requires enterprise license.
+// See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
+// +k8s:openapi-gen=true
+type RetentionFiltersConfig []RetentionFilter
+
+func (rfc *RetentionFiltersConfig) validate(l *License, retentionPeriod string) error {
+	if rfc == nil || len(*rfc) == 0 {
+		return nil
+	}
+	var globalDuration flagutil.RetentionDuration
+	if len(retentionPeriod) > 0 {
+		if err := globalDuration.Set(retentionPeriod); err != nil {
+			return fmt.Errorf("invalid retentionPeriod %q: %w", retentionPeriod, err)
+		}
+	}
+	if !l.IsProvided() {
+		return fmt.Errorf("license key is required for retentionFilters. See https://docs.victoriametrics.com/victoriametrics/enterprise/")
+	}
+	if err := l.validate(); err != nil {
+		return err
+	}
+	rfs := *rfc
+	for i := range rfs {
+		if err := rfs[i].validate(globalDuration); err != nil {
+			return fmt.Errorf("retentionFilters[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+// RetentionFilter defines per-series retention based on a label filter.
+// Requires enterprise license.
+// See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters
+// +k8s:openapi-gen=true
+type RetentionFilter struct {
+	// Filter is a MetricsQL label filter for matching time series.
+	// Example: '{env="dev"}'
+	Filter string `json:"filter"`
+	// Retention is the retention period for matching time series.
+	// Must not exceed the global retentionPeriod.
+	// Example: "3d", "1w"
+	Retention string `json:"retention"`
+}
+
+// validate checks RetentionFilter content using the same parsing primitives
+// as the VictoriaMetrics storage layer.
+func (rf *RetentionFilter) validate(globalDuration flagutil.RetentionDuration) error {
+	var ie promrelabel.IfExpression
+	if err := ie.Parse(rf.Filter); err != nil {
+		return fmt.Errorf("invalid filter %q: %w", rf.Filter, err)
+	}
+	var duration flagutil.RetentionDuration
+	if err := duration.Set(rf.Retention); err != nil {
+		return fmt.Errorf("invalid retention %q: %w", rf.Retention, err)
+	}
+	if globalDuration.Milliseconds() > 0 && duration.Milliseconds() > globalDuration.Milliseconds() {
+		return fmt.Errorf("retention %q must not exceed retentionPeriod %q", rf.Retention, globalDuration.String())
+	}
+	return nil
 }
 
 // CommonRelabelParams defines params for relabelling

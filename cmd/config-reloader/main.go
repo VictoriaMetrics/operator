@@ -264,7 +264,7 @@ func (c *cfgWatcher) start(ctx context.Context) {
 				continue
 			}
 			configLastReloadSuccess.Set(1)
-			configLastOkReloadTime.Set(uint64(time.Now().UnixMilli()))
+			configLastOkReloadTime.Set(uint64(time.Now().Unix()))
 			logger.Infof("reload config ok.")
 		}
 	}()

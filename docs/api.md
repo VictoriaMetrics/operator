@@ -1868,8 +1868,8 @@ Appears in: [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage
 | Field | Description |
 | --- | --- |
 | recommenders<a href="#embeddedvpa-recommenders" id="embeddedvpa-recommenders">#</a><br/>_VerticalPodAutoscalerRecommenderSelector array_ | _(Optional)_<br/>Recommenders specifies custom VPA recommender names. |
-| resourcePolicy<a href="#embeddedvpa-resourcepolicy" id="embeddedvpa-resourcepolicy">#</a><br/>_[PodResourcePolicy](#podresourcepolicy)_ | _(Required)_<br/>ResourcePolicy controls how the autoscaler computes recommended resources per container. |
-| updatePolicy<a href="#embeddedvpa-updatepolicy" id="embeddedvpa-updatepolicy">#</a><br/>_[PodUpdatePolicy](#podupdatepolicy)_ | _(Required)_<br/>UpdatePolicy controls how the autoscaler applies changes to pod resources. |
+| resourcePolicy<a href="#embeddedvpa-resourcepolicy" id="embeddedvpa-resourcepolicy">#</a><br/>_[PodResourcePolicy](https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#podresourcepolicy)_ | _(Required)_<br/>ResourcePolicy controls how the autoscaler computes recommended resources per container. |
+| updatePolicy<a href="#embeddedvpa-updatepolicy" id="embeddedvpa-updatepolicy">#</a><br/>_[PodUpdatePolicy](https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#podupdatepolicy)_ | _(Required)_<br/>UpdatePolicy controls how the autoscaler applies changes to pod resources. |
 
 #### Endpoint
 
@@ -2866,7 +2866,7 @@ Appears in: [VMRuleSpec](#vmrulespec)
 | limit<a href="#rulegroup-limit" id="rulegroup-limit">#</a><br/>_integer_ | _(Optional)_<br/>Limit the number of alerts an alerting rule and series a recording<br />rule can produce |
 | name<a href="#rulegroup-name" id="rulegroup-name">#</a><br/>_string_ | _(Required)_<br/>Name of group |
 | notifier_headers<a href="#rulegroup-notifier_headers" id="rulegroup-notifier_headers">#</a><br/>_string array_ | _(Optional)_<br/>NotifierHeaders contains optional HTTP headers added to each alert request which will send to notifier<br />Must be in form `header-name: value`<br />For example:<br /> headers:<br />   - "CustomHeader: foo"<br />   - "CustomHeader2: bar" |
-| params<a href="#rulegroup-params" id="rulegroup-params">#</a><br/>_[Values](#values)_ | _(Optional)_<br/>Params optional HTTP URL parameters added to each rule request |
+| params<a href="#rulegroup-params" id="rulegroup-params">#</a><br/>_[Values](https://pkg.go.dev/net/url#Values)_ | _(Optional)_<br/>Params optional HTTP URL parameters added to each rule request |
 | rules<a href="#rulegroup-rules" id="rulegroup-rules">#</a><br/>_[Rule](#rule) array_ | _(Required)_<br/>Rules list of alert rules |
 | tenant<a href="#rulegroup-tenant" id="rulegroup-tenant">#</a><br/>_string_ | _(Optional)_<br/>Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy). |
 | type<a href="#rulegroup-type" id="rulegroup-type">#</a><br/>_string_ | _(Optional)_<br/>Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite,vlogs |

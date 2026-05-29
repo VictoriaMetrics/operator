@@ -1,5 +1,15 @@
 render:
   kubernetesVersion: '1.35'
+  knownTypes:
+    - name: PodResourcePolicy
+      package: k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
+      link: https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#podresourcepolicy
+    - name: PodUpdatePolicy
+      package: k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
+      link: https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#podupdatepolicy
+    - name: Values
+      package: net/url
+      link: https://pkg.go.dev/net/url#Values
 
 processor:
   ignoreTypes:

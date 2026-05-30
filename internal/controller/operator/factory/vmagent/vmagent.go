@@ -262,13 +262,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 					}
 				}
 			}
-			o := reconcile.DeploymentOpts{
-				PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
-					if cr.Spec.HPA != nil {
-						newSpec.Replicas = existingSpec.Replicas
-					}
-				},
-			}
+			o := reconcile.DeploymentOpts{}
 			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
@@ -310,11 +304,6 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			o := reconcile.StatefulSetOpts{
 				SelectorLabels: selectorLabels,
 				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
-				PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
-					if cr.Spec.HPA != nil {
-						newSpec.Replicas = existingSpec.Replicas
-					}
-				},
 			}
 			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
@@ -1337,16 +1326,15 @@ func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	if cr.Spec.HPA == nil {
 		return nil
 	}
-	kind := "Deployment"
-	if cr.Spec.StatefulMode {
-		kind = "StatefulSet"
-	} else if cr.Spec.DaemonSetMode {
+	if cr.Spec.DaemonSetMode {
 		return nil
 	}
+	// Target the VMAgent CR via its scale subresource so HPA controls spec.shardCount,
+	// not pod replicas inside a single shard deployment.
 	targetRef := autoscalingv2.CrossVersionObjectReference{
-		Name:       cr.PrefixedName(),
-		Kind:       kind,
-		APIVersion: "apps/v1",
+		Name:       cr.Name,
+		Kind:       "VMAgent",
+		APIVersion: "operator.victoriametrics.com/v1beta1",
 	}
 	newHPA := build.HPA(cr, targetRef, cr.Spec.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler

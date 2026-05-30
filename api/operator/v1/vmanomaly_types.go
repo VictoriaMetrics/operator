@@ -316,11 +316,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
-	var shardCnt int32
-	if cr.IsSharded() {
-		shardCnt = *cr.Spec.ShardCount
-	}
-	vs.Shards = shardCnt
+	vs.Shards = cr.GetShardCount()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

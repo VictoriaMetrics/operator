@@ -488,12 +488,8 @@ func (cr *VMAgent) DefaultStatusFields(vs *VMAgentStatus) {
 	if cr.Spec.ReplicaCount != nil {
 		replicaCount = *cr.Spec.ReplicaCount
 	}
-	var shardCnt int32
-	if cr.IsSharded() {
-		shardCnt = *cr.Spec.ShardCount
-	}
 	vs.Replicas = replicaCount
-	vs.Shards = shardCnt
+	vs.Shards = cr.GetShardCount()
 	vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
 }
 

@@ -15,6 +15,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
@@ -253,17 +254,47 @@ func TestCreateOrUpdate_StatefulSetWithHPA(t *testing.T) {
 	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
 	assert.Equal(t, int32(1), *sts.Spec.Replicas)
 
-	// simulate HPA scaling the StatefulSet to 3 replicas
-	sts.Spec.Replicas = ptr.To(int32(3))
-	assert.NoError(t, fclient.Update(ctx, &sts))
-
-	// reconcile with a different desired replica count in the spec
+	// HPA now targets the VMAgent CR scale subresource (spec.shardCount), not the StatefulSet
+	// directly. The operator must always reconcile pod replicas from spec.replicaCount.
 	cr.Spec.ReplicaCount = ptr.To(int32(2))
 	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	// HPA-managed replica count must not be overwritten
 	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
-	assert.Equal(t, int32(3), *sts.Spec.Replicas)
+	assert.Equal(t, int32(2), *sts.Spec.Replicas)
+}
+
+func TestCreateOrUpdate_StatusShards(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAgent, wantShards int32) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		assert.NoError(t, reconcile.UpdateObjectStatus(ctx, fclient, cr, vmv1beta1.UpdateStatusOperational, nil))
+
+		var updated vmv1beta1.VMAgent
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &updated))
+		assert.Equal(t, wantShards, updated.Status.Shards)
+	}
+
+	// non-sharded: status.shards must be 1 so VPA/HPA scale subresource is non-zero
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "no-shards", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+		},
+	}, 1)
+
+	// explicit shardCount=3
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "three-shards", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			ShardCount:  ptr.To(int32(3)),
+		},
+	}, 3)
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

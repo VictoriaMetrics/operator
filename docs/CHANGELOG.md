@@ -17,6 +17,8 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_COMMON_LABELS` and `VM_COMMON_ANNOTATIONS` environment variables to apply common labels/annotations to all Kubernetes resources managed by the operator. These cannot override labels/annotations already set by the operator or via `spec.managedMetadata`. This also ensures HTTPRoutes and PVCs include ManagedMetadata labels and annotations
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix VPA scale subresource lookup failure when `spec.shardCount` is unset by always reporting at least 1 in `status.shards`. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix HPA targeting the underlying Deployment/StatefulSet (pod replicas) instead of the VMAgent CR scale subresource (`spec.shardCount`); HPA now correctly scales the number of shards. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
 

@@ -126,3 +126,28 @@ func TestVMAgent_Validate(t *testing.T) {
 		},
 	}, true)
 }
+
+func TestVMAgent_DefaultStatusFields(t *testing.T) {
+	f := func(cr *VMAgent, wantShards, wantReplicas int32) {
+		t.Helper()
+		var status VMAgentStatus
+		cr.DefaultStatusFields(&status)
+		assert.Equal(t, wantShards, status.Shards, "shards")
+		assert.Equal(t, wantReplicas, status.Replicas, "replicas")
+	}
+
+	// no shardCount set: must report 1 so VPA scale subresource gets a non-zero statusReplicasPath
+	f(&VMAgent{Spec: VMAgentSpec{}}, 1, 0)
+
+	// shardCount explicitly set
+	f(&VMAgent{Spec: VMAgentSpec{ShardCount: ptr.To(int32(3))}}, 3, 0)
+
+	// shardCount=1 explicitly
+	f(&VMAgent{Spec: VMAgentSpec{ShardCount: ptr.To(int32(1))}}, 1, 0)
+
+	// daemonset mode disables sharding, should still report 1
+	f(&VMAgent{Spec: VMAgentSpec{ShardCount: ptr.To(int32(3)), DaemonSetMode: true}}, 1, 0)
+
+	// replicaCount is tracked independently
+	f(&VMAgent{Spec: VMAgentSpec{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(2))}}}, 1, 2)
+}

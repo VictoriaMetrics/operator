@@ -2397,7 +2397,6 @@ containers:
     - name: vmagent
       image: vm-repo:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2441,6 +2440,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent`,
@@ -2502,7 +2505,6 @@ containers:
     - name: vmagent
       image: vm-repo:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=1073741824
         - -remoteWrite.tlsInsecureSkipVerify=true
@@ -2552,6 +2554,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
     - name: config-reloader
@@ -2653,7 +2659,6 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8429
         - -promscrape.config=/etc/vmagent/config_out/vmagent.yaml
         - -remoteWrite.maxDiskUsagePerURL=1073741824
@@ -2696,6 +2701,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
     - name: config-reloader
@@ -2785,7 +2794,6 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2819,6 +2827,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent
@@ -2872,7 +2884,6 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=10GB,20MB,10GB
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
@@ -2906,6 +2917,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent
@@ -2964,7 +2979,6 @@ containers:
     - name: vmagent
       image: victoriametrics/vmagent:v1.97.1
       args:
-        - -http.shutdownDelay=30s
         - -httpListenAddr=:8425
         - -remoteWrite.forceVMProto=false
         - -remoteWrite.maxDiskUsagePerURL=35GiB
@@ -2999,6 +3013,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent

@@ -700,7 +700,6 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.VMSelect.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
@@ -718,6 +717,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	build.Probe(&vmselectContainer, cr.Spec.VMSelect, &cr.Spec.VMSelect.CommonAppsParams)
+	build.Lifecycle(&vmselectContainer, &cr.Spec.VMSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMSelect.CommonAppsParams)
@@ -912,7 +912,6 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.VMInsert.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -930,6 +929,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	build.Probe(&vminsertContainer, cr.Spec.VMInsert, &cr.Spec.VMInsert.CommonAppsParams)
+	build.Lifecycle(&vminsertContainer, &cr.Spec.VMInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMInsert.CommonAppsParams)
@@ -1156,7 +1156,6 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.VMStorage.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
@@ -1585,7 +1584,6 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	volumes, vmounts = build.LicenseVolumeTo(volumes, vmounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
-	args = build.AddHTTPShutdownDelayArg(args, &spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmauthLBCnt := corev1.Container{
@@ -1606,6 +1604,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		VolumeMounts:    vmounts,
 	}
 	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
+	build.Lifecycle(&vmauthLBCnt, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}

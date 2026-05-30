@@ -302,6 +302,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	build.Probe(&vmalertContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmalertContainer, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
@@ -523,7 +524,6 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	}
 
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 
 	sort.Strings(args)

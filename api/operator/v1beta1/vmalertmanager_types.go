@@ -586,6 +586,9 @@ func (cr *VMAlertmanager) Validate() error {
 	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
 		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

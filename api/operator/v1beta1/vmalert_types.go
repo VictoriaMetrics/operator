@@ -398,6 +398,9 @@ func (cr *VMAlert) Validate() error {
 	if err := validateNotifierConfigs(); err != nil {
 		return err
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -233,7 +233,6 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, &r.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vtsingleContainer := corev1.Container{
@@ -250,6 +249,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&vtsingleContainer, r, &r.Spec.CommonAppsParams)
+	build.Lifecycle(&vtsingleContainer, &r.Spec.CommonAppsParams)
 
 	operatorContainers := []corev1.Container{vtsingleContainer}
 

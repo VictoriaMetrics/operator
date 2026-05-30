@@ -212,7 +212,6 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.VLInsert.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -230,6 +229,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&insertContainers, cr.Spec.VLInsert, &cr.Spec.VLInsert.CommonAppsParams)
+	build.Lifecycle(&insertContainers, &cr.Spec.VLInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{insertContainers}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VLInsert.CommonAppsParams)

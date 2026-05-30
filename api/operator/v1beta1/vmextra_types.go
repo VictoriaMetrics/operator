@@ -1537,6 +1537,11 @@ type CommonAppsParams struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// PreStopSleepSeconds defines the number of seconds to sleep in the preStop lifecycle hook.
+	// It gives time for load balancers to remove the pod from rotation before the pod is terminated.
+	// Defaults to 15 for applicable components. Set to 0 to disable.
+	// +optional
+	PreStopSleepSeconds *int32 `json:"preStopSleepSeconds,omitempty"`
 	// LivenessProbe that will be added to CR pod
 	// +optional
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
@@ -1546,6 +1551,17 @@ type CommonAppsParams struct {
 	// StartupProbe that will be added to CR pod
 	// +optional
 	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
+}
+
+// Validate checks CommonAppsParams for semantic errors.
+func (p *CommonAppsParams) Validate() error {
+	if p.PreStopSleepSeconds != nil && p.TerminationGracePeriodSeconds != nil {
+		if int64(*p.PreStopSleepSeconds) >= *p.TerminationGracePeriodSeconds {
+			return fmt.Errorf("preStopSleepSeconds (%d) must be less than terminationGracePeriodSeconds (%d)",
+				*p.PreStopSleepSeconds, *p.TerminationGracePeriodSeconds)
+		}
+	}
+	return nil
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext

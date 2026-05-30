@@ -357,7 +357,6 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
@@ -374,6 +373,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	}
 
 	build.Probe(&vmsingleContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmsingleContainer, &cr.Spec.CommonAppsParams)
 
 	containers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container

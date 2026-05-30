@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/ptr"
 )
 
 func Test_buildPathWithPrefixFlag(t *testing.T) {
@@ -307,4 +308,41 @@ func TestEmbeddedVPAValidation(t *testing.T) {
 		},
 		wantErr: false,
 	})
+}
+
+func TestCommonAppsParamsValidate(t *testing.T) {
+	f := func(p CommonAppsParams, wantErr bool) {
+		t.Helper()
+		err := p.Validate()
+		if wantErr {
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		} else {
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		}
+	}
+	// both nil — ok
+	f(CommonAppsParams{}, false)
+	// only preStop set — ok (grace period unknown, no constraint)
+	f(CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)}, false)
+	// only grace period set — ok
+	f(CommonAppsParams{TerminationGracePeriodSeconds: ptr.To[int64](30)}, false)
+	// preStop < grace period — ok
+	f(CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](15),
+		TerminationGracePeriodSeconds: ptr.To[int64](30),
+	}, false)
+	// preStop == grace period — error
+	f(CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](15),
+		TerminationGracePeriodSeconds: ptr.To[int64](15),
+	}, true)
+	// preStop > grace period — error
+	f(CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](30),
+		TerminationGracePeriodSeconds: ptr.To[int64](15),
+	}, true)
 }

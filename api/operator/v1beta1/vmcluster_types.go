@@ -732,6 +732,9 @@ func (cr *VMCluster) Validate() error {
 				return fmt.Errorf("vmselect: %w", err)
 			}
 		}
+		if err := vms.Validate(); err != nil {
+			return fmt.Errorf("vmselect: %w", err)
+		}
 	}
 	if cr.Spec.VMInsert != nil {
 		vmi := cr.Spec.VMInsert
@@ -748,6 +751,9 @@ func (cr *VMCluster) Validate() error {
 			if err := vmi.VPA.Validate(); err != nil {
 				return err
 			}
+		}
+		if err := vmi.Validate(); err != nil {
+			return fmt.Errorf("vminsert: %w", err)
 		}
 	}
 	if err := cr.Spec.Downsampling.validate(cr.Spec.License); err != nil {
@@ -780,12 +786,18 @@ func (cr *VMCluster) Validate() error {
 				return err
 			}
 		}
+		if err := vms.Validate(); err != nil {
+			return fmt.Errorf("vmstorage: %w", err)
+		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		rlb := cr.Spec.RequestsLoadBalancer.Spec
 		lbName := cr.PrefixedName(ClusterComponentBalancer)
 		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == lbName {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", lbName)
+		}
+		if err := rlb.Validate(); err != nil {
+			return fmt.Errorf("requestsLoadBalancer: %w", err)
 		}
 	}
 	var vminsertDiscovery, vmselectDiscovery *VMClusterDiscovery

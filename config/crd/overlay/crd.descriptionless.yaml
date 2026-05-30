@@ -494,6 +494,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:
@@ -1466,6 +1469,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -2080,6 +2086,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -2977,6 +2986,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -3723,6 +3735,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:
@@ -5481,6 +5496,9 @@ spec:
                 x-kubernetes-map-type: atomic
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               probeNamespaceSelector:
@@ -10613,6 +10631,9 @@ spec:
                 type: string
               portName:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:
@@ -11841,6 +11862,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:
@@ -12961,6 +12985,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               reader:
@@ -14805,6 +14832,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:
@@ -15956,6 +15986,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -16510,6 +16543,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -17581,6 +17617,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -21275,6 +21314,9 @@ spec:
                         type: object
                       port:
                         type: string
+                      preStopSleepSeconds:
+                        format: int32
+                        type: integer
                       priorityClassName:
                         type: string
                       readinessGates:
@@ -26507,6 +26549,9 @@ spec:
                             type: object
                           port:
                             type: string
+                          preStopSleepSeconds:
+                            format: int32
+                            type: integer
                           priorityClassName:
                             type: string
                           readinessGates:
@@ -30773,6 +30818,9 @@ spec:
                               type: object
                             port:
                               type: string
+                            preStopSleepSeconds:
+                              format: int32
+                              type: integer
                             priorityClassName:
                               type: string
                             readinessGates:
@@ -41310,6 +41358,9 @@ spec:
                 x-kubernetes-map-type: atomic
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               probeNamespaceSelector:
@@ -44051,6 +44102,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -44612,6 +44666,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -45511,6 +45568,9 @@ spec:
                     type: object
                   port:
                     type: string
+                  preStopSleepSeconds:
+                    format: int32
+                    type: integer
                   priorityClassName:
                     type: string
                   readinessGates:
@@ -46141,6 +46201,9 @@ spec:
                 type: object
               port:
                 type: string
+              preStopSleepSeconds:
+                format: int32
+                type: integer
               priorityClassName:
                 type: string
               readinessGates:

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -201,42 +202,65 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 	})
 }
 
-func TestAddHTTPShutdownDelayArg(t *testing.T) {
-	type opts struct {
-		params   vmv1beta1.CommonAppsParams
-		wantArgs []string
-	}
-	f := func(o opts) {
+func TestLifecycle(t *testing.T) {
+	f := func(params *vmv1beta1.CommonAppsParams, wantPreStop *corev1.LifecycleHandler) {
 		t.Helper()
-		assert.Equal(t, AddHTTPShutdownDelayArg(nil, &o.params), o.wantArgs)
+		var container corev1.Container
+		Lifecycle(&container, params)
+		if wantPreStop == nil {
+			assert.Nil(t, container.Lifecycle)
+			return
+		}
+		require.NotNil(t, container.Lifecycle)
+		assert.Equal(t, wantPreStop, container.Lifecycle.PreStop)
 	}
-	f(opts{
-		wantArgs: []string{"-http.shutdownDelay=30s"},
+	// nil params — no hook
+	f(nil, nil)
+	// nil PreStopSleepSeconds — no hook
+	f(&vmv1beta1.CommonAppsParams{}, nil)
+	// zero — no hook
+	f(&vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](0)}, nil)
+
+	// unsupported k8s version — no hook even with seconds set
+	k8stools.ServerMajorVersion = 1
+	k8stools.ServerMinorVersion = 28
+	f(&vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)}, nil)
+
+	// supported k8s version (>= 1.29) — native SleepAction
+	k8stools.ServerMajorVersion = 1
+	k8stools.ServerMinorVersion = 29
+	t.Cleanup(func() { k8stools.ServerMajorVersion = 0; k8stools.ServerMinorVersion = 0 })
+
+	// sleep >= terminationGracePeriodSeconds — no hook to avoid SIGKILL during preStop
+	f(&vmv1beta1.CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](15),
+		TerminationGracePeriodSeconds: ptr.To[int64](15),
+	}, nil)
+	f(&vmv1beta1.CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](30),
+		TerminationGracePeriodSeconds: ptr.To[int64](15),
+	}, nil)
+
+	// sleep < terminationGracePeriodSeconds — hook applied
+	f(&vmv1beta1.CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](15),
+		TerminationGracePeriodSeconds: ptr.To[int64](30),
+	}, &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: 15}})
+
+	// no terminationGracePeriodSeconds set — hook applied (nil means no constraint)
+	f(&vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)}, &corev1.LifecycleHandler{
+		Sleep: &corev1.SleepAction{Seconds: 15},
 	})
-	f(opts{
-		params: vmv1beta1.CommonAppsParams{
-			ExtraArgs: map[string]string{"http.shutdownDelay": "5s"},
-		},
-		wantArgs: nil,
-	})
-	f(opts{
-		params: vmv1beta1.CommonAppsParams{
-			TerminationGracePeriodSeconds: ptr.To[int64](60),
-		},
-		wantArgs: []string{"-http.shutdownDelay=60s"},
-	})
-	f(opts{
-		params: vmv1beta1.CommonAppsParams{
-			TerminationGracePeriodSeconds: ptr.To[int64](120),
-		},
-		wantArgs: []string{"-http.shutdownDelay=120s"},
-	})
-	f(opts{
-		params: vmv1beta1.CommonAppsParams{
-			ExtraArgs:                     map[string]string{"http.shutdownDelay": "20s"},
-			TerminationGracePeriodSeconds: ptr.To[int64](120),
-		},
-	})
+	// custom value with sufficient grace period
+	f(&vmv1beta1.CommonAppsParams{
+		PreStopSleepSeconds:           ptr.To[int32](30),
+		TerminationGracePeriodSeconds: ptr.To[int64](60),
+	}, &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: 30}})
+	// user-defined preStop not overwritten
+	userPreStop := &corev1.LifecycleHandler{Exec: &corev1.ExecAction{Command: []string{"my-shutdown.sh"}}}
+	container := corev1.Container{Lifecycle: &corev1.Lifecycle{PreStop: userPreStop}}
+	Lifecycle(&container, &vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)})
+	assert.Equal(t, userPreStop, container.Lifecycle.PreStop)
 }
 
 func TestFormatContainerImage(t *testing.T) {

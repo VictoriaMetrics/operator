@@ -314,7 +314,6 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.VLStorage.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{

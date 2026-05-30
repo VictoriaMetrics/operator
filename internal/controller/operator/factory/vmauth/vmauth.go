@@ -334,7 +334,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -351,6 +350,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 	build.Probe(&vmauthContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmauthContainer, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmauthContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	// move vmauth container to the 0 index

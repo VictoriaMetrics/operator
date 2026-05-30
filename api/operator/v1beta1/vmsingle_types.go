@@ -454,6 +454,9 @@ func (cr *VMSingle) Validate() error {
 			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
 		}
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

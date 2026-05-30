@@ -718,6 +718,9 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
+		if err := vli.Validate(); err != nil {
+			return fmt.Errorf("vlinsert: %w", err)
+		}
 	}
 	storageNodes := sets.New[string]()
 	if cr.Spec.VLStorage != nil {
@@ -733,6 +736,9 @@ func (cr *VLCluster) Validate() error {
 			if err := vls.VPA.Validate(); err != nil {
 				return err
 			}
+		}
+		if err := vls.Validate(); err != nil {
+			return fmt.Errorf("vlstorage: %w", err)
 		}
 	}
 	if cr.Spec.VLSelect != nil {
@@ -750,6 +756,9 @@ func (cr *VLCluster) Validate() error {
 			if err := vms.VPA.Validate(); err != nil {
 				return err
 			}
+		}
+		if err := vms.Validate(); err != nil {
+			return fmt.Errorf("vlselect: %w", err)
 		}
 		if nodes, ok := cr.Spec.VLSelect.ExtraArgs["storageNode"]; ok {
 			for _, node := range strings.Split(nodes, ",") {

@@ -178,6 +178,9 @@ func (cr *VLAgent) Validate() error {
 			return fmt.Errorf("remoteWrite.tlsConfig has incorrect syntax at idx: %d: %w", idx, err)
 		}
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

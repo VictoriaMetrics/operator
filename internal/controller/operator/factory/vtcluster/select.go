@@ -314,7 +314,6 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
-	args = build.AddHTTPShutdownDelayArg(args, &cr.Spec.Select.CommonAppsParams)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.Select.ExtraArgs, "-")
 	sort.Strings(args)
 	selectContainers := corev1.Container{
@@ -332,6 +331,7 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&selectContainers, cr.Spec.Select, &cr.Spec.Select.CommonAppsParams)
+	build.Lifecycle(&selectContainers, &cr.Spec.Select.CommonAppsParams)
 	operatorContainers := []corev1.Container{selectContainers}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.Select.CommonAppsParams)

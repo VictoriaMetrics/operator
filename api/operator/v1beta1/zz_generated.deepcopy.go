@@ -454,6 +454,11 @@ func (in *CommonAppsParams) DeepCopyInto(out *CommonAppsParams) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.PreStopSleepSeconds != nil {
+		in, out := &in.PreStopSleepSeconds, &out.PreStopSleepSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	if in.LivenessProbe != nil {
 		in, out := &in.LivenessProbe, &out.LivenessProbe
 		*out = new(v1.Probe)

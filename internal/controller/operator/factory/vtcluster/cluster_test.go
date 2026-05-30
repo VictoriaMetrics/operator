@@ -106,7 +106,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt := dep.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-http.shutdownDelay=30s", "-httpListenAddr=:10481", "-internalselect.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
+			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10481", "-internalselect.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
 			assert.Nil(t, dep.Annotations)
 			assert.Equal(t, dep.Labels, map[string]string{
 				"app.kubernetes.io/name":      "vtinsert",
@@ -120,7 +120,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect), Namespace: cr.Namespace}, &dep))
 			assert.Len(t, dep.Spec.Template.Spec.Containers, 1)
 			cnt = dep.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-http.shutdownDelay=30s", "-httpListenAddr=:10471", "-internalinsert.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
+			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10471", "-internalinsert.disable=true", "-storageNode=vtstorage-base-0.vtstorage-base.default:10491,vtstorage-base-1.vtstorage-base.default:10491"})
 			assert.Nil(t, dep.Annotations)
 			assert.Equal(t, dep.Labels, map[string]string{
 				"app.kubernetes.io/name":      "vtselect",
@@ -135,7 +135,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
 			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 			cnt = sts.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-http.shutdownDelay=30s", "-httpListenAddr=:10491", "-storageDataPath=/vtstorage-data"})
+			assert.Equal(t, cnt.Args, []string{"-httpListenAddr=:10491", "-storageDataPath=/vtstorage-data"})
 			assert.Nil(t, sts.Annotations)
 			assert.Equal(t, sts.Labels, map[string]string{
 				"app.kubernetes.io/name":      "vtstorage",
@@ -198,7 +198,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage), Namespace: cr.Namespace}, &sts))
 			assert.Len(t, sts.Spec.Template.Spec.Containers, 1)
 			cnt := sts.Spec.Template.Spec.Containers[0]
-			assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-http.shutdownDelay=30s", "-httpListenAddr=:10491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vtstorage-data"})
+			assert.Equal(t, cnt.Args, []string{"-futureRetention=2d", "-httpListenAddr=:10491", "-retention.maxDiskSpaceUsageBytes=5GB", "-retentionPeriod=1w", "-storageDataPath=/vtstorage-data"})
 		},
 	})
 

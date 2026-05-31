@@ -2333,9 +2333,10 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 
 func TestMakeSpecForAgentOk(t *testing.T) {
 	type opts struct {
-		cr                *vmv1beta1.VMAgent
-		predefinedObjects []runtime.Object
-		wantYaml          string
+		cr                     *vmv1beta1.VMAgent
+		predefinedObjects      []runtime.Object
+		extraConfigSecretCount int
+		wantYaml               string
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -2350,7 +2351,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		assert.NoError(t, yaml.Unmarshal([]byte(o.wantYaml), &wantSpec))
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
 		assert.NoError(t, err)
-		got, err := newPodSpec(o.cr, ac)
+		got, err := newPodSpec(o.cr, ac, o.extraConfigSecretCount)
 		assert.NoError(t, err)
 		gotYAML, err := yaml.Marshal(got)
 		assert.NoError(t, err)
@@ -3022,5 +3023,176 @@ containers:
 serviceaccountname: vmagent-agent
 
     `,
+	})
+
+	// scrape config split across 2 extra secrets — verifies volumes, mounts, and reloader flags
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v1.97.1",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "8429",
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "vmcustomer:v1",
+				},
+			},
+		},
+		extraConfigSecretCount: 2,
+		wantYaml: `
+volumes:
+    - name: persistent-queue-data
+      volumesource:
+        emptydir: {}
+    - name: tls-assets
+      volumesource:
+        secret:
+            secretname: tls-assets-vmagent-agent
+    - name: config-out
+      volumesource:
+        emptydir: {}
+    - name: config
+      volumesource:
+        secret:
+            secretname: vmagent-agent
+    - name: sc-files-out
+      volumesource:
+        emptydir: {}
+    - name: sc-raw-1
+      volumesource:
+        secret:
+            secretname: vmagent-agent-sc-1
+    - name: sc-raw-2
+      volumesource:
+        secret:
+            secretname: vmagent-agent-sc-2
+initcontainers:
+    - name: config-init
+      image: vmcustomer:v1
+      args:
+        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
+        - --config-secret-key=vmagent.yaml.gz
+        - --config-secret-name=default/vmagent-agent
+        - --only-init-config
+        - --reload-url=http://127.0.0.1:8429/-/reload
+        - --webhook-method=POST
+      volumemounts:
+        - name: config-out
+          mountpath: /etc/vmagent/config_out
+containers:
+    - name: vmagent
+      image: victoriametrics/vmagent:v1.97.1
+      args:
+        - -httpListenAddr=:8429
+        - -promscrape.config=/etc/vmagent/config_out/vmagent.yaml
+        - -remoteWrite.maxDiskUsagePerURL=1073741824
+        - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
+      ports:
+        - name: http
+          containerport: 8429
+          protocol: TCP
+      volumemounts:
+        - name: persistent-queue-data
+          mountpath: /tmp/vmagent-remotewrite-data
+        - name: config-out
+          readonly: true
+          mountpath: /etc/vmagent/config_out
+        - name: tls-assets
+          readonly: true
+          mountpath: /etc/vmagent-tls/certs
+        - name: config
+          readonly: true
+          mountpath: /etc/vmagent/config
+        - name: sc-files-out
+          readonly: true
+          mountpath: /etc/vm/sc-files
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8429
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8429
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+    - name: config-reloader
+      image: vmcustomer:v1
+      args:
+        - --config-envsubst-file=/etc/vmagent/config_out/vmagent.yaml
+        - --config-secret-key=vmagent.yaml.gz
+        - --config-secret-name=default/vmagent-agent
+        - --reload-url=http://127.0.0.1:8429/-/reload
+        - --webhook-method=POST
+        - --watched-dir=/etc/vm/sc-raw-1
+        - --target-dir=/etc/vm/sc-files/sc-raw-1
+        - --watched-dir=/etc/vm/sc-raw-2
+        - --target-dir=/etc/vm/sc-files/sc-raw-2
+      ports:
+        - name: reloader-http
+          containerport: 8435
+          protocol: TCP
+      volumemounts:
+        - name: config-out
+          mountpath: /etc/vmagent/config_out
+        - name: sc-files-out
+          mountpath: /etc/vm/sc-files
+        - name: sc-raw-1
+          readonly: true
+          mountpath: /etc/vm/sc-raw-1
+        - name: sc-raw-2
+          readonly: true
+          mountpath: /etc/vm/sc-raw-2
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        initialdelayseconds: 5
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      terminationmessagepolicy: FallbackToLogsOnError
+serviceaccountname: vmagent-agent
+`,
 	})
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -46,6 +44,8 @@ var (
 		"watched-dir", "directory to watch non-recursively")
 	rulesDir = flagutil.NewArrayString(
 		"rules-dir", "the same as watched-dir, legacy")
+	targetDir = flagutil.NewArrayString(
+		"target-dir", "when provided, must have the same number of argument as --watched-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change")
 	reloadURL = flag.String(
 		"reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
 	reloadURLAuthKey = flagutil.NewPassword("reload-url-auth-key", "authKey for config reload API requests")
@@ -93,6 +93,13 @@ func main() {
 	if err != nil {
 		logger.Fatalf("incorrect value for reload-url=%q: %s", *reloadURL, err)
 	}
+	activeDirs := *watchedDir
+	if len(activeDirs) == 0 {
+		activeDirs = *rulesDir
+	}
+	if len(*targetDir) > 0 && len(*targetDir) != len(activeDirs) {
+		logger.Fatalf("--target-dir count (%d) must match --watched-dir count (%d)", len(*targetDir), len(activeDirs))
+	}
 	logger.Infof("starting config reloader")
 	r := reloader{
 		c: buildHTTPClient(),
@@ -105,6 +112,24 @@ func main() {
 	if *onlyInitConfig {
 		if err = configWatcher.load(ctx); err != nil {
 			logger.Fatalf("failed to init config: %v", err)
+		}
+		// Perform initial dir copies so init containers can pre-populate target dirs.
+		var initDws []string
+		if len(*watchedDir) > 0 {
+			initDws = *watchedDir
+		} else if len(*rulesDir) > 0 {
+			initDws = *rulesDir
+		}
+		if len(initDws) > 0 {
+			initDW, initErr := newDirWatchers(initDws, *targetDir)
+			if initErr != nil {
+				logger.Fatalf("cannot create dir watcher for init: %s", initErr)
+			}
+			for _, p := range initDW.pairs {
+				if copyErr := p.sync(); copyErr != nil {
+					logger.Fatalf("cannot copy dir %s to target on init: %s", p.src, copyErr)
+				}
+			}
 		}
 		logger.Infof("config initiation succeed, exit now")
 		cancel()
@@ -125,7 +150,7 @@ func main() {
 		dws = *rulesDir
 	}
 
-	dw, err := newDirWatchers(dws)
+	dw, err := newDirWatchers(dws, *targetDir)
 	if err != nil {
 		logger.Fatalf("cannot start dir watcher: %s", err)
 	}
@@ -351,24 +376,15 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 	return w, nil
 }
 
-var firstGzipBytes = []byte{0x1f, 0x8b, 0x08}
-
 func writeNewContent(data []byte) error {
 	// fast path.
 	if *configFileDst == "" {
 		return nil
 	}
-	if len(data) > 3 && bytes.Equal(data[0:3], firstGzipBytes) {
-		// its gzipped data
-		gz, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return fmt.Errorf("cannot create gzip reader: %w", err)
-		}
-		defer gz.Close()
-		data, err = io.ReadAll(gz)
-		if err != nil {
-			return fmt.Errorf("cannot ungzip data: %w", err)
-		}
+	var err error
+	data, err = maybeDecompress(data)
+	if err != nil {
+		return fmt.Errorf("cannot decompress config: %w", err)
 	}
 	tmpDst := *configFileDst + ".tmp"
 	if err := os.WriteFile(tmpDst, data, 0644); err != nil {

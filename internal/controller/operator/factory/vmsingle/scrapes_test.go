@@ -40,7 +40,8 @@ func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 		}
 		build.AddDefaults(testClient.Scheme())
 		ac := getAssetsCache(ctx, testClient, o.cr)
-		assert.NoError(t, createOrUpdateScrapeConfig(ctx, testClient, o.cr, nil, nil, ac))
+		_, err := createOrUpdateScrapeConfig(ctx, testClient, o.cr, nil, nil, ac)
+		assert.NoError(t, err)
 		var expectSecret corev1.Secret
 		nsn := types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}
 		assert.NoError(t, testClient.Get(ctx, nsn, &expectSecret))
@@ -2027,7 +2028,7 @@ scrape_configs: []
 			},
 		}
 		ac := getAssetsCache(ctx, testClient, cr)
-		if err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac); err != nil {
+		if _, err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac); err != nil {
 			t.Errorf("createOrUpdateScrapeConfig() error = %s", err)
 		}
 		var configSecret corev1.Secret

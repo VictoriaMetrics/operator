@@ -12,6 +12,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -263,9 +264,9 @@ func TestRuleRebalance(t *testing.T) {
 	ctx := context.Background()
 
 	// Each rule's serialized YAML is ~76 bytes.
-	origLimit := vmv1beta1.MaxConfigMapDataSize
-	vmv1beta1.MaxConfigMapDataSize = 80
-	defer func() { vmv1beta1.MaxConfigMapDataSize = origLimit }()
+	origLimit := config.MustGetBaseConfig().ConfigDataBudgetBytes
+	config.MustGetBaseConfig().ConfigDataBudgetBytes = 80
+	defer func() { config.MustGetBaseConfig().ConfigDataBudgetBytes = origLimit }()
 
 	mkRule := func(ns, name, recordName string) *vmv1beta1.VMRule {
 		return &vmv1beta1.VMRule{

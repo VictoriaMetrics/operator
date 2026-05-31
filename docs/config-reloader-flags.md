@@ -134,6 +134,10 @@ Usage of bin/config-reloader:
     	Comma-separated list of flag names with secret values. Values for these flags are hidden in logs and on /metrics page
     	Supports an array of values separated by comma or specified via multiple flags.
     	Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -target-dir array
+    	when provided, must have the same number of argument as --watched-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change
+    	Supports an array of values separated by comma or specified via multiple flags.
+    	Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -tls array
     	Whether to enable TLS for incoming HTTP requests at the given -httpListenAddr (aka https). -tlsCertFile and -tlsKeyFile must be set if -tls is set. See also -mtls
     	Supports array of values separated by comma or specified via multiple flags.

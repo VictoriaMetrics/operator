@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -178,7 +179,7 @@ func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) []c
 
 	for _, filename := range fileNames {
 		// If rule file doesn't fit into current bucket, create new bucket.
-		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > vmv1beta1.MaxConfigMapDataSize {
+		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > config.MustGetBaseConfig().ConfigDataBudgetBytes {
 			buckets = append(buckets, map[string]string{})
 			currBucketIndex++
 		}

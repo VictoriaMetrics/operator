@@ -715,7 +715,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
 	})
 
 	// with tls args
@@ -745,7 +745,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			},
 		},
 		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
 	})
 
 	// with static and selector notifiers

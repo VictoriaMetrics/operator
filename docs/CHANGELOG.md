@@ -13,8 +13,12 @@ aliases:
 
 ## tip
 
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
+**Update note 1**: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed content in `binaryData` and an init container decompresses them before VMAlert starts. Existing VMAlert pods will be rolled out once during this upgrade.
+
+* FEATURE: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed rule files in `binaryData`, allowing larger rule sets within Kubernetes object size limits. An init container decompresses the rules before VMAlert starts.
+
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 
 ## [v0.71.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.1)
 **Release date:** 12 June 2026

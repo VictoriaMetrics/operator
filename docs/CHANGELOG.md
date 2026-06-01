@@ -18,6 +18,8 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
 * FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `url_file` and `alert_source_token_file` fields to `IncidentioConfig`, as file-based alternatives to `url` and `alert_source_token`. See [#2222](https://github.com/VictoriaMetrics/operator/issues/2222).
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix VPA scale subresource lookup failure when `spec.shardCount` is unset by always reporting at least 1 in `status.shards`. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix HPA targeting the underlying Deployment/StatefulSet (pod replicas) instead of the VMAgent CR scale subresource (`spec.shardCount`); HPA now correctly scales the number of shards. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
 

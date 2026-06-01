@@ -781,7 +781,10 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
                             "name": "vo-access",
                             "key": "SECRET_URL"
                         },
-                        "routing_key": "CRITICAL"
+                        "routing_key": "CRITICAL",
+                        "custom_fields": {
+                            "key": "value"
+                        }
                     }
                 ]
             }
@@ -796,13 +799,13 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
     "apiVersion": "v1",
     "kind": "VMAlertmanagerConfig",
     "metadata": {
-        "name": "wechat"
+        "name": "msteams"
     },
     "spec": {
         "receivers": [
             {
                 "name": "wc",
-                "wechat_configs": [
+                "msteams_configs": [
                     {
                         "webhook_url": "https://open-for-all.example"
                     },
@@ -835,9 +838,6 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
                         "routing_key": {
                             "name": "pd-access",
                             "key": "secret"
-                        },
-                        "custom_fields": {
-                            "key": "value"
                         }
                     },
                     {

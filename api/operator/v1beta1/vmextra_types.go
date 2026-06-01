@@ -885,6 +885,25 @@ func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
 	return props
 }
 
+// UnmarshalSpecStrict decodes spec JSON into v and rejects unknown fields.
+// A lenient pass runs first so real parse errors (type mismatches, syntax)
+// are returned before unknown-field errors can hide them.
+func UnmarshalSpecStrict(data []byte, v any) error {
+	if err := json.Unmarshal(data, v); err != nil {
+		return err
+	}
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	return d.Decode(v)
+}
+
+// HasUnknownFields reports whether a ParsingSpecError was caused by unknown spec fields.
+// Webhook ValidateUpdate uses this to allow updates to CRs that contain fields unknown to
+// the current operator version (e.g. after a downgrade), while ValidateCreate still rejects them.
+func HasUnknownFields(parsingSpecErr string) bool {
+	return strings.Contains(parsingSpecErr, "json: unknown field")
+}
+
 // UnmarshalJSON implements json.Unmarshaller interface
 func (c *TLSConfig) UnmarshalJSON(data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))

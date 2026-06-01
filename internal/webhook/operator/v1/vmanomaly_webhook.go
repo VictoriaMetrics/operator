@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 // SetupVMAnomalyWebhookWithManager registers the webhook for VMAnomaly in the manager.
@@ -51,7 +52,7 @@ func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
 func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *vmv1.VMAnomaly) (admission.Warnings, error) {
-	if newObj.Status.ParsingSpecError != "" {
+	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
 	if err := newObj.Validate(); err != nil {

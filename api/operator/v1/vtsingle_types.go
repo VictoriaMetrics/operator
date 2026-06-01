@@ -160,7 +160,7 @@ func (cr *VTSingle) UnmarshalJSON(src []byte) error {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+		if err := vmv1beta1.UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VTSingleSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

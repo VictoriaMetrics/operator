@@ -100,7 +100,7 @@ func (cr *VMStaticScrape) UnmarshalJSON(src []byte) error {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := json.Unmarshal(s.Spec, &cr.Spec); err != nil {
+		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMStaticScrapeSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

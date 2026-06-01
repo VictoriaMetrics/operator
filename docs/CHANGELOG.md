@@ -22,6 +22,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix HPA targeting the underlying Deployment/StatefulSet (pod replicas) instead of the VMAgent CR scale subresource (`spec.shardCount`); HPA now correctly scales the number of shards. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): enable strict CR spec unmarshalling when creating objects. See [#2882](https://github.com/VictoriaMetrics/helm-charts/issues/2882).
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026
@@ -30,7 +31,7 @@ aliases:
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): skip replica count update when VMAgent is in stateful mode and HPA is enabled. See [#2190](https://github.com/VictoriaMetrics/operator/issues/2190).
 * BUGFIX: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): Remove prefix from empty subroute receiver. See [#2185](https://github.com/VictoriaMetrics/operator/issues/2185).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): updated OLM configuration to fix OpenShift catalog publishing. See [#]
+
 
 ## [v0.70.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 18 May 2026

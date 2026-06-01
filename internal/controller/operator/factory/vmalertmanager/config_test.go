@@ -1461,6 +1461,49 @@ templates: []
 `,
 	})
 
+	// incidentio with file-based fields
+	f(opts{
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "incidentio-file",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+					Route: &vmv1beta1.Route{
+						Receiver: "incidentio-file",
+					},
+					Receivers: []vmv1beta1.Receiver{
+						{
+							Name: "incidentio-file",
+							IncidentioConfigs: []vmv1beta1.IncidentioConfig{
+								{
+									URLFile:              "/etc/alertmanager/incidentio_url",
+									AlertSourceTokenFile: "/etc/alertmanager/incidentio_token",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		want: `route:
+  receiver: blackhole
+  routes:
+  - matchers:
+    - namespace = "default"
+    receiver: default-incidentio-file-incidentio-file
+    continue: true
+receivers:
+- name: blackhole
+- name: default-incidentio-file-incidentio-file
+  incidentio_configs:
+  - alert_source_token_file: /etc/alertmanager/incidentio_token
+    url_file: /etc/alertmanager/incidentio_url
+templates: []
+`,
+	})
+
 	// msteamsv2
 	f(opts{
 		predefinedObjects: []runtime.Object{

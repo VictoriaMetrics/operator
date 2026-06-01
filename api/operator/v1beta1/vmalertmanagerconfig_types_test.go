@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
@@ -58,7 +59,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
         }
     }
 }
-`, `unknown field "match"`)
+`, `unknown object member name "match"`)
 	f(`{
     "apiVersion": "v1",
     "kind": "VMAlertmanagerConfig",
@@ -381,7 +382,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
                                 }
                             },
                             "tls_config": {
-                                "insecure_skip_verify": true
+                                "verify_certificate": true
                              }
                         },
                         "title": "some",
@@ -395,7 +396,7 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
             "receiver": "teams"
         }
     }
-}`, `unknown field "insecure_skip_verify"`)
+}`, `unknown object member name "verify_certificate"`)
 }
 
 func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
@@ -987,4 +988,263 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
         }
     }
 }`)
+}
+
+// TestVMAlertmanagerConfigCaseIgnore verifies that both snake_case and camelCase
+// field names are accepted when unmarshalling VMAlertmanagerConfig, thanks to the
+// json "case:ignore" tag option processed by encoding/json/v2.
+func TestVMAlertmanagerConfigCaseIgnore(t *testing.T) {
+	unmarshal := func(t *testing.T, src string) VMAlertmanagerConfig {
+		t.Helper()
+		var amc VMAlertmanagerConfig
+		assert.NoError(t, json.Unmarshal([]byte(src), &amc))
+		assert.Empty(t, amc.Status.ParsingSpecError)
+		return amc
+	}
+
+	t.Run("spec top-level fields camelCase", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [{"name": "recv"}],
+				"inhibitRules": [
+					{
+						"targetMatchers": ["env=prod"],
+						"sourceMatchers": ["env=dev"],
+						"equal": ["alertname"]
+					}
+				],
+				"timeIntervals": [
+					{
+						"name": "workhours",
+						"timeIntervals": [
+							{
+								"daysOfMonth": ["1:5"],
+								"times": [{"startTime": "09:00", "endTime": "17:00"}]
+							}
+						]
+					}
+				],
+				"route": {"receiver": "recv"}
+			}
+		}`)
+		assert.Len(t, amc.Spec.InhibitRules, 1)
+		assert.Equal(t, []string{"env=prod"}, amc.Spec.InhibitRules[0].TargetMatchers)
+		assert.Equal(t, []string{"env=dev"}, amc.Spec.InhibitRules[0].SourceMatchers)
+		assert.Len(t, amc.Spec.TimeIntervals, 1)
+		assert.Equal(t, "workhours", amc.Spec.TimeIntervals[0].Name)
+		ti := amc.Spec.TimeIntervals[0].TimeIntervals[0]
+		assert.Equal(t, []string{"1:5"}, ti.DaysOfMonth)
+		assert.Equal(t, "09:00", ti.Times[0].StartTime)
+		assert.Equal(t, "17:00", ti.Times[0].EndTime)
+	})
+
+	t.Run("route camelCase fields", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [{"name": "recv"}, {"name": "recv2"}],
+				"timeIntervals": [{"name": "quiet", "timeIntervals": [{"weekdays": ["saturday", "sunday"]}]}],
+				"route": {
+					"receiver": "recv",
+					"groupBy": ["alertname", "cluster"],
+					"groupWait": "30s",
+					"groupInterval": "5m",
+					"repeatInterval": "12h",
+					"muteTimeIntervals": ["quiet"],
+					"activeTimeIntervals": ["quiet"],
+					"routes": [{"receiver": "recv2"}]
+				}
+			}
+		}`)
+		r := amc.Spec.Route
+		assert.Equal(t, []string{"alertname", "cluster"}, r.GroupBy)
+		assert.Equal(t, "30s", r.GroupWait)
+		assert.Equal(t, "5m", r.GroupInterval)
+		assert.Equal(t, "12h", r.RepeatInterval)
+		assert.Equal(t, []string{"quiet"}, r.MuteTimeIntervals)
+		assert.Equal(t, []string{"quiet"}, r.ActiveTimeIntervals)
+	})
+
+	t.Run("nested route camelCase fields", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [{"name": "recv"}],
+				"route": {
+					"receiver": "recv",
+					"routes": [
+						{
+							"receiver": "recv",
+							"groupWait": "10s",
+							"groupInterval": "2m",
+							"matchers": ["env=prod"]
+						}
+					]
+				}
+			}
+		}`)
+		assert.Len(t, amc.Spec.Route.Routes, 1)
+		sub := amc.Spec.Route.Routes[0]
+		assert.Equal(t, "10s", sub.GroupWait)
+		assert.Equal(t, "2m", sub.GroupInterval)
+	})
+
+	t.Run("receiver list fields camelCase", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [
+					{
+						"name": "recv",
+						"webhookConfigs": [
+							{
+								"url": "http://example.com/hook",
+								"sendResolved": true,
+								"maxAlerts": 5
+							}
+						],
+						"telegramConfigs": [
+							{
+								"botToken": {"name": "secret", "key": "token"},
+								"chatId": 12345,
+								"sendResolved": false
+							}
+						]
+					}
+				],
+				"route": {"receiver": "recv"}
+			}
+		}`)
+		recv := amc.Spec.Receivers[0]
+		assert.Len(t, recv.WebhookConfigs, 1)
+		wh := recv.WebhookConfigs[0]
+		assert.Equal(t, "http://example.com/hook", *wh.URL)
+		assert.Equal(t, true, *wh.SendResolved)
+		assert.Equal(t, int32(5), wh.MaxAlerts)
+
+		assert.Len(t, recv.TelegramConfigs, 1)
+		tg := recv.TelegramConfigs[0]
+		assert.Equal(t, corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}, Key: "token"}, *tg.BotToken)
+		assert.Equal(t, 12345, tg.ChatID)
+		assert.Equal(t, false, *tg.SendResolved)
+	})
+
+	t.Run("http_config camelCase fields", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [
+					{
+						"name": "recv",
+						"webhookConfigs": [
+							{
+								"url": "http://example.com/hook",
+								"httpConfig": {
+									"bearerTokenSecret": {"name": "secret", "key": "token"},
+									"followRedirects": false,
+									"tls_config": {
+										"insecure_skip_verify": true,
+										"server_name": "example.com"
+									}
+								}
+							}
+						]
+					}
+				],
+				"route": {"receiver": "recv"}
+			}
+		}`)
+		hc := amc.Spec.Receivers[0].WebhookConfigs[0].HTTPConfig
+		assert.Equal(t, "secret", hc.BearerTokenSecret.Name)
+		assert.Equal(t, "token", hc.BearerTokenSecret.Key)
+		assert.Equal(t, false, *hc.FollowRedirects)
+		assert.Equal(t, true, hc.TLSConfig.InsecureSkipVerify)
+		assert.Equal(t, "example.com", hc.TLSConfig.ServerName)
+	})
+
+	t.Run("ProxyConfig snake_case for camelCase canonical fields", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [
+					{
+						"name": "recv",
+						"webhookConfigs": [
+							{
+								"url": "http://example.com/hook",
+								"httpConfig": {
+									"proxy_url": "http://proxy:3128",
+									"no_proxy": "localhost,127.0.0.1"
+								}
+							}
+						]
+					}
+				],
+				"route": {"receiver": "recv"}
+			}
+		}`)
+		hc := amc.Spec.Receivers[0].WebhookConfigs[0].HTTPConfig
+		assert.Equal(t, "http://proxy:3128", hc.ProxyURL)
+		assert.Equal(t, "localhost,127.0.0.1", hc.NoProxy)
+	})
+
+	t.Run("snake_case canonical fields still work (regression)", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [{"name": "recv"}],
+				"inhibit_rules": [
+					{
+						"target_matchers": ["env=prod"],
+						"source_matchers": ["env=dev"]
+					}
+				],
+				"route": {
+					"receiver": "recv",
+					"group_by": ["alertname"],
+					"group_wait": "30s",
+					"group_interval": "5m",
+					"repeat_interval": "12h"
+				}
+			}
+		}`)
+		assert.Len(t, amc.Spec.InhibitRules, 1)
+		assert.Equal(t, "30s", amc.Spec.Route.GroupWait)
+		assert.Equal(t, []string{"alertname"}, amc.Spec.Route.GroupBy)
+	})
+
+	t.Run("mixed snake_case and camelCase in same object", func(t *testing.T) {
+		amc := unmarshal(t, `{
+			"apiVersion": "operator.victoriametrics.com/v1beta1",
+			"kind": "VMAlertmanagerConfig",
+			"metadata": {"name": "test"},
+			"spec": {
+				"receivers": [{"name": "recv"}],
+				"route": {
+					"receiver": "recv",
+					"group_wait": "30s",
+					"groupInterval": "5m",
+					"repeat_interval": "12h"
+				}
+			}
+		}`)
+		assert.Equal(t, "30s", amc.Spec.Route.GroupWait)
+		assert.Equal(t, "5m", amc.Spec.Route.GroupInterval)
+		assert.Equal(t, "12h", amc.Spec.Route.RepeatInterval)
+	})
 }

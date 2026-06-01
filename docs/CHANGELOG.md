@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): CRD fields now accept both `snake_case` and `camelCase` naming. For example, `group_wait` and `groupWait` are interchangeable in `VMAlertmanagerConfig`, and `scrape_interval` / `scrapeInterval` in scrape CRDs. This makes it easier to copy-paste native VictoriaMetrics or Alertmanager YAML configs into operator CRDs without reformatting. See [#1146](https://github.com/VictoriaMetrics/operator/issues/1146).
+
 ## [v0.72.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.72.0)
 **Release date:** 15 June 2026
 

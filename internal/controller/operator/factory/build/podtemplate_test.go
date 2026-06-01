@@ -58,11 +58,25 @@ func TestPodTemplateParams(t *testing.T) {
 		},
 	)
 
-	// HostAliasesUnderScore takes precedence over HostAliases
+	// HostAliasesUnderScore (host_aliases) alone is used when hostAliases is unset
+	f(
+		&vmv1beta1.CommonAppsParams{
+			HostAliasesUnderScore: []corev1.HostAlias{
+				{IP: "5.6.7.8", Hostnames: []string{"new.host"}},
+			},
+		},
+		corev1.PodSpec{
+			HostAliases: []corev1.HostAlias{
+				{IP: "5.6.7.8", Hostnames: []string{"new.host"}},
+			},
+		},
+	)
+
+	// HostAliasesUnderScore (host_aliases) takes priority over hostAliases when both are set
 	f(
 		&vmv1beta1.CommonAppsParams{
 			HostAliases: []corev1.HostAlias{
-				{IP: "1.2.3.4", Hostnames: []string{"old.host"}},
+				{IP: "1.1.1.1", Hostnames: []string{"old.host"}},
 			},
 			HostAliasesUnderScore: []corev1.HostAlias{
 				{IP: "5.6.7.8", Hostnames: []string{"new.host"}},

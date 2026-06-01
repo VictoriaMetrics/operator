@@ -17,7 +17,8 @@ limitations under the License.
 package v1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"path"
 	"strings"
@@ -135,7 +136,7 @@ type VMAnomalySpec struct {
 	// +optional
 	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming            bool `json:"useLegacyNaming,omitempty"`
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // VMAnomalyWritersSpec defines writer configuration for VMAnomaly
@@ -166,7 +167,7 @@ type VMAnomalyWritersSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	MetricPrefixCacheMaxEntries *int `json:"metricPrefixCacheMaxEntries,omitempty" yaml:"metric_prefix_cache_max_entries,omitempty"`
 	// +optional
-	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
+	VMAnomalyHTTPClientSpec `json:",inline" yaml:",inline,omitempty"`
 }
 
 // VMAnomalyVMWriterMetricFormatSpec defines the desired state of VMAnomalyVMWriterMetricFormat
@@ -381,7 +382,7 @@ func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
 	type pcr VMAnomaly
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

@@ -104,7 +104,7 @@ func main() {
 	r := reloader{
 		c: buildHTTPClient(),
 	}
-	configWatcher, err := newConfigWatcher(ctx)
+	configWatcher, err := newConfigWatcher()
 	if err != nil {
 		logger.Fatalf("cannot create configWatcher: %s", err)
 	}
@@ -352,7 +352,7 @@ func (ew *emptyWatcher) start(_ context.Context, _ chan struct{}) {}
 
 func (ew *emptyWatcher) close() {}
 
-func newConfigWatcher(ctx context.Context) (watcher, error) {
+func newConfigWatcher() (watcher, error) {
 	var w watcher
 	if *configFileName == "" && *configSecretName == "" {
 		logger.Infof("direct config watch not needed, both configFileName and configSecretName is empty")
@@ -383,7 +383,7 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 		namespace := secretNamespaced[:idx]
 		secretName := secretNamespaced[idx+1:]
 		logger.Infof("starting watch for secret: %s at namespace: %s", secretName, namespace)
-		kw, err := newKubernetesWatcher(ctx, secretName, namespace)
+		kw, err := newKubernetesWatcher(secretName, namespace)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create kubernetes watcher: %w", err)
 		}

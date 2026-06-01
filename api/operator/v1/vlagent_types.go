@@ -1,7 +1,8 @@
 package v1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -108,7 +109,7 @@ type VLAgentSpec struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 type VLAgentK8sCollector struct {
@@ -380,7 +381,7 @@ func (cr *VLAgent) UnmarshalJSON(src []byte) error {
 	type pcr VLAgent
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

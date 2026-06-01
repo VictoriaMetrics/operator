@@ -235,7 +235,7 @@ func VMPodScrape(b podScrapeBuilder, portName string, additionalPortNames ...str
 
 func addVictoriaMetricsAppRelabelConfig(relabelings *vmv1beta1.EndpointRelabelings) {
 	for _, rc := range relabelings.RelabelConfigs {
-		if rc != nil && (rc.TargetLabel == "victoriametrics_app" || rc.UnderScoreTargetLabel == "victoriametrics_app") {
+		if rc != nil && rc.TargetLabel == "victoriametrics_app" {
 			return
 		}
 	}

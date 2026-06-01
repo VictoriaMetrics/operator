@@ -1,9 +1,10 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,14 +94,14 @@ func (cr *VMStaticScrape) UnmarshalJSON(src []byte) error {
 	type pcr VMStaticScrape
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMStaticScrapeSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

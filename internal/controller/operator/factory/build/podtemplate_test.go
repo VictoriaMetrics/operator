@@ -58,13 +58,10 @@ func TestPodTemplateParams(t *testing.T) {
 		},
 	)
 
-	// HostAliasesUnderScore takes precedence over HostAliases
+	// host_aliases (snake_case) accepted alongside hostAliases via case:ignore
 	f(
 		&vmv1beta1.CommonAppsParams{
 			HostAliases: []corev1.HostAlias{
-				{IP: "1.2.3.4", Hostnames: []string{"old.host"}},
-			},
-			HostAliasesUnderScore: []corev1.HostAlias{
 				{IP: "5.6.7.8", Hostnames: []string{"new.host"}},
 			},
 		},

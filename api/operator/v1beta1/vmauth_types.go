@@ -1,12 +1,13 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	appsv1 "k8s.io/api/apps/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -122,8 +123,8 @@ type VMAuthSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
-	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams `json:",inline" yaml:",inline"`
+	CommonAppsParams           `json:",inline" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v0.56.0 operator
 	// and v1.111.0 vmauth version
@@ -228,7 +229,7 @@ type UnauthorizedAccessConfigURLMap struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 
-	URLMapCommon `json:",omitempty" yaml:",inline"`
+	URLMapCommon `json:",inline" yaml:",inline"`
 }
 
 // Validate performs syntax logic validation
@@ -578,14 +579,14 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	type pcr VMAuth
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAuthSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

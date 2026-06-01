@@ -66,7 +66,7 @@ Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}
 {{- range $memberKeys }}
 {{- $member := index $members . }}
 {{- $id := lower (printf "%s-%s" $type.Name $member.Name) }}
-| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "deprecated" (dict "member" $member "type" $type.Name) }} |
+| {{ $member.Name }}{{ if $member.Aliases }} _(or {{ range $i, $a := $member.Aliases }}{{ if $i }}, {{ end }}{{ $a }}{{ end }})_ {{ end }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "deprecated" (dict "member" $member "type" $type.Name) }} |
 {{- end }}
 {{- end }}
 {{- end }}

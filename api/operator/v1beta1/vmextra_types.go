@@ -1,8 +1,6 @@
 package v1beta1
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
@@ -11,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -300,7 +300,7 @@ type HTTPAuth struct {
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// +optional
-	*BearerAuth `json:",inline,omitempty"`
+	*BearerAuth `json:",inline"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
 	// e.g.
@@ -767,7 +767,7 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 		*m = match
 		return nil
 	default:
-		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
+		return &json.SemanticError{JSONValue: jsontext.Value(data), GoType: rawType}
 	}
 }
 
@@ -885,18 +885,6 @@ func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
 	return props
 }
 
-// UnmarshalSpecStrict decodes spec JSON into v and rejects unknown fields.
-// A lenient pass runs first so real parse errors (type mismatches, syntax)
-// are returned before unknown-field errors can hide them.
-func UnmarshalSpecStrict(data []byte, v any) error {
-	if err := json.Unmarshal(data, v); err != nil {
-		return err
-	}
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.DisallowUnknownFields()
-	return d.Decode(v)
-}
-
 // HasUnknownFields reports whether a ParsingSpecError was caused by unknown spec fields.
 // Webhook ValidateUpdate uses this to allow updates to CRs that contain fields unknown to
 // the current operator version (e.g. after a downgrade), while ValidateCreate still rejects them.
@@ -906,11 +894,8 @@ func HasUnknownFields(parsingSpecErr string) bool {
 
 // UnmarshalJSON implements json.Unmarshaller interface
 func (c *TLSConfig) UnmarshalJSON(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-
 	type pc TLSConfig
-	if err := decoder.Decode((*pc)(c)); err != nil {
+	if err := json.Unmarshal(data, (*pc)(c), json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
 
@@ -1165,6 +1150,7 @@ type CommonConfigReloaderParams struct {
 
 // CommonAppsParams defines common params
 // for deployment and statefulset specifications
+// +kubebuilder:pruning:PreserveUnknownFields
 type CommonAppsParams struct {
 	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
@@ -1183,13 +1169,7 @@ type CommonAppsParams struct {
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.
 	// +optional
-	HostAliases []corev1.HostAlias `json:"hostAliases,omitempty"`
-	// HostAliasesUnderScore provides mapping for ip and hostname,
-	// that would be propagated to pod,
-	// cannot be used with HostNetwork.
-	// Has Priority over hostAliases field
-	// +optional
-	HostAliasesUnderScore []corev1.HostAlias `json:"host_aliases,omitempty"`
+	HostAliases []corev1.HostAlias `json:"hostAliases,omitempty,case:ignore"`
 	// PriorityClassName class assigned to the Pods
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`

@@ -17,10 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -231,7 +232,7 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {
@@ -438,14 +439,14 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributed
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := vmv1beta1.UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMDistributedSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

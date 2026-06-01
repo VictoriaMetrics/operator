@@ -807,10 +807,12 @@ func buildIncidentio(rc vmv1beta1.IncidentioConfig, ns string, ac *build.AssetsC
 		}
 		r.set("alert_source_token", secret)
 	}
+	r.set("alert_source_token_file", rc.AlertSourceTokenFile)
 	if rc.SendResolved != nil {
 		r.set("send_resolved", rc.SendResolved)
 	}
 	r.set("url", rc.URL)
+	r.set("url_file", rc.URLFile)
 	r.set("timeout", rc.Timeout)
 	r.set("max_alerts", rc.MaxAlerts)
 	return r.items, nil

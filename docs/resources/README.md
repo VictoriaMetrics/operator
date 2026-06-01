@@ -58,9 +58,9 @@ Field `extraArgs` is supported for the following custom resources:
 
 Supported flags for each application can be found the in the corresponding documentation:
 
-- [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/#advanced-usage)
-- [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert/#configuration)
-- [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#advanced-usage)
+- [VMAgent](https://docs.victoriametrics.com/victoriametrics/vmagent/#advanced-usage)
+- [VMAlert](https://docs.victoriametrics.com/victoriametrics/vmalert/#configuration)
+- [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/#advanced-usage)
 - [VMCluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#list-of-command-line-flags)
 - [VMSingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#list-of-command-line-flags)
 - [VLAgent](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)

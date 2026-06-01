@@ -16,9 +16,11 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.144.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.144.0) version
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): added `VM_COMMON_LABELS` and `VM_COMMON_ANNOTATIONS` environment variables to apply common labels/annotations to all Kubernetes resources managed by the operator. These cannot override labels/annotations already set by the operator or via `spec.managedMetadata`. This also ensures HTTPRoutes and PVCs include ManagedMetadata labels and annotations
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): support enableServiceLinks property in all CRs. See [#2194](https://github.com/VictoriaMetrics/operator/pull/2194).
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `url_file` and `alert_source_token_file` fields to `IncidentioConfig`, as file-based alternatives to `url` and `alert_source_token`. See [#2222](https://github.com/VictoriaMetrics/operator/issues/2222).
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): enable strict CR spec unmarshalling. See [#2882](https://github.com/VictoriaMetrics/helm-charts/issues/2882).
+* BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): enable strict CR spec unmarshalling when creating objects. See [#2882](https://github.com/VictoriaMetrics/helm-charts/issues/2882).
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026
@@ -822,7 +824,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v1.102.0](https://img.shields.io/badge/v1.102.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11020)
 ![AppVersion: v0.28.0](https://img.shields.io/badge/v0.28.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v0280)
 
-**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0471---23-aug-2024) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
+**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0472) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
 
 - [operator](https://docs.victoriametrics.com/operator/): properly update statefulset on `revisionHistoryLimitCount` change. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1070) for details.
 - [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): properly construct `tls_config` for `emails` notifications. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1080) for details.
@@ -1019,7 +1021,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - scrape CRDs: fix scrape_config filed `disable_keep_alive`, before it's misconfigured as `disable_keepalive` and won't work.
 - scrape CRDs: deprecated option `relabel_debug` and  `metric_relabel_debug`, they were deprecated since [v1.85.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.85.0).
 
-## [v0.43.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3)
+## [v0.42.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3)
 
 **Release date:** 12 Mar 2024
 

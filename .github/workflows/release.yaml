@@ -4,6 +4,9 @@ on:
     types:
       - created
       - prereleased
+
+permissions: {}
+
 jobs:
   release:
     name: Release on GitHub
@@ -48,6 +51,11 @@ jobs:
           TAG=${TAG} make publish
           TAG=${TAG} make sign
           TAG=${TAG} REGISTRY=quay.io make olm
+          if [[ "${{ github.event.release.target_commitish }}" == release-* ]]; then
+            echo "stable" > bundle/CHANNEL
+          else
+            echo "beta" > bundle/CHANNEL
+          fi
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber || echo "fix me NOT enough security permissions"

@@ -200,8 +200,14 @@ func InitOperatorProcess(extraNamespaces ...string) []byte {
 // and cleanup resources
 func ShutdownOperatorProcess() {
 	By("tearing down the test environment")
-	cancelManager(operator.ErrShutdown)
-	Eventually(stopped, 60, 2).Should(BeClosed())
+	shutdownOperatorProcess()
+}
+
+func shutdownOperatorProcess() {
+	if cancelManager != nil {
+		cancelManager(operator.ErrShutdown)
+		Eventually(stopped, 60, 2).Should(BeClosed())
+	}
 	ShutdownTestEnv()
 }
 

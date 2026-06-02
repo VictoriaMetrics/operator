@@ -38,12 +38,10 @@ target_label: address
 action: replace
 `)
 
-	// ok base with underscore
-	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "replace",
-	}, `source_labels:
+	// ok base with snake_case JSON keys (source_labels / target_label accepted via case:ignore)
+	var rcSnake vmv1beta1.RelabelConfig
+	assert.NoError(t, json.Unmarshal([]byte(`{"source_labels":["__address__"],"target_label":"address","action":"replace"}`), &rcSnake))
+	f(&rcSnake, `source_labels:
 - __address__
 target_label: address
 action: replace
@@ -51,11 +49,11 @@ action: replace
 
 	// ok base with graphite match labels
 	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
+		TargetLabel:  "address",
+		SourceLabels: []string{"__address__"},
+		Action:       "graphite",
+		Labels:       map[string]string{"job": "$1", "instance": "${2}:8080"},
+		Match:        `foo.*.*.bar`,
 	}, `source_labels:
 - __address__
 target_label: address
@@ -68,13 +66,13 @@ labels:
 
 	// with empty replacement and separator
 	f(&vmv1beta1.RelabelConfig{
-		UnderScoreTargetLabel:  "address",
-		UnderScoreSourceLabels: []string{"__address__"},
-		Action:                 "graphite",
-		Labels:                 map[string]string{"job": "$1", "instance": "${2}:8080"},
-		Match:                  `foo.*.*.bar`,
-		Separator:              ptr.To(""),
-		Replacement:            ptr.To(""),
+		TargetLabel:  "address",
+		SourceLabels: []string{"__address__"},
+		Action:       "graphite",
+		Labels:       map[string]string{"job": "$1", "instance": "${2}:8080"},
+		Match:        `foo.*.*.bar`,
+		Separator:    ptr.To(""),
+		Replacement:  ptr.To(""),
 	}, `source_labels:
 - __address__
 separator: ""

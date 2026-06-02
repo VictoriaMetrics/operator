@@ -17,11 +17,12 @@ limitations under the License.
 package v1
 
 import (
-	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -120,7 +121,7 @@ type VMAnomalySpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // VMAnomalyWritersSpec defines writer configuration for VMAnomaly
@@ -133,7 +134,7 @@ type VMAnomalyWritersSpec struct {
 	// +optional
 	MetricFormat VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
 	// +optional
-	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
+	VMAnomalyHTTPClientSpec `json:",inline" yaml:",inline,omitempty"`
 }
 
 // VMAnomalyVMWriterMetricFormatSpec defines the desired state of VMAnomalyVMWriterMetricFormat
@@ -324,14 +325,14 @@ func (cr *VMAnomaly) UnmarshalJSON(src []byte) error {
 	type pcr VMAnomaly
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := vmv1beta1.UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAnomalySpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

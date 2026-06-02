@@ -16,9 +16,6 @@ func PodTemplateAddCommonParams(dst *corev1.PodTemplateSpec, params *vmv1beta1.C
 	dst.Spec.SchedulerName = params.SchedulerName
 	dst.Spec.RuntimeClassName = params.RuntimeClassName
 	dst.Spec.HostAliases = params.HostAliases
-	if len(params.HostAliasesUnderScore) > 0 {
-		dst.Spec.HostAliases = params.HostAliasesUnderScore
-	}
 	dst.Spec.PriorityClassName = params.PriorityClassName
 	dst.Spec.HostNetwork = params.HostNetwork
 	dst.Spec.DNSPolicy = params.DNSPolicy

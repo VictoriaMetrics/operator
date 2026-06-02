@@ -1,11 +1,12 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -150,8 +151,8 @@ type VMAlertSpec struct {
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // GetReloadURL implements reloadable interface
@@ -179,14 +180,14 @@ func (cr *VMAlert) UnmarshalJSON(src []byte) error {
 	type pcr VMAlert
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAlertSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}
@@ -199,7 +200,7 @@ type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
 	URL string `json:"url"`
 	// HTTPAuth generic auth methods
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
@@ -214,7 +215,7 @@ type VMAlertNotifierSpec struct {
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
 
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 func (ns *VMAlertNotifierSpec) validate() error {
@@ -241,7 +242,7 @@ type VMAlertRemoteReadSpec struct {
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
 
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -263,7 +264,7 @@ type VMAlertRemoteWriteSpec struct {
 	// +optional
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 	// HTTPAuth generic auth methods
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertStatus defines the observed state of VMAlert

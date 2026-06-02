@@ -1,12 +1,13 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -215,8 +216,8 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // GetReloadURL implements reloadable interface
@@ -285,14 +286,14 @@ func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
 	type pcr VMAlertmanager
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAlertmanagerSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

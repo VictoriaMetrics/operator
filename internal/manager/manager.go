@@ -456,7 +456,7 @@ func mustAddRestClientMetrics(r metrics.RegistererGatherer) {
 }
 
 type crdController interface {
-	Init(client.Client, logr.Logger, *runtime.Scheme, *config.BaseOperatorConf)
+	Init(string, client.Client, logr.Logger, *runtime.Scheme, *config.BaseOperatorConf)
 	SetupWithManager(mgr ctrl.Manager) error
 	IsDisabled(cfg *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool
 }
@@ -539,7 +539,7 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Cli
 			l.Info("controller disabled either by provided flag or respective CRD is not found", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
 			continue
 		}
-		ct.Init(mgr.GetClient(), l, mgr.GetScheme(), bs)
+		ct.Init(name, mgr.GetClient(), l, mgr.GetScheme(), bs)
 		if err := ct.SetupWithManager(mgr); err != nil {
 			return fmt.Errorf("cannot setup controller=%q: %w", name, err)
 		}

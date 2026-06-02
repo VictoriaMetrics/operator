@@ -41,12 +41,14 @@ type VTSingleReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VTSingleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VTSingleReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VTSingle")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -66,17 +68,17 @@ func (r *VTSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vtsingle", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vtsingle")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnVTSingleDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vtsingle"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

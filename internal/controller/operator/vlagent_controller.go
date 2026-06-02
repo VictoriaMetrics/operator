@@ -40,12 +40,14 @@ type VLAgentReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VLAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VLAgentReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VLAgent")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -71,18 +73,18 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}()
 	// Fetch the VLAgent instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{origin: err, controller: "vlagent", requestObject: req}
+		err = &getError{origin: err, controller: r.name, requestObject: req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vlagent")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnVLAgentDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vlagent"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

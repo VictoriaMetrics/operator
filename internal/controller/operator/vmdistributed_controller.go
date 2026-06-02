@@ -39,12 +39,14 @@ type VMDistributedReconciler struct {
 	BaseConf     *config.BaseOperatorConf
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMDistributedReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMDistributedReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMDistributedReconciler")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -64,12 +66,12 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Fetch VMDistributed instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vmdistributed", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
 	// Register metrics
-	RegisterObjectStat(&instance, "vmdistributed")
+	RegisterObjectStat(&instance, r.name)
 
 	// Check if the instance is being deleted
 	if !instance.DeletionTimestamp.IsZero() {
@@ -80,7 +82,7 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	// Check parsing error
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "VMDistributed"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

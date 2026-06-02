@@ -40,12 +40,14 @@ type VMAnomalyConfigReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMAnomalyConfigReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMAnomalyConfigReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMAnomalyConfig")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -68,11 +70,11 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Fetch the VMAnomalyConfig instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vmanomalyconfig", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vmanomalyconfig")
+	RegisterObjectStat(&instance, r.name)
 
 	if anomalyReconcileLimit.Throttle() {
 		// fast path, rate limited

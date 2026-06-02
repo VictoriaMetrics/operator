@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,7 +50,7 @@ func newCollector() *objectCollector {
 	registeredObjects := []string{
 		"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth", "vlogs", "vlsingle",
 		"vlcluster", "vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape",
-		"vmnodescrape", "vmpodscrape", "vmprobescrape", "vmscrapeconfig", "vmanomaly", "vlagent",
+		"vmnodescrape", "vmpodscrape", "vmprobe", "vmscrapeconfig", "vmanomaly", "vlagent",
 		"vtsingle", "vtcluster", "vmdistributed", "podmonitor", "prometheusrule", "servicemonitor",
 		"alertmanagerconfig", "probe", "scrapeconfig", "vmanomalyconfig",
 	}
@@ -93,6 +94,10 @@ func deregisterObjectByCollector(name, ns, controller string) {
 
 // RegisterObjectStat registers or deregisters object at metrics
 func RegisterObjectStat(obj client.Object, controller string) {
+	if controller == "" {
+		return
+	}
+	controller = strings.ToLower(controller)
 	if obj.GetDeletionTimestamp().IsZero() {
 		registerObjectByCollector(obj.GetName(), obj.GetNamespace(), controller)
 		return

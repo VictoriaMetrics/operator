@@ -33,7 +33,7 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 	c := mgr.GetClient()
 
 	for name, crdCtrl := range controllersByName {
-		crdCtrl.Init(c, setupLog, mgr.GetScheme(), baseConfig)
+		crdCtrl.Init(name, c, setupLog, mgr.GetScheme(), baseConfig)
 		r, ok := crdCtrl.(reconcile.Reconciler)
 		if !ok {
 			setupLog.Info("skipping controller, does not implement Reconciler", "name", name)

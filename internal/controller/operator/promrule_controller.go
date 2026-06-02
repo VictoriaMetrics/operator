@@ -39,15 +39,17 @@ type PromRuleReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *PromRuleReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *PromRuleReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.PromRule")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
-	activeConverterWatchers.WithLabelValues("prometheusrule").Add(1)
+	activeConverterWatchers.WithLabelValues(r.name).Add(1)
 }
 
 // Scheme implements interface.
@@ -68,11 +70,11 @@ func (r *PromRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	// Fetch the PrometheusRule instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "prometheusrule", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "prometheusrule")
+	RegisterObjectStat(&instance, r.name)
 	cr := converter.PrometheusRule(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {

@@ -41,12 +41,14 @@ type VLClusterReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VLClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VLClusterReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VLCluster")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -65,17 +67,17 @@ func (r *VLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vlcluster", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vlcluster")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vlcluster"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

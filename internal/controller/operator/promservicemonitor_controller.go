@@ -39,15 +39,17 @@ type PromServiceMonitorReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *PromServiceMonitorReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *PromServiceMonitorReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.PromServiceMonitor")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
-	activeConverterWatchers.WithLabelValues("servicemonitor").Add(1)
+	activeConverterWatchers.WithLabelValues(r.name).Add(1)
 }
 
 // Scheme implements interface.
@@ -68,11 +70,11 @@ func (r *PromServiceMonitorReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Fetch the PromServiceMonitor instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "servicemonitor", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "servicemonitor")
+	RegisterObjectStat(&instance, r.name)
 	cr := converter.ServiceMonitor(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {

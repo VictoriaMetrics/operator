@@ -40,15 +40,17 @@ type PromScrapeConfigReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *PromScrapeConfigReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *PromScrapeConfigReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.PromScrapeConfig")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
-	activeConverterWatchers.WithLabelValues("scrapeconfig").Add(1)
+	activeConverterWatchers.WithLabelValues(r.name).Add(1)
 }
 
 // Scheme implements interface.
@@ -69,14 +71,14 @@ func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// Fetch the PromScrapeConfig instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "scrapeconfig", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "scrapeconfig")
+	RegisterObjectStat(&instance, r.name)
 	var cr *vmv1beta1.VMScrapeConfig
 	if cr, err = converter.ScrapeConfig(ctx, &instance, r.BaseConf); err != nil {
-		err = &parsingError{err.Error(), "scrapeconfig"}
+		err = &parsingError{err.Error(), r.name}
 		return
 	}
 	var owner *metav1.OwnerReference

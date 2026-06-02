@@ -40,15 +40,17 @@ type PromAlertmanagerConfigReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *PromAlertmanagerConfigReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *PromAlertmanagerConfigReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.PromAlertmanagerConfig")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
-	activeConverterWatchers.WithLabelValues("alertmanagerconfig").Add(1)
+	activeConverterWatchers.WithLabelValues(r.name).Add(1)
 }
 
 // Scheme implements interface.
@@ -69,14 +71,14 @@ func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ct
 
 	// Fetch the PromAlertmanagerConfig instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "alertmanagerconfig", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "alertmanagerconfig")
+	RegisterObjectStat(&instance, r.name)
 	var cr *vmv1beta1.VMAlertmanagerConfig
 	if cr, err = converter.AlertmanagerConfig(&instance, r.BaseConf); err != nil {
-		err = &parsingError{err.Error(), "alertmanagerconfig"}
+		err = &parsingError{err.Error(), r.name}
 		return
 	}
 	var owner *metav1.OwnerReference

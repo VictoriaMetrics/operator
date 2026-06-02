@@ -47,12 +47,14 @@ type VMAuthReconciler struct {
 	BaseConf     *config.BaseOperatorConf
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMAuthReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMAuthReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMAuth")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -76,7 +78,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}()
 
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		return result, &getError{err, "vmauth", req}
+		return result, &getError{err, r.name, req}
 	}
 
 	if !instance.IsUnmanaged() {
@@ -84,7 +86,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		defer authSync.RUnlock()
 	}
 
-	RegisterObjectStat(&instance, "vmauth")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
@@ -92,7 +94,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return
 	}
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vmauth"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

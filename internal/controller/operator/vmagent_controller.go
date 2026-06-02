@@ -50,12 +50,14 @@ type VMAgentReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMAgentReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMAgentReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMAgent")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -91,7 +93,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	// Fetch the VMAgent instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{origin: err, controller: "vmagent", requestObject: req}
+		err = &getError{origin: err, controller: r.name, requestObject: req}
 		return
 	}
 
@@ -100,14 +102,14 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		defer agentSync.RUnlock()
 	}
 
-	RegisterObjectStat(&instance, "vmagent")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vmagent"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

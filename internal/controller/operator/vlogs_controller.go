@@ -39,12 +39,14 @@ type VLogsReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VLogsReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VLogsReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VLogs")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -71,17 +73,17 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vlogs", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vlogs")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnVLogsDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vlogs"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 	l.Info("VLogs CustomResource transited into read-only state. Please migrate to the VLSingle.")

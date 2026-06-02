@@ -24,12 +24,14 @@ type VMClusterReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMClusterReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMClusterReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMCluster")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -55,18 +57,18 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	}()
 
 	if err = r.Client.Get(ctx, request.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vmcluster", request}
+		err = &getError{err, r.name, request}
 		return
 	}
 
-	RegisterObjectStat(&instance, "vmcluster")
+	RegisterObjectStat(&instance, r.name)
 
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnClusterDelete(ctx, r.Client, &instance)
 		return
 	}
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vmcluster"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

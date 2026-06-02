@@ -43,12 +43,14 @@ type VMUserReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMUserReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMUserReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMUser")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -69,7 +71,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}()
 
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "vmuser", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 	if !instance.DeletionTimestamp.IsZero() {
@@ -79,9 +81,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		return
 	}
-	RegisterObjectStat(&instance, "vmuser")
+	RegisterObjectStat(&instance, r.name)
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vmuser"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

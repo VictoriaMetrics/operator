@@ -47,12 +47,14 @@ type VMAnomalyReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *VMAnomalyReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *VMAnomalyReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.VMAnomaly")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
 }
@@ -78,7 +80,7 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}()
 	// Fetch the VMAnomaly instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{origin: err, controller: "vmanomaly", requestObject: req}
+		err = &getError{origin: err, controller: r.name, requestObject: req}
 		return
 	}
 
@@ -87,14 +89,14 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		defer anomalySync.Unlock()
 	}
 
-	RegisterObjectStat(&instance, "vmanomaly")
+	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
 		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
 		return
 	}
 
 	if instance.Status.ParsingSpecError != "" {
-		err = &parsingError{instance.Status.ParsingSpecError, "vmanomaly"}
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
 

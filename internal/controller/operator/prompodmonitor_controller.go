@@ -39,15 +39,17 @@ type PromPodMonitorReconciler struct {
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 	BaseConf     *config.BaseOperatorConf
+	name         string
 }
 
 // Init implements crdController interface
-func (r *PromPodMonitorReconciler) Init(rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+func (r *PromPodMonitorReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = name
 	r.Client = rclient
-	r.Log = l.WithName("controller.PromPodMonitor")
+	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
 	r.BaseConf = cf
-	activeConverterWatchers.WithLabelValues("podmonitor").Add(1)
+	activeConverterWatchers.WithLabelValues(r.name).Add(1)
 }
 
 // Scheme implements interface.
@@ -68,11 +70,11 @@ func (r *PromPodMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Fetch the PromPodMonitor instance
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, "podmonitor", req}
+		err = &getError{err, r.name, req}
 		return
 	}
 
-	RegisterObjectStat(&instance, "podmonitor")
+	RegisterObjectStat(&instance, r.name)
 	cr := converter.PodMonitor(ctx, &instance, r.BaseConf)
 	var owner *metav1.OwnerReference
 	if len(cr.OwnerReferences) > 0 {

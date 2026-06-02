@@ -23,6 +23,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): enable strict CR spec unmarshalling when creating objects. See [#2882](https://github.com/VictoriaMetrics/helm-charts/issues/2882).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): ignore `NotFound` errors, that may occur during attempt to update status on a missing resource.
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026

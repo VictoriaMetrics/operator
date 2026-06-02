@@ -33,7 +33,7 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{o.object})
-		result, err := reconcileAndTrackStatus(context.Background(), fclient, o.object, func() (ctrl.Result, error) {
+		result, err := reconcileAndTrackStatus(context.Background(), fclient, o.object, "vmalert", func() (ctrl.Result, error) {
 			return o.cb(fclient)
 		})
 		if o.wantErr {
@@ -236,7 +236,7 @@ func TestVMClusterRemainsExpandingDuringPVCResize(t *testing.T) {
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cluster})
 
 	// Simulate retryable PVC expand error
-	_, err := reconcileAndTrackStatus(context.Background(), fclient, cluster, func() (ctrl.Result, error) {
+	_, err := reconcileAndTrackStatus(context.Background(), fclient, cluster, "vmcluster", func() (ctrl.Result, error) {
 		return ctrl.Result{}, wait.ErrorInterrupted(fmt.Errorf("pvc resize still in progress"))
 	})
 	assert.Error(t, err)

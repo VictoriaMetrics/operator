@@ -103,7 +103,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 	r.Client.Scheme().Default(&instance)
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), "vmauth", func() (ctrl.Result, error) {
 		if err := vmauth.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}

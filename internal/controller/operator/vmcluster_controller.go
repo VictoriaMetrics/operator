@@ -76,7 +76,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	}
 	r.Client.Scheme().Default(&instance)
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), "vmcluster", func() (ctrl.Result, error) {
 		if err := vmcluster.CreateOrUpdate(ctx, &instance, r.Client); err != nil {
 			return result, fmt.Errorf("failed create or update vmcluster: %w", err)
 		}

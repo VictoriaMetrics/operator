@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -87,6 +88,9 @@ func updateChildStatusConditions[T any, PT interface {
 	return retryOnConflict(func() error {
 		dst := PT(new(T))
 		if err := rclient.Get(ctx, nsn, dst); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
 			return err
 		}
 		st := dst.GetStatusMetadata()
@@ -98,6 +102,9 @@ func updateChildStatusConditions[T any, PT interface {
 		writeAggregatedStatus(st, vmv1beta1.ConditionDomainTypeAppliedSuffix)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
+				if k8serrors.IsNotFound(err) {
+					return nil
+				}
 				return fmt.Errorf("failed to patch status of broken VMAlertmanagerConfig=%q: %w", childObject.GetName(), err)
 			}
 		}

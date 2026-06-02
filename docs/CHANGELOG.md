@@ -18,6 +18,7 @@ aliases:
 * BUGFIX: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/) and [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): when storage HPA was enabled, generated `-storageNode` flags could become incorrect after scaling, which could break expected routing to storage nodes; now the operator derives storage node count from the current StatefulSet state so generated flags stay correct during HPA-driven scaling. See [#2117](https://github.com/VictoriaMetrics/operator/issues/2117).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): ignore `NotFound` errors, that may occur during attempt to update status on a missing resource.
 
 ## [v0.68.5](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.5)
 **Release date:** 27 May 2026

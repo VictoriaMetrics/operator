@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,7 +45,7 @@ type VMDistributedReconciler struct {
 
 // Init implements crdController interface
 func (r *VMDistributedReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -55,7 +56,7 @@ func (r *VMDistributedReconciler) Init(name string, rclient client.Client, l log
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributed/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmdistributed/finalizers,verbs=update
 func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmdistributed", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1alpha1.VMDistributed
 
@@ -91,7 +92,7 @@ func (r *VMDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return
 	}
 	r.Client.Scheme().Default(&instance)
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
 		if err := vmdistributed.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("VMDistributed %s update failed: %w", instance.Name, err)
 		}

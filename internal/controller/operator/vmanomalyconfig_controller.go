@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,7 +46,7 @@ type VMAnomalyConfigReconciler struct {
 
 // Init implements crdController interface
 func (r *VMAnomalyConfigReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -62,7 +63,7 @@ func (r *VMAnomalyConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalyconfigs/status,verbs=get;update;patch
 func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	var instance vmv1.VMAnomalyConfig
-	l := r.Log.WithValues("vmanomalyconfig", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)

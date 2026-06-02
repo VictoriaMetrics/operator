@@ -307,6 +307,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 	ctx context.Context,
 	c client.Client,
 	object objectWithStatusTrack[T, ST, STC],
+	controllerName string,
 	cb func() (ctrl.Result, error),
 ) (result ctrl.Result, resultErr error) {
 	if object.Paused() {
@@ -314,6 +315,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
+		RegisterObjectStatus(object, controllerName, vmv1beta1.UpdateStatusPaused)
 		return
 	}
 	specChanged := object.LastSpecUpdated()
@@ -323,6 +325,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
+		RegisterObjectStatus(object, controllerName, resultStatus)
 	}()
 
 	if specChanged {

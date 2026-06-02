@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -44,7 +45,7 @@ type PromServiceMonitorReconciler struct {
 
 // Init implements crdController interface
 func (r *PromServiceMonitorReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -61,7 +62,7 @@ func (r *PromServiceMonitorReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors/status,verbs=get;update;patch
 func (r *PromServiceMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("servicemonitor", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	var instance promv1.ServiceMonitor
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {

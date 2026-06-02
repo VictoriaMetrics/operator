@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,7 +45,7 @@ type VLogsReconciler struct {
 
 // Init implements crdController interface
 func (r *VLogsReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -64,7 +65,7 @@ func (r *VLogsReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vlogs", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1beta1.VLogs
 

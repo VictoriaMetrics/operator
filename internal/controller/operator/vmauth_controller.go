@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -52,7 +53,7 @@ type VMAuthReconciler struct {
 
 // Init implements crdController interface
 func (r *VMAuthReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -69,7 +70,7 @@ func (r *VMAuthReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmauths/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
 func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmauth", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1beta1.VMAuth
 
@@ -103,7 +104,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 	r.Client.Scheme().Default(&instance)
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), "vmauth", func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
 		if err := vmauth.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}

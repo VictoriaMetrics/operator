@@ -141,7 +141,6 @@ func RegisterObjectStat(obj client.Object, controller string) {
 	if controller == "" {
 		return
 	}
-	controller = strings.ToLower(controller)
 	if obj.GetDeletionTimestamp().IsZero() {
 		registerObjectByCollector(obj.GetName(), obj.GetNamespace(), controller)
 		return

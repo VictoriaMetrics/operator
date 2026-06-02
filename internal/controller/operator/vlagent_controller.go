@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -45,7 +46,7 @@ type VLAgentReconciler struct {
 
 // Init implements crdController interface
 func (r *VLAgentReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -64,7 +65,7 @@ func (r *VLAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vlagent", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1.VLAgent
 
@@ -93,7 +94,7 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 	r.Client.Scheme().Default(&instance)
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), "vlagent", func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
 		if err := vlagent.CreateOrUpdate(ctx, &instance, r); err != nil {
 			return result, err
 		}

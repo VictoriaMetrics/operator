@@ -19,6 +19,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -46,7 +47,7 @@ type VTClusterReconciler struct {
 
 // Init implements crdController interface
 func (r *VTClusterReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -58,7 +59,7 @@ func (r *VTClusterReconciler) Init(name string, rclient client.Client, l logr.Lo
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters/finalizers,verbs=update
 func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vtcluster", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	var instance vmv1.VTCluster
 
@@ -85,7 +86,7 @@ func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	r.Client.Scheme().Default(&instance)
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), "vtcluster", func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
 		if err := vtcluster.CreateOrUpdate(ctx, r, &instance); err != nil {
 			return result, fmt.Errorf("failed create or update vtcluster: %w", err)
 		}

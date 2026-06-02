@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,7 +43,7 @@ type VMNodeScrapeReconciler struct {
 
 // Init implements crdController interface
 func (r *VMNodeScrapeReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
-	r.name = name
+	r.name = strings.ToLower(name)
 	r.Client = rclient
 	r.Log = l.WithName("controller." + name)
 	r.OriginScheme = sc
@@ -59,7 +60,7 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
 func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmnodescrape", req.Name, "namespace", req.Namespace)
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMNodeScrape
 	ctx = logger.AddToContext(ctx, l)
 	defer func() {

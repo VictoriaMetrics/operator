@@ -121,3 +121,145 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 		},
 	}, ClusterComponentSelect, []int32{0, 1, 2})
 }
+
+func TestVMCluster_Validate(t *testing.T) {
+	f := func(spec VMClusterSpec, wantErr bool) {
+		t.Helper()
+		cr := &VMCluster{Spec: spec}
+		if wantErr {
+			assert.Error(t, cr.Validate())
+		} else {
+			assert.NoError(t, cr.Validate())
+		}
+	}
+
+	// empty spec
+	f(VMClusterSpec{}, false)
+
+	// downsampling without license
+	f(VMClusterSpec{
+		Downsampling: &DownsamplingConfig{
+			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+		},
+	}, true)
+
+	// downsampling with valid config
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+		},
+	}, false)
+
+	// downsampling with filter and dedupInterval
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules:         []DownsamplingRule{{Filter: `{env="prod"}`, Periods: []DownsamplingPeriod{{Offset: "90d", Interval: "1h"}}}},
+			DedupInterval: "1m",
+		},
+	}, false)
+
+	// downsampling - multiple periods per rule
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{
+				{Offset: "30d", Interval: "10m"},
+				{Offset: "180d", Interval: "1h"},
+			}}},
+		},
+	}, false)
+
+	// downsampling - duplicate filter
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules: []DownsamplingRule{
+				{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}},
+				{Periods: []DownsamplingPeriod{{Offset: "180d", Interval: "1h"}}},
+			},
+		},
+	}, true)
+
+	// downsampling - offset not a multiple of interval
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "1d", Interval: "7m"}}}},
+		},
+	}, true)
+
+	// downsampling - period interval not a multiple of dedupInterval
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			DedupInterval: "7m",
+		},
+	}, true)
+
+	// downsampling - period interval is a multiple of dedupInterval
+	f(VMClusterSpec{
+		License: testLicense,
+		Downsampling: &DownsamplingConfig{
+			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			DedupInterval: "5m",
+		},
+	}, false)
+
+	// retention filters without vmstorage section — no error (vmstorage is nil)
+	f(VMClusterSpec{
+		License: testLicense,
+	}, false)
+
+	// retention filters without license
+	f(VMClusterSpec{
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+		},
+	}, true)
+
+	// retention filters with valid config
+	f(VMClusterSpec{
+		License:         testLicense,
+		RetentionPeriod: "30",
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+		},
+	}, false)
+
+	// retention filters - invalid filter
+	f(VMClusterSpec{
+		License: testLicense,
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: "not-a-filter", Retention: "3d"}},
+		},
+	}, true)
+
+	// retention filters - invalid retention
+	f(VMClusterSpec{
+		License: testLicense,
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "bad"}},
+		},
+	}, true)
+
+	// retention filters - retention exceeds retentionPeriod
+	f(VMClusterSpec{
+		License:         testLicense,
+		RetentionPeriod: "30d",
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+		},
+	}, true)
+
+	// retention filters - retention equal to retentionPeriod is ok
+	f(VMClusterSpec{
+		License:         testLicense,
+		RetentionPeriod: "1y",
+		VMStorage: &VMStorage{
+			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+		},
+	}, false)
+}

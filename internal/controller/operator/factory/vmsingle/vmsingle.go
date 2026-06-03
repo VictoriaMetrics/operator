@@ -175,6 +175,27 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
 
+	if cr.Spec.Downsampling.HasAnyRule() {
+		for _, rule := range cr.Spec.Downsampling.Rules {
+			for _, p := range rule.Periods {
+				period := fmt.Sprintf("%s:%s", p.Offset, p.Interval)
+				if rule.Filter != "" {
+					period = rule.Filter + ":" + period
+				}
+				args = append(args, fmt.Sprintf("-downsampling.period=%s", period))
+			}
+		}
+	}
+	if cr.Spec.Downsampling != nil && cr.Spec.Downsampling.DedupInterval != "" {
+		args = append(args, fmt.Sprintf("-dedup.minScrapeInterval=%s", cr.Spec.Downsampling.DedupInterval))
+	}
+
+	if cr.Spec.RetentionFilters != nil {
+		for _, rf := range *cr.Spec.RetentionFilters {
+			args = append(args, fmt.Sprintf("-retentionFilter=%s:%s", rf.Filter, rf.Retention))
+		}
+	}
+
 	storagePath := dataDir
 	if cr.Spec.StorageDataPath != "" {
 		storagePath = cr.Spec.StorageDataPath

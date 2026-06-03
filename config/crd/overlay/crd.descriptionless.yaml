@@ -15608,6 +15608,32 @@ spec:
                 type: string
               clusterVersion:
                 type: string
+              downsampling:
+                properties:
+                  dedupInterval:
+                    type: string
+                  rules:
+                    items:
+                      properties:
+                        filter:
+                          type: string
+                        periods:
+                          items:
+                            properties:
+                              interval:
+                                type: string
+                              offset:
+                                type: string
+                            required:
+                            - interval
+                            - offset
+                            type: object
+                          type: array
+                      required:
+                      - periods
+                      type: object
+                    type: array
+                type: object
               imagePullSecrets:
                 items:
                   properties:
@@ -17562,6 +17588,18 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
+                  retentionFilters:
+                    items:
+                      properties:
+                        filter:
+                          type: string
+                        retention:
+                          type: string
+                      required:
+                      - filter
+                      - retention
+                      type: object
+                    type: array
                   revisionHistoryLimitCount:
                     format: int32
                     type: integer
@@ -40713,6 +40751,32 @@ spec:
                 type: object
               dnsPolicy:
                 type: string
+              downsampling:
+                properties:
+                  dedupInterval:
+                    type: string
+                  rules:
+                    items:
+                      properties:
+                        filter:
+                          type: string
+                        periods:
+                          items:
+                            properties:
+                              interval:
+                                type: string
+                              offset:
+                                type: string
+                            required:
+                            - interval
+                            - offset
+                            type: object
+                          type: array
+                      required:
+                      - periods
+                      type: object
+                    type: array
+                type: object
               enableKubernetesAPISelectors:
                 type: boolean
               enableServiceLinks:
@@ -41356,6 +41420,18 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              retentionFilters:
+                items:
+                  properties:
+                    filter:
+                      type: string
+                    retention:
+                      type: string
+                  required:
+                  - filter
+                  - retention
+                  type: object
+                type: array
               retentionPeriod:
                 pattern: ^[0-9]+(h|d|w|y)?$
                 type: string

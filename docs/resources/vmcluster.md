@@ -343,8 +343,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 - [mTLS for cluster components](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#mtls-protection)
 - [Backup automation](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
-VMCluster doesn't support yet feature
-[Automatic discovery for vmstorage nodes](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery).
+- [Automatic vmstorage discovery](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery)
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
@@ -629,6 +628,93 @@ Possible configuration options for backup crd can be found at [link](https://doc
 **Using VMBackupmanager for restoring backups** in Kubernetes environment is described [here](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/#how-to-restore-in-kubernetes).
 
 Also see VMCluster example spec [here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmcluster_with_backuper.yaml).
+
+### Automatic vmstorage discovery
+
+By default, the operator statically enumerates all `vmstorage` pod addresses in the `-storageNode` flag of `vminsert` and `vmselect`.
+With [automatic vmstorage discovery](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery),
+`vminsert` and `vmselect` resolve storage node addresses dynamically via DNS SRV records, removing the need for a rolling restart when storage nodes scale up or down.
+
+This is an enterprise feature and requires a [valid license key](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+
+The `discovery` field can be set at the cluster level (applies to both `vminsert` and `vmselect`) or overridden per component.
+
+**`spec.discovery` fields:**
+
+| Field      | Description |
+|------------|-------------|
+| `enabled`  | Enables automatic vmstorage node discovery via DNS SRV records. |
+| `interval` | How often to refresh the list of storage nodes. Minimum `1s`, defaults to `2s`. |
+| `filter`   | Optional regexp to filter discovered storage addresses. Only matching addresses are used. |
+
+When `discovery` is enabled the operator sets `-storageNode=srv+<headless-service>.<namespace>[.svc.<domain>]:<port>` instead of listing individual pod addresses.
+The DNS SRV lookup resolves this to individual pod addresses in the form `<pod-name>.<headless-service>.<namespace>.svc.<domain>:<port>` — for example, `vmstorage-ent-example-0.vmstorage-ent-example.default.svc.cluster.local:8401`.
+The `filter` regexp is matched against these full addresses, so it must account for the cluster name embedded in the pod name. The domain suffix does not need to be included in the filter since regexp matching is substring-based.
+
+The `maintenanceInsertNodeIDs` and `maintenanceSelectNodeIDs` fields on `vmstorage` cannot be used together with discovery, since node selection is delegated to the `filter` regexp.
+
+#### Enable discovery globally
+
+This enables discovery with the same settings for both `vminsert` and `vmselect`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: ent-example
+spec:
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
+  discovery:
+    enabled: true
+    interval: 5s
+  vmstorage:
+    replicaCount: 3
+  vmselect:
+    replicaCount: 2
+  vminsert:
+    replicaCount: 2
+```
+
+#### Override discovery per component
+
+The `discovery` field on `vmselect` or `vminsert` overrides the cluster-level default for that component.
+This is useful when you want different refresh intervals or address filters for reads and writes,
+or when you want to disable discovery for one component while keeping it enabled globally:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: ent-example
+spec:
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  clusterVersion: v1.110.13-enterprise-cluster
+  # global default: discovery enabled for both components
+  discovery:
+    enabled: true
+    interval: 5s
+  vmstorage:
+    replicaCount: 6
+  vmselect:
+    replicaCount: 2
+    # override: read only from nodes 0-2 (pod name format: vmstorage-ent-example-N)
+    discovery:
+      enabled: true
+      interval: 10s
+      filter: "vmstorage-ent-example-[0-2]\\."
+  vminsert:
+    replicaCount: 2
+    # override: disable discovery for vminsert, use static addresses instead
+    discovery:
+      enabled: false
+```
 
 ## Examples
 

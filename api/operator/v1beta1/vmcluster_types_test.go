@@ -262,4 +262,75 @@ func TestVMCluster_Validate(t *testing.T) {
 			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
 		},
 	}, false)
+
+	// discovery without license
+	f(VMClusterSpec{
+		VMInsert:  &VMInsert{},
+		Discovery: &VMClusterDiscovery{Enabled: true},
+	}, true)
+
+	// discovery with license
+	f(VMClusterSpec{
+		VMInsert:  &VMInsert{},
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true},
+	}, false)
+
+	// discovery with invalid filter regexp
+	f(VMClusterSpec{
+		VMInsert:  &VMInsert{},
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true, Filter: "[invalid"},
+	}, true)
+
+	// discovery with valid filter regexp
+	f(VMClusterSpec{
+		VMInsert:  &VMInsert{},
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true, Filter: `vmstorage-test-[0-3]\.`},
+	}, false)
+
+	// global discovery + maintenanceInsertNodeIDs
+	f(VMClusterSpec{
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMInsert:  &VMInsert{},
+		VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+	}, true)
+
+	// global discovery + maintenanceSelectNodeIDs
+	f(VMClusterSpec{
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMSelect:  &VMSelect{},
+		VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+	}, true)
+
+	// component override disables vmselect discovery: maintenanceSelectNodeIDs is allowed
+	f(VMClusterSpec{
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMInsert:  &VMInsert{},
+		VMSelect:  &VMSelect{Discovery: &VMClusterDiscovery{Enabled: false}},
+		VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+	}, false)
+
+	// component override disables vminsert discovery: maintenanceInsertNodeIDs is allowed
+	f(VMClusterSpec{
+		License:   testLicense,
+		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMInsert:  &VMInsert{Discovery: &VMClusterDiscovery{Enabled: false}},
+		VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+	}, false)
+
+	// component-level discovery enabled without global, requires license
+	f(VMClusterSpec{
+		VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+	}, true)
+
+	// component-level discovery enabled with license
+	f(VMClusterSpec{
+		License:  testLicense,
+		VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+	}, false)
 }

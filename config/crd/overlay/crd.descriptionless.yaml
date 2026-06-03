@@ -15615,6 +15615,18 @@ spec:
                 type: string
               clusterVersion:
                 type: string
+              discovery:
+                properties:
+                  enabled:
+                    type: boolean
+                  filter:
+                    type: string
+                  interval:
+                    pattern: ^[0-9]+(s|m|h)$
+                    type: string
+                required:
+                - enabled
+                type: object
               downsampling:
                 properties:
                   dedupInterval:
@@ -15731,6 +15743,18 @@ spec:
                     type: boolean
                   disableSelfServiceScrape:
                     type: boolean
+                  discovery:
+                    properties:
+                      enabled:
+                        type: boolean
+                      filter:
+                        type: string
+                      interval:
+                        pattern: ^[0-9]+(s|m|h)$
+                        type: string
+                    required:
+                    - enabled
+                    type: object
                   dnsConfig:
                     items:
                       x-kubernetes-preserve-unknown-fields: true
@@ -16277,6 +16301,18 @@ spec:
                     type: boolean
                   disableSelfServiceScrape:
                     type: boolean
+                  discovery:
+                    properties:
+                      enabled:
+                        type: boolean
+                      filter:
+                        type: string
+                      interval:
+                        pattern: ^[0-9]+(s|m|h)$
+                        type: string
+                    required:
+                    - enabled
+                    type: object
                   dnsConfig:
                     items:
                       x-kubernetes-preserve-unknown-fields: true

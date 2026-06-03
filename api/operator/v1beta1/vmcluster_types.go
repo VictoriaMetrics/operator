@@ -3,7 +3,9 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -86,6 +88,58 @@ type VMClusterSpec struct {
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+
+	// Discovery configures automatic vmstorage node discovery for vminsert and vmselect.
+	// This is an enterprise feature and requires a valid license key.
+	// See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
+	// +optional
+	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
+}
+
+// VMClusterDiscovery configures automatic vmstorage node discovery for vminsert and vmselect.
+// It maps to the -storageNode.discoveryInterval and -storageNode.filter flags.
+// +k8s:openapi-gen=true
+type VMClusterDiscovery struct {
+	// Enabled turns on automatic vmstorage node discovery via DNS SRV records.
+	// This is an enterprise feature and requires a valid license key.
+	// See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
+	Enabled bool `json:"enabled"`
+	// Interval is the interval for refreshing the vmstorage node list resolved from DNS SRV records.
+	// The minimum supported value is 1s.
+	// Defaults to 2s if not set.
+	// +optional
+	// +kubebuilder:validation:Pattern:="^[0-9]+(s|m|h)$"
+	Interval string `json:"interval,omitempty"`
+	// Filter is an optional regexp filter applied to discovered vmstorage addresses.
+	// Only addresses matching the filter are used; non-matching addresses are ignored.
+	// +optional
+	Filter string `json:"filter,omitempty"`
+}
+
+// OrDefault returns d if non-nil, otherwise returns fallback.
+func (d *VMClusterDiscovery) OrDefault(fallback *VMClusterDiscovery) *VMClusterDiscovery {
+	if d != nil {
+		return d
+	}
+	return fallback
+}
+
+func (d *VMClusterDiscovery) enabled() bool {
+	return d != nil && d.Enabled
+}
+
+func (d *VMClusterDiscovery) validate() error {
+	if len(d.Filter) > 0 {
+		if _, err := regexp.Compile(d.Filter); err != nil {
+			return fmt.Errorf("discovery.filter is not a valid regexp: %w", err)
+		}
+	}
+	if len(d.Interval) > 0 {
+		if _, err := time.ParseDuration(d.Interval); err != nil {
+			return fmt.Errorf("discovery.interval=%s is invalid", d.Interval)
+		}
+	}
+	return nil
 }
 
 // SelectorLabels defines selector labels for given component kind
@@ -331,6 +385,10 @@ type VMSelect struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
+	// Discovery overrides the cluster-level discovery config for vmselect.
+	// +optional
+	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
+
 	CommonAppsParams `json:",inline"`
 }
 
@@ -396,6 +454,10 @@ type VMInsert struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
+
+	// Discovery overrides the cluster-level discovery config for vminsert.
+	// +optional
+	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
 
 	CommonAppsParams `json:",inline"`
 }
@@ -724,6 +786,37 @@ func (cr *VMCluster) Validate() error {
 		lbName := cr.PrefixedName(ClusterComponentBalancer)
 		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == lbName {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", lbName)
+		}
+	}
+	var vminsertDiscovery, vmselectDiscovery *VMClusterDiscovery
+	if cr.Spec.VMInsert != nil {
+		vminsertDiscovery = cr.Spec.VMInsert.Discovery.OrDefault(cr.Spec.Discovery)
+	}
+	if cr.Spec.VMSelect != nil {
+		vmselectDiscovery = cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery)
+	}
+	if vminsertDiscovery.enabled() || vmselectDiscovery.enabled() {
+		if !cr.Spec.License.IsProvided() {
+			return fmt.Errorf("discovery requires a valid license key, see https://docs.victoriametrics.com/victoriametrics/enterprise/")
+		}
+		if err := cr.Spec.License.validate(); err != nil {
+			return err
+		}
+	}
+	if vminsertDiscovery.enabled() {
+		if cr.Spec.VMStorage != nil && len(cr.Spec.VMStorage.MaintenanceInsertNodeIDs) > 0 {
+			return fmt.Errorf("maintenanceInsertNodeIDs cannot be used when vminsert discovery is enabled")
+		}
+		if err := vminsertDiscovery.validate(); err != nil {
+			return fmt.Errorf("vminsert: %w", err)
+		}
+	}
+	if vmselectDiscovery.enabled() {
+		if cr.Spec.VMStorage != nil && len(cr.Spec.VMStorage.MaintenanceSelectNodeIDs) > 0 {
+			return fmt.Errorf("maintenanceSelectNodeIDs cannot be used when vmselect discovery is enabled")
+		}
+		if err := vmselectDiscovery.validate(); err != nil {
+			return fmt.Errorf("vmselect: %w", err)
 		}
 	}
 

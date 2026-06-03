@@ -1800,3 +1800,200 @@ spec:
 		},
 	})
 }
+
+func TestVMClusterDiscoveryArgs(t *testing.T) {
+	licenseKey := ptr.To("test-license-key")
+
+	f := func(cr *vmv1beta1.VMCluster, validateSelect, validateInsert func(t *testing.T, args []string)) {
+		t.Helper()
+		ctx := context.Background()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		if validateSelect != nil && cr.Spec.VMSelect != nil {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentSelect),
+			}, &sts))
+			var args []string
+			for _, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "vmselect" {
+					args = c.Args
+				}
+			}
+			validateSelect(t, args)
+		}
+		if validateInsert != nil && cr.Spec.VMInsert != nil {
+			var dep appsv1.Deployment
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{
+				Namespace: cr.Namespace,
+				Name:      cr.PrefixedName(vmv1beta1.ClusterComponentInsert),
+			}, &dep))
+			var args []string
+			for _, c := range dep.Spec.Template.Spec.Containers {
+				if c.Name == "vminsert" {
+					args = c.Args
+				}
+			}
+			validateInsert(t, args)
+		}
+	}
+
+	hasArg := func(args []string, prefix string) bool {
+		for _, a := range args {
+			if strings.HasPrefix(a, prefix) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// global discovery enabled: both vmselect and vminsert get srv+ storageNode
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License:   &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{Enabled: true},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vmselect: expected srv+ storageNode, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vminsert: expected srv+ storageNode, got %v", args)
+		},
+	)
+
+	// global discovery disabled: both get individual pod addresses
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.False(t, hasArg(args, "-storageNode=srv+"), "vmselect: expected individual pod addresses, got %v", args)
+			assert.True(t, hasArg(args, "-storageNode="), "vmselect: expected storageNode flag, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.False(t, hasArg(args, "-storageNode=srv+"), "vminsert: expected individual pod addresses, got %v", args)
+			assert.True(t, hasArg(args, "-storageNode="), "vminsert: expected storageNode flag, got %v", args)
+		},
+	)
+
+	// component override: vminsert discovery disabled, vmselect inherits global (enabled)
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License:   &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{Enabled: true},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				Discovery:        &vmv1beta1.VMClusterDiscovery{Enabled: false},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vmselect: expected srv+ storageNode, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.False(t, hasArg(args, "-storageNode=srv+"), "vminsert: expected individual pod addresses, got %v", args)
+		},
+	)
+
+	// discovery with interval and filter flags
+	// pod addresses take the form vmstorage-test-N.vmstorage-test.default..., so the filter must include the cluster name
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License: &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{
+				Enabled:  true,
+				Interval: "5s",
+				Filter:   `vmstorage-test-[0-1]\.`,
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vmselect: expected srv+ storageNode")
+			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=5s"), "vmselect: expected discoveryInterval flag, got %v", args)
+			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[0-1]\.`), "vmselect: expected filter flag, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vminsert: expected srv+ storageNode")
+			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=5s"), "vminsert: expected discoveryInterval flag, got %v", args)
+			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[0-1]\.`), "vminsert: expected filter flag, got %v", args)
+		},
+	)
+
+	// component-level discovery overrides interval and filter
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License: &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{
+				Enabled:  true,
+				Interval: "5s",
+				Filter:   `vmstorage-test-[0-1]\.`,
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(4))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				Discovery: &vmv1beta1.VMClusterDiscovery{
+					Enabled:  true,
+					Interval: "10s",
+					Filter:   `vmstorage-test-[2-3]\.`,
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=10s"), "vmselect: expected overridden interval, got %v", args)
+			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[2-3]\.`), "vmselect: expected overridden filter, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=5s"), "vminsert: expected global interval, got %v", args)
+			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[0-1]\.`), "vminsert: expected global filter, got %v", args)
+		},
+	)
+}

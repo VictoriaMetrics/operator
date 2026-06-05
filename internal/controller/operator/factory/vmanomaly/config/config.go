@@ -143,11 +143,12 @@ type config struct {
 }
 
 type server struct {
-	Addr               string `yaml:"addr,omitempty"`
-	Port               string `yaml:"port,omitempty"`
-	PathPrefix         string `yaml:"path_prefix,omitempty"`
-	MaxConcurrentTasks int    `yaml:"max_concurrent_tasks,omitempty"`
-	UIDefaultState     string `yaml:"ui_default_state,omitempty"`
+	Addr                        string `yaml:"addr,omitempty"`
+	Port                        string `yaml:"port,omitempty"`
+	PathPrefix                  string `yaml:"path_prefix,omitempty"`
+	MaxConcurrentTasks          int    `yaml:"max_concurrent_tasks,omitempty"`
+	UIDefaultState              string `yaml:"ui_default_state,omitempty"`
+	UseReaderConnectionSettings bool   `yaml:"use_reader_connection_settings,omitempty"`
 }
 
 func (s *server) validate() error {
@@ -166,10 +167,11 @@ type retention struct {
 }
 
 type settings struct {
-	Workers           int        `yaml:"n_workers,omitempty"`
-	ScoreOutsideRange float64    `yaml:"anomaly_score_outside_data_range,omitempty"`
-	RestoreState      bool       `yaml:"restore_state,omitempty"`
-	Retention         *retention `yaml:"retention,omitempty"`
+	Workers           int               `yaml:"n_workers,omitempty"`
+	ScoreOutsideRange float64           `yaml:"anomaly_score_outside_data_range,omitempty"`
+	RestoreState      bool              `yaml:"restore_state,omitempty"`
+	Retention         *retention        `yaml:"retention,omitempty"`
+	LoggerLevels      map[string]string `yaml:"logger_levels,omitempty"`
 }
 
 func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsCache) error {

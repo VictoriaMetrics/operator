@@ -16,6 +16,7 @@ type reader struct {
 	ExtraFilters               []string          `yaml:"extra_filters,omitempty"`
 	QueryFromLastSeenTimestamp bool              `yaml:"query_from_last_seen_timestamp,omitempty"`
 	LatencyOffset              *duration         `yaml:"latency_offset,omitempty"`
+	Offset                     *duration         `yaml:"offset,omitempty"`
 	MaxPointsPerQuery          int               `yaml:"max_points_per_query,omitempty"`
 	Timezone                   time.Location     `yaml:"tz,omitempty"`
 	DataRange                  []string          `yaml:"data_range,omitempty"`
@@ -63,4 +64,5 @@ type query struct {
 	MaxPointsPerQuery int           `yaml:"max_points_per_query,omitempty"`
 	TZ                time.Location `yaml:"tz,omitempty"`
 	TenantID          string        `yaml:"tenant_id,omitempty"`
+	Offset            *duration     `yaml:"offset,omitempty"`
 }

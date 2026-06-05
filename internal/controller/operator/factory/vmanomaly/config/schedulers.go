@@ -162,6 +162,8 @@ type backtestingScheduler struct {
 	FitEvery              *duration `yaml:"fit_every"`
 	Jobs                  int       `yaml:"n_jobs,omitempty"`
 	InferenceOnly         bool      `yaml:"inference_only,omitempty"`
+	Exact                 bool      `yaml:"exact,omitempty"`
+	InferEvery            *duration `yaml:"infer_every,omitempty"`
 }
 
 func (s *backtestingScheduler) validate() error {

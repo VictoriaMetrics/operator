@@ -132,6 +132,10 @@ type VMAnomalyWritersSpec struct {
 	// Metrics to save the output (in metric names or labels)
 	// +optional
 	MetricFormat VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
+	// ConnectionRetryAttempts defines the number of attempts to retry the connection in case of failure
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	ConnectionRetryAttempts int `json:"connectionRetryAttempts,omitempty" yaml:"connection_retry_attempts,omitempty"`
 	// +optional
 	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
 }
@@ -178,6 +182,9 @@ type VMAnomalyReadersSpec struct {
 	QueryFromLastSeenTimestamp bool `json:"queryFromLastSeenTimestamp,omitempty" yaml:"query_from_last_seen_timestamp,omitempty"`
 	// It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics
 	LatencyOffset string `json:"latencyOffset,omitempty" yaml:"latency_offset,omitempty"`
+	// Offset adds a time shift to the query window for all queries, e.g. to account for delayed data ingestion
+	// +optional
+	Offset string `json:"offset,omitempty" yaml:"offset,omitempty"`
 	// Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
 	MaxPointsPerQuery int `json:"maxPointsPerQuery,omitempty" yaml:"max_points_per_query,omitempty"`
 	// Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
@@ -275,6 +282,10 @@ type VMAnomalyServerSpec struct {
 	// UIDefaultState defines default query state for anomaly UI
 	// +optional
 	UIDefaultState string `json:"uiDefaultState,omitempty" yaml:"ui_default_state,omitempty"`
+	// UseReaderConnectionSettings when set to true, anomaly UI reuses connection settings
+	// (credentials, TLS, etc.) from the reader configuration to connect to datasources
+	// +optional
+	UseReaderConnectionSettings bool `json:"useReaderConnectionSettings,omitempty" yaml:"use_reader_connection_settings,omitempty"`
 }
 
 // AsOwner returns owner references with current object as owner

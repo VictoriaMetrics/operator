@@ -225,7 +225,7 @@ type onlineQuantileModel struct {
 	SeasonalInterval  *duration `yaml:"seasonal_interval,omitempty"`
 	MinSubseason      string    `yaml:"min_subseason"`
 	UseTransform      bool      `yaml:"use_transform,omitempty"`
-	GlobalSmoothing   float64   `yaml:"global_smooth,omitempty"`
+	GlobalSmoothing   float64   `yaml:"global_smoothing,omitempty"`
 	SeasonStartsFrom  time.Time `yaml:"season_starts_from,omitempty"`
 	MinSamplesSeen    int       `yaml:"min_n_samples_seen,omitempty"`
 	Compression       int       `yaml:"compression,omitempty"`

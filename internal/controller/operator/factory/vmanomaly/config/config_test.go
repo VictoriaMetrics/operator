@@ -181,6 +181,7 @@ settings:
 							"label2": "value2",
 						},
 					},
+					ConnectionRetryAttempts: 3,
 					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 						TenantID: "0:2",
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -213,6 +214,7 @@ settings:
 					DatasourceURL:  "http://custom.ds",
 					QueryRangePath: "/api/v1/query_range",
 					SamplingPeriod: "10s",
+					Offset:         "5m",
 					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 						TenantID: "0:1",
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -274,6 +276,7 @@ reader:
   datasource_url: http://custom.ds
   sampling_period: 10s
   query_range_path: /api/v1/query_range
+  offset: 5m
   queries:
     test:
       expr: vm_metric
@@ -292,6 +295,7 @@ writer:
     for: custom_$QUERY_KEY
     label1: value1
     label2: value2
+  connection_retry_attempts: 3
   tenant_id: "0:2"
   verify_tls: true
   tls_cert_file: /test/monitoring_tls_remote-cert
@@ -333,11 +337,14 @@ models:
     z_threshold: 2.5
     queries: ['test_query']
 schedulers:
-  scheduler_1m:
-    class: "scheduler.periodic.PeriodicScheduler"
-    infer_every: 1m
-    fit_every: 2m
+  scheduler_backtesting:
+    class: "backtesting"
     fit_window: 3h
+    fit_every: 1h
+    from_s: 1000
+    to_s: 2000
+    exact: true
+    infer_every: 5m
 reader:
   queries:
     test_query:
@@ -349,6 +356,8 @@ settings:
   retention:
     ttl: 24h
     check_interval: 30m
+  logger_levels:
+    root: DEBUG
 `,
 				Reader: &vmv1.VMAnomalyReadersSpec{
 					DatasourceURL:  "http://reader.test",
@@ -367,11 +376,16 @@ models:
     - test_query
     z_threshold: 2.5
 schedulers:
-  scheduler_1m:
-    class: scheduler.periodic.PeriodicScheduler
-    fit_every: 2m
+  scheduler_backtesting:
+    class: backtesting
     fit_window: 3h
-    infer_every: 1m
+    from_iso: 0001-01-01T00:00:00Z
+    from_s: 1000
+    to_iso: 0001-01-01T00:00:00Z
+    to_s: 2000
+    fit_every: 1h
+    exact: true
+    infer_every: 5m
 reader:
   class: vm
   datasource_url: http://reader.test
@@ -390,6 +404,8 @@ settings:
   retention:
     ttl: 24h
     check_interval: 30m
+  logger_levels:
+    root: DEBUG
 server:
   port: "8490"
 `,
@@ -433,10 +449,11 @@ writer:
 					DatasourceURL: "http://writer.test",
 				},
 				Server: &vmv1.VMAnomalyServerSpec{
-					Addr:               "127.0.0.1",
-					Port:               "9090",
-					PathPrefix:         "my-anomaly",
-					MaxConcurrentTasks: 10,
+					Addr:                        "127.0.0.1",
+					Port:                        "9090",
+					PathPrefix:                  "my-anomaly",
+					MaxConcurrentTasks:          10,
+					UseReaderConnectionSettings: true,
 				},
 			},
 		},
@@ -471,6 +488,7 @@ server:
   port: "9090"
   path_prefix: my-anomaly
   max_concurrent_tasks: 10
+  use_reader_connection_settings: true
 `,
 	})
 
@@ -571,6 +589,7 @@ models:
     scale: [0.5, 1.5]
     min_subseason: hourly
     decay: 0.5
+    global_smoothing: 0.5
 schedulers:
   scheduler_1m:
     class: "scheduler.periodic.PeriodicScheduler"
@@ -581,6 +600,7 @@ reader:
   queries:
     test_query:
       expr: vm_metric
+      offset: 1m
 writer:
   datasource_url: "http://test.com"
 `,
@@ -604,6 +624,7 @@ models:
     - 1.5
     decay: 0.5
     min_subseason: hourly
+    global_smoothing: 0.5
 schedulers:
   scheduler_1m:
     class: scheduler.periodic.PeriodicScheduler
@@ -617,6 +638,7 @@ reader:
   queries:
     test_query:
       expr: vm_metric
+      offset: 1m
 writer:
   class: vm
   datasource_url: http://writer.test

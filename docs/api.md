@@ -677,6 +677,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | healthPath<a href="#vmanomalyreadersspec-healthpath" id="vmanomalyreadersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
 | latencyOffset<a href="#vmanomalyreadersspec-latencyoffset" id="vmanomalyreadersspec-latencyoffset">#</a><br/>_string_ | _(Required)_<br/>It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics |
 | maxPointsPerQuery<a href="#vmanomalyreadersspec-maxpointsperquery" id="vmanomalyreadersspec-maxpointsperquery">#</a><br/>_integer_ | _(Required)_<br/>Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals |
+| offset<a href="#vmanomalyreadersspec-offset" id="vmanomalyreadersspec-offset">#</a><br/>_string_ | _(Optional)_<br/>Offset adds a time shift to the query window for all queries, e.g. to account for delayed data ingestion |
 | queryFromLastSeenTimestamp<a href="#vmanomalyreadersspec-queryfromlastseentimestamp" id="vmanomalyreadersspec-queryfromlastseentimestamp">#</a><br/>_boolean_ | _(Required)_<br/>If True, then query will be performed from the last seen timestamp for a given series. |
 | queryRangePath<a href="#vmanomalyreadersspec-queryrangepath" id="vmanomalyreadersspec-queryrangepath">#</a><br/>_string_ | _(Required)_<br/>Performs PromQL/MetricsQL range query |
 | samplingPeriod<a href="#vmanomalyreadersspec-samplingperiod" id="vmanomalyreadersspec-samplingperiod">#</a><br/>_string_ | _(Required)_<br/>Frequency of the points returned |
@@ -699,6 +700,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | pathPrefix<a href="#vmanomalyserverspec-pathprefix" id="vmanomalyserverspec-pathprefix">#</a><br/>_string_ | _(Optional)_<br/>PathPrefix defines optional URL path prefix for all HTTP routes<br />If set to 'my-app' or '/my-app', routes will be served under '/my-app/...' |
 | port<a href="#vmanomalyserverspec-port" id="vmanomalyserverspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port defines port to listen on |
 | uiDefaultState<a href="#vmanomalyserverspec-uidefaultstate" id="vmanomalyserverspec-uidefaultstate">#</a><br/>_string_ | _(Optional)_<br/>UIDefaultState defines default query state for anomaly UI |
+| useReaderConnectionSettings<a href="#vmanomalyserverspec-usereaderconnectionsettings" id="vmanomalyserverspec-usereaderconnectionsettings">#</a><br/>_boolean_ | _(Optional)_<br/>UseReaderConnectionSettings when set to true, anomaly UI reuses connection settings<br />(credentials, TLS, etc.) from the reader configuration to connect to datasources |
 
 #### VMAnomalySpec
 
@@ -793,6 +795,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | --- | --- |
 | basicAuth<a href="#vmanomalywritersspec-basicauth" id="vmanomalywritersspec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Required)_<br/>Basic auth defines basic authorization configuration |
 | bearer<a href="#vmanomalywritersspec-bearer" id="vmanomalywritersspec-bearer">#</a><br/>_[BearerAuth](#bearerauth)_ | _(Required)_<br/>BearerAuth defines authorization with Authorization: Bearer header |
+| connectionRetryAttempts<a href="#vmanomalywritersspec-connectionretryattempts" id="vmanomalywritersspec-connectionretryattempts">#</a><br/>_integer_ | _(Optional)_<br/>ConnectionRetryAttempts defines the number of attempts to retry the connection in case of failure |
 | datasourceURL<a href="#vmanomalywritersspec-datasourceurl" id="vmanomalywritersspec-datasourceurl">#</a><br/>_string_ | _(Required)_<br/>DatasourceURL defines remote write url for write requests<br />provided endpoint must serve /api/v1/import path<br />vmanomaly joins datasourceURL + "/api/v1/import" |
 | healthPath<a href="#vmanomalywritersspec-healthpath" id="vmanomalywritersspec-healthpath">#</a><br/>_string_ | _(Required)_<br/>HealthPath defines absolute or relative URL address where to check availability of the remote webserver |
 | metricFormat<a href="#vmanomalywritersspec-metricformat" id="vmanomalywritersspec-metricformat">#</a><br/>_[VMAnomalyVMWriterMetricFormatSpec](#vmanomalyvmwritermetricformatspec)_ | _(Optional)_<br/>Metrics to save the output (in metric names or labels) |

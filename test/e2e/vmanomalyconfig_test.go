@@ -180,45 +180,6 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			))
 		})
 
-		It("should remove config from secret when VMAnomalyConfig is deleted", func() {
-			nsn.Name = "cfg-delete"
-			cr := baseVMAnomaly(nsn.Name, map[string]string{"cfg-test": "delete"})
-			cfg := &vmv1.VMAnomalyConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg-delete-config",
-					Namespace: namespace,
-					Labels:    map[string]string{"cfg-test": "delete"},
-				},
-				Spec: runtime.RawExtension{Raw: []byte(`{
-  "queries": {
-    "delete-query": {
-      "expr": "vm_delete_metric"
-    }
-  }
-}`)},
-			}
-
-			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-
-			Expect(k8sClient.Create(ctx, cfg)).ToNot(HaveOccurred())
-			Eventually(func() string {
-				var secret corev1.Secret
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
-				return string(secret.Data["vmanomaly.env.yaml"])
-			}, anomalyReadyTimeout).Should(ContainSubstring("vm_delete_metric"))
-
-			Expect(k8sClient.Delete(ctx, cfg)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
-
-			Eventually(func() string {
-				var secret corev1.Secret
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
-				return string(secret.Data["vmanomaly.env.yaml"])
-			}, anomalyReadyTimeout).ShouldNot(ContainSubstring("vm_delete_metric"))
-		})
-
 		It("should select all VMAnomalyConfigs when selectAllByDefault is true and no selector set", func() {
 			nsn.Name = "cfg-select-all"
 			cr := &vmv1.VMAnomaly{

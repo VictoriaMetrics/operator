@@ -102,7 +102,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 
-	if !isStorageEmpty(cr.Spec.Storage) {
+	if !isStorageEmpty(cr.Spec.Storage) && cr.Spec.StorageExistingClaimName == "" {
 		if err := createStorage(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create storage: %w", err)
 		}
@@ -228,7 +228,11 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	var crMounts []corev1.VolumeMount
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
-	if !isStorageEmpty(cr.Spec.Storage) {
+	if cr.Spec.StorageExistingClaimName != "" {
+		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: cr.Spec.StorageExistingClaimName,
+		}
+	} else if !isStorageEmpty(cr.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: cr.PrefixedName(),
 		}

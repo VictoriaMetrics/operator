@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -225,6 +226,44 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, pvc.Annotations, map[string]string{
 				"env": "test",
 			})
+		}})
+
+	// storage with existing claim
+	f(opts{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "with-existing-claim",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1))},
+				StorageExistingClaimName: "external-vmsingle-data",
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "vmsingle-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmsingle", "app.kubernetes.io/instance": "with-existing-claim", "managed-by": "vm-operator"}},
+				Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "True"}}},
+			},
+			k8stools.NewReadyDeployment("vmsingle-with-existing-claim", "default"),
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			var dataVol *corev1.Volume
+			for i := range got.Spec.Template.Spec.Volumes {
+				if got.Spec.Template.Spec.Volumes[i].Name == build.DataVolumeName {
+					dataVol = &got.Spec.Template.Spec.Volumes[i]
+					break
+				}
+			}
+			assert.NotNil(t, dataVol)
+			assert.NotNil(t, dataVol.PersistentVolumeClaim)
+			assert.Equal(t, "external-vmsingle-data", dataVol.PersistentVolumeClaim.ClaimName)
+			var pvc corev1.PersistentVolumeClaim
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &pvc)))
 		}})
 }
 

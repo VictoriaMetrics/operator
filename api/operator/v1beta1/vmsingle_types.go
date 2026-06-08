@@ -46,6 +46,12 @@ type VMSingleSpec struct {
 	// +optional
 	StorageMetadata EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
 
+	// StorageExistingClaimName mounts an existing PersistentVolumeClaim as the data volume
+	// instead of provisioning one. It takes precedence over spec.storage and is mutually
+	// exclusive with spec.storageDataPath.
+	// +optional
+	StorageExistingClaimName string `json:"storageExistingClaimName,omitempty"`
+
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
@@ -452,6 +458,14 @@ func (cr *VMSingle) Validate() error {
 		}
 		if len(cr.Spec.VolumeMounts) == 0 && !storageVolumeFound {
 			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+		}
+	}
+	if cr.Spec.StorageExistingClaimName != "" {
+		if cr.Spec.StorageDataPath != "" {
+			return fmt.Errorf("spec.storageExistingClaimName is mutually exclusive with spec.storageDataPath")
+		}
+		if cr.Spec.Storage != nil {
+			return fmt.Errorf("spec.storageExistingClaimName is mutually exclusive with spec.storage")
 		}
 	}
 	return nil

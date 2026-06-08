@@ -42163,6 +42163,8 @@ spec:
                 type: object
               storageDataPath:
                 type: string
+              storageExistingClaimName:
+                type: string
               storageMetadata:
                 properties:
                   annotations:

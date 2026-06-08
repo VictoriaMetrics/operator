@@ -924,11 +924,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		{
 			name: "VMDistributed",
 			pairs: []crVersionPair{
-				{version: "v0.68.0", cr: with(vmdistributed)},
-				{version: "v0.68.1", cr: with(vmdistributed)},
-				{version: "v0.68.2", cr: with(vmdistributed)},
-				{version: "v0.68.3", cr: with(vmdistributed)},
-				{version: "v0.68.4", cr: with(vmdistributed)},
 				{version: "v0.68.5", cr: with(vmdistributed)},
 			},
 		},

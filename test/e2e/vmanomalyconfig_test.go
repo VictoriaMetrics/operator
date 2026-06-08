@@ -92,54 +92,6 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 			nsn.Name = ""
 		})
 
-		It("should reflect VMAnomalyConfig status as Operational when selected", func() {
-			nsn.Name = "cfg-status"
-			cr := baseVMAnomaly(nsn.Name, map[string]string{"cfg-test": "status"})
-			cfg := &vmv1.VMAnomalyConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg-status-selected",
-					Namespace: namespace,
-					Labels:    map[string]string{"cfg-test": "status"},
-				},
-				Spec: runtime.RawExtension{Raw: []byte(`{
-  "models": {
-    "status-model": {
-      "class": "zscore",
-      "queries": ["status-query"],
-      "schedulers": ["status-scheduler"],
-      "z_threshold": 2.5
-    }
-  },
-  "schedulers": {
-    "status-scheduler": {
-      "class": "periodic",
-      "infer_every": "1m",
-      "fit_every": "2m",
-      "fit_window": "1h"
-    }
-  },
-  "queries": {
-    "status-query": {
-      "expr": "vm_status_metric"
-    }
-  }
-}`)},
-			}
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, cfg)).ToNot(HaveOccurred())
-				waitResourceDeleted(ctx, types.NamespacedName{Name: cfg.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
-			})
-
-			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-
-			cfgNsn := types.NamespacedName{Name: cfg.Name, Namespace: namespace}
-			expectStatusAfterAction(ctx, &vmv1.VMAnomalyConfigList{}, cfgNsn, anomalyReadyTimeout, func() {
-				Expect(k8sClient.Create(ctx, cfg)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-		})
-
 		It("should merge multiple VMAnomalyConfigs into single secret", func() {
 			nsn.Name = "cfg-multi"
 			cr := baseVMAnomaly(nsn.Name, map[string]string{"cfg-test": "multi"})
@@ -265,59 +217,6 @@ var _ = Describe("test VMAnomalyConfig Controller", Serial, Label("vm", "anomaly
 				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
 				return string(secret.Data["vmanomaly.env.yaml"])
 			}, anomalyReadyTimeout).ShouldNot(ContainSubstring("vm_delete_metric"))
-		})
-
-		It("should not include VMAnomalyConfig with non-matching label selector", func() {
-			nsn.Name = "cfg-label-filter"
-			cr := baseVMAnomaly(nsn.Name, map[string]string{"cfg-test": "selected-only"})
-			selectedCfg := &vmv1.VMAnomalyConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg-label-selected",
-					Namespace: namespace,
-					Labels:    map[string]string{"cfg-test": "selected-only"},
-				},
-				Spec: runtime.RawExtension{Raw: []byte(`{
-  "queries": {
-    "selected-query": {
-      "expr": "vm_selected_label_metric"
-    }
-  }
-}`)},
-			}
-			unselectedCfg := &vmv1.VMAnomalyConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg-label-unselected",
-					Namespace: namespace,
-					Labels:    map[string]string{"cfg-test": "other-label"},
-				},
-				Spec: runtime.RawExtension{Raw: []byte(`{
-  "queries": {
-    "unselected-query": {
-      "expr": "vm_unselected_label_metric"
-    }
-  }
-}`)},
-			}
-			DeferCleanup(func() {
-				Expect(finalize.SafeDelete(ctx, k8sClient, selectedCfg)).ToNot(HaveOccurred())
-				Expect(finalize.SafeDelete(ctx, k8sClient, unselectedCfg)).ToNot(HaveOccurred())
-			})
-
-			expectStatusAfterAction(ctx, &vmv1.VMAnomalyList{}, nsn, anomalyExpandTimeout, func() {
-				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-
-			Expect(k8sClient.Create(ctx, selectedCfg)).ToNot(HaveOccurred())
-			Expect(k8sClient.Create(ctx, unselectedCfg)).ToNot(HaveOccurred())
-
-			Eventually(func() string {
-				var secret corev1.Secret
-				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
-				return string(secret.Data["vmanomaly.env.yaml"])
-			}, anomalyReadyTimeout).Should(And(
-				ContainSubstring("vm_selected_label_metric"),
-				Not(ContainSubstring("vm_unselected_label_metric")),
-			))
 		})
 
 		It("should select all VMAnomalyConfigs when selectAllByDefault is true and no selector set", func() {

@@ -36,7 +36,11 @@ type RuleGroup struct {
 	// evaluation interval for group
 	// +optional
 	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
-	// Rules list of alert rules
+	// Rules list of alert rules.
+	// Rules are merged by record and alert fields.
+	// +listType=map
+	// +listMapKey=record
+	// +listMapKey=alert
 	Rules []Rule `json:"rules"`
 	// Limit the number of alerts an alerting rule and series a recording
 	// rule can produce

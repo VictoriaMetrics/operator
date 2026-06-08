@@ -591,7 +591,6 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 		}
 	}
-
 	if cr.Spec.Downsampling.HasAnyRule() {
 		for _, rule := range cr.Spec.Downsampling.Rules {
 			for _, p := range rule.Periods {
@@ -607,14 +606,23 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		args = append(args, fmt.Sprintf("-dedup.minScrapeInterval=%s", cr.Spec.Downsampling.DedupInterval))
 	}
 
-	storageNodeFlag := build.NewFlag("-storageNode", "")
-	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
-	for idx, i := range storageNodeIds {
-		storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
+	storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+	if d := cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery); d != nil && d.Enabled {
+		args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)))
+		if d.Interval != "" {
+			args = append(args, fmt.Sprintf("-storageNode.discoveryInterval=%s", d.Interval))
+		}
+		if d.Filter != "" {
+			args = append(args, fmt.Sprintf("-storageNode.filter=%s", d.Filter))
+		}
+	} else {
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
+		for idx, i := range storageNodeIds {
+			storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
+		}
+		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
 	}
-	totalNodes := len(storageNodeIds)
-	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 
 	// selectNode arg add for deployments without HPA
 	// HPA leads to rolling restart for vmselect statefulset in case of replicas count changes
@@ -812,14 +820,23 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		args = append(args, fmt.Sprintf("--clusternativeListenAddr=:%s", cr.Spec.VMInsert.ClusterNativePort))
 	}
 
-	storageNodeFlag := build.NewFlag("-storageNode", "")
-	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
-	for idx, i := range storageNodeIds {
-		storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
+	storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+	if d := cr.Spec.VMInsert.Discovery.OrDefault(cr.Spec.Discovery); d != nil && d.Enabled {
+		args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)))
+		if d.Interval != "" {
+			args = append(args, fmt.Sprintf("-storageNode.discoveryInterval=%s", d.Interval))
+		}
+		if d.Filter != "" {
+			args = append(args, fmt.Sprintf("-storageNode.filter=%s", d.Filter))
+		}
+	} else {
+		storageNodeFlag := build.NewFlag("-storageNode", "")
+		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
+		for idx, i := range storageNodeIds {
+			storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
+		}
+		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
 	}
-	totalNodes := len(storageNodeIds)
-	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
 
 	if cr.Spec.ReplicationFactor != nil {
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
@@ -1726,6 +1743,15 @@ func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	owner := cr.AsOwner()
 	return reconcile.HPA(ctx, rclient, newHPA, prevHPA, &owner)
+}
+
+// storageNodeSRVAddr builds the address used for DNS SRV-based vmstorage discovery.
+// It mirrors the format used by PodDNSAddress but targets the headless service rather than individual pods.
+func storageNodeSRVAddr(svcName, namespace, port, clusterDomain string) string {
+	if clusterDomain == "" {
+		return fmt.Sprintf("%s.%s:%s", svcName, namespace, port)
+	}
+	return fmt.Sprintf("%s.%s.svc.%s:%s", svcName, namespace, clusterDomain, port)
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {

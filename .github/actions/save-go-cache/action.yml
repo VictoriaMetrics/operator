@@ -1,0 +1,19 @@
+name: Save Go Cache
+description: Trim old entries and persist Go module and build cache
+
+runs:
+  using: composite
+  steps:
+    - name: Trim Go cache
+      shell: bash
+      run: find ~/.cache/go-build -type f -mmin +90 -delete
+    - name: Set Go cache date
+      shell: bash
+      run: echo "GO_CACHE_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+    - name: Save Go cache
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: "${{ runner.os }}-go-${{ hashFiles('go.mod') }}-${{ env.GO_CACHE_DATE }}"

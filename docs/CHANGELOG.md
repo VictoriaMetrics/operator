@@ -20,6 +20,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): update status currentRevision and currentReplicas for StatefulSet with OnDelete update strategy. See [#1242](https://github.com/VictoriaMetrics/operator/issues/1242).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix `configreloader_last_reload_success_timestamp_seconds` metric to report time in seconds instead of milliseconds.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): ignore `NotFound` errors, that may occur during attempt to update status on a missing resource.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): pass the configured TLS CA bundle to the reader, writer and monitoring clients. Previously the CA was mounted as a volume but dropped during config generation, so a `tlsConfig` with only a CA produced no `verify_tls` reference to it; `insecureSkipVerify` is now also propagated correctly.
 
 ## [v0.68.5](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.5)
 **Release date:** 27 May 2026

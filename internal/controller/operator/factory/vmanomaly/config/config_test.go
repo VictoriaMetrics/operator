@@ -319,6 +319,212 @@ server:
 `,
 	})
 
+	// TLS without a CA bundle and InsecureSkipVerify=false => verify_tls: true
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+								Key:                  "key",
+							},
+						},
+					},
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"cert": []byte("cert"),
+					"key":  []byte("key"),
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+  verify_tls: true
+  tls_cert_file: /test/monitoring_tls_cert
+  tls_key_file: /test/monitoring_tls_key
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// InsecureSkipVerify=true takes precedence over a provided CA => verify_tls: false
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "ca",
+								},
+							},
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+								Key:                  "key",
+							},
+						},
+					},
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"ca":   []byte("ca"),
+					"cert": []byte("cert"),
+					"key":  []byte("key"),
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+  verify_tls: false
+  tls_cert_file: /test/monitoring_tls_cert
+  tls_key_file: /test/monitoring_tls_key
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
 	// with settings including retention
 	f(opts{
 		cr: &vmv1.VMAnomaly{

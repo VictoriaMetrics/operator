@@ -76,8 +76,20 @@ jobs:
         with:
           go-version-file: "go.mod"
           check-latest: true
-          cache: true
+          cache: false
         id: go
+      - name: Restore Go cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: nonexistent
+          restore-keys: |
+            ${{ runner.os }}-go-${{ hashFiles('go.mod') }}-
+      - name: Download Go modules
+        shell: bash
+        run: go mod download
 
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
@@ -115,6 +127,21 @@ jobs:
           make test
           git fetch origin ${{ github.base_ref || 'master' }}
           BASE_REF=origin/${{ github.base_ref || 'master' }} TAG=${TAG} make test-e2e
+      - name: Trim Go cache
+        if: ${{ github.ref == 'refs/heads/master' }}
+        shell: bash
+        run: find ~/.cache/go-build -type f -mmin +90 -delete
+      - name: Set Go cache date
+        shell: bash
+        run: echo "GO_CACHE_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+      - name: Save Go cache
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: "${{ runner.os }}-go-${{ hashFiles('go.mod') }}-${{ env.GO_CACHE_DATE }}"
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@3a81627bfac62268172037048872e8ebd4207e6d  # v6.4.1
         if: success() || failure()

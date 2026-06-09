@@ -279,7 +279,7 @@ reader:
       - "0"
       - inf
   tenant_id: "0:1"
-  verify_tls: true
+  verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert
   tls_key_file: /test/monitoring_tls_remote-key
 writer:
@@ -291,7 +291,7 @@ writer:
     label1: value1
     label2: value2
   tenant_id: "0:2"
-  verify_tls: true
+  verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert
   tls_key_file: /test/monitoring_tls_remote-key
 monitoring:
@@ -300,7 +300,7 @@ monitoring:
   push:
     url: http://monitoring
     tenant_id: "0:3"
-    verify_tls: true
+    verify_tls: /test/monitoring_tls_remote-ca
     tls_cert_file: /test/monitoring_tls_remote-cert
     tls_key_file: /test/monitoring_tls_remote-key
     push_frequency: 20s
@@ -308,6 +308,306 @@ monitoring:
       label1: value1
 settings:
   restore_state: true
+server:
+  port: "8490"
+`,
+	})
+
+	// TLS without a CA bundle and InsecureSkipVerify=false => verify_tls: true
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+								Key:                  "key",
+							},
+						},
+					},
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"cert": []byte("cert"),
+					"key":  []byte("key"),
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+  verify_tls: true
+  tls_cert_file: /test/monitoring_tls_cert
+  tls_key_file: /test/monitoring_tls_key
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// InsecureSkipVerify=true takes precedence over a provided CA => verify_tls: false
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "ca",
+								},
+							},
+							Cert: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+									Key:                  "cert",
+								},
+							},
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+								Key:                  "key",
+							},
+						},
+					},
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"ca":   []byte("ca"),
+					"cert": []byte("cert"),
+					"key":  []byte("key"),
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+  verify_tls: false
+  tls_cert_file: /test/monitoring_tls_cert
+  tls_key_file: /test/monitoring_tls_key
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// with settings including retention
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_backtesting:
+    class: "backtesting"
+    fit_window: 3h
+    fit_every: 1h
+    from_s: 1000
+    to_s: 2000
+    exact: true
+    infer_every: 5m
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+settings:
+  restore_state: true
+  retention:
+    ttl: 24h
+    check_interval: 30m
+  logger_levels:
+    root: DEBUG
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_backtesting:
+    class: backtesting
+    fit_window: 3h
+    from_iso: 0001-01-01T00:00:00Z
+    from_s: 1000
+    to_iso: 0001-01-01T00:00:00Z
+    to_s: 2000
+    fit_every: 1h
+    exact: true
+    infer_every: 5m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  restore_state: true
+  retention:
+    ttl: 24h
+    check_interval: 30m
+  logger_levels:
+    root: DEBUG
+server:
+  port: "8490"
 `,
 	})
 

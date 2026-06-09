@@ -55,10 +55,11 @@ jobs:
           formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
           getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
           BEFORE=$(getAvailableSpace)
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /usr/local/lib/android &
+          sudo rm -rf /usr/share/dotnet &
+          sudo rm -rf /opt/ghc &
+          sudo rm -rf /usr/local/.ghcup &
+          wait
           AFTER=$(getAvailableSpace)
           SAVED=$((AFTER-BEFORE))
           echo "Saved $(formatByteCount $SAVED)"

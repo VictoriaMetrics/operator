@@ -44,17 +44,20 @@ permissions: {}
 jobs:
   build:
     name: Build and Test
-    runs-on:  vm-runner
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
       checks: write
+    outputs:
+      run_e2e: ${{ steps.changes.outputs.src }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           persist-credentials: false
+
       - name: Setup build environment
         id: setup
         uses: ./.github/actions/setup-build-env
@@ -74,10 +77,6 @@ jobs:
 
       - name: Lint, Test and Build
         if: github.event.pull_request.draft == false
-        env:
-          DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
-          TAG: ${{ steps.setup.outputs.image-tag }}
-          LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
           make lint
           make manifests
@@ -86,8 +85,50 @@ jobs:
           # check for uncommited changes to crds, docs or API
           git diff --exit-code
           make test
-          git fetch origin ${{ github.base_ref || 'master' }}
-          BASE_REF=origin/${{ github.base_ref || 'master' }} TAG=${TAG} make test-e2e
+
+      - name: Save Go cache
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: ./.github/actions/save-go-cache
+
+      - name: Check changed files
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d  # v4.0.1
+        id: changes
+        with:
+          filters: |
+            src:
+              - '**'
+              - '!Makefile'
+
+  e2e:
+    name: E2E / ${{ matrix.name }}
+    needs: build
+    if: github.event.pull_request.draft == false && needs.build.outputs.run_e2e == 'true'
+    runs-on: vm-runner
+    permissions:
+      actions: read
+      contents: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: main
+            e2e_target: ./test/e2e/
+          - name: upgrade
+            e2e_target: ./test/e2e/upgrade/...
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - name: Setup build environment
+        id: setup
+        uses: ./.github/actions/setup-build-env
+      - name: E2E Tests
+        env:
+          DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
+          LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
+          E2E_TARGET: ${{ matrix.e2e_target }}
+        run: |
+          TAG=${GITHUB_SHA:0:7} BASE_REF=origin/${{ github.base_ref || 'master' }} make test-e2e
       - name: Save Go cache
         if: ${{ github.ref == 'refs/heads/master' }}
         uses: ./.github/actions/save-go-cache

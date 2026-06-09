@@ -60,7 +60,7 @@ var (
 				{URL: "http://localhost:8428/api/v1/write"},
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -102,7 +102,7 @@ var (
 	vmauth = &vmv1beta1.VMAuth{
 		Spec: vmv1beta1.VMAuthSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -182,7 +182,7 @@ var (
 	vmsingle = &vmv1beta1.VMSingle{
 		Spec: vmv1beta1.VMSingleSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -197,7 +197,7 @@ var (
 	vmalert = &vmv1beta1.VMAlert{
 		Spec: vmv1beta1.VMAlertSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -313,7 +313,7 @@ var (
 	vmalertmanager = &vmv1beta1.VMAlertmanager{
 		Spec: vmv1beta1.VMAlertmanagerSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),

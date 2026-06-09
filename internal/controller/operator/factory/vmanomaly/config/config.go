@@ -443,9 +443,15 @@ type clientConfig struct {
 	Password        string    `yaml:"password,omitempty"`
 	BearerToken     string    `yaml:"bearer_token,omitempty"`
 	BearerTokenFile string    `yaml:"bearer_token_file,omitempty"`
-	VerifyTLS       bool      `yaml:"verify_tls,omitempty"`
-	TLSCertFile     string    `yaml:"tls_cert_file,omitempty"`
-	TLSKeyFile      string    `yaml:"tls_key_file,omitempty"`
+	// VerifyTLS mirrors vmanomaly's `verify_tls` option, which is overloaded:
+	// false disables verification, true uses the system CA store and a string
+	// is treated as a path to the CA bundle to verify against.
+	// See:
+	//   https://docs.victoriametrics.com/anomaly-detection/components/writer/#config-parameters
+	//   https://docs.victoriametrics.com/anomaly-detection/components/reader/#config-parameters
+	VerifyTLS   any    `yaml:"verify_tls,omitempty"`
+	TLSCertFile string `yaml:"tls_cert_file,omitempty"`
+	TLSKeyFile  string `yaml:"tls_key_file,omitempty"`
 }
 
 func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClientSpec, ac *build.AssetsCache) error {
@@ -456,7 +462,15 @@ func (c *clientConfig) override(cr *vmv1.VMAnomaly, cfg *vmv1.VMAnomalyHTTPClien
 		}
 		c.TLSCertFile = creds.CertFile
 		c.TLSKeyFile = creds.KeyFile
-		c.VerifyTLS = !cfg.TLSConfig.InsecureSkipVerify
+		switch {
+		case cfg.TLSConfig.InsecureSkipVerify:
+			c.VerifyTLS = false
+		case creds.CAFile != "":
+			// vmanomaly expects the CA bundle path to be passed via `verify_tls`.
+			c.VerifyTLS = creds.CAFile
+		default:
+			c.VerifyTLS = true
+		}
 	}
 	if cfg.BasicAuth != nil {
 		creds, err := ac.BuildBasicAuthCreds(cr.Namespace, cfg.BasicAuth)

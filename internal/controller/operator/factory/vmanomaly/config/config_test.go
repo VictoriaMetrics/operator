@@ -284,7 +284,7 @@ reader:
       - "0"
       - inf
   tenant_id: "0:1"
-  verify_tls: true
+  verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert
   tls_key_file: /test/monitoring_tls_remote-key
 writer:
@@ -297,7 +297,7 @@ writer:
     label2: value2
   connection_retry_attempts: 3
   tenant_id: "0:2"
-  verify_tls: true
+  verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert
   tls_key_file: /test/monitoring_tls_remote-key
 monitoring:
@@ -306,7 +306,7 @@ monitoring:
   push:
     url: http://monitoring
     tenant_id: "0:3"
-    verify_tls: true
+    verify_tls: /test/monitoring_tls_remote-ca
     tls_cert_file: /test/monitoring_tls_remote-cert
     tls_key_file: /test/monitoring_tls_remote-key
     push_frequency: 20s

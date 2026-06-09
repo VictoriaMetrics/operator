@@ -104,6 +104,32 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@acb598e5ddbc6f68a970c5da0688d2f3a9f04d05  # v1.6.0
+        with:
+          packages: libgpgme-dev
+          version: "1.0"
+      - name: Get Golang Docker image version
+        id: golang-version
+        shell: bash
+        run: |
+          echo "version=$(grep '^FROM golang:' Dockerfile | cut -d: -f2 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+      - name: Cache Golang Docker image
+        id: golang-docker-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: /tmp/golang-docker.tar
+          key: golang-docker-${{ steps.golang-version.outputs.version }}
+      - name: Load Golang Docker image from cache
+        if: steps.golang-docker-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: docker load -i /tmp/golang-docker.tar
+      - name: Pull and cache Golang Docker image
+        if: steps.golang-docker-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          docker pull golang:${{ steps.golang-version.outputs.version }}
+          docker save golang:${{ steps.golang-version.outputs.version }} -o /tmp/golang-docker.tar
       - name: Set output variables
         id: vars
         run: |
@@ -116,8 +142,6 @@ jobs:
           TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
           LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
-          sudo apt update
-          sudo apt install -y libgpgme-dev
           make lint
           make manifests
           make api-gen

@@ -10,20 +10,6 @@ jobs:
       contents: read
       checks: write
     steps:
-      - name: Free space
-        run: |
-          # cleanup up space to free additional ~20GiB of memory
-          # which are lacking for multiplaform images build
-          formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
-          getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
-          BEFORE=$(getAvailableSpace)
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/.ghcup || true
-          AFTER=$(getAvailableSpace)
-          SAVED=$((AFTER-BEFORE))
-          echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
@@ -53,6 +39,32 @@ jobs:
         shell: bash
         run: go mod download
 
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@acb598e5ddbc6f68a970c5da0688d2f3a9f04d05  # v1.6.0
+        with:
+          packages: libgpgme-dev
+          version: "1.0"
+      - name: Get Golang Docker image version
+        id: golang-version
+        shell: bash
+        run: |
+          echo "version=$(grep '^FROM golang:' Dockerfile | cut -d: -f2 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+      - name: Cache Golang Docker image
+        id: golang-docker-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: /tmp/golang-docker.tar
+          key: golang-docker-${{ steps.golang-version.outputs.version }}
+      - name: Load Golang Docker image from cache
+        if: steps.golang-docker-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: docker load -i /tmp/golang-docker.tar
+      - name: Pull and cache Golang Docker image
+        if: steps.golang-docker-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          docker pull golang:${{ steps.golang-version.outputs.version }}
+          docker save golang:${{ steps.golang-version.outputs.version }} -o /tmp/golang-docker.tar
       - name: Set output variables
         id: vars
         run: |
@@ -64,8 +76,6 @@ jobs:
           TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
           LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
-          sudo apt update
-          sudo apt install -y libgpgme-dev
           TAG=${TAG} make test-e2e-upgrade
       - name: Trim Go cache
         shell: bash

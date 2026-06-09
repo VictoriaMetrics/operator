@@ -30,6 +30,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix VPA scale subresource lookup failure when `spec.shardCount` is unset by always reporting at least 1 in `status.shards`. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix HPA targeting the underlying Deployment/StatefulSet (pod replicas) instead of the VMAgent CR scale subresource (`spec.shardCount`); HPA now correctly scales the number of shards. See [#2229](https://github.com/VictoriaMetrics/operator/issues/2229).
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): emit the `OnlineQuantileModel` smoothing parameter under its correct key `global_smoothing` instead of the unrecognized `global_smooth`, which vmanomaly silently ignored.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): pass the configured TLS CA bundle to the reader, writer and monitoring clients. Previously the CA was mounted as a volume but dropped during config generation, so a `tlsConfig` with only a CA produced no `verify_tls` reference to it; `insecureSkipVerify` is now also propagated correctly.
 
 ## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
 **Release date:** 20 May 2026

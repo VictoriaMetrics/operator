@@ -61,8 +61,5 @@ jobs:
           gh release upload ${{github.event.release.tag_name}} ./dist/install-no-webhook.yaml#install-no-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./dist/install-with-webhook.yaml#install-with-webhook.yaml --clobber || echo "fix me NOT enough security permissions"
           gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber || echo "fix me NOT enough security permissions"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: olm
-          path: bundle
-          retention-days: 1
+          tar -czf olm-bundle.tar.gz -C bundle .
+          gh release upload ${{github.event.release.tag_name}} ./olm-bundle.tar.gz#olm-bundle.tar.gz --clobber || echo "fix me NOT enough security permissions"

@@ -1,5 +1,5 @@
 name: Publish Reports
-description: Publish JUnit test report and Allure report on failure
+description: Publish JUnit test report
 
 runs:
   using: composite
@@ -9,13 +9,3 @@ runs:
       uses: mikepenz/action-junit-report@3a81627bfac62268172037048872e8ebd4207e6d  # v6.4.1
       with:
         report_paths: 'report.xml'
-    - name: Generate Allure Report
-      if: github.event.pull_request.draft == false && failure()
-      shell: bash
-      run: make allure-report
-    - name: Archive Allure report
-      if: github.event.pull_request.draft == false && failure()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-      with:
-        name: allure-report
-        path: ./allure-report

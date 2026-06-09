@@ -49,13 +49,14 @@ jobs:
           git_commit_gpgsign: true
           workdir: __operatorhub-repo
 
-      - uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
-        with:
-          name: olm
-          workflow: release.yaml
-          github_token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          run_id: ${{ github.event.workflow_run.id }}
-          path: bundle
+      - name: Download OLM bundle
+        run: |
+          gh release download "$RELEASE_TAG" --pattern olm-bundle.tar.gz --dir .
+          mkdir -p bundle
+          tar -xzf olm-bundle.tar.gz -C bundle
+        env:
+          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
+          GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Set channel
         run: |

@@ -19,6 +19,7 @@ jobs:
           repository: VictoriaMetrics/operator
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator-repo
+          persist-credentials: false
 
       - name: Check out VM code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
@@ -27,6 +28,7 @@ jobs:
           ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-charts-repo
+          persist-credentials: false
 
       - name: Check operator chart app version
         id: chart

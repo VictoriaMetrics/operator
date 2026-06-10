@@ -26,6 +26,8 @@ jobs:
           echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
       - name: Prepare binary cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:

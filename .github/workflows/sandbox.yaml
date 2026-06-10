@@ -28,6 +28,7 @@ jobs:
           repository: VictoriaMetrics/operator
           ref: ${{ github.event.inputs.branch }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          persist-credentials: false
 
       - name: Publish image
         id: publish
@@ -44,6 +45,7 @@ jobs:
           repository: VictoriaMetrics/ops
           ref: main
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          persist-credentials: false
           path: __vm-ops-repo
 
       - name: Import GPG key

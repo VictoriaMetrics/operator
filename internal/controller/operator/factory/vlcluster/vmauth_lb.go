@@ -213,6 +213,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		VolumeMounts:    vmMounts,
 	}
 	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
+	build.Lifecycle(&vmauthLBCnt, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}

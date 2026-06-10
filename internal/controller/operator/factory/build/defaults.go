@@ -18,6 +18,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 type commonParams struct {
@@ -473,6 +474,7 @@ func addVMClusterDefaults(objI any) {
 		cpStorage := cp
 		cpStorage.tag = setTag(cr.Spec.VMStorage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VMStorage.CommonAppsParams, &cpStorage, &cv)
+		cr.Spec.VMStorage.PreStopSleepSeconds = nil
 
 		bv := config.ApplicationDefaults(c.VMBackup)
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
@@ -558,6 +560,14 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonAppsParams, cp *commonPar
 	}
 	if common.TerminationGracePeriodSeconds == nil {
 		common.TerminationGracePeriodSeconds = ptr.To(appDefaults.TerminationGracePeriodSeconds)
+	}
+	if common.PreStopSleepSeconds == nil && c.EnableDefaultPreStopHook && k8stools.IsPodLifecycleSleepActionSupported() {
+		// Only inject the default preStop if the grace period is large enough
+		// to leave time for both the sleep and actual process shutdown.
+		const defaultPreStop = int32(15)
+		if int64(defaultPreStop) < *common.TerminationGracePeriodSeconds {
+			common.PreStopSleepSeconds = ptr.To(defaultPreStop)
+		}
 	}
 	if common.DNSPolicy == "" {
 		common.DNSPolicy = corev1.DNSClusterFirst
@@ -646,6 +656,7 @@ func addVTClusterDefaults(objI any) {
 		cpStorage := cp
 		cpStorage.tag = setTag(cr.Spec.Storage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cpStorage, &cv)
+		cr.Spec.Storage.PreStopSleepSeconds = nil
 	}
 
 	if cr.Spec.Insert != nil {
@@ -690,6 +701,7 @@ func addVLClusterDefaults(objI any) {
 		cpStorage := cp
 		cpStorage.tag = setTag(cr.Spec.VLStorage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VLStorage.CommonAppsParams, &cpStorage, &cv)
+		cr.Spec.VLStorage.PreStopSleepSeconds = nil
 	}
 	if cr.Spec.VLInsert != nil {
 		cv := config.ApplicationDefaults(c.VLCluster.Insert)

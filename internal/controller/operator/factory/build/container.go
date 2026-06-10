@@ -13,6 +13,7 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 const probeTimeoutSeconds int32 = 5
@@ -190,6 +191,34 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 		}
 	}
 	return args
+}
+
+// Lifecycle applies default lifecycle hooks to the container from params.
+// It adds a preStop sleep hook to prevent traffic loss during pod termination,
+// unless the user has already set a preStop hook or preStopSleepSeconds is zero.
+// Requires Kubernetes >= 1.29 (PodLifecycleSleepAction feature gate).
+func Lifecycle(container *corev1.Container, params *vmv1beta1.CommonAppsParams) {
+	if params == nil || params.PreStopSleepSeconds == nil || *params.PreStopSleepSeconds <= 0 {
+		return
+	}
+	if !k8stools.IsPodLifecycleSleepActionSupported() {
+		return
+	}
+	// Skip if the sleep would meet or exceed the termination grace period — the pod
+	// would receive SIGKILL during the hook, defeating its purpose.
+	if params.TerminationGracePeriodSeconds != nil && int64(*params.PreStopSleepSeconds) >= *params.TerminationGracePeriodSeconds {
+		return
+	}
+	if container.Lifecycle == nil {
+		container.Lifecycle = &corev1.Lifecycle{}
+	}
+	if container.Lifecycle.PreStop == nil {
+		container.Lifecycle.PreStop = &corev1.LifecycleHandler{
+			Sleep: &corev1.SleepAction{
+				Seconds: int64(*params.PreStopSleepSeconds),
+			},
+		}
+	}
 }
 
 // formatContainerImage returns container image with registry prefix if needed.

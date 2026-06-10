@@ -262,6 +262,9 @@ func (cr *VLogs) Validate() error {
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

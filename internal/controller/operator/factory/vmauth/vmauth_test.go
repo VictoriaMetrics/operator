@@ -674,6 +674,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
     image: vmcustom:config-reloader-v0.35.0
@@ -788,6 +792,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
     image: victoriametrics/operator:config-reloader-v0.68.3

@@ -717,6 +717,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	build.Probe(&vmselectContainer, cr.Spec.VMSelect, &cr.Spec.VMSelect.CommonAppsParams)
+	build.Lifecycle(&vmselectContainer, &cr.Spec.VMSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmselectContainer}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMSelect.CommonAppsParams)
@@ -928,6 +929,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	build.Probe(&vminsertContainer, cr.Spec.VMInsert, &cr.Spec.VMInsert.CommonAppsParams)
+	build.Lifecycle(&vminsertContainer, &cr.Spec.VMInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{vminsertContainer}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VMInsert.CommonAppsParams)
@@ -1602,6 +1604,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		VolumeMounts:    vmounts,
 	}
 	build.Probe(&vmauthLBCnt, &spec, &spec.CommonAppsParams)
+	build.Lifecycle(&vmauthLBCnt, &spec.CommonAppsParams)
 	containers := []corev1.Container{
 		vmauthLBCnt,
 	}

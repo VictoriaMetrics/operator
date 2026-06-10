@@ -47,3 +47,10 @@ func IsFSGroupChangePolicySupported() bool {
 	}
 	return false
 }
+
+// IsPodLifecycleSleepActionSupported checks if the native Sleep lifecycle action is supported.
+// The PodLifecycleSleepAction feature gate was introduced as alpha in 1.29 and promoted to beta (on by default) in 1.30.
+// https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-hooks
+func IsPodLifecycleSleepActionSupported() bool {
+	return ServerMajorVersion == 1 && ServerMinorVersion >= 29
+}

@@ -335,6 +335,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&selectContainers, cr.Spec.VLSelect, &cr.Spec.VLSelect.CommonAppsParams)
+	build.Lifecycle(&selectContainers, &cr.Spec.VLSelect.CommonAppsParams)
 	operatorContainers := []corev1.Container{selectContainers}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VLSelect.CommonAppsParams)

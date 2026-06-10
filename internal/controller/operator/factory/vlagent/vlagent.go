@@ -444,6 +444,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 
 	build.Probe(&vlagentContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vlagentContainer, &cr.Spec.CommonAppsParams)
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	var err error

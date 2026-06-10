@@ -229,6 +229,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&insertContainers, cr.Spec.VLInsert, &cr.Spec.VLInsert.CommonAppsParams)
+	build.Lifecycle(&insertContainers, &cr.Spec.VLInsert.CommonAppsParams)
 	operatorContainers := []corev1.Container{insertContainers}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.VLInsert.CommonAppsParams)

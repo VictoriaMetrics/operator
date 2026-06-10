@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -367,6 +368,59 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, set.Annotations, map[string]string{
 				"controller": "true",
 			})
+		},
+	})
+
+	// test custom terminationGracePeriodSeconds is propagated to pod spec
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-grace",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount:                  ptr.To(int32(1)),
+					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				},
+			},
+		},
+		validate: func(got *appsv1.StatefulSet) {
+			assert.NotNil(t, got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			assert.Equal(t, int64(60), *got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			cnt := got.Spec.Template.Spec.Containers[0]
+			require.NotNil(t, cnt.Lifecycle)
+			require.NotNil(t, cnt.Lifecycle.PreStop)
+			assert.Equal(t, int64(15), cnt.Lifecycle.PreStop.Sleep.Seconds)
+		},
+	})
+
+	// test default preStop lifecycle hook is set
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "example-agent-default-grace",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{URL: "http://remote-write"},
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+				},
+			},
+		},
+		validate: func(got *appsv1.StatefulSet) {
+			assert.NotNil(t, got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			assert.Equal(t, int64(30), *got.Spec.Template.Spec.TerminationGracePeriodSeconds)
+			cnt := got.Spec.Template.Spec.Containers[0]
+			require.NotNil(t, cnt.Lifecycle)
+			require.NotNil(t, cnt.Lifecycle.PreStop)
+			assert.Equal(t, int64(15), cnt.Lifecycle.PreStop.Sleep.Seconds)
 		},
 	})
 }
@@ -893,6 +947,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -945,6 +1003,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -1013,6 +1075,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -1095,6 +1161,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -1180,6 +1250,10 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
@@ -1254,11 +1328,72 @@ containers:
       periodseconds: 5
       successthreshold: 1
       failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 serviceaccountname: vlagent-agent
+`)
 
-    `)
+	// test custom terminationGrace probe affects readiness probe
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1.VLAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources:           ptr.To(false),
+				Port:                          "9429",
+				TerminationGracePeriodSeconds: ptr.To[int64](40),
+			},
+		},
+	}, []runtime.Object{}, `
+containers:
+  - name: vlagent
+    image: victoriametrics/vlagent:v1.97.1
+    args:
+      - -httpListenAddr=:9429
+      - -tmpDataPath=/vlagent-data
+    ports:
+      - name: http
+        containerport: 9429
+        protocol: TCP
+    volumemounts:
+      - name: tmp-data
+        mountpath: /vlagent-data
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9429
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9429
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
+    terminationmessagepolicy: FallbackToLogsOnError
+    imagepullpolicy: IfNotPresent
+serviceaccountname: vlagent-agent
+`)
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

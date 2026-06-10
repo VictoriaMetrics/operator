@@ -56,6 +56,7 @@ func GetClient(data []byte) client.WithWatch {
 	Expect(dec.Decode(&cfg)).To(Succeed())
 	// operator settings
 	envs := map[string]string{
+		"VM_ENABLE_DEFAULT_PRESTOP_HOOK":                 "false",
 		"VM_CONTAINERREGISTRY":                           "quay.io",
 		"VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE": "prometheus/alertmanager",
 		"VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES":   "true",

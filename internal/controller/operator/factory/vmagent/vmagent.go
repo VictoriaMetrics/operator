@@ -673,6 +673,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 
 	build.AddServiceAccountTokenVolumeMount(&vmagentContainer, cr.AutomountServiceAccountToken())
 	build.Probe(&vmagentContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmagentContainer, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmagentContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 
 	var operatorContainers []corev1.Container

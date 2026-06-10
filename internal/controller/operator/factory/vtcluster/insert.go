@@ -218,6 +218,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&insertContainers, cr.Spec.Insert, &cr.Spec.Insert.CommonAppsParams)
+	build.Lifecycle(&insertContainers, &cr.Spec.Insert.CommonAppsParams)
 	operatorContainers := []corev1.Container{insertContainers}
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.Insert.CommonAppsParams)

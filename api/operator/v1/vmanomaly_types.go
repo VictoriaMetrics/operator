@@ -483,6 +483,9 @@ func (cr *VMAnomaly) Validate() error {
 	if !cr.Spec.License.IsProvided() {
 		return fmt.Errorf("no license is provided!. Either spec.license.key or spec.license.keyRef is required")
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

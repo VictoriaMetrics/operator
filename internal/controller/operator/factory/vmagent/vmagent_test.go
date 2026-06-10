@@ -2440,6 +2440,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent`,
@@ -2550,6 +2554,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
     - name: config-reloader
@@ -2693,6 +2701,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
     - name: config-reloader
@@ -2815,6 +2827,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent
@@ -2901,6 +2917,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent
@@ -2993,6 +3013,10 @@ containers:
         periodseconds: 5
         successthreshold: 1
         failurethreshold: 10
+      lifecycle:
+        prestop:
+          sleep:
+            seconds: 15
       terminationmessagepolicy: FallbackToLogsOnError
       imagepullpolicy: IfNotPresent
 serviceaccountname: vmagent-agent

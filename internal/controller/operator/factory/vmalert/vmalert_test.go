@@ -819,6 +819,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		},
 		want: []string{
 			"-datasource.url=http://some-vm-datasource",
+
 			"-httpListenAddr=:8080",
 			"-notifier.tlsCAFile=,/tmp/ca.cert,,,",
 			"-notifier.tlsCertFile=,/tmp/cert.pem,,,",

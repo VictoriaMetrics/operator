@@ -35,6 +35,7 @@ const (
 // TODO[vrutkovs]: do we need to copy it?
 func operatorEnvVars(watchNamespace string, extraEnvs map[string]string) []corev1.EnvVar {
 	envs := map[string]string{
+		"VM_ENABLE_DEFAULT_PRESTOP_HOOK":                 "false",
 		"VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE": "prometheus/alertmanager",
 		"VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES":   "true",
 		"VM_GATEWAY_API_ENABLED":                         "true",

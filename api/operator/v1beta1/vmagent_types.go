@@ -225,6 +225,9 @@ func (cr *VMAgent) Validate() error {
 		}
 		scrapeClassNames.Insert(sc.Name)
 	}
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

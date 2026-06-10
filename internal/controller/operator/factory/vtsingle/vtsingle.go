@@ -249,6 +249,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	}
 
 	build.Probe(&vtsingleContainer, r, &r.Spec.CommonAppsParams)
+	build.Lifecycle(&vtsingleContainer, &r.Spec.CommonAppsParams)
 
 	operatorContainers := []corev1.Container{vtsingleContainer}
 

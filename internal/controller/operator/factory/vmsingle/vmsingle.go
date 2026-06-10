@@ -373,6 +373,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplat
 	}
 
 	build.Probe(&vmsingleContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmsingleContainer, &cr.Spec.CommonAppsParams)
 
 	containers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container

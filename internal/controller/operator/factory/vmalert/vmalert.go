@@ -302,6 +302,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	build.Probe(&vmalertContainer, cr, &cr.Spec.CommonAppsParams)
+	build.Lifecycle(&vmalertContainer, &cr.Spec.CommonAppsParams)
 	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 

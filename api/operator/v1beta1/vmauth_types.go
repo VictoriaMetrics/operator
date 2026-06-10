@@ -480,6 +480,9 @@ func (cr *VMAuth) Validate() error {
 		}
 	}
 
+	if err := cr.Spec.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

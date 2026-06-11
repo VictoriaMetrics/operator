@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   update-crds:
     if: "!contains(github.event.release.tag_name, '-rc')"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: docs
     steps:

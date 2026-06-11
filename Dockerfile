@@ -33,10 +33,9 @@ ARG GODEBUG_ARGS
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 ENV GOCACHE=/root/.cache/go-build
 RUN \
-    --mount=type=cache,target="/root/.cache/go-build" \
-    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GODEBUG=${GODEBUG_ARGS} GOFIPS140=${FIPS_VERSION} go build -a \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GODEBUG=${GODEBUG_ARGS} GOFIPS140=${FIPS_VERSION} go build \
     -ldflags="-X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${BUILDINFO}'" \
     -o app ${ROOT}/
 

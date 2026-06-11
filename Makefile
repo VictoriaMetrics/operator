@@ -356,6 +356,10 @@ load-kind: docker-build ensure-kind-cluster
 deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy
 
+# deploy-kind-no-build skips docker-build/load — use when image is already loaded (e.g. from test-e2e's load-kind dep)
+deploy-kind-no-build: OVERLAY=config/base-with-webhook
+deploy-kind-no-build: ensure-kind-cluster deploy
+
 undeploy-kind: OVERLAY=config/base-with-webhook
 undeploy-kind: ensure-kind-cluster undeploy
 

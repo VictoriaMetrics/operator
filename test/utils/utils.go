@@ -64,27 +64,41 @@ func UninstallCertManager() {
 }
 
 // InstallCertManager installs the cert manager bundle.
+// If the webhook deployment is already Available the install is skipped.
 func InstallCertManager() error {
+	// Check if cert-manager webhook is already running — skip reinstall.
+	check := exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
+		"--for", "condition=Available",
+		"--namespace", "cert-manager",
+		"--timeout", "5s",
+	)
+	if _, err := Run(check); err == nil {
+		fmt.Fprintf(GinkgoWriter, "cert-manager already installed, skipping\n")
+		return nil
+	}
+
 	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
 	cmd := exec.Command("kubectl", "apply", "-f", url)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
-	// Wait for cert-manager-webhook to be ready, which can take time if cert-manager
-	// was re-installed after uninstalling on a cluster.
+	// Wait for cert-manager-webhook deployment to be available.
 	cmd = exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
 		"--for", "condition=Available",
 		"--namespace", "cert-manager",
 		"--timeout", "5m",
 	)
-
-	_, err := Run(cmd)
-	return err
-}
-
-// LoadImageToKindCluster loads a local docker image to the kind cluster
-func LoadImageToKindClusterWithName(name string) error {
-	cmd := exec.Command("make", "load-kind")
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	// Wait for the webhook pod itself to be Ready — the deployment being Available
+	// doesn't guarantee the TLS cert is issued and trusted by the API server yet.
+	cmd = exec.Command("kubectl", "wait", "pod",
+		"-l", "app.kubernetes.io/component=webhook",
+		"--for", "condition=Ready",
+		"--namespace", "cert-manager",
+		"--timeout", "5m",
+	)
 	_, err := Run(cmd)
 	return err
 }

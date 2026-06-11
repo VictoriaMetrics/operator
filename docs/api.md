@@ -689,7 +689,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | tenantID<a href="#vmanomalyreadersspec-tenantid" id="vmanomalyreadersspec-tenantid">#</a><br/>_string_ | _(Required)_<br/>TenantID defines for VictoriaMetrics Cluster version only, tenants are identified by accountID, accountID:projectID or multitenant. |
 | timeout<a href="#vmanomalyreadersspec-timeout" id="vmanomalyreadersspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
 | tlsConfig<a href="#vmanomalyreadersspec-tlsconfig" id="vmanomalyreadersspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
-| tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
+| tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
 
 #### VMAnomalyServerSpec
 
@@ -701,7 +701,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | Field | Description |
 | --- | --- |
 | addr<a href="#vmanomalyserverspec-addr" id="vmanomalyserverspec-addr">#</a><br/>_string_ | _(Optional)_<br/>Addr defines IP address to listen on |
-| maxConcurrentTasks<a href="#vmanomalyserverspec-maxconcurrenttasks" id="vmanomalyserverspec-maxconcurrenttasks">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks.<br/>vmanomaly accepts any positive integer with no upper bound.<br/>See https://docs.victoriametrics.com/anomaly-detection/components/server/ |
+| maxConcurrentTasks<a href="#vmanomalyserverspec-maxconcurrenttasks" id="vmanomalyserverspec-maxconcurrenttasks">#</a><br/>_integer_ | _(Optional)_<br/>MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks |
 | pathPrefix<a href="#vmanomalyserverspec-pathprefix" id="vmanomalyserverspec-pathprefix">#</a><br/>_string_ | _(Optional)_<br/>PathPrefix defines optional URL path prefix for all HTTP routes<br />If set to 'my-app' or '/my-app', routes will be served under '/my-app/...' |
 | port<a href="#vmanomalyserverspec-port" id="vmanomalyserverspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port defines port to listen on |
 | uiDefaultState<a href="#vmanomalyserverspec-uidefaultstate" id="vmanomalyserverspec-uidefaultstate">#</a><br/>_string_ | _(Optional)_<br/>UIDefaultState defines default query state for anomaly UI |

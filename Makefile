@@ -338,7 +338,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(or $(ignore-not-found),false) -f -
 
 # builds image and loads it into kind.
 load-kind: docker-build kind
@@ -354,7 +354,7 @@ load-kind: docker-build kind
 deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy
 
-undeploy-kind: OVERLAY=config/kind
+undeploy-kind: OVERLAY=config/base-with-webhook
 undeploy-kind: load-kind undeploy
 
 ## Location to install dependencies to

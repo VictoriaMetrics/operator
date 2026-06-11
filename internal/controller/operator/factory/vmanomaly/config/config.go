@@ -155,8 +155,8 @@ func (s *server) validate() error {
 	if s == nil {
 		return nil
 	}
-	if s.MaxConcurrentTasks != 0 && (s.MaxConcurrentTasks < 1 || s.MaxConcurrentTasks > 20) {
-		return fmt.Errorf("max_concurrent_tasks must be between 1 and 20, got %d", s.MaxConcurrentTasks)
+	if s.MaxConcurrentTasks < 0 {
+		return fmt.Errorf("max_concurrent_tasks must be a positive integer, got %d", s.MaxConcurrentTasks)
 	}
 	return nil
 }
@@ -167,8 +167,9 @@ type retention struct {
 }
 
 type settings struct {
-	Workers           int               `yaml:"n_workers,omitempty"`
-	ScoreOutsideRange float64           `yaml:"anomaly_score_outside_data_range,omitempty"`
+	Workers int `yaml:"n_workers,omitempty"`
+	// ScoreOutsideRange is a pointer so an explicit 0.0 survives marshalling.
+	ScoreOutsideRange *float64          `yaml:"anomaly_score_outside_data_range,omitempty"`
 	RestoreState      bool              `yaml:"restore_state,omitempty"`
 	Retention         *retention        `yaml:"retention,omitempty"`
 	LoggerLevels      map[string]string `yaml:"logger_levels,omitempty"`

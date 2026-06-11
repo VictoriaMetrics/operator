@@ -946,7 +946,7 @@ preset: ui
 `,
 	})
 
-	// server section validation error - maxConcurrentTasks out of range
+	// server section validation error - maxConcurrentTasks must be a positive integer
 	f(opts{
 		cr: &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{
@@ -984,7 +984,7 @@ writer:
 					DatasourceURL: "http://writer.test",
 				},
 				Server: &vmv1.VMAnomalyServerSpec{
-					MaxConcurrentTasks: 25, // out of range (1-20)
+					MaxConcurrentTasks: -1, // negative is invalid; vmanomaly imposes no upper bound
 				},
 			},
 		},
@@ -1168,4 +1168,215 @@ server:
   port: "8490"
 `,
 	})
+
+	// tz is serialized as a string (reader/query/scheduler), and explicit zero values
+	// (decay, anomaly_score_outside_data_range) survive marshalling
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+settings:
+  anomaly_score_outside_data_range: 0
+models:
+  m_online:
+    class: zscore_online
+    queries: ['q1']
+    decay: 0
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+    tz: "Europe/Kyiv"
+reader:
+  queries:
+    q1:
+      expr: up
+      tz: "America/New_York"
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					Timezone:       "UTC",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  m_online:
+    class: zscore_online
+    queries:
+    - q1
+    decay: 0
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+    tz: Europe/Kyiv
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  tz: UTC
+  queries:
+    q1:
+      expr: up
+      tz: America/New_York
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  anomaly_score_outside_data_range: 0
+server:
+  port: "8490"
+`,
+	})
+
+	// contamination accepts a float
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries: ['q1']
+    contamination: 0.05
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    q1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					MaxConcurrentTasks: 50, // no upper bound
+				},
+			},
+		},
+		expected: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries:
+    - q1
+    contamination: 0.05
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+  max_concurrent_tasks: 50
+`,
+	})
+
+	// contamination accepts the string "auto"
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries: ['q1']
+    contamination: auto
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    q1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries:
+    - q1
+    contamination: auto
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
 }

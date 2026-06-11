@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type reader struct {
@@ -18,7 +17,7 @@ type reader struct {
 	LatencyOffset              *duration         `yaml:"latency_offset,omitempty"`
 	Offset                     *duration         `yaml:"offset,omitempty"`
 	MaxPointsPerQuery          int               `yaml:"max_points_per_query,omitempty"`
-	Timezone                   time.Location     `yaml:"tz,omitempty"`
+	Timezone                   string            `yaml:"tz,omitempty"`
 	DataRange                  []string          `yaml:"data_range,omitempty"`
 	Queries                    map[string]*query `yaml:"queries,omitempty"`
 	ClientConfig               clientConfig      `yaml:",inline"`
@@ -58,11 +57,11 @@ func (r *reader) validate() error {
 }
 
 type query struct {
-	Expr              string        `yaml:"expr"`
-	Step              *duration     `yaml:"step,omitempty"`
-	DataRange         []string      `yaml:"data_range,omitempty"`
-	MaxPointsPerQuery int           `yaml:"max_points_per_query,omitempty"`
-	TZ                time.Location `yaml:"tz,omitempty"`
-	TenantID          string        `yaml:"tenant_id,omitempty"`
-	Offset            *duration     `yaml:"offset,omitempty"`
+	Expr              string    `yaml:"expr"`
+	Step              *duration `yaml:"step,omitempty"`
+	DataRange         []string  `yaml:"data_range,omitempty"`
+	MaxPointsPerQuery int       `yaml:"max_points_per_query,omitempty"`
+	TZ                string    `yaml:"tz,omitempty"`
+	TenantID          string    `yaml:"tenant_id,omitempty"`
+	Offset            *duration `yaml:"offset,omitempty"`
 }

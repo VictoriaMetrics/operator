@@ -35,7 +35,6 @@ import (
 // VMAnomalySpec defines the desired state of VMAnomaly.
 // +k8s:openapi-gen=true
 type VMAnomalySpec struct {
-
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -187,7 +186,7 @@ type VMAnomalyReadersSpec struct {
 	Offset string `json:"offset,omitempty" yaml:"offset,omitempty"`
 	// Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
 	MaxPointsPerQuery int `json:"maxPointsPerQuery,omitempty" yaml:"max_points_per_query,omitempty"`
-	// Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
+	// Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
 	Timezone string `json:"tz,omitempty" yaml:"tz,omitempty"`
 	// Optional argumentallows defining valid data ranges for input of all the queries in queries
 	DataRange               []string `json:"dataRange,omitempty" yaml:"data_range,omitempty"`
@@ -277,7 +276,6 @@ type VMAnomalyServerSpec struct {
 	// MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=20
 	MaxConcurrentTasks int `json:"maxConcurrentTasks,omitempty" yaml:"max_concurrent_tasks,omitempty"`
 	// UIDefaultState defines default query state for anomaly UI
 	// +optional

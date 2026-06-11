@@ -16,16 +16,17 @@ const (
 )
 
 type commonModelParams struct {
-	Class                 string                  `yaml:"class"`
-	Queries               []string                `yaml:"queries,omitempty"`
-	Schedulers            []string                `yaml:"schedulers,omitempty"`
-	ProvideSeries         []string                `yaml:"provide_series,omitempty"`
-	DetectionDirection    modelDetectionDirection `yaml:"detection_direction,omitempty"`
-	MinDevFromExpected    float64                 `yaml:"min_dev_from_expected,omitempty"`
-	GroupBy               []string                `yaml:"groupby,omitempty"`
-	Scale                 []float64               `yaml:"scale,omitempty"`
-	ClipPredictions       bool                    `yaml:"clip_predictions,omitempty"`
-	ScoreOutsideDataRange float64                 `yaml:"anomaly_score_outside_data_range,omitempty"`
+	Class              string                  `yaml:"class"`
+	Queries            []string                `yaml:"queries,omitempty"`
+	Schedulers         []string                `yaml:"schedulers,omitempty"`
+	ProvideSeries      []string                `yaml:"provide_series,omitempty"`
+	DetectionDirection modelDetectionDirection `yaml:"detection_direction,omitempty"`
+	MinDevFromExpected float64                 `yaml:"min_dev_from_expected,omitempty"`
+	GroupBy            []string                `yaml:"groupby,omitempty"`
+	Scale              []float64               `yaml:"scale,omitempty"`
+	ClipPredictions    bool                    `yaml:"clip_predictions,omitempty"`
+	// ScoreOutsideDataRange is a pointer so an explicit 0.0 survives marshalling.
+	ScoreOutsideDataRange *float64 `yaml:"anomaly_score_outside_data_range,omitempty"`
 }
 
 func (p commonModelParams) queries() []string {
@@ -129,14 +130,15 @@ func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 }
 
 type onlineModel struct {
-	Decay float64 `yaml:"decay,omitempty"`
+	// Decay is a pointer so an explicit 0.0 survives marshalling.
+	Decay *float64 `yaml:"decay,omitempty"`
 }
 
 func (m *onlineModel) validate() error {
 	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
 	// Valid values are in the range [0, 1].
-	if m.Decay < 0 || m.Decay > 1 {
-		return fmt.Errorf("decay must be in range [0, 1], got %f", m.Decay)
+	if m.Decay != nil && (*m.Decay < 0 || *m.Decay > 1) {
+		return fmt.Errorf("decay must be in range [0, 1], got %f", *m.Decay)
 	}
 	return nil
 }
@@ -156,7 +158,7 @@ type autoTunedOptimizationParams struct {
 	OptimizedBusinessParams []string  `yaml:"optimized_business_params,omitempty"`
 	Seed                    int       `yaml:"seed,omitempty"`
 	Splits                  int       `yaml:"n_splits,omitempty"`
-	Trails                  int       `yaml:"n_trails,omitempty"`
+	Trials                  int       `yaml:"n_trials,omitempty"`
 	Timeout                 *duration `yaml:"timeout,omitempty"`
 }
 
@@ -174,9 +176,10 @@ func (m *holtWintersModel) validate() error {
 
 type isolationForestModel struct {
 	commonModelParams `yaml:",inline"`
-	Contamination     string         `yaml:"contamination,omitempty"`
-	SeasonalFeatures  []string       `yaml:"seasonal_features,omitempty"`
-	Args              map[string]any `yaml:"args,omitempty"`
+	// Contamination is a float (e.g. 0.01) or the string "auto"; vmanomaly accepts both.
+	Contamination    any            `yaml:"contamination,omitempty"`
+	SeasonalFeatures []string       `yaml:"seasonal_features,omitempty"`
+	Args             map[string]any `yaml:"args,omitempty"`
 }
 
 func (m *isolationForestModel) validate() error {
@@ -185,9 +188,10 @@ func (m *isolationForestModel) validate() error {
 
 type isolationForestMultivariateModel struct {
 	commonModelParams `yaml:",inline"`
-	Contamination     string         `yaml:"contamination,omitempty"`
-	SeasonalFeatures  []string       `yaml:"seasonal_features,omitempty"`
-	Args              map[string]any `yaml:"args,omitempty"`
+	// Contamination is a float (e.g. 0.01) or the string "auto"; vmanomaly accepts both.
+	Contamination    any            `yaml:"contamination,omitempty"`
+	SeasonalFeatures []string       `yaml:"seasonal_features,omitempty"`
+	Args             map[string]any `yaml:"args,omitempty"`
 }
 
 func (m *isolationForestMultivariateModel) validate() error {
@@ -223,7 +227,7 @@ type onlineQuantileModel struct {
 	onlineModel       `yaml:",inline"`
 	Quantiles         []float64 `yaml:"quantiles,omitempty"`
 	SeasonalInterval  *duration `yaml:"seasonal_interval,omitempty"`
-	MinSubseason      string    `yaml:"min_subseason"`
+	MinSubseason      string    `yaml:"min_subseason,omitempty"`
 	UseTransform      bool      `yaml:"use_transform,omitempty"`
 	GlobalSmoothing   float64   `yaml:"global_smoothing,omitempty"`
 	SeasonStartsFrom  time.Time `yaml:"season_starts_from,omitempty"`

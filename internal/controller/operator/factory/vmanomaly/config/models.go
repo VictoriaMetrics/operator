@@ -130,15 +130,16 @@ func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 }
 
 type onlineModel struct {
-	// Decay is a pointer so an explicit 0.0 survives marshalling.
+	// Decay is a pointer to distinguish "unset" (omitted, vmanomaly applies its default)
+	// from an explicit value, which must be in the range (0, 1].
 	Decay *float64 `yaml:"decay,omitempty"`
 }
 
 func (m *onlineModel) validate() error {
 	// See https://docs.victoriametrics.com/anomaly-detection/components/models/#decay
-	// Valid values are in the range [0, 1].
-	if m.Decay != nil && (*m.Decay < 0 || *m.Decay > 1) {
-		return fmt.Errorf("decay must be in range [0, 1], got %f", *m.Decay)
+	// Valid values are in the range (0, 1]; unset is allowed and defaulted by vmanomaly.
+	if m.Decay != nil && (*m.Decay <= 0 || *m.Decay > 1) {
+		return fmt.Errorf("decay must be in range (0, 1], got %f", *m.Decay)
 	}
 	return nil
 }

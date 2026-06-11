@@ -1169,8 +1169,8 @@ server:
 `,
 	})
 
-	// tz is serialized as a string (reader/query/scheduler), and explicit zero values
-	// (decay, anomaly_score_outside_data_range) survive marshalling
+	// tz is serialized as a string (reader/query/scheduler), an explicit zero
+	// anomaly_score_outside_data_range survives marshalling, and an unset decay is omitted
 	f(opts{
 		cr: &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1186,7 +1186,6 @@ models:
   m_online:
     class: zscore_online
     queries: ['q1']
-    decay: 0
 schedulers:
   s1:
     class: periodic
@@ -1216,7 +1215,6 @@ models:
     class: zscore_online
     queries:
     - q1
-    decay: 0
 schedulers:
   s1:
     class: periodic

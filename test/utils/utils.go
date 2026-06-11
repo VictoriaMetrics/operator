@@ -109,6 +109,8 @@ func GetProjectDir() (string, error) {
 	if err != nil {
 		return wd, err
 	}
-	wd = strings.ReplaceAll(wd, "/test/e2e", "")
+	if i := strings.Index(wd, "/test/"); i >= 0 {
+		return wd[:i], nil
+	}
 	return wd, nil
 }

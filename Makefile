@@ -178,13 +178,15 @@ test-e2e-upgrade: test-e2e
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
-	cd api && $(GOLANGCI_LINT) run operator/...
-	$(GOLANGCI_LINT) run
+	cd api && $(GOLANGCI_LINT) run operator/... & P1=$$!; \
+	$(GOLANGCI_LINT) run & P2=$$!; \
+	wait $$P1; wait $$P2
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
-	cd api && 	$(GOLANGCI_LINT) run --fix operator/...
-	$(GOLANGCI_LINT) run --fix
+	cd api && $(GOLANGCI_LINT) run --fix operator/... & P1=$$!; \
+	$(GOLANGCI_LINT) run --fix & P2=$$!; \
+	wait $$P1; wait $$P2
 
 ##@ Build
 

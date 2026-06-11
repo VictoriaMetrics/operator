@@ -341,12 +341,14 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(or $(ignore-not-found),false) -f -
 
 # builds image and loads it into kind.
-load-kind: docker-build kind
+ensure-kind-cluster: kind
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
 		$(KIND) create cluster --config=./kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
-	fi; \
+	fi
+
+load-kind: docker-build ensure-kind-cluster
 	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
 		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
 	fi
@@ -355,7 +357,7 @@ deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy
 
 undeploy-kind: OVERLAY=config/base-with-webhook
-undeploy-kind: load-kind undeploy
+undeploy-kind: ensure-kind-cluster undeploy
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin

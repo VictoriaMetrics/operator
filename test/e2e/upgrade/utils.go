@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp" //nolint:staticcheck
@@ -31,6 +33,18 @@ const (
 	operatorImageBase = "victoriametrics/operator"
 )
 
+func configReloaderImage() string {
+	if image := os.Getenv("CONFIG_RELOADER_IMAGE"); image != "" {
+		return image
+	}
+	image := os.Getenv("OPERATOR_IMAGE")
+	tagIdx := strings.LastIndex(image, ":")
+	if tagIdx > strings.LastIndex(image, "/") {
+		return image[:tagIdx+1] + "config-reloader-" + image[tagIdx+1:]
+	}
+	return ""
+}
+
 // operatorEnvVars builds the env var list for the operator pod,
 // TODO[vrutkovs]: do we need to copy it?
 func operatorEnvVars(watchNamespace string, extraEnvs map[string]string) []corev1.EnvVar {
@@ -41,7 +55,7 @@ func operatorEnvVars(watchNamespace string, extraEnvs map[string]string) []corev
 		"VM_PODWAITREADYTIMEOUT":                         "20s",
 		"VM_PODWAITREADYINTERVALCHECK":                   "1s",
 		"VM_APPREADYTIMEOUT":                             "50s",
-		"VM_CONFIG_RELOADER_IMAGE":                       "quay.io/victoriametrics/operator:config-reloader-v0.68.3",
+		"VM_CONFIG_RELOADER_IMAGE":                       configReloaderImage(),
 		"WATCH_NAMESPACE":                                watchNamespace,
 		"VM_CONTAINERREGISTRY":                           "quay.io",
 	}

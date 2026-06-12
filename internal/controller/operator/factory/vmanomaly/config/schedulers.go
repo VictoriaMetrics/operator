@@ -81,19 +81,21 @@ func (s *noopScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-1
 type periodicScheduler struct {
 	commonSchedulerParams `yaml:",inline"`
-	FitEvery              *duration     `yaml:"fit_every,omitempty"`
-	FitWindow             *duration     `yaml:"fit_window"`
-	InferEvery            *duration     `yaml:"infer_every"`
-	StartFrom             time.Time     `yaml:"start_from,omitempty"`
-	Timezone              time.Location `yaml:"tz,omitempty"`
+	FitEvery              *duration `yaml:"fit_every,omitempty"`
+	FitWindow             *duration `yaml:"fit_window"`
+	InferEvery            *duration `yaml:"infer_every"`
+	StartFrom             time.Time `yaml:"start_from,omitempty"`
+	Timezone              string    `yaml:"tz,omitempty"`
 }
 
 func (s *periodicScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-2
 type oneoffScheduler struct {
 	commonSchedulerParams `yaml:",inline"`
 	InferStartISO         time.Time `yaml:"infer_start_iso,omitempty"`
@@ -152,6 +154,7 @@ func (s *oneoffScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-3
 type backtestingScheduler struct {
 	commonSchedulerParams `yaml:",inline"`
 	FitWindow             *duration `yaml:"fit_window"`

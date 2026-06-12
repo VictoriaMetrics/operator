@@ -360,7 +360,7 @@ deploy-kind: load-kind deploy
 deploy-kind-no-build: OVERLAY=config/base-with-webhook
 deploy-kind-no-build: ensure-kind-cluster deploy
 
-undeploy-kind: OVERLAY=config/base-with-webhook
+undeploy-kind: OVERLAY=config/base-with-webhook-no-crd
 undeploy-kind: ensure-kind-cluster undeploy
 
 ## Location to install dependencies to

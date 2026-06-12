@@ -21,7 +21,7 @@ permissions: {}
 jobs:
   update:
     name: Close PR
-    runs-on: ubuntu-24.04
+    runs-on:  vm-runner
     steps:
       - name: Close PR
         run: |

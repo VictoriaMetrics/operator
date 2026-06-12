@@ -13,7 +13,7 @@ permissions: {}
 
 jobs:
   update-docs:
-    runs-on: ubuntu-24.04
+    runs-on:  vm-runner
     environment:
       name: docs
       url: https://docs.victoriametrics.com/operator

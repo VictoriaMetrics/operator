@@ -10,7 +10,7 @@ permissions: {}
 jobs:
   release:
     name: Release on GitHub
-    runs-on: ubuntu-24.04
+    runs-on:  vm-runner
     permissions:
       packages: write
       contents: write

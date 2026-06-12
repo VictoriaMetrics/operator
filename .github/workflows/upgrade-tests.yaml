@@ -5,7 +5,7 @@ permissions: {}
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-24.04
+    runs-on:  vm-runner
     permissions:
       contents: read
       checks: write

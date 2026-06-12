@@ -153,11 +153,10 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		}
 
 		err = filepath.WalkDir(walkDir, func(path string, d fs.DirEntry, err error) error {
-			// hack for kubernetes configmaps and secrets.
-			// it uses ..YEAR_MONTH_DAY_HOUR.MIN.S directory for content updates
-			// and links it as a symlink
-			// just skip it, stat for the file will be evaluated with os.Stat below
-			if strings.Contains(path, "..") {
+			// Kubernetes projected volumes expose hidden ..* entries such as
+			// ..data and timestamped symlink targets. Skip only those synthetic
+			// path elements, not regular files like "rules..yaml".
+			if strings.HasPrefix(filepath.Base(path), "..") {
 				return nil
 			}
 

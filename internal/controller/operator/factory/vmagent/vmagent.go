@@ -153,7 +153,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac); err != nil {
+	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac)
+	if err != nil {
 		return err
 	}
 
@@ -165,7 +166,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
 	}
 
-	newAppTpl, err := newK8sApp(cr, ac)
+	newAppTpl, err := newK8sApp(cr, ac, extraCount)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -174,7 +175,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 
 	if prevCR != nil {
 		var err error
-		prevAppTpl, err = newK8sApp(prevCR, ac)
+		prevAppTpl, err = newK8sApp(prevCR, ac, 0)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
@@ -366,9 +367,9 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 }
 
 // newK8sApp builds vmagent deployment spec.
-func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (client.Object, error) {
+func newK8sApp(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretCount int) (client.Object, error) {
 
-	podSpec, err := newPodSpec(cr, ac)
+	podSpec, err := newPodSpec(cr, ac, extraConfigSecretCount)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +499,7 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 	return ""
 }
 
-func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, error) {
+func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretCount int) (*corev1.PodSpec, error) {
 	var args []string
 
 	if rwArgs, err := buildRemoteWriteArgs(cr, ac); err != nil {
@@ -602,6 +603,22 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 			ReadOnly:  true,
 		})
 
+		// Shared EmptyDir for overflow: config-reloader writes decompressed job files here,
+		// vmagent reads them via scrape_config_files. Only present when overflow is active.
+		if extraConfigSecretCount > 0 {
+			volumes = append(volumes, corev1.Volume{
+				Name: "sc-files-out",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+			vmMounts = append(vmMounts, corev1.VolumeMount{
+				Name:      "sc-files-out",
+				MountPath: vmscrapes.ExtraConfigOutDir,
+				ReadOnly:  true,
+			})
+		}
+
 	}
 	mountsLen := len(vmMounts)
 	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, cr)
@@ -692,6 +709,37 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev1.PodSpec, 
 			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
 		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+
+		// Per-bucket: source Secret volume (read-only) + sc-files-out write mount + paired
+		// --watched-dir/--target-dir args so the reloader decompresses on change.
+		if extraConfigSecretCount > 0 {
+			configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{
+				Name:      "sc-files-out",
+				MountPath: vmscrapes.ExtraConfigOutDir,
+			})
+			for i := 1; i <= extraConfigSecretCount; i++ {
+				rawDir := fmt.Sprintf(vmscrapes.ExtraConfigRawDirFmt, i)
+				rawBasename := fmt.Sprintf("sc-raw-%d", i)
+				volName := rawBasename
+				volumes = append(volumes, corev1.Volume{
+					Name: volName,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: vmscrapes.ExtraConfigSecretName(cr, i),
+						},
+					},
+				})
+				configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{
+					Name:      volName,
+					MountPath: rawDir,
+					ReadOnly:  true,
+				})
+				configReloader.Args = append(configReloader.Args,
+					fmt.Sprintf("--watched-dir=%s", rawDir),
+					fmt.Sprintf("--target-dir=%s", path.Join(vmscrapes.ExtraConfigOutDir, rawBasename)),
+				)
+			}
+		}
 		operatorContainers = append(operatorContainers, configReloader)
 	}
 	ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
@@ -1235,22 +1283,22 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	if err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
+	if _, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) error {
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		return nil
+		return 0, nil
 	}
 	// HACK: newPodSpec could load content into ac and it must be called
 	// before secret config reconcile
 	//
 	// TODO: @f41gh7 rewrite this section with VLAgent secret assets injection pattern
-	if _, err := newPodSpec(cr, ac); err != nil {
-		return err
+	if _, err := newPodSpec(cr, ac, 0); err != nil {
+		return 0, err
 	}
 
 	pos := &vmscrapes.ParsedObjects{
@@ -1268,18 +1316,35 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 	sp := &cr.Spec.CommonScrapeParams
 	if err := pos.Init(ctx, rclient, sp); err != nil {
-		return err
+		return 0, err
 	}
 	pos.ValidateObjects(sp)
 
-	// Update secret based on the most recent configuration.
-	generatedConfig, err := pos.GenerateConfig(
-		ctx,
-		sp,
-		ac,
-	)
+	// Build the global config section and the flat list of individual scrape job configs.
+	cfgBase, jobs, err := pos.BuildScrapeJobsConfig(ctx, sp, ac)
 	if err != nil {
-		return fmt.Errorf("generating config for vmagent failed: %w", err)
+		return 0, fmt.Errorf("generating config for vmagent failed: %w", err)
+	}
+
+	// Split jobs into gzip-compressed buckets, each fitting within the Kubernetes Secret limit.
+	buckets, err := vmscrapes.PackJobsIntoBuckets(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes)
+	if err != nil {
+		return 0, fmt.Errorf("splitting scrape config into buckets: %w", err)
+	}
+	extraCount := len(buckets) - 1
+
+	// Assemble main config: global section + optional scrape_config_files glob + first bucket's jobs.
+	mainCfg := cfgBase
+	if extraCount > 0 {
+		mainCfg = append(mainCfg, yaml.MapItem{
+			Key:   "scrape_config_files",
+			Value: []string{vmscrapes.ExtraConfigFilesGlob},
+		})
+	}
+	mainCfg = append(mainCfg, yaml.MapItem{Key: "scrape_configs", Value: buckets[0]})
+	generatedConfig, err := yaml.Marshal(mainCfg)
+	if err != nil {
+		return 0, fmt.Errorf("marshalling config for vmagent: %w", err)
 	}
 
 	owner := cr.AsOwner()
@@ -1299,10 +1364,9 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
 		if kind == build.SecretConfigResourceKind {
-			// Compress config to avoid 1mb secret limit for a while
 			d, err := build.GzipConfig(generatedConfig)
 			if err != nil {
-				return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+				return 0, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 			}
 			secret.Data[scrapeGzippedFilename] = d
 		}
@@ -1311,16 +1375,40 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			"generated": "true",
 		}
 		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
-			return err
+			return 0, err
 		}
+	}
+
+	// Reconcile extra scrape config secrets (one per overflow bucket, gzip-compressed).
+	// The config-reloader decompresses these and writes them as plain YAML files under
+	// scrapeConfigExtraDir so vmagent can load them via scrape_config_files.
+	for i, bucket := range buckets[1:] {
+		idx := i + 1
+		extraData, err := yaml.Marshal(bucket)
+		if err != nil {
+			return 0, fmt.Errorf("marshalling extra scrape config bucket %d: %w", idx, err)
+		}
+		compressed, err := build.GzipConfig(extraData)
+		if err != nil {
+			return 0, fmt.Errorf("gzipping extra scrape config bucket %d: %w", idx, err)
+		}
+		s := vmscrapes.BuildExtraConfigSecret(cr, idx, compressed)
+		if err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
+			return 0, err
+		}
+	}
+
+	// Remove any stale extra secrets left over from a previous reconcile with more buckets.
+	if err := vmscrapes.RemoveStaleExtraConfigSecrets(ctx, rclient, cr, extraCount); err != nil {
+		return 0, err
 	}
 
 	parentName := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
 	if err := pos.UpdateStatusesForScrapeObjects(ctx, rclient, parentName, childObject); err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return extraCount, nil
 }
 
 func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {

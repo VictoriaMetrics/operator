@@ -143,6 +143,13 @@ type BaseOperatorConf struct {
 	// remove the pod from rotation before the process shuts down.
 	// Set to false before upgrading the operator to prevent rolling updates on existing resources.
 	EnableDefaultPreStopHook bool `default:"true" env:"VM_ENABLE_DEFAULT_PRESTOP_HOOK"`
+	// ConfigDataBudgetBytes sets the maximum number of bytes allowed for compressed data
+	// in a generated Kubernetes Secret or ConfigMap (e.g. scrape-config overflow buckets,
+	// vmalert rule ConfigMaps). When zero the budget is computed automatically from the
+	// Kubernetes object size limit minus the JSON-encoded metadata overhead. Set a lower
+	// value when a policy engine (e.g. Kyverno) injects additional labels or annotations
+	// after reconcile, causing the auto-computed budget to be too large.
+	ConfigDataBudgetBytes int `default:"524288" env:"VM_CONFIG_DATA_BUDGET_BYTES"`
 
 	// defines global config reloader parameters
 	ConfigReloader struct {

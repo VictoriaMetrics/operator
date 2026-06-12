@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -226,6 +227,186 @@ func TestCreateOrUpdate(t *testing.T) {
 				"env": "test",
 			})
 		}})
+}
+
+func TestMakeSpecForVMSingleOk(t *testing.T) {
+	type opts struct {
+		cr                     *vmv1beta1.VMSingle
+		extraConfigSecretCount int
+		wantYaml               string
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(o.cr)
+		// Compare only the PodSpec, not the ObjectMeta, same as the vmagent test.
+		var wantSpec corev1.PodSpec
+		assert.NoError(t, yaml.Unmarshal([]byte(o.wantYaml), &wantSpec))
+		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
+		assert.NoError(t, err)
+		got, err := newPodSpec(ctx, o.cr, o.extraConfigSecretCount)
+		assert.NoError(t, err)
+		gotYAML, err := yaml.Marshal(got.Spec)
+		assert.NoError(t, err)
+		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
+	}
+
+	// scrape config split across 2 extra secrets — verifies volumes, mounts, and reloader flags
+	f(opts{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v1.97.1",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "8428",
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImage: "vmcustomer:v1",
+				},
+			},
+		},
+		extraConfigSecretCount: 2,
+		wantYaml: `
+volumes:
+    - name: data
+      volumesource:
+        emptydir: {}
+    - name: tls-assets
+      volumesource:
+        secret:
+            secretname: tls-assets-vmsingle-single
+    - name: config-out
+      volumesource:
+        emptydir: {}
+    - name: config
+      volumesource:
+        secret:
+            secretname: vmsingle-single
+    - name: sc-files-out
+      volumesource:
+        emptydir: {}
+    - name: sc-raw-1
+      volumesource:
+        secret:
+            secretname: vmsingle-single-sc-1
+    - name: sc-raw-2
+      volumesource:
+        secret:
+            secretname: vmsingle-single-sc-2
+initcontainers:
+    - name: config-init
+      image: vmcustomer:v1
+      args:
+        - --config-envsubst-file=/etc/vm/config_out/scrape.yaml
+        - --config-secret-key=scrape.yaml.gz
+        - --config-secret-name=default/vmsingle-single
+        - --only-init-config
+        - --reload-url=http://127.0.0.1:8428/-/reload
+        - --webhook-method=POST
+      volumemounts:
+        - name: config-out
+          mountpath: /etc/vm/config_out
+containers:
+    - name: vmsingle
+      image: victoriametrics/victoria-metrics:v1.97.1
+      args:
+        - -httpListenAddr=:8428
+        - -promscrape.config=/etc/vm/config_out/scrape.yaml
+        - -storageDataPath=/victoria-metrics-data
+      ports:
+        - name: http
+          containerport: 8428
+          protocol: TCP
+      volumemounts:
+        - name: data
+          mountpath: /victoria-metrics-data
+        - name: config-out
+          readonly: true
+          mountpath: /etc/vm/config_out
+        - name: tls-assets
+          readonly: true
+          mountpath: /etc/vm-tls/certs
+        - name: config
+          readonly: true
+          mountpath: /etc/vm/config
+        - name: sc-files-out
+          readonly: true
+          mountpath: /etc/vm/sc-files
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8428
+            scheme: HTTP
+        timeoutseconds: 5
+        periodseconds: 5
+        successthreshold: 1
+        failurethreshold: 10
+      terminationmessagepolicy: FallbackToLogsOnError
+      imagepullpolicy: IfNotPresent
+    - name: config-reloader
+      image: vmcustomer:v1
+      args:
+        - --config-envsubst-file=/etc/vm/config_out/scrape.yaml
+        - --config-secret-key=scrape.yaml.gz
+        - --config-secret-name=default/vmsingle-single
+        - --reload-url=http://127.0.0.1:8428/-/reload
+        - --webhook-method=POST
+        - --watched-dir=/etc/vm/sc-raw-1
+        - --target-dir=/etc/vm/sc-files/sc-raw-1
+        - --watched-dir=/etc/vm/sc-raw-2
+        - --target-dir=/etc/vm/sc-files/sc-raw-2
+      ports:
+        - name: reloader-http
+          containerport: 8435
+          protocol: TCP
+      volumemounts:
+        - name: config-out
+          mountpath: /etc/vm/config_out
+        - name: sc-files-out
+          mountpath: /etc/vm/sc-files
+        - name: sc-raw-1
+          readonly: true
+          mountpath: /etc/vm/sc-raw-1
+        - name: sc-raw-2
+          readonly: true
+          mountpath: /etc/vm/sc-raw-2
+      livenessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      readinessprobe:
+        probehandler:
+          httpget:
+            path: /health
+            port:
+              intval: 8435
+            scheme: HTTP
+        initialdelayseconds: 5
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
+      terminationmessagepolicy: FallbackToLogsOnError
+serviceaccountname: vmsingle-single
+`,
+	})
 }
 
 func TestCreateOrUpdateService(t *testing.T) {

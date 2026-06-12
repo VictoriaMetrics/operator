@@ -12,14 +12,9 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/notifier"
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/templates"
 	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
-
-// MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
-// Limit it to the half size of constant value, since it may be different for kubernetes versions.
-var MaxConfigMapDataSize = int(float64(corev1.MaxSecretSize) * 0.5)
 
 var initVMAlertTemplatesOnce sync.Once
 
@@ -171,7 +166,7 @@ func (cr *VMRule) Validate() error {
 		}
 	})
 	uniqNames := sets.New[string]()
-	var totalSize int
+
 	for i := range cr.Spec.Groups {
 		// make a copy
 		group := cr.Spec.Groups[i].DeepCopy()
@@ -193,16 +188,12 @@ func (cr *VMRule) Validate() error {
 			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)
 		}
 		var vmalertGroup config.Group
-		totalSize += len(groupBytes)
 		if err := yaml.Unmarshal(groupBytes, &vmalertGroup); err != nil {
 			return fmt.Errorf("cannot parse vmalert group %s, err: %w, r: \n%s", errContext, err, string(groupBytes))
 		}
 		if err := vmalertGroup.Validate(notifier.ValidateTemplates, true); err != nil {
 			return fmt.Errorf("validation failed for %s err: %w", errContext, err)
 		}
-	}
-	if totalSize > MaxConfigMapDataSize {
-		return fmt.Errorf("VMRule's content size: %d exceed single rule limit: %d", totalSize, MaxConfigMapDataSize)
 	}
 	return nil
 }

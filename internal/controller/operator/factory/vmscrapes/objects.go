@@ -377,13 +377,15 @@ func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rc
 	return nil
 }
 
-// GenerateConfig generates yaml scrape configuration from collected scrape objects
-func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.CommonScrapeParams, ac *build.AssetsCache) ([]byte, error) {
+// BuildScrapeJobsConfig returns the global config section (without scrape_configs) and the
+// flat list of individual scrape job configs. Callers that need to split the config across
+// multiple Kubernetes Secrets use this instead of GenerateConfig.
+func (pos *ParsedObjects) BuildScrapeJobsConfig(ctx context.Context, sp *vmv1beta1.CommonScrapeParams, ac *build.AssetsCache) (yaml.MapSlice, []yaml.MapSlice, error) {
 	var additionalScrapeConfigs []byte
 	if sp.AdditionalScrapeConfigs != nil {
 		sc, err := ac.LoadKeyFromSecret(pos.Namespace, sp.AdditionalScrapeConfigs)
 		if err != nil {
-			return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
+			return nil, nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 		}
 		additionalScrapeConfigs = []byte(sc)
 	}
@@ -449,7 +451,7 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = pos.podScrapes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMPodScrape) error {
@@ -471,7 +473,7 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = pos.probes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMProbe) error {
@@ -489,7 +491,7 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = pos.nodeScrapes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMNodeScrape) error {
@@ -508,7 +510,7 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = pos.staticScrapes.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMStaticScrape) error {
@@ -530,7 +532,7 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = pos.scrapeConfigs.ForEachCollectSkipNotFound(func(sc *vmv1beta1.VMScrapeConfig) error {
@@ -548,25 +550,31 @@ func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.Comm
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var additionalScrapeConfigsYaml []yaml.MapSlice
 	if err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml); err != nil {
-		return nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
+		return nil, nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
 	}
 
 	var inlineScrapeConfigsYaml []yaml.MapSlice
 	if len(sp.InlineScrapeConfig) > 0 {
 		if err := yaml.Unmarshal([]byte(sp.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
-			return nil, fmt.Errorf("unmarshalling inline additional scrape configs failed: %w", err)
+			return nil, nil, fmt.Errorf("unmarshalling inline additional scrape configs failed: %w", err)
 		}
 	}
 	additionalScrapeConfigsYaml = append(additionalScrapeConfigsYaml, inlineScrapeConfigsYaml...)
-	cfg = append(cfg, yaml.MapItem{
-		Key:   "scrape_configs",
-		Value: append(scrapeConfigs, additionalScrapeConfigsYaml...),
-	})
+	scrapeConfigs = append(scrapeConfigs, additionalScrapeConfigsYaml...)
+	return cfg, scrapeConfigs, nil
+}
 
-	return yaml.Marshal(cfg)
+// GenerateConfig generates yaml scrape configuration from collected scrape objects.
+func (pos *ParsedObjects) GenerateConfig(ctx context.Context, sp *vmv1beta1.CommonScrapeParams, ac *build.AssetsCache) ([]byte, error) {
+	cfgBase, jobs, err := pos.BuildScrapeJobsConfig(ctx, sp, ac)
+	if err != nil {
+		return nil, err
+	}
+	cfgBase = append(cfgBase, yaml.MapItem{Key: "scrape_configs", Value: jobs})
+	return yaml.Marshal(cfgBase)
 }

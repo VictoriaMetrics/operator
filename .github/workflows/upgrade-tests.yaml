@@ -5,67 +5,26 @@ permissions: {}
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on:  vm-runner
     permissions:
       contents: read
       checks: write
     steps:
-      - name: Free space
-        run: |
-          # cleanup up space to free additional ~20GiB of memory
-          # which are lacking for multiplaform images build
-          formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
-          getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
-          BEFORE=$(getAvailableSpace)
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/.ghcup || true
-          AFTER=$(getAvailableSpace)
-          SAVED=$((AFTER-BEFORE))
-          echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           persist-credentials: false
-      - name: Prepare binary cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
-        with:
-          path: ./bin
-          key: binary
-      - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
-        with:
-          go-version-file: "go.mod"
-          check-latest: true
-          cache: true
-        id: go
-
-      - name: Set output variables
-        id: vars
-        run: |
-          IMAGE_TAG=${GITHUB_SHA:0:7}
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: Setup build environment
+        id: setup
+        uses: ./.github/actions/setup-build-env
       - name: Run upgrade Tests
         env:
           DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
-          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+          TAG: ${{ steps.setup.outputs.image-tag }}
           LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
         run: |
-          sudo apt update
-          sudo apt install -y libgpgme-dev
           TAG=${TAG} make test-e2e-upgrade
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@3a81627bfac62268172037048872e8ebd4207e6d  # v6.4.1
-        if: success() || failure()
-        with:
-          report_paths: 'report.xml'
-      - name: Generate Allure Report
-        if: failure()
-        run: make allure-report
-      - name: Archive Allure report
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: allure-report
-          path: ./allure-report
+      - name: Save Go cache
+        uses: ./.github/actions/save-go-cache
+      - name: Publish reports
+        uses: ./.github/actions/publish-reports

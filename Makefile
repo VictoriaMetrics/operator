@@ -178,13 +178,15 @@ test-e2e-upgrade: test-e2e
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
-	cd api && $(GOLANGCI_LINT) run operator/...
-	$(GOLANGCI_LINT) run
+	cd api && $(GOLANGCI_LINT) run operator/... & P1=$$!; \
+	$(GOLANGCI_LINT) run & P2=$$!; \
+	wait $$P1; wait $$P2
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
-	cd api && 	$(GOLANGCI_LINT) run --fix operator/...
-	$(GOLANGCI_LINT) run --fix
+	cd api && $(GOLANGCI_LINT) run --fix operator/... & P1=$$!; \
+	$(GOLANGCI_LINT) run --fix & P2=$$!; \
+	wait $$P1; wait $$P2
 
 ##@ Build
 
@@ -336,15 +338,17 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(or $(ignore-not-found),false) -f -
 
 # builds image and loads it into kind.
-load-kind: docker-build kind
+ensure-kind-cluster: kind
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
 		$(KIND) create cluster --config=./kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
-	fi; \
+	fi
+
+load-kind: docker-build ensure-kind-cluster
 	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
 		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
 	fi
@@ -352,8 +356,12 @@ load-kind: docker-build kind
 deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy
 
-undeploy-kind: OVERLAY=config/kind
-undeploy-kind: load-kind undeploy
+# deploy-kind-no-build skips docker-build/load — use when image is already loaded (e.g. from test-e2e's load-kind dep)
+deploy-kind-no-build: OVERLAY=config/base-with-webhook
+deploy-kind-no-build: ensure-kind-cluster deploy
+
+undeploy-kind: OVERLAY=config/base-with-webhook-no-crd
+undeploy-kind: ensure-kind-cluster undeploy
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin

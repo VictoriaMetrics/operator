@@ -1,0 +1,10 @@
+namespace: vm
+resources:
+- ../rbac
+- ../manager
+- ../network-policy
+- metrics_service.yaml
+patches:
+- path: manager_metrics_patch.yaml
+  target:
+    kind: Deployment

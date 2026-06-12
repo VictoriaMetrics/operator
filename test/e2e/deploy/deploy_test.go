@@ -42,8 +42,15 @@ var (
 		})
 
 		AfterAll(func() {
+			// Delete ValidatingWebhookConfiguration first - prevents operator from hanging
+			By("removing webhook configuration")
+			cmd := exec.Command("kubectl", "delete", "validatingwebhookconfiguration",
+				"vm-validating-webhook-configuration", "--ignore-not-found=true",
+			)
+			_, _ = utils.Run(cmd)
+
 			By("undeploying the operator")
-			cmd := exec.Command("make", "undeploy-kind",
+			cmd = exec.Command("make", "undeploy-kind",
 				fmt.Sprintf("NAMESPACE=%s", ns),
 			)
 			_, _ = utils.Run(cmd)

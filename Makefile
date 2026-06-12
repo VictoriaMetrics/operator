@@ -9,6 +9,7 @@ TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
 		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
 OPERATOR_IMAGE ?= $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+CONFIG_RELOADER_IMAGE ?= $(REGISTRY)/$(ORG)/$(REPO):config-reloader-$(TAG)
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
@@ -164,7 +165,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) CONFIG_RELOADER_IMAGE=$(CONFIG_RELOADER_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
 		-ldflags="-linkmode=external" \
 		--output-interceptor-mode=none \
 		-procs=$(E2E_TESTS_CONCURRENCY) \
@@ -213,6 +214,10 @@ docker-build: ## Build docker image with the manager.
 		--build-arg BASEIMAGE=$(BASEIMAGE) \
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
+
+.PHONY: docker-build-config-reloader
+docker-build-config-reloader: ## Build docker image with config-reloader.
+	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-build
 
 build-operator: ROOT=./cmd
 build-operator: build
@@ -348,9 +353,10 @@ ensure-kind-cluster: kind
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi
 
-load-kind: docker-build ensure-kind-cluster
+load-kind: docker-build docker-build-config-reloader ensure-kind-cluster
 	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
 		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
+		$(KIND) load docker-image $(CONFIG_RELOADER_IMAGE); \
 	fi
 
 deploy-kind: OVERLAY=config/base-with-webhook

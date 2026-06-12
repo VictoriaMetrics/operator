@@ -60,7 +60,7 @@ var (
 				{URL: "http://localhost:8428/api/v1/write"},
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -102,7 +102,7 @@ var (
 	vmauth = &vmv1beta1.VMAuth{
 		Spec: vmv1beta1.VMAuthSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -182,7 +182,7 @@ var (
 	vmsingle = &vmv1beta1.VMSingle{
 		Spec: vmv1beta1.VMSingleSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -197,7 +197,7 @@ var (
 	vmalert = &vmv1beta1.VMAlert{
 		Spec: vmv1beta1.VMAlertSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -313,7 +313,7 @@ var (
 	vmalertmanager = &vmv1beta1.VMAlertmanager{
 		Spec: vmv1beta1.VMAlertmanagerSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				ConfigReloaderImage: "quay.io/victoriametrics/operator:config-reloader-v0.65.0",
+				ConfigReloaderImage: configReloaderImage(),
 			},
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				ReplicaCount: ptr.To[int32](1),
@@ -652,6 +652,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.K8sCollector.Enabled = true
 					cr.Spec.ServiceAccountName = "vlagent-collector"
 				})},
+				{version: "v0.68.5", cr: with(vmagent)},
+				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.DaemonSetMode = true
+				})},
+				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.StatefulMode = true
+				})},
+				{version: "v0.68.5", cr: with(vlagent)},
+				{version: "v0.68.5", cr: with(vlagent, func(cr *vmv1.VLAgent) {
+					cr.Spec.K8sCollector.Enabled = true
+					cr.Spec.ServiceAccountName = "vlagent-collector"
+				})},
 			},
 		},
 		// nolint:dupl
@@ -681,6 +693,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.4", cr: with(vmalert)},
 				{version: "v0.68.4", cr: with(vmauth)},
 				{version: "v0.68.4", cr: with(vmalertmanager)},
+				{version: "v0.68.5", cr: with(vmalert)},
+				{version: "v0.68.5", cr: with(vmauth)},
+				{version: "v0.68.5", cr: with(vmalertmanager)},
 			},
 		},
 		// nolint:dupl
@@ -708,6 +723,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.4", cr: with(vmsingle)},
 				{version: "v0.68.4", cr: with(vtsingle)},
 				{version: "v0.68.4", cr: with(vlsingle)},
+				{version: "v0.68.5", cr: with(vmsingle)},
+				{version: "v0.68.5", cr: with(vtsingle)},
+				{version: "v0.68.5", cr: with(vlsingle)},
 			},
 		},
 		// nolint:dupl
@@ -740,6 +758,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				})},
 				{version: "v0.68.4", cr: with(vlcluster)},
 				{version: "v0.68.4", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
+				{version: "v0.68.5", cr: with(vlcluster)},
+				{version: "v0.68.5", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
 			},
@@ -776,6 +798,10 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.4", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
+				{version: "v0.68.5", cr: with(vtcluster)},
+				{version: "v0.68.5", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
 			},
 		},
 		// nolint:dupl
@@ -789,6 +815,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.2", cr: with(vmcluster)},
 				{version: "v0.68.3", cr: with(vmcluster)},
 				{version: "v0.68.4", cr: with(vmcluster)},
+				{version: "v0.68.5", cr: with(vmcluster)},
 			},
 		},
 		// nolint:dupl
@@ -864,6 +891,29 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						},
 					}
 				})},
+				{version: "v0.68.5", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
+					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
+						Destination:                 "fs:///tmp",
+						DestinationDisableSuffixAdd: true,
+						Image: vmv1beta1.Image{
+							Tag: "v1.136.0-enterprise",
+						},
+						AcceptEULA: true,
+					}
+					cr.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				})},
 			},
 			envs: map[string]string{
 				"VM_LOOPBACK":                          "localhost",
@@ -874,11 +924,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		{
 			name: "VMDistributed",
 			pairs: []crVersionPair{
-				{version: "v0.68.0", cr: with(vmdistributed)},
-				{version: "v0.68.1", cr: with(vmdistributed)},
-				{version: "v0.68.2", cr: with(vmdistributed)},
-				{version: "v0.68.3", cr: with(vmdistributed)},
-				{version: "v0.68.4", cr: with(vmdistributed)},
+				{version: "v0.68.5", cr: with(vmdistributed)},
 			},
 		},
 	}))

@@ -2292,6 +2292,12 @@ func (af *alertmanagerFlags) EnableAutoGOMEMLIMIT() bool { return false }
 // EnableAutoGOMAXPROCS implements featurecontrol.Flagger interface
 func (af *alertmanagerFlags) EnableAutoGOMAXPROCS() bool { return false }
 
+// EnableEventRecorder implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableEventRecorder() bool { return false }
+
+// EnableGroupKeyInMetrics implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableGroupKeyInMetrics() bool { return false }
+
 var _ slog.Handler = (*amNoopLogger)(nil)
 
 type amNoopLogger struct{}

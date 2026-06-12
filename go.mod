@@ -7,21 +7,21 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.145.0
 	github.com/VictoriaMetrics/metrics v1.43.2
 	github.com/VictoriaMetrics/metricsql v0.87.1
-	github.com/VictoriaMetrics/operator/api v0.70.1
+	github.com/VictoriaMetrics/operator/api v0.71.0
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/ginkgo/v2 v2.30.0
 	github.com/onsi/gomega v1.41.0
 	github.com/pires/go-proxyproto v0.12.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.28.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.36.1
 	k8s.io/apiextensions-apiserver v0.36.1

@@ -571,6 +571,14 @@ var _ = Describe("test vmanomaly Controller", Label("vm", "anomaly", "enterprise
 				Not(ContainSubstring("vm_selected_metric")),
 			))
 
+			Expect(k8sClient.Delete(ctx, selectedConfig)).ToNot(HaveOccurred())
+			waitResourceDeleted(ctx, types.NamespacedName{Name: selectedConfig.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
+			Eventually(func() string {
+				var secret corev1.Secret
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &secret)).ToNot(HaveOccurred())
+				return string(secret.Data["vmanomaly.env.yaml"])
+			}, anomalyReadyTimeout).ShouldNot(ContainSubstring("vm_updated_metric"))
+
 			Expect(k8sClient.Delete(ctx, missedConfig)).ToNot(HaveOccurred())
 			waitResourceDeleted(ctx, types.NamespacedName{Name: missedConfig.Name, Namespace: namespace}, &vmv1.VMAnomalyConfigList{})
 		})

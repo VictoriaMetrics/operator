@@ -106,6 +106,9 @@ type VLSingleSpec struct {
 	// SyslogSpec defines syslog listener configuration
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 }
 
 // VLSingleStatus defines the observed state of VLSingle
@@ -288,6 +291,11 @@ func (cr *VLSingle) Validate() error {
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
+		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

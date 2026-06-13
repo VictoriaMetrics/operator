@@ -484,6 +484,11 @@ func (in *VLAgentSpec) DeepCopyInto(out *VLAgentSpec) {
 		*out = new(v1beta1.License)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonAppsParams.DeepCopyInto(&out.CommonAppsParams)
 }
 
@@ -868,6 +873,11 @@ func (in *VLSingleSpec) DeepCopyInto(out *VLSingleSpec) {
 	if in.SyslogSpec != nil {
 		in, out := &in.SyslogSpec, &out.SyslogSpec
 		*out = new(SyslogServerSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 }
@@ -1290,6 +1300,11 @@ func (in *VMAnomalySpec) DeepCopyInto(out *VMAnomalySpec) {
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(v1beta1.EmbeddedPodDisruptionBudgetSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.ConfigSecret != nil {
@@ -1752,6 +1767,11 @@ func (in *VTSingleSpec) DeepCopyInto(out *VTSingleSpec) {
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(v1beta1.VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(v1beta1.EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 }

@@ -67,7 +67,7 @@ spec:
           annotations:
             value: "{{ $value }}"
             description: 'kafka coordinator is down'`,
-		wantErr: `validation failed for VMRule: / group: kafka err: invalid expression for rule  "coordinator down": bad prometheus expr: "non_exist_func(ml_app_gauge{exec_context=\"consumer_group_state\"}) == 0", err: unsupported function "non_exist_func"`,
+		wantErr: `validation failed for VMRule: / group: kafka err: invalid expression for rule "coordinator down": bad MetricsQL expr: "non_exist_func(ml_app_gauge{exec_context=\"consumer_group_state\"}) == 0", err: unsupported function "non_exist_func"`,
 	})
 
 	// bad template
@@ -91,7 +91,7 @@ spec:
           annotations:
             value: "{{ $value }}"
             description: 'kafka coordinator is down'`,
-		wantErr: "validation failed for VMRule: / group: kafka err: invalid labels for rule  \"coordinator down\": errors(1): \n(key: \"job\", value: \"{{ $labls.job }}\"): error parsing template: template: :1: undefined variable \"$labls\"",
+		wantErr: "validation failed for VMRule: / group: kafka err: invalid labels for rule \"coordinator down\": errors(1): \n(key: \"job\", value: \"{{ $labls.job }}\"): error parsing template: template: :1: undefined variable \"$labls\"",
 	})
 
 	// duplicate rules

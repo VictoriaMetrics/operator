@@ -7,16 +7,19 @@ import (
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -76,6 +79,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		if err := reconcile.VMPodScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
 			return err
 		}
+	}
+
+	cfg := config.MustGetBaseConfig()
+	if cr.Spec.VPA != nil && !cfg.VPAAPIEnabled {
+		return fmt.Errorf("spec.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+	}
+	if err := createOrUpdateVPA(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot reconcile VPA for vmanomaly: %w", err)
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
@@ -170,6 +181,29 @@ func newK8sApp(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*appsv1.StatefulSet, 
 	return app, nil
 }
 
+func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly) error {
+	if cr.Spec.VPA == nil || cr.IsSharded() {
+		return nil
+	}
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       string(vmv1beta1.WorkloadKindStatefulSet),
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(cr, targetRef, cr.Spec.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VPA != nil && !prevCR.IsSharded() {
+		prevTargetRef := autoscalingv1.CrossVersionObjectReference{
+			Name:       prevCR.PrefixedName(),
+			Kind:       string(vmv1beta1.WorkloadKindStatefulSet),
+			APIVersion: "apps/v1",
+		}
+		prevVPA = build.VPA(prevCR, prevTargetRef, prevCR.Spec.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
+}
+
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
 	keepPodScrapes := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
@@ -184,12 +218,16 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
+	if config.MustGetBaseConfig().VPAAPIEnabled && (cr.Spec.VPA == nil || cr.IsSharded()) {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
 
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
 	stsToKeep := sets.New[string]()
 	pdbToKeep := sets.New[string]()
+	vpaToKeep := sets.New[string]()
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -206,8 +244,9 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 
 	var wg sync.WaitGroup
 	type returnValue struct {
-		name string
-		err  error
+		name    string
+		vpaName string
+		err     error
 	}
 	rtCh := make(chan *returnValue)
 	shardCtx, cancel := context.WithCancel(ctx)
@@ -228,6 +267,18 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				rv.err = err
 				return
 			}
+		}
+		if cr.IsSharded() && cr.Spec.VPA != nil {
+			newVPA := build.ShardVPA(cr, cr.Spec.VPA, vmv1beta1.WorkloadKindStatefulSet, num)
+			var prevVPA *vpav1.VerticalPodAutoscaler
+			if prevCR != nil && prevCR.IsSharded() && prevCR.Spec.VPA != nil {
+				prevVPA = build.ShardVPA(prevCR, prevCR.Spec.VPA, vmv1beta1.WorkloadKindStatefulSet, num)
+			}
+			if err := reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner); err != nil {
+				rv.err = fmt.Errorf("cannot reconcile VPA for vmanomaly shard(%d): %w", num, err)
+				return
+			}
+			rv.vpaName = newVPA.Name
 		}
 		newApp, err := getShard(cr, newAppTpl, num)
 		if err != nil {
@@ -270,14 +321,25 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				pdbToKeep.Insert(r.name)
 			}
 		}
+		if r.vpaName != "" {
+			vpaToKeep.Insert(r.vpaName)
+		}
 	}
 	if err := utilerrors.NewAggregate(errs); err != nil {
 		return err
+	}
+	// For non-sharded mode the single VPA is managed by createOrUpdateVPA; include
+	// it in keepNames so RemoveOrphanedVPAs doesn't accidentally delete it.
+	if !cr.IsSharded() && cr.Spec.VPA != nil {
+		vpaToKeep.Insert(cr.PrefixedName())
 	}
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err
 	}
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep, true); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedVPAs(ctx, rclient, cr, vpaToKeep, true); err != nil {
 		return err
 	}
 	return nil

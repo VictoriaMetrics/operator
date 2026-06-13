@@ -61,6 +61,9 @@ type VMAnomalySpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// VPA defines configuration for the VerticalPodAutoscaler.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 	// ConfigRawYaml - raw configuration for anomaly,
 	// it helps it to start without secret.
 	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
@@ -488,6 +491,11 @@ func (cr *VMAnomaly) Validate() error {
 	}
 	if !cr.Spec.License.IsProvided() {
 		return fmt.Errorf("no license is provided!. Either spec.license.key or spec.license.keyRef is required")
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
+		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

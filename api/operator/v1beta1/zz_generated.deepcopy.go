@@ -4873,6 +4873,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(EmbeddedHPA)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(EmbeddedVPA)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonRelabelParams.DeepCopyInto(&out.CommonRelabelParams)
 	in.CommonScrapeParams.DeepCopyInto(&out.CommonScrapeParams)
 	in.CommonConfigReloaderParams.DeepCopyInto(&out.CommonConfigReloaderParams)
@@ -5149,6 +5154,11 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.License != nil {
@@ -5499,6 +5509,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	out.ArbitraryFSAccessThroughSMs = in.ArbitraryFSAccessThroughSMs
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(EmbeddedVPA)
+		(*in).DeepCopyInto(*out)
+	}
 	in.CommonConfigReloaderParams.DeepCopyInto(&out.CommonConfigReloaderParams)
 	in.CommonAppsParams.DeepCopyInto(&out.CommonAppsParams)
 }
@@ -7340,6 +7355,11 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 	if in.APIServerConfig != nil {
 		in, out := &in.APIServerConfig, &out.APIServerConfig
 		*out = new(APIServerConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.VPA != nil {
+		in, out := &in.VPA, &out.VPA
+		*out = new(EmbeddedVPA)
 		(*in).DeepCopyInto(*out)
 	}
 	in.CommonRelabelParams.DeepCopyInto(&out.CommonRelabelParams)

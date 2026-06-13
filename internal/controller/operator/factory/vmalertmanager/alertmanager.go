@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -60,6 +63,13 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 			return err
 		}
 	}
+	cfg := config.MustGetBaseConfig()
+	if cr.Spec.VPA != nil && !cfg.VPAAPIEnabled {
+		return fmt.Errorf("spec.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+	}
+	if err := createOrUpdateVPA(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update vpa for vmalertmanager: %w", err)
+	}
 	var prevSts *appsv1.StatefulSet
 	if prevCR != nil {
 		var err error
@@ -77,6 +87,24 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		SelectorLabels: cr.SelectorLabels(),
 	}
 	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
+}
+
+func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {
+	if cr.Spec.VPA == nil {
+		return nil
+	}
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       cr.PrefixedName(),
+		Kind:       string(vmv1beta1.WorkloadKindStatefulSet),
+		APIVersion: "apps/v1",
+	}
+	newVPA := build.VPA(cr, targetRef, cr.Spec.VPA)
+	var prevVPA *vpav1.VerticalPodAutoscaler
+	if prevCR != nil && prevCR.Spec.VPA != nil {
+		prevVPA = build.VPA(prevCR, targetRef, prevCR.Spec.VPA)
+	}
+	owner := cr.AsOwner()
+	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {
@@ -101,6 +129,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	var objsToRemove []client.Object
 	if cr.Spec.PodDisruptionBudget == nil {
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
+	}
+	if config.MustGetBaseConfig().VPAAPIEnabled && cr.Spec.VPA == nil {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})

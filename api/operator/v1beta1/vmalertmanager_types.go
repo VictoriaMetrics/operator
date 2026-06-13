@@ -219,6 +219,9 @@ type VMAlertmanagerSpec struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty"`
 	CommonAppsParams           `json:",inline,omitempty"`
@@ -585,6 +588,11 @@ func (cr *VMAlertmanager) Validate() error {
 
 	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
 		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
+		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

@@ -137,6 +137,9 @@ type VMAgentSpec struct {
 	// Configures horizontal pod autoscaling.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
@@ -189,6 +192,9 @@ func (cr *VMAgent) Validate() error {
 		if cr.Spec.HPA != nil {
 			return fmt.Errorf("hpa cannot be used with daemonSetMode")
 		}
+		if cr.Spec.VPA != nil {
+			return fmt.Errorf("vpa cannot be used with daemonSetMode")
+		}
 		if cr.Spec.PodDisruptionBudget != nil {
 			return fmt.Errorf("podDisruptionBudget cannot be used with daemonSetMode")
 		}
@@ -198,6 +204,11 @@ func (cr *VMAgent) Validate() error {
 	}
 	if cr.Spec.HPA != nil {
 		if err := cr.Spec.HPA.Validate(); err != nil {
+			return err
+		}
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
 			return err
 		}
 	}
@@ -239,6 +250,18 @@ func (cr *VMAgent) Validate() error {
 // IsSharded returns true if sharding is enabled
 func (cr *VMAgent) IsSharded() bool {
 	return cr != nil && cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 0 && !cr.Spec.DaemonSetMode
+}
+
+// WorkloadKind returns the kind of workload deployed for VMAgent based on the current mode.
+func (cr *VMAgent) WorkloadKind() WorkloadKind {
+	switch {
+	case cr.Spec.DaemonSetMode:
+		return WorkloadKindDaemonSet
+	case cr.Spec.StatefulMode:
+		return WorkloadKindStatefulSet
+	default:
+		return WorkloadKindDeployment
+	}
 }
 
 // GetShardCount returns shard count for vmagent

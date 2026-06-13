@@ -15,7 +15,7 @@ func TestDirWatcherProcessesRegularFilesWithDoubleDotsInName(t *testing.T) {
 		t.Fatalf("failed to write initial file: %v", err)
 	}
 
-	dw, err := newDirWatchers([]string{dir})
+	dw, err := newDirWatchers([]string{dir}, nil)
 	if err != nil {
 		t.Fatalf("failed to create dir watcher: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestDirWatcherSkipsKubernetesHiddenEntries(t *testing.T) {
 		t.Fatalf("failed to write hidden file: %v", err)
 	}
 
-	dw, err := newDirWatchers([]string{dir})
+	dw, err := newDirWatchers([]string{dir}, nil)
 	if err != nil {
 		t.Fatalf("failed to create dir watcher: %v", err)
 	}

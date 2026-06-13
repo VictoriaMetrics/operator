@@ -67,8 +67,13 @@ func (oc *objectCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (oc *objectCollector) Collect(ch chan<- prometheus.Metric) {
 	oc.mu.Lock()
-	defer oc.mu.Unlock()
-	for key, current := range oc.statusByObject {
+	snapshot := make(map[string]vmv1beta1.UpdateStatus, len(oc.statusByObject))
+	for k, v := range oc.statusByObject {
+		snapshot[k] = v
+	}
+	oc.mu.Unlock()
+
+	for key, current := range snapshot {
 		parts := strings.SplitN(key, "/", 3)
 		if len(parts) != 3 {
 			continue

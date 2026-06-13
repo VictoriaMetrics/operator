@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
 
 ## [v0.71.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.1)

@@ -54,6 +54,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	webhookpromv1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/prometheus/v1"
+	webhookpromv1alpha1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/prometheus/v1alpha1"
 	webhookv1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1"
 	webhookv1alpha1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1alpha1"
 	webhookv1beta1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1beta1"
@@ -381,6 +383,12 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1beta1.SetupVMScrapeConfigWebhookWithManager,
 		webhookv1beta1.SetupVMStaticScrapeWebhookWithManager,
 		webhookv1beta1.SetupVMProbeWebhookWithManager,
+		webhookpromv1.SetupServiceMonitorWebhookWithManager,
+		webhookpromv1.SetupPodMonitorWebhookWithManager,
+		webhookpromv1.SetupPrometheusRuleWebhookWithManager,
+		webhookpromv1.SetupProbeWebhookWithManager,
+		webhookpromv1alpha1.SetupAlertmanagerConfigWebhookWithManager,
+		webhookpromv1alpha1.SetupScrapeConfigWebhookWithManager,
 	})
 }
 

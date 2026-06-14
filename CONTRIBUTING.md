@@ -35,7 +35,7 @@ make build # it will update crds
 make lint # linting project
 make test #unit tests
 make docs # update docs - needed to pass CI if updating API types
-make test-e2e #e2e tests with minikube
+make test-e2e #e2e tests with Kind
 ```
 
 ## adding new api

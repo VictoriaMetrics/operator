@@ -37,7 +37,7 @@ test-e2e: load-kind ginkgo crust-gather mirrord
 test-e2e-upgrade: E2E_TARGET=./test/e2e/upgrade/...
 test-e2e-upgrade: test-e2e
 
-# builds image and loads it into kind.
+# Create the local Kind cluster if it doesn't exist
 ensure-kind-cluster: kind
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
 		$(KIND) create cluster --config=./kind.yaml; \
@@ -45,19 +45,22 @@ ensure-kind-cluster: kind
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi
 
+# Build operator images and load them into the local Kind cluster
 load-kind: docker-build docker-build-config-reloader ensure-kind-cluster
 	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
 		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
 		$(KIND) load docker-image $(CONFIG_RELOADER_IMAGE); \
 	fi
 
+# Build images, load them into Kind, and deploy the operator with webhooks
 deploy-kind: OVERLAY=config/base-with-webhook
 deploy-kind: load-kind deploy
 
-# deploy-kind-no-build skips docker-build/load — use when image is already loaded (e.g. from test-e2e's load-kind dep)
+# Deploy to the local Kind cluster without rebuilding or reloading images
 deploy-kind-no-build: OVERLAY=config/base-with-webhook
 deploy-kind-no-build: ensure-kind-cluster deploy
 
+# Remove the operator from the local Kind cluster without deleting CRDs
 undeploy-kind: OVERLAY=config/base-with-webhook-no-crd
 undeploy-kind: ensure-kind-cluster undeploy
 

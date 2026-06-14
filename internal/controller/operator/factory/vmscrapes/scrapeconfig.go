@@ -890,6 +890,155 @@ func generateScrapeConfig(
 			Value: configs,
 		})
 	}
+
+	if len(spec.ConsulAgentSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.ConsulAgentSDConfigs))
+		for i, config := range spec.ConsulAgentSDConfigs {
+			if len(config.Server) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "server", Value: config.Server})
+			}
+			if config.TokenRef != nil && config.TokenRef.Name != "" {
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.TokenRef); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "token", Value: secret})
+				}
+			}
+			if len(config.Datacenter) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "datacenter", Value: config.Datacenter})
+			}
+			if len(config.Namespace) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "namespace", Value: config.Namespace})
+			}
+			if len(config.Scheme) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "scheme", Value: strings.ToLower(config.Scheme)})
+			}
+			if len(config.Services) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "services", Value: config.Services})
+			}
+			if config.TagSeparator != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "tag_separator", Value: config.TagSeparator})
+			}
+			if len(config.Filter) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "filter", Value: config.Filter})
+			}
+			c, err := generateHTTPSDOptions(config.HTTPSDOptions, sc.Namespace, ac)
+			if err != nil {
+				return nil, err
+			} else if len(c) > 0 {
+				configs[i] = append(configs[i], c...)
+			}
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "consulagent_sd_configs", Value: configs})
+	}
+
+	if len(spec.DockerSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.DockerSDConfigs))
+		for i, config := range spec.DockerSDConfigs {
+			if len(config.Host) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "host", Value: config.Host})
+			}
+			if config.Port != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "port", Value: config.Port})
+			}
+			if len(config.Filters) > 0 {
+				filters := make([]yaml.MapSlice, len(config.Filters))
+				for j, f := range config.Filters {
+					filters[j] = yaml.MapSlice{
+						{Key: "name", Value: f.Name},
+						{Key: "values", Value: f.Values},
+					}
+				}
+				configs[i] = append(configs[i], yaml.MapItem{Key: "filters", Value: filters})
+			}
+			if len(config.HostNetworkingHost) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "host_networking_host", Value: config.HostNetworkingHost})
+			}
+			if config.MatchFirstNetwork != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "match_first_network", Value: config.MatchFirstNetwork})
+			}
+			c, err := generateHTTPSDOptions(config.HTTPSDOptions, sc.Namespace, ac)
+			if err != nil {
+				return nil, err
+			} else if len(c) > 0 {
+				configs[i] = append(configs[i], c...)
+			}
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "docker_sd_configs", Value: configs})
+	}
+
+	if len(spec.DockerSwarmSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.DockerSwarmSDConfigs))
+		for i, config := range spec.DockerSwarmSDConfigs {
+			configs[i] = append(configs[i],
+				yaml.MapItem{Key: "host", Value: config.Host},
+				yaml.MapItem{Key: "role", Value: config.Role},
+			)
+			if config.Port != nil {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "port", Value: config.Port})
+			}
+			if len(config.Filters) > 0 {
+				filters := make([]yaml.MapSlice, len(config.Filters))
+				for j, f := range config.Filters {
+					filters[j] = yaml.MapSlice{
+						{Key: "name", Value: f.Name},
+						{Key: "values", Value: f.Values},
+					}
+				}
+				configs[i] = append(configs[i], yaml.MapItem{Key: "filters", Value: filters})
+			}
+			c, err := generateHTTPSDOptions(config.HTTPSDOptions, sc.Namespace, ac)
+			if err != nil {
+				return nil, err
+			} else if len(c) > 0 {
+				configs[i] = append(configs[i], c...)
+			}
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "dockerswarm_sd_configs", Value: configs})
+	}
+
+	if len(spec.MarathonSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.MarathonSDConfigs))
+		for i, config := range spec.MarathonSDConfigs {
+			configs[i] = append(configs[i], yaml.MapItem{Key: "servers", Value: config.Servers})
+			c, err := generateHTTPSDOptions(config.HTTPSDOptions, sc.Namespace, ac)
+			if err != nil {
+				return nil, err
+			} else if len(c) > 0 {
+				configs[i] = append(configs[i], c...)
+			}
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "marathon_sd_configs", Value: configs})
+	}
+
+	if len(spec.YandexCloudSDConfigs) > 0 {
+		configs := make([][]yaml.MapItem, len(spec.YandexCloudSDConfigs))
+		for i, config := range spec.YandexCloudSDConfigs {
+			configs[i] = append(configs[i], yaml.MapItem{Key: "service", Value: config.Service})
+			if config.YandexPassportOAuthToken != nil {
+				if secret, err := ac.LoadKeyFromSecret(sc.Namespace, config.YandexPassportOAuthToken); err != nil {
+					return nil, err
+				} else {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "yandex_passport_oauth_token", Value: secret})
+				}
+			}
+			if len(config.APIEndpoint) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "api_endpoint", Value: config.APIEndpoint})
+			}
+			if len(config.FolderIDs) > 0 {
+				configs[i] = append(configs[i], yaml.MapItem{Key: "folder_ids", Value: config.FolderIDs})
+			}
+			if config.TLSConfig != nil {
+				if c, err := ac.TLSToYAML(sc.Namespace, "", config.TLSConfig); err != nil {
+					return nil, err
+				} else if len(c) > 0 {
+					configs[i] = append(configs[i], yaml.MapItem{Key: "tls_config", Value: c})
+				}
+			}
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "yandexcloud_sd_configs", Value: configs})
+	}
+
 	return cfg, nil
 }
 

@@ -92,7 +92,10 @@ type VLAgentSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
@@ -176,6 +179,11 @@ func (cr *VLAgent) Validate() error {
 		}
 		if err := rw.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("remoteWrite.tlsConfig has incorrect syntax at idx: %d: %w", idx, err)
+		}
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
 		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
@@ -407,6 +415,14 @@ func (cr *VLAgent) FinalLabels() map[string]string {
 // PrefixedName returns name of resource with fixed prefix
 func (cr *VLAgent) PrefixedName() string {
 	return fmt.Sprintf("vlagent-%s", cr.Name)
+}
+
+// WorkloadKind returns the kind of workload deployed for VLAgent based on the current mode.
+func (cr *VLAgent) WorkloadKind() string {
+	if cr.Spec.K8sCollector.Enabled {
+		return "DaemonSet"
+	}
+	return "StatefulSet"
 }
 
 // HealthPath returns path for health requests

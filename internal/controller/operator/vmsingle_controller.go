@@ -108,7 +108,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		err = finalize.OnVMSingleDelete(ctx, r.Client, &instance)
 		return
 	}
-	if instance.Status.ParsingSpecError != "" {
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}

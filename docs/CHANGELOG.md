@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip reconciliation only for CRs with genuine spec parse errors; CRs whose `ParsingSpecError` is caused solely by unknown fields (e.g. after an operator downgrade) are now reconciled normally instead of being silently skipped.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
 

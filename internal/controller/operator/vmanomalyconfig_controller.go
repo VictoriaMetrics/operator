@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -94,7 +95,7 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Status.ParsingSpecError != "" || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) || item.IsUnmanaged() {
 			continue
 		}
 		l := l.WithValues("vmanomaly", item.Name, "parent_namespace", item.Namespace)

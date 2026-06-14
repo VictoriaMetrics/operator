@@ -716,6 +716,12 @@ spec:
       enabled: false
 ```
 
+## Multi-level cluster setup
+
+You can construct a [multi-level cluster setup](https://docs.victoriametrics.com/cluster-victoriametrics/#multi-level-cluster-setup) with several `VMCluster` resources.
+
+See minimal configuration [example here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent-stream-aggr.yaml) for that.
+
 ## Examples
 
 ### Minimal example without persistence

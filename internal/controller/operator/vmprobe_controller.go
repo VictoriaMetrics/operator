@@ -73,7 +73,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	RegisterObjectStat(&instance, r.name)
-	if instance.Status.ParsingSpecError != "" {
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}

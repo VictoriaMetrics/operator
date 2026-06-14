@@ -747,7 +747,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		return 0, fmt.Errorf("generating config for vmsingle failed: %w", err)
 	}
 
-	buckets, err := vmscrapes.PackJobsIntoBuckets(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes)
+	buckets, err := build.PackItems(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes, 150)
 	if err != nil {
 		return 0, fmt.Errorf("splitting scrape config into buckets for vmsingle: %w", err)
 	}

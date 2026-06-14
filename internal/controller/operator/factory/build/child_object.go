@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -169,4 +170,39 @@ func (co *ChildObjects[T]) forEachCollectSkipOn(apply func(s T) error, shouldIgn
 	}
 	co.valid = valid
 	return nil
+}
+
+// PackItems recursively splits items into gzip-compressed YAML buckets within limit bytes each.
+// headroom is an integer percentage applied to the compressed size when estimating bucket count
+// (100 = exact, 150 = 50% extra slack for when subgroup compression may yield a worse ratio
+// than the full set). A single item that exceeds limit is placed in its own bucket.
+// Recursion terminates because each chunk is strictly smaller than the input.
+func PackItems[T any](items []T, limit, headroom int) ([][]T, error) {
+	data, err := yaml.Marshal(items)
+	if err != nil {
+		return nil, fmt.Errorf("yaml marshal: %w", err)
+	}
+	compressed, err := GzipConfig(data)
+	if err != nil {
+		return nil, fmt.Errorf("gzip: %w", err)
+	}
+	n := len(compressed)
+	if n <= limit || len(items) == 1 {
+		return [][]T{items}, nil
+	}
+	numBuckets := (n*headroom + 100*limit - 1) / (100 * limit)
+	itemsPerBucket := (len(items) + numBuckets - 1) / numBuckets
+	var result [][]T
+	for i := 0; i < len(items); i += itemsPerBucket {
+		end := i + itemsPerBucket
+		if end > len(items) {
+			end = len(items)
+		}
+		sub, err := PackItems(items[i:end], limit, headroom)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, sub...)
+	}
+	return result, nil
 }

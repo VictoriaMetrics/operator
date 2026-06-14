@@ -300,7 +300,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
 	$(KUSTOMIZE) build config/crd/overlay > dist/crd.yaml
 
-olm: operator-sdk yq docs
+olm: operator-sdk yq docs ## Generate and validate the OLM bundle.
 	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi --format "{{print .Manifest.Digest}}"))
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
@@ -346,27 +346,30 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(or $(ignore-not-found),false) -f -
 
 # builds image and loads it into kind.
-ensure-kind-cluster: kind
+ensure-kind-cluster: kind ## Create the local Kind cluster if it doesn't exist.
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
 		$(KIND) create cluster --config=./kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi
 
-load-kind: docker-build docker-build-config-reloader ensure-kind-cluster
+load-kind: docker-build docker-build-config-reloader ensure-kind-cluster ## Build operator images and load them into the local Kind cluster.
 	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
 		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
 		$(KIND) load docker-image $(CONFIG_RELOADER_IMAGE); \
 	fi
 
 deploy-kind: OVERLAY=config/base-with-webhook
+deploy-kind: ## Build images, load them into Kind, and deploy the operator with webhooks.
 deploy-kind: load-kind deploy
 
 # deploy-kind-no-build skips docker-build/load — use when image is already loaded (e.g. from test-e2e's load-kind dep)
 deploy-kind-no-build: OVERLAY=config/base-with-webhook
+deploy-kind-no-build: ## Deploy to the local Kind cluster without rebuilding or reloading images.
 deploy-kind-no-build: ensure-kind-cluster deploy
 
 undeploy-kind: OVERLAY=config/base-with-webhook-no-crd
+undeploy-kind: ## Remove the operator from the local Kind cluster without deleting CRDs.
 undeploy-kind: ensure-kind-cluster undeploy
 
 ## Location to install dependencies to
@@ -423,7 +426,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo
+install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo ## Install the local development toolchain used by build, test, and docs targets.
 
 .PHONY: crd-ref-docs
 crd-ref-docs: $(CRD_REF_DOCS)

@@ -73,15 +73,27 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	if _, err := inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			s := obj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "create", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "create", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping create event for secret: %s", s.Name)
+			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			s := newObj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "update", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "update", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping update event for secret: %s", s.Name)
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			s := obj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "delete", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "delete", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping delete event for secret: %s", s.Name)
+			}
 		},
 	}); err != nil {
 		return nil, fmt.Errorf("cannot build eventHandler: %w", err)
@@ -124,11 +136,14 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 			return fmt.Errorf("cannot write file content to disk: %w", err)
 		}
 		prevContent = newData
-		time.Sleep(time.Second)
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		select {
 		case updates <- struct{}{}:
 		default:
-
 		}
 		return nil
 	}
@@ -141,7 +156,11 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 		logger.Errorf("cannot update secret: %s", err)
 	}
 
-	go k.inf.Run(ctx.Done())
+	k.wg.Add(1)
+	go func() {
+		defer k.wg.Done()
+		k.inf.Run(ctx.Done())
+	}()
 	k.wg.Add(1)
 	go func() {
 		defer k.wg.Done()
@@ -154,10 +173,10 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 			select {
 			case <-t.C:
 				if err := updateSecret(&lastSecret); err != nil {
-					if errors.Is(err, errNotModified) {
+					if errors.Is(err, errNotModified) || errors.Is(err, context.Canceled) {
 						continue
 					}
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					logger.Errorf("cannot force sync secret content: %s", err)
 				}
 			case item := <-k.events:
@@ -166,10 +185,10 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 				logger.Infof("get k8s sync event type: %s, for secret: %s", item.op, item.obj.Name)
 
 				if err := updateSecret(s); err != nil {
-					if errors.Is(err, errNotModified) {
+					if errors.Is(err, errNotModified) || errors.Is(err, context.Canceled) {
 						continue
 					}
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					logger.Errorf("cannot sync secret content: %s", err)
 				}
 			case <-ctx.Done():

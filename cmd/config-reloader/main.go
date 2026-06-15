@@ -73,12 +73,12 @@ var (
 )
 
 var (
-	configLastOkReloadTime  = metrics.NewCounter(`configreloader_last_reload_success_timestamp_seconds`)
-	configLastReloadSuccess = metrics.NewCounter(`configreloader_last_reload_successful`)
-	configReloadErrorsTotal = metrics.NewCounter(`configreloader_last_reload_errors_total`)
-	configReloadsTotal      = metrics.NewCounter(`configreloader_config_last_reload_total`)
-	k8sAPIWatchErrorsTotal  = metrics.NewCounter(`configreloader_k8s_watch_errors_total`)
-	contentUpdateErrosTotal = metrics.NewCounter(`configreloader_secret_content_update_errors_total`)
+	configLastOkReloadTime   = metrics.NewCounter(`configreloader_last_reload_success_timestamp_seconds`)
+	configLastReloadSuccess  = metrics.NewCounter(`configreloader_last_reload_successful`)
+	configReloadErrorsTotal  = metrics.NewCounter(`configreloader_last_reload_errors_total`)
+	configReloadsTotal       = metrics.NewCounter(`configreloader_config_last_reload_total`)
+	k8sAPIWatchErrorsTotal   = metrics.NewCounter(`configreloader_k8s_watch_errors_total`)
+	contentUpdateErrorsTotal = metrics.NewCounter(`configreloader_secret_content_update_errors_total`)
 )
 
 func main() {

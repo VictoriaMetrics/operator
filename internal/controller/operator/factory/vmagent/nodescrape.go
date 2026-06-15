@@ -105,7 +105,6 @@ func generateNodeScrapeConfig(
 	for _, trc := range sp.NodeScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
-
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
 	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)

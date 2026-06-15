@@ -162,7 +162,11 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 		logger.Errorf("cannot update secret: %s", err)
 	}
 
-	go k.inf.Run(ctx.Done())
+	k.wg.Add(1)
+	go func() {
+		defer k.wg.Done()
+		k.inf.Run(ctx.Done())
+	}()
 	k.wg.Add(1)
 	go func() {
 		defer k.wg.Done()

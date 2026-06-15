@@ -545,6 +545,32 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
 	DescribeTable("should not rollout changes", ensureNoPodRollout, entries([]entry{
+		{
+			name: "pre stop hook",
+			envs: map[string]string{
+				"VM_ENABLE_DEFAULT_PRESTOP_HOOK": "false",
+			},
+			pairs: []crVersionPair{
+				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.70.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.70.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.71.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.71.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+			},
+		},
 		// nolint:dupl
 		{
 			name: "VMAgent/VLAgent",

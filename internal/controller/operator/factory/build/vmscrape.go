@@ -127,6 +127,9 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 			},
 		}
 	}
+	for i := range scrape.Spec.Endpoints {
+		addVictoriaMetricsAppRelabelConfig(&scrape.Spec.Endpoints[i].EndpointRelabelings)
+	}
 
 	return scrape
 }
@@ -155,7 +158,6 @@ func VMPodScrape(b podScrapeBuilder, portName string) *vmv1beta1.VMPodScrape {
 			"authKey": {authKey},
 		}
 	}
-
 	selectorLabels := b.SelectorLabels()
 	scrape := &vmv1beta1.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
@@ -174,9 +176,9 @@ func VMPodScrape(b podScrapeBuilder, portName string) *vmv1beta1.VMPodScrape {
 	serviceScrapeSpec := b.GetServiceScrape()
 	if serviceScrapeSpec != nil {
 		for _, e := range serviceScrapeSpec.Endpoints {
-			if e.Port == *endpoint.Port {
-				endpoint.EndpointScrapeParams = e.EndpointScrapeParams
-				endpoint.EndpointRelabelings = e.EndpointRelabelings
+			if e.Port == *scrape.Spec.PodMetricsEndpoints[0].Port {
+				scrape.Spec.PodMetricsEndpoints[0].EndpointScrapeParams = e.EndpointScrapeParams
+				scrape.Spec.PodMetricsEndpoints[0].EndpointRelabelings = e.EndpointRelabelings
 				continue
 			}
 			scrape.Spec.PodMetricsEndpoints = append(scrape.Spec.PodMetricsEndpoints, vmv1beta1.PodMetricsEndpoint{
@@ -190,5 +192,24 @@ func VMPodScrape(b podScrapeBuilder, portName string) *vmv1beta1.VMPodScrape {
 		scrape.Spec.SeriesLimit = serviceScrapeSpec.SeriesLimit
 		scrape.Spec.AttachMetadata = serviceScrapeSpec.AttachMetadata
 	}
+	for i := range scrape.Spec.PodMetricsEndpoints {
+		addVictoriaMetricsAppRelabelConfig(&scrape.Spec.PodMetricsEndpoints[i].EndpointRelabelings)
+	}
 	return scrape
+}
+
+func addVictoriaMetricsAppRelabelConfig(relabelings *vmv1beta1.EndpointRelabelings) {
+	for _, rc := range relabelings.RelabelConfigs {
+		if rc != nil && (rc.TargetLabel == "victoriametrics_app" || rc.UnderScoreTargetLabel == "victoriametrics_app") {
+			return
+		}
+	}
+	relabelings.RelabelConfigs = append(relabelings.RelabelConfigs, victoriaMetricsAppRelabelConfig())
+}
+
+func victoriaMetricsAppRelabelConfig() *vmv1beta1.RelabelConfig {
+	return &vmv1beta1.RelabelConfig{
+		TargetLabel: "victoriametrics_app",
+		Replacement: ptr.To("true"),
+	}
 }

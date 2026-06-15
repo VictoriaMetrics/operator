@@ -98,7 +98,22 @@ type VMScrapeConfigSpec struct {
 	HetznerSDConfigs []HetznerSDConfig `json:"hetznerSDConfigs,omitempty"`
 	// EurekaSDConfigs defines a list of Eureka service discovery configurations.
 	// +optional
-	EurekaSDConfigs      []EurekaSDConfig `json:"eurekaSDConfigs,omitempty"`
+	EurekaSDConfigs []EurekaSDConfig `json:"eurekaSDConfigs,omitempty"`
+	// ConsulAgentSDConfigs defines a list of Consul Agent service discovery configurations.
+	// +optional
+	ConsulAgentSDConfigs []ConsulAgentSDConfig `json:"consulAgentSDConfigs,omitempty"`
+	// DockerSDConfigs defines a list of Docker service discovery configurations.
+	// +optional
+	DockerSDConfigs []DockerSDConfig `json:"dockerSDConfigs,omitempty"`
+	// DockerSwarmSDConfigs defines a list of Docker Swarm service discovery configurations.
+	// +optional
+	DockerSwarmSDConfigs []DockerSwarmSDConfig `json:"dockerSwarmSDConfigs,omitempty"`
+	// MarathonSDConfigs defines a list of Marathon service discovery configurations.
+	// +optional
+	MarathonSDConfigs []MarathonSDConfig `json:"marathonSDConfigs,omitempty"`
+	// YandexCloudSDConfigs defines a list of Yandex Cloud service discovery configurations.
+	// +optional
+	YandexCloudSDConfigs []YandexCloudSDConfig `json:"yandexCloudSDConfigs,omitempty"`
 	EndpointScrapeParams `json:",inline"`
 	EndpointRelabelings  `json:",inline"`
 	// ScrapeClass defined scrape class to apply
@@ -611,6 +626,128 @@ type EurekaSDConfig struct {
 	// +optional
 	Server        string `json:"server,omitempty"`
 	HTTPSDOptions `json:",inline"`
+}
+
+// ConsulAgentSDConfig configurations allows retrieving scrape targets from a local Consul Agent.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#consulagent_sd_configs)
+// +k8s:openapi-gen=true
+type ConsulAgentSDConfig struct {
+	// Server address of the Consul Agent. Defaults to localhost:8500.
+	// +optional
+	Server string `json:"server,omitempty"`
+	// Consul ACL TokenRef, if not provided it will use the ACL from the local Consul Agent.
+	// +optional
+	TokenRef *corev1.SecretKeySelector `json:"tokenRef,omitempty"`
+	// Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter.
+	// +optional
+	Datacenter string `json:"datacenter,omitempty"`
+	// Namespaces are only supported in Consul Enterprise.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+	// HTTP Scheme default "http"
+	// +kubebuilder:validation:Enum=HTTP;HTTPS;http;https
+	// +optional
+	Scheme string `json:"scheme,omitempty"`
+	// A list of services for which targets are retrieved. If omitted, all services are scraped.
+	// +listType=atomic
+	// +optional
+	Services []string `json:"services,omitempty"`
+	// The string by which Consul tags are joined into the tag label.
+	// +optional
+	TagSeparator *string `json:"tagSeparator,omitempty"`
+	// Filter defines filter for service discovery requests.
+	// See https://developer.hashicorp.com/consul/api-docs/features/filtering
+	// +optional
+	Filter        string `json:"filter,omitempty"`
+	HTTPSDOptions `json:",inline"`
+}
+
+// DockerFilter defines a filter for Docker service discovery.
+// +k8s:openapi-gen=true
+type DockerFilter struct {
+	// Name of the filter.
+	// +required
+	Name string `json:"name"`
+	// Values for the filter.
+	// +listType=atomic
+	Values []string `json:"values"`
+}
+
+// DockerSDConfig configurations allows retrieving scrape targets from Docker Engine.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#docker_sd_configs)
+// +k8s:openapi-gen=true
+type DockerSDConfig struct {
+	// Host to connect to the Docker daemon.
+	// Defaults to unix:///var/run/docker.sock.
+	// +optional
+	Host string `json:"host,omitempty"`
+	// Port to scrape metrics from, when containers expose multiple ports.
+	// +optional
+	Port *int32 `json:"port,omitempty"`
+	// Filters are optional filters to limit the discovery process to a subset of available resources.
+	// +optional
+	Filters []DockerFilter `json:"filters,omitempty"`
+	// HostNetworkingHost is used when containers are in host networking mode.
+	// +optional
+	HostNetworkingHost string `json:"hostNetworkingHost,omitempty"`
+	// MatchFirstNetwork controls whether to match the first network if there are multiple networks.
+	// +optional
+	MatchFirstNetwork *bool `json:"matchFirstNetwork,omitempty"`
+	HTTPSDOptions     `json:",inline"`
+}
+
+// DockerSwarmSDConfig configurations allows retrieving scrape targets from Docker Swarm.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#dockerswarm_sd_configs)
+// +k8s:openapi-gen=true
+type DockerSwarmSDConfig struct {
+	// Host to connect to the Docker daemon.
+	// +required
+	Host string `json:"host"`
+	// Role of the target in Docker Swarm.
+	// +kubebuilder:validation:Enum=services;tasks;nodes
+	// +required
+	Role string `json:"role"`
+	// Port to scrape metrics from, when containers expose multiple ports.
+	// +optional
+	Port *int32 `json:"port,omitempty"`
+	// Filters are optional filters to limit the discovery process to a subset of available resources.
+	// +optional
+	Filters       []DockerFilter `json:"filters,omitempty"`
+	HTTPSDOptions `json:",inline"`
+}
+
+// MarathonSDConfig configurations allows retrieving scrape targets from Marathon.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#marathon_sd_configs)
+// +k8s:openapi-gen=true
+type MarathonSDConfig struct {
+	// Servers is a list of Marathon servers.
+	// +kubebuilder:validation:MinItems=1
+	// +listType=atomic
+	Servers       []string `json:"servers"`
+	HTTPSDOptions `json:",inline"`
+}
+
+// YandexCloudSDConfig configurations allows retrieving scrape targets from Yandex Cloud.
+// See [here](https://docs.victoriametrics.com/victoriametrics/sd_configs/#yandexcloud_sd_configs)
+// +k8s:openapi-gen=true
+type YandexCloudSDConfig struct {
+	// Service is the Yandex Cloud service to discover targets for.
+	// +kubebuilder:validation:Enum=compute;ydb
+	// +required
+	Service string `json:"service"`
+	// YandexPassportOAuthToken is the Yandex Passport OAuth token.
+	// +optional
+	YandexPassportOAuthToken *corev1.SecretKeySelector `json:"yandexPassportOAuthToken,omitempty"`
+	// APIEndpoint is the Yandex Cloud API endpoint.
+	// +optional
+	APIEndpoint string `json:"apiEndpoint,omitempty"`
+	// FolderIDs are the Yandex Cloud folder IDs to discover resources in.
+	// +listType=atomic
+	// +optional
+	FolderIDs []string `json:"folderIDs,omitempty"`
+	// TLSConfig to use on every scrape request.
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

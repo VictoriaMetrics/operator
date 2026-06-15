@@ -284,6 +284,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	$(KUSTOMIZE) build config/base-with-webhook > dist/install-with-webhook.yaml
 	$(KUSTOMIZE) build config/crd/overlay > dist/crd.yaml
 
+# Generate and validate the OLM bundle
 olm: operator-sdk yq docs
 	$(eval DIGEST = $(shell $(CONTAINER_TOOL) buildx imagetools inspect $(REGISTRY)/$(ORG)/$(REPO):$(TAG)-ubi --format "{{print .Manifest.Digest}}"))
 	rm -rf bundle*
@@ -373,6 +374,7 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
+# Install the local development toolchain used by build, test, and docs targets.
 .PHONY: install-tools
 install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest
 

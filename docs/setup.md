@@ -157,8 +157,7 @@ oc get pods -n vm
 
 ### Run locally
 
-It's possible to build and run OLM package locally on Kind K8s cluster using `make deploy-kind-olm`.
-Command builds operator image, bundle and index images, runs Kind with a local registry and deploys OLM package to Kind.
+OLM bundles for published releases are produced by the release workflow.
 
 ## CPU architectures
 

@@ -746,6 +746,225 @@ eureka_sd_configs:
 `,
 	})
 
+	// consulAgentSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "consulagentsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				ConsulAgentSDConfigs: []vmv1beta1.ConsulAgentSDConfig{{
+					Server:       "localhost:8500",
+					TokenRef:     &corev1.SecretKeySelector{Key: "token", LocalObjectReference: corev1.LocalObjectReference{Name: "consul-secret"}},
+					Datacenter:   "dc1",
+					Namespace:    "ns1",
+					Scheme:       "https",
+					Services:     []string{"web", "api"},
+					TagSeparator: ptr.To(","),
+					Filter:       `NodeMeta.os == "linux"`,
+				}},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "consul-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"token": []byte("consul-acl-token"),
+				},
+			},
+		},
+		want: `job_name: scrapeConfig/default/consulagentsd-1
+honor_labels: false
+relabel_configs: []
+consulagent_sd_configs:
+- server: localhost:8500
+  token: consul-acl-token
+  datacenter: dc1
+  namespace: ns1
+  scheme: https
+  services:
+  - web
+  - api
+  tag_separator: ','
+  filter: NodeMeta.os == "linux"
+`,
+	})
+
+	// dockerSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dockersd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				DockerSDConfigs: []vmv1beta1.DockerSDConfig{
+					{
+						Host: "tcp://localhost:2375",
+						Port: ptr.To[int32](9323),
+						Filters: []vmv1beta1.DockerFilter{{
+							Name:   "name",
+							Values: []string{"container1", "container2"},
+						}},
+						HostNetworkingHost: "localhost",
+						MatchFirstNetwork:  ptr.To(true),
+					},
+					{
+						// default host (unix socket)
+					},
+				},
+			},
+		},
+		want: `job_name: scrapeConfig/default/dockersd-1
+honor_labels: false
+relabel_configs: []
+docker_sd_configs:
+- host: tcp://localhost:2375
+  port: 9323
+  filters:
+  - name: name
+    values:
+    - container1
+    - container2
+  host_networking_host: localhost
+  match_first_network: true
+- {}
+`,
+	})
+
+	// dockerswarmSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dockerswarmsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				DockerSwarmSDConfigs: []vmv1beta1.DockerSwarmSDConfig{{
+					Host: "tcp://localhost:2375",
+					Role: "services",
+					Port: ptr.To[int32](80),
+					Filters: []vmv1beta1.DockerFilter{{
+						Name:   "label",
+						Values: []string{"com.docker.stack.namespace=mystack"},
+					}},
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/dockerswarmsd-1
+honor_labels: false
+relabel_configs: []
+dockerswarm_sd_configs:
+- host: tcp://localhost:2375
+  role: services
+  port: 80
+  filters:
+  - name: label
+    values:
+    - com.docker.stack.namespace=mystack
+`,
+	})
+
+	// marathonSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "marathonsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				MarathonSDConfigs: []vmv1beta1.MarathonSDConfig{{
+					Servers: []string{"http://marathon1.example.com:8080", "http://marathon2.example.com:8080"},
+				}},
+			},
+		},
+		want: `job_name: scrapeConfig/default/marathonsd-1
+honor_labels: false
+relabel_configs: []
+marathon_sd_configs:
+- servers:
+  - http://marathon1.example.com:8080
+  - http://marathon2.example.com:8080
+`,
+	})
+
+	// yandexcloudSDConfig
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+		},
+		sc: &vmv1beta1.VMScrapeConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "yandexcloudsd-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMScrapeConfigSpec{
+				YandexCloudSDConfigs: []vmv1beta1.YandexCloudSDConfig{{
+					Service: "compute",
+					YandexPassportOAuthToken: &corev1.SecretKeySelector{
+						Key:                  "token",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "yc-secret"},
+					},
+					APIEndpoint: "https://api.cloud.yandex.net",
+					FolderIDs:   []string{"folder1", "folder2"},
+				}},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "yc-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"token": []byte("yc-oauth-token"),
+				},
+			},
+		},
+		want: `job_name: scrapeConfig/default/yandexcloudsd-1
+honor_labels: false
+relabel_configs: []
+yandexcloud_sd_configs:
+- service: compute
+  yandex_passport_oauth_token: yc-oauth-token
+  api_endpoint: https://api.cloud.yandex.net
+  folder_ids:
+  - folder1
+  - folder2
+`,
+	})
+
 	// configs with auth and empty type
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

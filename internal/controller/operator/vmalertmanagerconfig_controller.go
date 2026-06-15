@@ -74,7 +74,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	RegisterObjectStat(&instance, r.name)
-	if instance.Status.ParsingSpecError != "" {
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
@@ -94,7 +94,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || item.Status.ParsingSpecError != "" || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) || item.IsUnmanaged() {
 			continue
 		}
 

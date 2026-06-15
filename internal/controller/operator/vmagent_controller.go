@@ -109,7 +109,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
-	if instance.Status.ParsingSpecError != "" {
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}

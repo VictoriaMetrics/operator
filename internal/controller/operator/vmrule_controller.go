@@ -77,7 +77,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	RegisterObjectStat(&instance, r.name)
-	if instance.Status.ParsingSpecError != "" {
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = &parsingError{instance.Status.ParsingSpecError, r.name}
 		return
 	}
@@ -97,7 +97,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if item.DeletionTimestamp != nil || item.Status.ParsingSpecError != "" {
+		if item.DeletionTimestamp != nil || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) {
 			continue
 		}
 		l := l.WithValues("vmalert", item.Name, "parent_namespace", item.Namespace)

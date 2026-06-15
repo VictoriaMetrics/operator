@@ -13,13 +13,19 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed content in `binaryData` and an init container decompresses them before VMAlert starts. Existing VMAlert pods will be rolled out once during this upgrade.
+
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add validating webhooks for Prometheus Operator CRDs (`ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe`, `ScrapeConfig`, `AlertmanagerConfig`). Each object is converted to its VM equivalent and validated when webhooks are enabled. See [#2270](https://github.com/VictoriaMetrics/operator/issues/2270).
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): add support for `consulAgentSDConfigs`, `dockerSDConfigs`, `dockerSwarmSDConfigs`, `marathonSDConfigs`, and `yandexCloudSDConfigs` service discovery types, bringing `VMScrapeConfig` to full parity with VictoriaMetrics [sd_configs](https://docs.victoriametrics.com/victoriametrics/sd_configs/). See [#2265](https://github.com/VictoriaMetrics/operator/issues/2265).
 
+* FEATURE: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed rule files in `binaryData`, allowing larger rule sets within Kubernetes object size limits. An init container decompresses the rules before VMAlert starts.
+* FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): add support for `consulAgentSDConfigs`, `dockerSDConfigs`, `dockerSwarmSDConfigs`, `marathonSDConfigs`, and `yandexCloudSDConfigs` service discovery types, bringing `VMScrapeConfig` to full parity with VictoriaMetrics [sd_configs](https://docs.victoriametrics.com/victoriametrics/sd_configs/). See [#2265](https://github.com/VictoriaMetrics/operator/issues/2265).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip reconciliation only for CRs with genuine spec parse errors; CRs whose `ParsingSpecError` is caused solely by unknown fields (e.g. after an operator downgrade) are now reconciled normally instead of being silently skipped.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 
-## [v0.71.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.1)
+## [v0.71.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.0)
 **Release date:** 12 June 2026
 
 **Update note 1**: the new default `preStop` hook causes a rolling update of all applicable pods on operator upgrade (on Kubernetes >= 1.29). To avoid this, set `VM_ENABLE_DEFAULT_PRESTOP_HOOK=false` on the operator before upgrading. Once the upgrade is complete, you can re-enable it by removing the override (or setting it to `true`) to roll out the hook at a time of your choosing. Alternatively, disable the hook per resource by setting `spec.preStopSleepSeconds: 0`.
@@ -54,7 +60,7 @@ aliases:
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): omit the `OnlineQuantileModel` `min_subseason` key when it is unset instead of emitting an empty string.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): remove the artificial upper bound on `spec.server.maxConcurrentTasks`; vmanomaly accepts any positive integer.
 
-## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
+## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.1)
 **Release date:** 20 May 2026
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): support HPA for requests load balancer.

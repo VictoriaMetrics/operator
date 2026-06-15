@@ -1327,7 +1327,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	// Split jobs into gzip-compressed buckets, each fitting within the Kubernetes Secret limit.
-	buckets, err := vmscrapes.PackJobsIntoBuckets(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes)
+	buckets, err := build.PackItems(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes, 150)
 	if err != nil {
 		return 0, fmt.Errorf("splitting scrape config into buckets: %w", err)
 	}

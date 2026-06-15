@@ -6,12 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
@@ -83,42 +81,3 @@ const (
 	// ExtraConfigFilesGlob is added to the main scrape config when overflow is active.
 	ExtraConfigFilesGlob = "/etc/vm/sc-files/*/jobs.yaml"
 )
-
-// PackJobsIntoBuckets packs scrape jobs into gzip-compressed buckets within limit bytes each.
-// Fast path: one compression check; if everything fits, return a single bucket.
-// Slow path: estimate bucket count from total compressed size, pre-split by job count,
-// recurse on each chunk. Recursion terminates because each chunk is strictly smaller.
-func PackJobsIntoBuckets(jobs []yaml.MapSlice, limit int) ([][]yaml.MapSlice, error) {
-	data, err := yaml.Marshal(jobs)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling scrape jobs: %w", err)
-	}
-	compressed, err := build.GzipConfig(data)
-	if err != nil {
-		return nil, fmt.Errorf("compressing scrape jobs: %w", err)
-	}
-	if len(compressed) <= limit {
-		return [][]yaml.MapSlice{jobs}, nil
-	}
-	if len(jobs) == 1 {
-		return nil, fmt.Errorf("single scrape job exceeds compressed bucket size limit (%d > %d bytes)", len(compressed), limit)
-	}
-
-	// Estimate number of buckets with 50% headroom (per-bucket compression may be worse).
-	numBuckets := (len(compressed)*3/2 + limit - 1) / limit
-	jobsPerBucket := (len(jobs) + numBuckets - 1) / numBuckets
-
-	var result [][]yaml.MapSlice
-	for i := 0; i < len(jobs); i += jobsPerBucket {
-		end := i + jobsPerBucket
-		if end > len(jobs) {
-			end = len(jobs)
-		}
-		sub, err := PackJobsIntoBuckets(jobs[i:end], limit)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, sub...)
-	}
-	return result, nil
-}

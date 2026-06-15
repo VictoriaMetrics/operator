@@ -1,10 +1,14 @@
 package vmalert
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,11 +20,38 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+// groupNamesFromCM decompresses and unmarshals the rules.yaml BinaryData entry,
+// returning the contained group names for easy assertion.
+func groupNamesFromCM(t *testing.T, cm corev1.ConfigMap) []string {
+	t.Helper()
+	data, ok := cm.BinaryData[rulesFilename]
+	if !ok {
+		return nil
+	}
+	r, err := gzip.NewReader(bytes.NewReader(data))
+	if !assert.NoError(t, err) {
+		return nil
+	}
+	decompressed, err := io.ReadAll(r)
+	if !assert.NoError(t, err) {
+		return nil
+	}
+	var spec vmv1beta1.VMRuleSpec
+	if !assert.NoError(t, yaml.Unmarshal(decompressed, &spec)) {
+		return nil
+	}
+	names := make([]string, 0, len(spec.Groups))
+	for _, g := range spec.Groups {
+		names = append(names, g.Name)
+	}
+	return names
+}
+
 func TestSelectRules(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAlert
 		predefinedObjects []runtime.Object
-		want              map[string]string
+		want              []vmv1beta1.RuleGroup
 	}
 
 	f := func(o opts) {
@@ -29,196 +60,139 @@ func TestSelectRules(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		_, got, err := selectRules(ctx, fclient, o.cr)
 		assert.NoError(t, err)
-		for ruleName, content := range got {
-			assert.Equal(t, o.want[ruleName], content)
-		}
+		assert.Equal(t, o.want, got)
 	}
 
-	// select default rule
+	// no rules selected when SelectAllByDefault=false and no selectors set
 	f(opts{
-		cr: &vmv1beta1.VMAlert{},
-		want: map[string]string{
-			"default-vmalert.yaml": `
-groups:
-- name: vmAlertGroup
-  rules:
-     - alert: error writing to remote
-       for: 1m
-       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
-       labels:
-         host: "{{ $labels.instance }}"
-       annotations:
-         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
-         description: "error writing to remote writer from vmalert {{$labels}}"
-         back: "error rate is ok at vmalert "
-`,
-		},
+		cr:   &vmv1beta1.VMAlert{},
+		want: nil,
 	})
 
-	// select default rule additional rule from another namespace
-	f(opts{
-		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-			Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}},
-		},
-		predefinedObjects: []runtime.Object{
-			// we need namespace for filter + object inside this namespace
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-			&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
-				Groups: []vmv1beta1.RuleGroup{{
-					Name: "error-alert", Interval: "10s",
-					Concurrency:   1,
-					EvalOffset:    "10s",
-					EvalDelay:     "40s",
-					EvalAlignment: ptr.To(false),
-					Rules: []vmv1beta1.Rule{
-						{Alert: "alerting", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-					},
-				}},
-			}},
-		},
-		want: map[string]string{
-			"default-error-alert.yaml": `groups:
-- concurrency: 1
-  eval_alignment: false
-  eval_delay: 40s
-  eval_offset: 10s
-  name: error-alert
-  interval: 10s
-  rules:
-  - alert: alerting
-    expr: "10"
-    for: 10s
-`,
-		},
-	})
-
-	// select default rule, and additional rule from another namespace with namespace filter
-	f(opts{
-		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-			Spec:       vmv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}},
-		},
-		predefinedObjects: []runtime.Object{
-			// we need namespace for filter + object inside this namespace
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
-			&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
-				Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-					{Record: "recording", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-				}}},
-			}},
-			&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"}, Spec: vmv1beta1.VMRuleSpec{
-				Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-					{Alert: "alerting-2", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-				}}},
-			}},
-		},
-		want: map[string]string{"monitoring-error-alert-at-monitoring.yaml": `groups:
-- name: error-alert
-  interval: 10s
-  rules:
-  - alert: alerting-2
-    expr: "10"
-    for: 10s
-`,
-		},
-	})
-
-	// select all rules with select all
+	// namespace selector matching all namespaces picks up the VMRule
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
 			Spec: vmv1beta1.VMAlertSpec{
-				SelectAllByDefault: true,
+				RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}},
+				RuleSelector:          &metav1.LabelSelector{},
 			},
 		},
 		predefinedObjects: []runtime.Object{
-			// we need namespace for filter + object inside this namespace
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+			&vmv1beta1.VMRule{
+				ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
+				Spec: vmv1beta1.VMRuleSpec{
+					Groups: []vmv1beta1.RuleGroup{{
+						Name:          "error-alert",
+						Interval:      "10s",
+						Concurrency:   1,
+						EvalOffset:    "10s",
+						EvalAlignment: ptr.To(false),
+						Rules: []vmv1beta1.Rule{
+							{Alert: "alerting", Expr: "up", For: "10s"},
+						},
+					}},
+				},
+			},
+		},
+		want: []vmv1beta1.RuleGroup{{
+			Name:          "error-alert",
+			Interval:      "10s",
+			Concurrency:   1,
+			EvalOffset:    "10s",
+			EvalAlignment: ptr.To(false),
+			Rules: []vmv1beta1.Rule{
+				{Alert: "alerting", Expr: "up", For: "10s"},
+			},
+		}},
+	})
+
+	// namespace label filter only includes matching namespaces;
+	// the VMRule in "default" (no matching label) is excluded
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+			Spec: vmv1beta1.VMAlertSpec{
+				RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}},
+				RuleSelector:          &metav1.LabelSelector{},
+			},
+		},
+		predefinedObjects: []runtime.Object{
 			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 			&vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
-				Spec: vmv1beta1.VMRuleSpec{
-					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "err indicator", Expr: "rate(err_metric[1m]) > 10", For: "10s", Labels: nil, Annotations: nil},
-					}}},
-				},
+				Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{{
+					Name: "error-alert", Interval: "10s",
+					Rules: []vmv1beta1.Rule{{Record: "recording", Expr: "10", For: "10s"}},
+				}}},
 			},
 			&vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
-				Spec: vmv1beta1.VMRuleSpec{
-					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "alerting-2", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-					}}},
-				},
+				Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{{
+					Name: "error-alert", Interval: "10s",
+					Rules: []vmv1beta1.Rule{{Alert: "alerting-2", Expr: "10", For: "10s"}},
+				}}},
 			},
 		},
-		want: map[string]string{
-			"default-error-alert.yaml": `groups:
-- name: error-alert
-  interval: 10s
-  rules:
-  - alert: err indicator
-    expr: rate(err_metric[1m]) > 10
-    for: 10s
-`,
-			"monitoring-error-alert-at-monitoring.yaml": `groups:
-- name: error-alert
-  interval: 10s
-  rules:
-  - alert: alerting-2
-    expr: "10"
-    for: 10s
-`,
+		want: []vmv1beta1.RuleGroup{{
+			Name: "error-alert", Interval: "10s",
+			Rules: []vmv1beta1.Rule{{Alert: "alerting-2", Expr: "10", For: "10s"}},
+		}},
+	})
+
+	// SelectAllByDefault with duplicate group name across VMRules: both are returned; packing
+	// will place them in separate ConfigMaps since group names must be unique within a file.
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+			Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+			&vmv1beta1.VMRule{
+				ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
+				Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{{
+					Name: "error-alert", Interval: "10s",
+					Rules: []vmv1beta1.Rule{{Alert: "err indicator", Expr: "rate(err_metric[1m]) > 10", For: "10s"}},
+				}}},
+			},
+			&vmv1beta1.VMRule{
+				ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
+				Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{{
+					Name: "error-alert", Interval: "10s",
+					Rules: []vmv1beta1.Rule{{Alert: "alerting-2", Expr: "up", For: "10s"}},
+				}}},
+			},
+		},
+		// both groups are returned; "default" sorts first so its group appears at index 0
+		want: []vmv1beta1.RuleGroup{
+			{Name: "error-alert", Interval: "10s",
+				Rules: []vmv1beta1.Rule{{Alert: "err indicator", Expr: "rate(err_metric[1m]) > 10", For: "10s"}}},
+			{Name: "error-alert", Interval: "10s",
+				Rules: []vmv1beta1.Rule{{Alert: "alerting-2", Expr: "up", For: "10s"}}},
 		},
 	})
 
-	// select none by default
+	// SelectAllByDefault=false with no selectors: nothing is selected
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitoring"},
-			Spec: vmv1beta1.VMAlertSpec{
-				SelectAllByDefault: false,
-			},
+			Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: false},
 		},
 		predefinedObjects: []runtime.Object{
-			// we need namespace for filter + object inside this namespace
 			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-			&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 			&vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
-				Spec: vmv1beta1.VMRuleSpec{
-					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-					}}},
-				},
-			},
-			&vmv1beta1.VMRule{
-				ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
-				Spec: vmv1beta1.VMRuleSpec{
-					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-					}}},
-				},
+				Spec: vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{{
+					Name: "error-alert", Interval: "10s",
+					Rules: []vmv1beta1.Rule{{Expr: "10", For: "10s"}},
+				}}},
 			},
 		},
-		want: map[string]string{
-			"default-vmalert.yaml": `
-groups:
-- name: vmAlertGroup
-  rules:
-     - alert: error writing to remote
-       for: 1m
-       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
-       labels:
-         host: "{{ $labels.instance }}"
-       annotations:
-         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
-         description: "error writing to remote writer from vmalert {{$labels}}"
-         back: "error rate is ok at vmalert "
-`,
-		},
+		want: nil,
 	})
 }
 
@@ -237,35 +211,27 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		assert.Equal(t, o.want, got)
 	}
 
-	// base-rules-empty
+	// IsUnmanaged when no selectors and SelectAllByDefault=false: returns nil without creating ConfigMaps
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Name:      "base-vmalert",
-			},
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "base-vmalert"},
 		},
 	})
 
-	// base-rules-gen-with-selector
+	// SelectAllByDefault with no rules: no VMRules selected → no ConfigMaps created
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Name:      "base-vmalert",
-			},
-			Spec: vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "base-vmalert"},
+			Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
 		},
-		want: []string{"vm-base-vmalert-rulefiles-0"},
 	})
 }
 
 func TestRuleRebalance(t *testing.T) {
 	ctx := context.Background()
 
-	// Each rule's serialized YAML is ~76 bytes.
 	origLimit := config.MustGetBaseConfig().ConfigDataBudgetBytes
-	config.MustGetBaseConfig().ConfigDataBudgetBytes = 80
+	config.MustGetBaseConfig().ConfigDataBudgetBytes = 90
 	defer func() { config.MustGetBaseConfig().ConfigDataBudgetBytes = origLimit }()
 
 	mkRule := func(ns, name, recordName string) *vmv1beta1.VMRule {
@@ -291,30 +257,56 @@ func TestRuleRebalance(t *testing.T) {
 	firstRuleCM := "vm-recording-rulefiles-0"
 	secondRuleCM := "vm-recording-rulefiles-1"
 
-	// One rule fits the configmap
+	// one rule fits in a single ConfigMap
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ruleB})
 	names, err := CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{firstRuleCM}, names)
 
-	var cm0 corev1.ConfigMap
-	var cm1 corev1.ConfigMap
+	var cm0, cm1 corev1.ConfigMap
 	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0))
-	assert.Contains(t, cm0.Data, "default-rule-b.yaml", "rule-b should be in cm-0 initially")
+	assert.Contains(t, cm0.BinaryData, rulesFilename, "cm-0 must have rules.yaml")
+	assert.Equal(t, []string{"rule-b"}, groupNamesFromCM(t, cm0))
 
-	// Bin-packing puts rule-a in cm-0 and spills rule-b to cm-1.
+	// adding a second rule forces a split; VMRules are sorted by key so rule-a goes into cm-0
+	// and rule-b spills into cm-1
 	ruleA := mkRule(ns, "rule-a", "job:a:total")
 	assert.NoError(t, fclient.Create(ctx, ruleA))
 
 	names, err = CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{firstRuleCM, secondRuleCM}, names)
+
 	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0))
 	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: secondRuleCM, Namespace: ns}, &cm1))
 
-	assert.Contains(t, cm0.Data, "default-rule-a.yaml")
-	assert.NotContains(t, cm0.Data, "default-rule-b.yaml", "rule-b must be removed from cm-0 after moving to cm-1")
-	assert.Contains(t, cm1.Data, "default-rule-b.yaml")
+	assert.Equal(t, []string{"rule-a"}, groupNamesFromCM(t, cm0), "rule-a must be in cm-0 after split")
+	assert.Equal(t, []string{"rule-b"}, groupNamesFromCM(t, cm1), "rule-b must be in cm-1 after split")
+
+	// two VMRules sharing the same group name must land in separate ConfigMaps even if both fit
+	// within the size limit, because group names must be unique within a single rules.yaml file.
+	config.MustGetBaseConfig().ConfigDataBudgetBytes = origLimit
+	ruleConflict := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-conflict", Namespace: ns},
+		Spec: vmv1beta1.VMRuleSpec{
+			Groups: []vmv1beta1.RuleGroup{{
+				Name:  "rule-a", // same group name as ruleA
+				Rules: []vmv1beta1.Rule{{Record: "job:conflict:total", Expr: "vector(1)"}},
+			}},
+		},
+	}
+	fclient2 := k8stools.GetTestClientWithObjects([]runtime.Object{ruleA, ruleConflict})
+	names, err = CreateOrUpdateRuleConfigMaps(ctx, fclient2, cr, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{firstRuleCM, secondRuleCM}, names, "conflicting group names must land in separate ConfigMaps")
+
+	var cm0c, cm1c corev1.ConfigMap
+	assert.NoError(t, fclient2.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0c))
+	assert.NoError(t, fclient2.Get(ctx, types.NamespacedName{Name: secondRuleCM, Namespace: ns}, &cm1c))
+	g0 := groupNamesFromCM(t, cm0c)
+	g1 := groupNamesFromCM(t, cm1c)
+	assert.Equal(t, []string{"rule-a"}, g0)
+	assert.Equal(t, []string{"rule-a"}, g1)
 }
 
 func Test_deduplicateRules(t *testing.T) {

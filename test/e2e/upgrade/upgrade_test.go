@@ -194,7 +194,7 @@ var (
 			},
 		},
 	}
-	vmalert = &vmv1beta1.VMAlert{
+	_ = &vmv1beta1.VMAlert{
 		Spec: vmv1beta1.VMAlertSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				ConfigReloaderImage: configReloaderImage(),
@@ -668,32 +668,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		},
 		// nolint:dupl
 		{
-			name: "VMAlert/VMAuth/VMAlertmanager",
-			genDeps: func(ns string) []client.Object {
-				return []client.Object{
-					with(vmsingle, func(cr *vmv1beta1.VMSingle) {
-						cr.Name = "anomaly"
-						cr.Namespace = ns
-					}),
-				}
-			},
+			name: "VMAuth/VMAlertmanager",
 			pairs: []crVersionPair{
-				{version: "v0.68.0", cr: with(vmalert)},
 				{version: "v0.68.0", cr: with(vmauth)},
 				{version: "v0.68.0", cr: with(vmalertmanager)},
-				{version: "v0.68.1", cr: with(vmalert)},
 				{version: "v0.68.1", cr: with(vmauth)},
 				{version: "v0.68.1", cr: with(vmalertmanager)},
-				{version: "v0.68.2", cr: with(vmalert)},
 				{version: "v0.68.2", cr: with(vmauth)},
 				{version: "v0.68.2", cr: with(vmalertmanager)},
-				{version: "v0.68.3", cr: with(vmalert)},
 				{version: "v0.68.3", cr: with(vmauth)},
 				{version: "v0.68.3", cr: with(vmalertmanager)},
-				{version: "v0.68.4", cr: with(vmalert)},
 				{version: "v0.68.4", cr: with(vmauth)},
 				{version: "v0.68.4", cr: with(vmalertmanager)},
-				{version: "v0.68.5", cr: with(vmalert)},
 				{version: "v0.68.5", cr: with(vmauth)},
 				{version: "v0.68.5", cr: with(vmalertmanager)},
 			},

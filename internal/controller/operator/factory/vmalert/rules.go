@@ -35,13 +35,16 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr
 	return newRules, nil
 }
 
-func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, newRules map[string]string) ([]string, error) {
-	newConfigMaps := makeRulesConfigMaps(cr, newRules)
+func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([]string, error) {
+	newConfigMaps, err := makeRulesConfigMaps(cr, groups)
+	if err != nil {
+		return nil, fmt.Errorf("cannot build rule configmaps for vmalert: %w", err)
+	}
 	sort.Slice(newConfigMaps, func(i, j int) bool {
 		return newConfigMaps[i].Name < newConfigMaps[j].Name
 	})
 	var needReload bool
-	newConfigMapNames := make([]string, 0, len(newConfigMaps))
+	var newConfigMapNames []string
 	owner := cr.AsOwner()
 	for i := range newConfigMaps {
 		cm := &newConfigMaps[i]
@@ -93,7 +96,7 @@ type parsedObjects struct {
 	rules *build.ChildObjects[*vmv1beta1.VMRule]
 }
 
-func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, map[string]string, error) {
+func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, []vmv1beta1.RuleGroup, error) {
 	var rules []*vmv1beta1.VMRule
 	var nsn []string
 	if !build.IsControllerDisabled("VMRule") {
@@ -120,101 +123,98 @@ func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAle
 		}
 	}
 	pos := &parsedObjects{rules: build.NewChildObjects("vmrule", rules, nsn)}
-	data := make(map[string]string)
+	var groups []vmv1beta1.RuleGroup
 	pos.rules.ForEachCollectSkipInvalid(func(rule *vmv1beta1.VMRule) error {
 		if !build.MustSkipRuntimeValidation() {
 			if err := rule.Validate(); err != nil {
 				return err
 			}
 		}
-		content, err := generateContent(rule.Spec, cr.Spec.EnforcedNamespaceLabel, rule.Namespace)
-		if err != nil {
-			return err
+		for _, group := range rule.Spec.Groups {
+			if cr.Spec.EnforcedNamespaceLabel != "" {
+				for j := range group.Rules {
+					if group.Rules[j].Labels == nil {
+						group.Rules[j].Labels = map[string]string{}
+					}
+					group.Rules[j].Labels[cr.Spec.EnforcedNamespaceLabel] = rule.Namespace
+				}
+			}
+			groups = append(groups, group)
 		}
-		data[rule.AsKey(false)] = content
 		return nil
 	})
 	pos.rules.UpdateMetrics(ctx)
-	return pos, data, nil
+	return pos, groups, nil
 }
 
-func generateContent(promRule vmv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {
-	if enforcedNsLabel != "" {
-		for gi, group := range promRule.Groups {
-			for ri := range group.Rules {
-				if len(promRule.Groups[gi].Rules[ri].Labels) == 0 {
-					promRule.Groups[gi].Rules[ri].Labels = map[string]string{}
-				}
-				promRule.Groups[gi].Rules[ri].Labels[enforcedNsLabel] = ns
+// rulesFilename is the single BinaryData key in each rule ConfigMap bucket.
+const rulesFilename = "rules.yaml"
+
+// packRuleGroups packs groups into buckets that each fit within limit bytes when gzip-compressed.
+// Groups with the same name must not appear in the same bucket (vmalert requires unique group names
+// within a single file). The algorithm first assigns groups to name-unique batches via greedy
+// first-fit, then splits any oversized batch further with build.PackItems (subsets preserve
+// name-uniqueness).
+func packRuleGroups(groups []vmv1beta1.RuleGroup, limit int) ([][]vmv1beta1.RuleGroup, error) {
+	// Phase 1: greedy first-fit into name-unique batches.
+	var batches [][]vmv1beta1.RuleGroup
+	batchNames := []sets.Set[string]{}
+	for _, g := range groups {
+		placed := false
+		for i := range batches {
+			if !batchNames[i].Has(g.Name) {
+				batches[i] = append(batches[i], g)
+				batchNames[i].Insert(g.Name)
+				placed = true
+				break
 			}
 		}
-	}
-	content, err := yaml.Marshal(promRule)
-	if err != nil {
-		return "", fmt.Errorf("cannot unmarshal context for cm rule generation: %w", err)
-	}
-	return string(content), nil
-}
-
-// makeRulesConfigMaps takes a VMAlert configuration and rule files and
-// returns a list of Kubernetes ConfigMaps to be later on mounted
-// If the total size of rule files exceeds the Kubernetes ConfigMap limit,
-// they are split up via the simple first-fit [1] bin packing algorithm. In the
-// future this can be replaced by a more sophisticated algorithm, but for now
-// simplicity should be sufficient.
-// [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
-func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) []corev1.ConfigMap {
-	buckets := []map[string]string{
-		{},
-	}
-	currBucketIndex := 0
-
-	// To make bin packing algorithm deterministic, sort ruleFiles filenames and
-	// iterate over filenames instead of ruleFiles map (not deterministic).
-	fileNames := []string{}
-	for n := range ruleFiles {
-		fileNames = append(fileNames, n)
-	}
-	sort.Strings(fileNames)
-
-	for _, filename := range fileNames {
-		// If rule file doesn't fit into current bucket, create new bucket.
-		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > config.MustGetBaseConfig().ConfigDataBudgetBytes {
-			buckets = append(buckets, map[string]string{})
-			currBucketIndex++
+		if !placed {
+			batches = append(batches, []vmv1beta1.RuleGroup{g})
+			batchNames = append(batchNames, sets.New(g.Name))
 		}
-		buckets[currBucketIndex][filename] = ruleFiles[filename]
 	}
+	// Phase 2: split any oversized batch by size; subsets of a name-unique batch are also name-unique.
+	var result [][]vmv1beta1.RuleGroup
+	for _, batch := range batches {
+		sub, err := build.PackItems(batch, limit, 150)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, sub...)
+	}
+	return result, nil
+}
 
-	ruleFileConfigMaps := make([]corev1.ConfigMap, 0, len(buckets))
+// makeRulesConfigMaps packs rule groups into gzip-compressed ConfigMap buckets using
+// build.PackItems with 50% headroom. Each bucket is stored as one "rules.yaml" BinaryData entry.
+// Always returns at least one ConfigMap so VMAlert has a valid mount target.
+func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([]corev1.ConfigMap, error) {
+	buckets, err := packRuleGroups(groups, config.MustGetBaseConfig().ConfigDataBudgetBytes)
+	if err != nil {
+		return nil, fmt.Errorf("cannot pack rule groups into configmap buckets: %w", err)
+	}
+	cms := make([]corev1.ConfigMap, 0, len(buckets))
 	for i, bucket := range buckets {
-		cm := makeRulesConfigMap(cr, bucket)
-		cm.Name = cm.Name + "-" + strconv.Itoa(i)
-		ruleFileConfigMaps = append(ruleFileConfigMaps, cm)
+		data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: bucket})
+		if err != nil {
+			return nil, fmt.Errorf("cannot marshal rule groups for configmap %d: %w", i, err)
+		}
+		compressed, err := build.GzipConfig(data)
+		if err != nil {
+			return nil, fmt.Errorf("cannot compress rule groups for configmap %d: %w", i, err)
+		}
+		cms = append(cms, corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            ruleConfigMapName(cr.Name) + "-" + strconv.Itoa(i),
+				Namespace:       cr.Namespace,
+				Labels:          cr.FinalLabels(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+			},
+			BinaryData: map[string][]byte{rulesFilename: compressed},
+		})
 	}
-
-	return ruleFileConfigMaps
-}
-
-func bucketSize(bucket map[string]string) int {
-	totalSize := 0
-	for _, v := range bucket {
-		totalSize += len(v)
-	}
-
-	return totalSize
-}
-
-func makeRulesConfigMap(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            ruleConfigMapName(cr.Name),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(),
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		},
-		Data: ruleFiles,
-	}
+	return cms, nil
 }
 
 func ruleConfigMapName(vmName string) string {

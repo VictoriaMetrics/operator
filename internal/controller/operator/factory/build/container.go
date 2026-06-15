@@ -472,6 +472,22 @@ func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[stri
 	})
 }
 
+// AddWatchTargetDir mounts srcMount into c and appends the matching --watched-dir / --target-dir
+// flag pair atomically. It is a no-op if srcMount.MountPath is already present in c.VolumeMounts,
+// preventing duplicate mounts when the same directory appears in both crMounts and the rule dirs.
+func AddWatchTargetDir(c *corev1.Container, srcMount corev1.VolumeMount, targetDir string) {
+	for _, m := range c.VolumeMounts {
+		if m.MountPath == srcMount.MountPath {
+			return
+		}
+	}
+	c.VolumeMounts = append(c.VolumeMounts, srcMount)
+	c.Args = append(c.Args,
+		fmt.Sprintf("--watched-dir=%s", srcMount.MountPath),
+		fmt.Sprintf("--target-dir=%s", targetDir),
+	)
+}
+
 // addConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container
 func addConfigReloadAuthKeyToReloader(container *corev1.Container, spec *vmv1beta1.CommonConfigReloaderParams) {
 	if spec.ConfigReloadAuthKeySecret == nil {

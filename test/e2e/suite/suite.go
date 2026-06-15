@@ -65,6 +65,9 @@ func GetClient(data []byte) client.WithWatch {
 		"VM_PODWAITREADYINTERVALCHECK":                   "1s",
 		"VM_APPREADYTIMEOUT":                             "50s",
 	}
+	if img := os.Getenv("CONFIG_RELOADER_IMAGE"); img != "" {
+		envs["VM_CONFIG_RELOADER_IMAGE"] = img
+	}
 	resourceEnvsPrefixes := []string{
 		"VMBACKUP",
 		"VMCLUSTERDEFAULT_VMSTORAGEDEFAULT",

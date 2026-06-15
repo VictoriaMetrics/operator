@@ -89,7 +89,7 @@ func (fw *fileWatcher) start(ctx context.Context, updates chan struct{}) {
 			case <-t.C:
 				if err := update(*configFileName); err != nil {
 					logger.Errorf("cannot update file at force resync :%s", err)
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					continue
 				}
 			case event := <-fw.w.Events:
@@ -100,7 +100,7 @@ func (fw *fileWatcher) start(ctx context.Context, updates chan struct{}) {
 				logger.Infof("changed: %s, %s", event.Name, event.Op.String())
 				if err := update(*configFileName); err != nil {
 					logger.Errorf("cannot update file :%s", err)
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					continue
 				}
 			}

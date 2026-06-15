@@ -29,7 +29,7 @@ aliases:
 ## [v0.71.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.0)
 **Release date:** 12 June 2026
 
-**Update note 1**: This release contains a bug which causes the operator to stop emitting metrics on large number of tracked objects, see more details in [#8941](https://github.com/VictoriaMetrics/operator/pull/2284). We recommend skipping this operator release.
+**Update note 1**: This release contains a bug which causes the operator to stop emitting metrics on large number of tracked objects, see more details in [#2280](https://github.com/VictoriaMetrics/operator/issues/2280). We recommend skipping this operator release.
 
 **Update note 2**: the new default `preStop` hook causes a rolling update of all applicable pods on operator upgrade (on Kubernetes >= 1.29). To avoid this, set `VM_ENABLE_DEFAULT_PRESTOP_HOOK=false` on the operator before upgrading. Once the upgrade is complete, you can re-enable it by removing the override (or setting it to `true`) to roll out the hook at a time of your choosing. Alternatively, disable the hook per resource by setting `spec.preStopSleepSeconds: 0`.
 

@@ -79,15 +79,27 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	if _, err := inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			s := obj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "create", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "create", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping create event for secret: %s", s.Name)
+			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			s := newObj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "update", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "update", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping update event for secret: %s", s.Name)
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			s := obj.(*corev1.Secret)
-			syncChan <- syncEvent{op: "delete", obj: s}
+			select {
+			case syncChan <- syncEvent{op: "delete", obj: s}:
+			default:
+				logger.Infof("syncChan full, dropping delete event for secret: %s", s.Name)
+			}
 		},
 	}); err != nil {
 		return nil, fmt.Errorf("cannot build eventHandler: %w", err)

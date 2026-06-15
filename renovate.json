@@ -87,7 +87,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^Makefile$/"
+        "/^test\\/Makefile$/"
       ],
       "matchStrings": [
         "KIND_VERSION \\?= (?<currentValue>v.*)"
@@ -132,7 +132,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^Makefile$/"
+        "/^test\\/Makefile$/"
       ],
       "matchStrings": [
         "GINKGO_VERSION \\?= (?<currentValue>v.*)"
@@ -143,7 +143,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^Makefile$/"
+        "/^test\\/Makefile$/"
       ],
       "matchStrings": [
         "CRUST_GATHER_VERSION \\?= (?<currentValue>v.*)"
@@ -178,7 +178,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^Makefile$/"
+        "/^test\\/Makefile$/"
       ],
       "matchStrings": [
         "MIRRORD_VERSION \\?= (?<currentValue>.*)"

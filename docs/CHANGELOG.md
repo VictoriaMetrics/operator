@@ -18,7 +18,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
 
-## [v0.71.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.1)
+## [v0.71.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.0)
 **Release date:** 12 June 2026
 
 **Update note 1**: the new default `preStop` hook causes a rolling update of all applicable pods on operator upgrade (on Kubernetes >= 1.29). To avoid this, set `VM_ENABLE_DEFAULT_PRESTOP_HOOK=false` on the operator before upgrading. Once the upgrade is complete, you can re-enable it by removing the override (or setting it to `true`) to roll out the hook at a time of your choosing. Alternatively, disable the hook per resource by setting `spec.preStopSleepSeconds: 0`.
@@ -53,7 +53,7 @@ aliases:
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): omit the `OnlineQuantileModel` `min_subseason` key when it is unset instead of emitting an empty string.
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): remove the artificial upper bound on `spec.server.maxConcurrentTasks`; vmanomaly accepts any positive integer.
 
-## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.0)
+## [v0.70.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.70.1)
 **Release date:** 20 May 2026
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): support HPA for requests load balancer.

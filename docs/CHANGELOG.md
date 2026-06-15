@@ -17,9 +17,10 @@ aliases:
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add validating webhooks for Prometheus Operator CRDs (`ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe`, `ScrapeConfig`, `AlertmanagerConfig`). Each object is converted to its VM equivalent and validated when webhooks are enabled. See [#2270](https://github.com/VictoriaMetrics/operator/issues/2270).
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): add support for `consulAgentSDConfigs`, `dockerSDConfigs`, `dockerSwarmSDConfigs`, `marathonSDConfigs`, and `yandexCloudSDConfigs` service discovery types, bringing `VMScrapeConfig` to full parity with VictoriaMetrics [sd_configs](https://docs.victoriametrics.com/victoriametrics/sd_configs/). See [#2265](https://github.com/VictoriaMetrics/operator/issues/2265).
-
 * FEATURE: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed rule files in `binaryData`, allowing larger rule sets within Kubernetes object size limits. An init container decompresses the rules before VMAlert starts.
 * FEATURE: [vmscrapeconfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/): add support for `consulAgentSDConfigs`, `dockerSDConfigs`, `dockerSwarmSDConfigs`, `marathonSDConfigs`, and `yandexCloudSDConfigs` service discovery types, bringing `VMScrapeConfig` to full parity with VictoriaMetrics [sd_configs](https://docs.victoriametrics.com/victoriametrics/sd_configs/). See [#2265](https://github.com/VictoriaMetrics/operator/issues/2265).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `victoriametrics_app=true` label to all metrics scraped by the operator. See [#2261](https://github.com/VictoriaMetrics/operator/issues/2261).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): skip reconciliation only for CRs with genuine spec parse errors; CRs whose `ParsingSpecError` is caused solely by unknown fields (e.g. after an operator downgrade) are now reconciled normally instead of being silently skipped.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix potential deadlock in `operator_object_status` metrics collector when the number of tracked objects exceeds 250. The `Collect` method previously held a mutex while sending to the prometheus channel, which could deadlock if the channel was full and another goroutine was waiting on the same mutex. See [#2239](https://github.com/VictoriaMetrics/operator/pull/2239).
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix missed reload for watched files whose names contain `..` (e.g. `rules..yaml`). Previously any path containing `..` was silently skipped; now only Kubernetes synthetic entries whose basename starts with `..` (e.g. `..data`) are ignored. See [#2253](https://github.com/VictoriaMetrics/operator/pull/2253).
@@ -28,7 +29,9 @@ aliases:
 ## [v0.71.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.71.0)
 **Release date:** 12 June 2026
 
-**Update note 1**: the new default `preStop` hook causes a rolling update of all applicable pods on operator upgrade (on Kubernetes >= 1.29). To avoid this, set `VM_ENABLE_DEFAULT_PRESTOP_HOOK=false` on the operator before upgrading. Once the upgrade is complete, you can re-enable it by removing the override (or setting it to `true`) to roll out the hook at a time of your choosing. Alternatively, disable the hook per resource by setting `spec.preStopSleepSeconds: 0`.
+**Update note 1**: This release contains a bug which causes the operator to stop emitting metrics on large number of tracked objects, see more details in [#2280](https://github.com/VictoriaMetrics/operator/issues/2280). We recommend skipping this operator release.
+
+**Update note 2**: the new default `preStop` hook causes a rolling update of all applicable pods on operator upgrade (on Kubernetes >= 1.29). To avoid this, set `VM_ENABLE_DEFAULT_PRESTOP_HOOK=false` on the operator before upgrading. Once the upgrade is complete, you can re-enable it by removing the override (or setting it to `true`) to roll out the hook at a time of your choosing. Alternatively, disable the hook per resource by setting `spec.preStopSleepSeconds: 0`.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.145.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.145.0) version
 

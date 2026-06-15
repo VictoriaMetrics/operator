@@ -142,11 +142,14 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 			return fmt.Errorf("cannot write file content to disk: %w", err)
 		}
 		prevContent = newData
-		time.Sleep(time.Second)
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		select {
 		case updates <- struct{}{}:
 		default:
-
 		}
 		return nil
 	}

@@ -179,10 +179,10 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 			select {
 			case <-t.C:
 				if err := updateSecret(&lastSecret); err != nil {
-					if errors.Is(err, errNotModified) {
+					if errors.Is(err, errNotModified) || errors.Is(err, context.Canceled) {
 						continue
 					}
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					logger.Errorf("cannot force sync secret content: %s", err)
 				}
 			case item := <-k.events:
@@ -191,10 +191,10 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 				logger.Infof("get k8s sync event type: %s, for secret: %s", item.op, item.obj.Name)
 
 				if err := updateSecret(s); err != nil {
-					if errors.Is(err, errNotModified) {
+					if errors.Is(err, errNotModified) || errors.Is(err, context.Canceled) {
 						continue
 					}
-					contentUpdateErrosTotal.Inc()
+					contentUpdateErrorsTotal.Inc()
 					logger.Errorf("cannot sync secret content: %s", err)
 				}
 			case <-ctx.Done():

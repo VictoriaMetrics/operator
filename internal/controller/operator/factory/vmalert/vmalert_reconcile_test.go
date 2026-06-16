@@ -156,6 +156,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	}, want{
 		actions: []k8stools.ClientAction{
 			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmalertName},
+			{Verb: "Get", Kind: "NetworkPolicy", Resource: vmalertName},
 			{Verb: "Get", Kind: "ServiceAccount", Resource: vmalertName},
 			{Verb: "Get", Kind: "Service", Resource: vmalertName},
 			{Verb: "Get", Kind: "VMServiceScrape", Resource: vmalertName},

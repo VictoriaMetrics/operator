@@ -162,21 +162,23 @@ func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr 
 // ChildCleaner cleans dependent resources for cluster CRs excluding ones
 // which are listed in cleaner maps
 type ChildCleaner struct {
-	pdbs     sets.Set[string]
-	hpas     sets.Set[string]
-	vpas     sets.Set[string]
-	services sets.Set[string]
-	scrapes  sets.Set[string]
+	pdbs            sets.Set[string]
+	hpas            sets.Set[string]
+	vpas            sets.Set[string]
+	services        sets.Set[string]
+	scrapes         sets.Set[string]
+	networkPolicies sets.Set[string]
 }
 
 // NewChildCleaner initializes ChildCleaner
 func NewChildCleaner() *ChildCleaner {
 	return &ChildCleaner{
-		pdbs:     sets.New[string](),
-		hpas:     sets.New[string](),
-		vpas:     sets.New[string](),
-		services: sets.New[string](),
-		scrapes:  sets.New[string](),
+		pdbs:            sets.New[string](),
+		hpas:            sets.New[string](),
+		vpas:            sets.New[string](),
+		services:        sets.New[string](),
+		scrapes:         sets.New[string](),
+		networkPolicies: sets.New[string](),
 	}
 }
 
@@ -193,6 +195,11 @@ func (cc *ChildCleaner) KeepHPA(v string) {
 // KeepVPA adds given VerticalPodAutoscaler's name to a map of resource names to be excluded from deletion
 func (cc *ChildCleaner) KeepVPA(v string) {
 	cc.vpas.Insert(v)
+}
+
+// KeepNetworkPolicy adds given NetworkPolicy's name to a map of resource names to be excluded from deletion
+func (cc *ChildCleaner) KeepNetworkPolicy(v string) {
+	cc.networkPolicies.Insert(v)
 }
 
 // KeepService adds given HorizontalPodAutoscaler's name to a map of resource names to be excluded from deletion
@@ -216,6 +223,9 @@ func (cc *ChildCleaner) RemoveOrphaned(ctx context.Context, rclient client.Clien
 	}
 	if err := RemoveOrphanedVPAs(ctx, rclient, b, cc.vpas, true); err != nil {
 		return fmt.Errorf("cannot remove orphaned VPAs: %w", err)
+	}
+	if err := RemoveOrphanedNetworkPolicies(ctx, rclient, b, cc.networkPolicies, true); err != nil {
+		return fmt.Errorf("cannot remove orphaned NetworkPolicies: %w", err)
 	}
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, cc.scrapes, true); err != nil {
 		return fmt.Errorf("cannot remove orphaned vmservicescrapes: %w", err)

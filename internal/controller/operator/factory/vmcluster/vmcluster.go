@@ -11,6 +11,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -88,6 +89,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 				return err
 			}
 		}
+		if cr.Spec.VMStorage.NetworkPolicy != nil {
+			if err := createOrUpdateNetworkPolicyForVMStorage(ctx, rclient, cr, prevCR); err != nil {
+				return err
+			}
+		}
 		if err := createOrUpdateVMStorage(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
@@ -106,6 +112,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
 			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr, prevCR); err != nil {
+				return err
+			}
+		}
+		if cr.Spec.VMSelect.NetworkPolicy != nil {
+			if err := createOrUpdateNetworkPolicyForVMSelect(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
 		}
@@ -128,6 +139,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
 			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, rclient, cr, prevCR); err != nil {
+				return err
+			}
+		}
+		if cr.Spec.VMInsert.NetworkPolicy != nil {
+			if err := createOrUpdateNetworkPolicyForVMInsert(ctx, rclient, cr, prevCR); err != nil {
 				return err
 			}
 		}
@@ -763,6 +779,18 @@ func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient c
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
+func createOrUpdateNetworkPolicyForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	np := build.NetworkPolicy(b, cr.Spec.VMSelect.NetworkPolicy)
+	var prevNP *networkingv1.NetworkPolicy
+	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.NetworkPolicy != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMSelect.NetworkPolicy)
+	}
+	owner := cr.AsOwner()
+	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
+}
+
 func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 
 	podSpec, err := makePodSpecForVMInsert(cr)
@@ -972,6 +1000,18 @@ func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient c
 	}
 	owner := cr.AsOwner()
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
+}
+
+func createOrUpdateNetworkPolicyForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	np := build.NetworkPolicy(b, cr.Spec.VMInsert.NetworkPolicy)
+	var prevNP *networkingv1.NetworkPolicy
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.NetworkPolicy != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMInsert.NetworkPolicy)
+	}
+	owner := cr.AsOwner()
+	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
 }
 
 func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
@@ -1244,6 +1284,18 @@ func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient 
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
+func createOrUpdateNetworkPolicyForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	np := build.NetworkPolicy(b, cr.Spec.VMStorage.NetworkPolicy)
+	var prevNP *networkingv1.NetworkPolicy
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.NetworkPolicy != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMStorage.NetworkPolicy)
+	}
+	owner := cr.AsOwner()
+	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
+}
+
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
@@ -1382,6 +1434,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if newStorage.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
+		if newStorage.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
@@ -1405,6 +1460,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
 		if newSelect.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newSelect.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
 		}
 		if newSelect.HPA != nil {
 			cc.KeepHPA(commonName)
@@ -1435,6 +1493,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		if newInsert.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
+		if newInsert.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
 		if newInsert.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
@@ -1458,6 +1519,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 		if newLB.Spec.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newLB.Spec.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
 		}
 		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)
@@ -1722,6 +1786,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 		}
 	}
+	if cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
+		if err := createOrUpdateNetworkPolicyForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+			return fmt.Errorf("cannot create or update NetworkPolicy for vmauth lb: %w", err)
+		}
+	}
 	if err := createOrUpdateVMAuthLBHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update HPA for vmauth lb: %w", err)
 	}
@@ -1767,4 +1836,16 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 	}
 	owner := cr.AsOwner()
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
+}
+
+func createOrUpdateNetworkPolicyForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	np := build.NetworkPolicy(b, cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
+	var prevNP *networkingv1.NetworkPolicy
+	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		prevNP = build.NetworkPolicy(b, prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
+	}
+	owner := cr.AsOwner()
+	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
 }

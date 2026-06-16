@@ -75,6 +75,9 @@ type VMAuthSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" yaml:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty" yaml:"networkPolicy,omitempty"`
 	// Ingress enables ingress configuration for VMAuth.
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// HTTPRoute enables httproute configuration for VMAuth.

@@ -61,6 +61,9 @@ type VMAnomalySpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// ConfigRawYaml - raw configuration for anomaly,
 	// it helps it to start without secret.
 	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.

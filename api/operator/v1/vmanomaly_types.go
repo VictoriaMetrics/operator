@@ -64,6 +64,9 @@ type VMAnomalySpec struct {
 	// VPA defines configuration for the VerticalPodAutoscaler.
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// ConfigRawYaml - raw configuration for anomaly,
 	// it helps it to start without secret.
 	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.

@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -104,6 +105,15 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	}
 	if err := createOrUpdateVPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update vpa for vtsingle: %w", err)
+	}
+	if cr.Spec.NetworkPolicy != nil {
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.NetworkPolicy != nil {
+			prevNP = build.NetworkPolicy(prevCR, prevCR.Spec.NetworkPolicy)
+		}
+		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(cr, cr.Spec.NetworkPolicy), prevNP, &owner); err != nil {
+			return fmt.Errorf("cannot update network policy for vtsingle: %w", err)
+		}
 	}
 
 	var prevDeploy *appsv1.Deployment
@@ -366,6 +376,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	var objsToRemove []client.Object
 	if config.MustGetBaseConfig().VPAAPIEnabled && cr.Spec.VPA == nil {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+	}
+	if cr.Spec.NetworkPolicy == nil {
+		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})

@@ -64,6 +64,9 @@ type VLAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// Storage configures storage for StatefulSet
 	// +optional
 	Storage *vmv1beta1.StorageSpec `json:"storage,omitempty"`

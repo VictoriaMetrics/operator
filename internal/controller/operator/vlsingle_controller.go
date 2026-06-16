@@ -60,6 +60,7 @@ func (r *VLSingleReconciler) Init(name string, rclient client.Client, l logr.Log
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vlsingles/finalizers,verbs=update
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
 func (r *VLSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

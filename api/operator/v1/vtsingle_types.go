@@ -109,6 +109,9 @@ type VTSingleSpec struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 }
 
 // VTSingleStatus defines the observed state of VTSingle

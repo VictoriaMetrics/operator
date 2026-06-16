@@ -79,6 +79,9 @@ type VMAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
 	// Supports only VMPodScrape
 	// Cannot be used with statefulMode

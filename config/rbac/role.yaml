@@ -117,6 +117,7 @@ rules:
   resources:
   - ingresses
   - ingresses/finalizers
+  - networkpolicies
   verbs:
   - "*"
 - apiGroups:

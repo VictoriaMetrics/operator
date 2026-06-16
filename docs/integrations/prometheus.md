@@ -64,7 +64,7 @@ operator:
 
 Otherwise, VictoriaMetrics Operator would try to discover prometheus-operator API and convert it.
 
-![migration from prometheus](./migration_prometheus-conversion.webp)
+![migration from prometheus](../migration_prometheus-conversion.webp)
 
 For more information about the operator's workflow, see [this doc](https://docs.victoriametrics.com/operator/).
 

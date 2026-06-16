@@ -1,10 +1,11 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -97,7 +98,7 @@ type TargetRef struct {
 	Paths []string `json:"paths,omitempty"`
 	Hosts []string `json:"hosts,omitempty"`
 
-	URLMapCommon `json:",omitempty"`
+	URLMapCommon `json:",inline"`
 
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.
@@ -340,14 +341,14 @@ func (cr *VMUser) UnmarshalJSON(src []byte) error {
 	type pcr VMUser
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMUserSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

@@ -1,10 +1,11 @@
 package v1beta1
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -133,10 +134,10 @@ type VMAgentSpec struct {
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 
-	CommonRelabelParams        `json:",inline,omitempty"`
-	CommonScrapeParams         `json:",inline,omitempty"`
-	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonRelabelParams        `json:",inline"`
+	CommonScrapeParams         `json:",inline"`
+	CommonConfigReloaderParams `json:",inline"`
+	CommonAppsParams           `json:",inline"`
 }
 
 func (cr *VMAgent) Validate() error {
@@ -274,14 +275,14 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
 		return err
 	}
 	if len(s.Spec) > 0 {
-		if err := UnmarshalSpecStrict(s.Spec, &cr.Spec); err != nil {
+		if err := json.Unmarshal(s.Spec, &cr.Spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true)); err != nil {
 			cr.Status.ParsingSpecError = fmt.Sprintf("cannot parse VMAgentSpec: %s, err: %s", string(s.Spec), err)
 		}
 	}

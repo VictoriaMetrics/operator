@@ -78,7 +78,11 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	syncChan := make(chan syncEvent, 10)
 	if _, err := inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			s := obj.(*corev1.Secret)
+			s, ok := secretFromEvent(obj)
+			if !ok {
+				logger.Errorf("cannot process create event for unexpected object type %T", obj)
+				return
+			}
 			select {
 			case syncChan <- syncEvent{op: "create", obj: s}:
 			default:
@@ -86,7 +90,11 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			s := newObj.(*corev1.Secret)
+			s, ok := secretFromEvent(newObj)
+			if !ok {
+				logger.Errorf("cannot process update event for unexpected object type %T", newObj)
+				return
+			}
 			select {
 			case syncChan <- syncEvent{op: "update", obj: s}:
 			default:
@@ -94,7 +102,11 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			s := obj.(*corev1.Secret)
+			s, ok := secretFromEvent(obj)
+			if !ok {
+				logger.Errorf("cannot process delete event for unexpected object type %T", obj)
+				return
+			}
 			select {
 			case syncChan <- syncEvent{op: "delete", obj: s}:
 			default:
@@ -106,6 +118,21 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	}
 
 	return &k8sWatcher{inf: inf, c: c, events: syncChan, namespace: namespace, secretName: secretName}, nil
+}
+
+func secretFromEvent(obj interface{}) (*corev1.Secret, bool) {
+	switch s := obj.(type) {
+	case *corev1.Secret:
+		return s, true
+	case cache.DeletedFinalStateUnknown:
+		secret, ok := s.Obj.(*corev1.Secret)
+		return secret, ok
+	case *cache.DeletedFinalStateUnknown:
+		secret, ok := s.Obj.(*corev1.Secret)
+		return secret, ok
+	default:
+		return nil, false
+	}
 }
 
 var errNotModified = fmt.Errorf("file content not modified")

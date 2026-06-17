@@ -4,16 +4,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - '**'
-      - '!docs/**'
-      - '!*.md'
-      - '!.github/**'
-      - '.github/workflows/main.yaml'
-      - '.github/workflows/docs.yaml'
-      - '!codespell/**'
-      - 'LICENSE'
-      - 'PROJECT'
   pull_request:
     branches:
       - master
@@ -24,17 +14,6 @@ on:
       - synchronize
       - ready_for_review
       - converted_to_draft
-    paths:
-      - '**'
-      - '!docs/**'
-      - '!*.md'
-      - '!.github/**'
-      - '.github/actions/**'
-      - '.github/workflows/main.yaml'
-      - '.github/workflows/docs.yaml'
-      - '!codespell/**'
-      - 'LICENSE'
-      - 'PROJECT'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -98,6 +77,13 @@ jobs:
             src:
               - '**'
               - '!Makefile'
+              - '!docs/**'
+              - '!*.md'
+              - '!.github/**'
+              - '.github/workflows/main.yaml'
+              - '!codespell/**'
+              - 'LICENSE'
+              - 'PROJECT'
 
   e2e:
     name: E2E / ${{ matrix.name }}

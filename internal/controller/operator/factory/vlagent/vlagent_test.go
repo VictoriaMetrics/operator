@@ -1091,7 +1091,7 @@ serviceaccountname: vlagent-agent
 		Spec: vmv1.VLAgentSpec{
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Image: vmv1beta1.Image{
-					Tag: "v1.50.0",
+					Tag: "v1.51.0",
 				},
 				UseDefaultResources: ptr.To(false),
 				Port:                "9425",
@@ -1117,7 +1117,7 @@ serviceaccountname: vlagent-agent
 	}, []runtime.Object{}, `
 containers:
   - name: vlagent
-    image: victoriametrics/vlagent:v1.50.0
+    image: victoriametrics/vlagent:v1.51.0
     args:
       - -httpListenAddr=:9425
       - -kubernetesCollector

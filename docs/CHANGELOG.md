@@ -18,6 +18,8 @@ aliases:
 ## [v0.72.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.72.0)
 **Release date:** 15 June 2026
 
+* FEATURE: [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): add strategic-merge list semantics for rules using `record` and `alert` as merge keys. See [#657](https://github.com/VictoriaMetrics/operator/issues/657).
+
 **Update note 1**: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): rule ConfigMaps now store gzip-compressed content in `binaryData` and an init container decompresses them before VMAlert starts. Existing VMAlert pods will be rolled out once during this upgrade.
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add validating webhooks for Prometheus Operator CRDs (`ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe`, `ScrapeConfig`, `AlertmanagerConfig`). Each object is converted to its VM equivalent and validated when webhooks are enabled. See [#2270](https://github.com/VictoriaMetrics/operator/issues/2270).

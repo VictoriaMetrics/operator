@@ -1,10 +1,22 @@
 package v1beta1
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	strategicpatch "k8s.io/apimachinery/pkg/util/strategicpatch"
+	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func TestVMRuleValidate(t *testing.T) {
@@ -92,6 +104,38 @@ spec:
             value: "{{ $value }}"
             description: 'kafka coordinator is down'`,
 		wantErr: "validation failed for VMRule: / group: kafka err: invalid labels for rule \"coordinator down\": errors(1): \n(key: \"job\", value: \"{{ $labls.job }}\"): error parsing template: template: :1: undefined variable \"$labls\"",
+	})
+
+	// rule with both record and alert set
+	f(opts{
+		src: `
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: both-record-and-alert
+spec:
+  groups:
+    - name: kafka
+      rules:
+        - alert: coordinator down
+          record: job:up:sum
+          expr: up == 0`,
+		wantErr: `rule at group kafka index 0 has both record and alert set`,
+	})
+
+	// rule with neither record nor alert set
+	f(opts{
+		src: `
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: neither-record-nor-alert
+spec:
+  groups:
+    - name: kafka
+      rules:
+        - expr: up == 0`,
+		wantErr: `rule at group kafka index 0 has neither record nor alert set`,
 	})
 
 	// duplicate rules
@@ -182,4 +226,346 @@ spec:
           annotations: 
             description: "Service nginx on env test accepted {{$labels.requests}} requests in the last 5 minutes"`,
 	})
+}
+
+func TestVMRuleRulesRoundTripAndValidate(t *testing.T) {
+	src := VMRule{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+			Kind:       "VMRule",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "round-trip",
+			Namespace: "default",
+		},
+		Spec: VMRuleSpec{
+			Groups: []RuleGroup{
+				{
+					Name: "group-a",
+					Rules: []Rule{
+						{
+							Alert: "HighErrorRate",
+							Expr:  "up == 0",
+							For:   "60s",
+						},
+						{
+							Record: "job:up:sum",
+							Expr:   "sum(up) by (job)",
+						},
+					},
+				},
+				{
+					Name: "group-b",
+					Rules: []Rule{
+						{
+							Alert: "LowDiskSpace",
+							Expr:  "node_filesystem_avail_bytes < 1024",
+						},
+						{
+							Record: "job:http_requests:rate5m",
+							Expr:   "sum(rate(http_requests_total[5m])) by (job)",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(&src)
+	require.NoError(t, err)
+
+	var got VMRule
+	require.NoError(t, json.Unmarshal(data, &got))
+	assert.Equal(t, src, got)
+	assert.NoError(t, got.Validate())
+}
+
+func TestVMRuleRulesCRDListMapKeys(t *testing.T) {
+	rulesSchema := loadVMRuleRulesSchema(t)
+	require.NotNil(t, rulesSchema.XListType)
+	assert.Equal(t, "map", *rulesSchema.XListType)
+	assert.Equal(t, []string{"record", "alert"}, rulesSchema.XListMapKeys)
+
+	rules := []Rule{
+		{Alert: "SharedRule", Expr: "up == 0"},
+		{Record: "shared_rule", Alert: "SharedRule", Expr: "sum(up)"},
+	}
+	ruleKeys := make(map[[2]string]struct{}, len(rules))
+	for _, rule := range rules {
+		ruleKeys[[2]string{rule.Record, rule.Alert}] = struct{}{}
+	}
+	assert.Len(t, ruleKeys, len(rules))
+}
+
+func TestVMRuleValidateDuplicateGroupNames(t *testing.T) {
+	vmr := VMRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "duplicate-groups",
+			Namespace: "default",
+		},
+		Spec: VMRuleSpec{
+			Groups: []RuleGroup{
+				{
+					Name:  "same",
+					Rules: []Rule{{Alert: "AlwaysDown", Expr: "up == 0"}},
+				},
+				{
+					Name:  "same",
+					Rules: []Rule{{Record: "job:up:sum", Expr: "sum(up) by (job)"}},
+				},
+			},
+		},
+	}
+
+	assert.ErrorContains(t, vmr.Validate(), "duplicate group name")
+}
+
+// TestVMRuleRuleListMapKeyFieldNames verifies that the Rule struct exposes JSON
+// fields named "record" and "alert", matching the +listMapKey declarations.
+func TestVMRuleRuleListMapKeyFieldNames(t *testing.T) {
+	rt := reflect.TypeOf(Rule{})
+	var foundRecord, foundAlert bool
+	for i := 0; i < rt.NumField(); i++ {
+		name := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]
+		switch name {
+		case "record":
+			foundRecord = true
+		case "alert":
+			foundAlert = true
+		}
+	}
+	assert.True(t, foundRecord, `Rule must have json:"record,..." to match +listMapKey=record`)
+	assert.True(t, foundAlert, `Rule must have json:"alert,..." to match +listMapKey=alert`)
+}
+
+// TestVMRuleRulesCompositeKeyDistinctness verifies that the (record, alert)
+// composite key correctly distinguishes rules across all relevant combinations.
+func TestVMRuleRulesCompositeKeyDistinctness(t *testing.T) {
+	type ruleKey = [2]string
+	keyOf := func(r Rule) ruleKey { return ruleKey{r.Record, r.Alert} }
+	uniqueKeys := func(rules []Rule) int {
+		seen := make(map[ruleKey]struct{}, len(rules))
+		for _, r := range rules {
+			seen[keyOf(r)] = struct{}{}
+		}
+		return len(seen)
+	}
+
+	tests := []struct {
+		name  string
+		rules []Rule
+		want  int
+	}{
+		{
+			name: "same alert, different record are distinct keys",
+			rules: []Rule{
+				{Alert: "HighErrorRate", Record: "r1", Expr: "up == 0"},
+				{Alert: "HighErrorRate", Record: "r2", Expr: "up == 0"},
+			},
+			want: 2,
+		},
+		{
+			name: "same record, different alert are distinct keys",
+			rules: []Rule{
+				{Record: "job:up:sum", Alert: "a1", Expr: "sum(up)"},
+				{Record: "job:up:sum", Alert: "a2", Expr: "sum(up)"},
+			},
+			want: 2,
+		},
+		{
+			name: "same (record, alert) pair maps to a single key regardless of expr",
+			rules: []Rule{
+				{Alert: "HighErrorRate", Expr: "up == 0"},
+				{Alert: "HighErrorRate", Expr: "up == 1"},
+			},
+			want: 1,
+		},
+		{
+			name: "rules with neither record nor alert all share the same empty key",
+			rules: []Rule{
+				{Expr: "up == 0"},
+				{Expr: "sum(up)"},
+			},
+			want: 1,
+		},
+		{
+			name: "alert-only and record-only rules are distinct keys",
+			rules: []Rule{
+				{Alert: "HighErrorRate", Expr: "up == 0"},
+				{Record: "job:up:sum", Expr: "sum(up) by (job)"},
+			},
+			want: 2,
+		},
+		{
+			name: "rule with both record and alert set is its own unique key",
+			rules: []Rule{
+				{Alert: "HighErrorRate", Expr: "up == 0"},
+				{Record: "job:up:sum", Expr: "sum(up)"},
+				{Record: "job:up:sum", Alert: "HighErrorRate", Expr: "combined"},
+			},
+			want: 3,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, uniqueKeys(tc.rules))
+		})
+	}
+}
+
+// TestVMRuleGroupsStrategicMergePatch verifies that Groups (which carry struct-tag
+// patchStrategy/patchMergeKey) are correctly merged by name under traditional
+// strategic merge patch, while Rules — which use SSA list map keys only — are
+// replaced atomically (the entire slice is swapped for the patched group).
+func TestVMRuleGroupsStrategicMergePatch(t *testing.T) {
+	original := VMRuleSpec{
+		Groups: []RuleGroup{
+			{
+				Name:  "alerts",
+				Rules: []Rule{{Alert: "HighErrorRate", Expr: "up == 0", For: "5m"}},
+			},
+			{
+				Name:  "recordings",
+				Rules: []Rule{{Record: "job:up:sum", Expr: "sum(up) by (job)"}},
+			},
+		},
+	}
+	// Patch touches only "alerts"; "recordings" group must survive untouched.
+	patch := VMRuleSpec{
+		Groups: []RuleGroup{
+			{
+				Name:  "alerts",
+				Rules: []Rule{{Alert: "HighErrorRate", Expr: "up == 0", For: "10m"}},
+			},
+		},
+	}
+
+	origJSON, err := json.Marshal(original)
+	require.NoError(t, err)
+	patchJSON, err := json.Marshal(patch)
+	require.NoError(t, err)
+
+	merged, err := strategicpatch.StrategicMergePatch(origJSON, patchJSON, VMRuleSpec{})
+	require.NoError(t, err)
+
+	var result VMRuleSpec
+	require.NoError(t, json.Unmarshal(merged, &result))
+
+	require.Len(t, result.Groups, 2, "both groups must survive: patch merges by group name")
+	byName := make(map[string]RuleGroup, len(result.Groups))
+	for _, g := range result.Groups {
+		byName[g.Name] = g
+	}
+
+	// "recordings" group is unpatched and must be present unchanged.
+	recordings, ok := byName["recordings"]
+	require.True(t, ok, "recordings group must survive")
+	require.Len(t, recordings.Rules, 1)
+	assert.Equal(t, "job:up:sum", recordings.Rules[0].Record)
+
+	// "alerts" group was patched; under traditional SMP, its Rules slice is
+	// replaced atomically (no patchMergeKey struct tag on Rules).
+	alerts, ok := byName["alerts"]
+	require.True(t, ok, "alerts group must be present")
+	require.Len(t, alerts.Rules, 1)
+	assert.Equal(t, "10m", alerts.Rules[0].For, "rule For should be updated to 10m")
+}
+
+// TestVMRuleRulesSSAStyleMerge simulates the Server Side Apply merge semantics
+// enabled by +listType=map +listMapKey=record +listMapKey=alert: patch rules
+// update existing rules matched by the (record, alert) composite key, and new
+// rules are appended without discarding unmatched base rules.
+func TestVMRuleRulesSSAStyleMerge(t *testing.T) {
+	type ruleKey = [2]string
+	keyOf := func(r Rule) ruleKey { return ruleKey{r.Record, r.Alert} }
+
+	// mergeRules applies SSA list-map semantics using the (record, alert) key:
+	// matched entries are updated in-place; unmatched patch entries are appended.
+	mergeRules := func(base, patch []Rule) []Rule {
+		index := make(map[ruleKey]int, len(base))
+		for i, r := range base {
+			index[keyOf(r)] = i
+		}
+		result := make([]Rule, len(base))
+		copy(result, base)
+		for _, p := range patch {
+			if i, ok := index[keyOf(p)]; ok {
+				result[i] = p
+			} else {
+				result = append(result, p)
+			}
+		}
+		return result
+	}
+
+	base := []Rule{
+		{Alert: "HighErrorRate", Expr: "up == 0", For: "5m"},
+		{Alert: "LowDisk", Expr: "disk_free < 1024"},
+		{Record: "job:up:sum", Expr: "sum(up) by (job)"},
+	}
+	patch := []Rule{
+		// key ("", "HighErrorRate") exists in base — update For.
+		{Alert: "HighErrorRate", Expr: "up == 0", For: "10m"},
+		// key ("job:errors:rate5m", "") is new — should be appended.
+		{Record: "job:errors:rate5m", Expr: "sum(rate(errors_total[5m])) by (job)"},
+	}
+
+	merged := mergeRules(base, patch)
+
+	require.Len(t, merged, 4, "base had 3 rules; patch updates 1 and appends 1")
+
+	byKey := make(map[ruleKey]Rule, len(merged))
+	for _, r := range merged {
+		byKey[keyOf(r)] = r
+	}
+
+	updated, ok := byKey[ruleKey{"", "HighErrorRate"}]
+	require.True(t, ok)
+	assert.Equal(t, "10m", updated.For, "HighErrorRate rule For must be updated")
+
+	_, ok = byKey[ruleKey{"", "LowDisk"}]
+	assert.True(t, ok, "LowDisk rule must survive as an unpatched base rule")
+
+	_, ok = byKey[ruleKey{"job:up:sum", ""}]
+	assert.True(t, ok, "job:up:sum rule must survive as an unpatched base rule")
+
+	_, ok = byKey[ruleKey{"job:errors:rate5m", ""}]
+	assert.True(t, ok, "job:errors:rate5m must be appended from the patch")
+}
+
+func loadVMRuleRulesSchema(t *testing.T) apiextensionsv1.JSONSchemaProps {
+	t.Helper()
+
+	data, err := os.ReadFile("../../../config/crd/overlay/crd.yaml")
+	require.NoError(t, err)
+
+	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
+	for {
+		var crd apiextensionsv1.CustomResourceDefinition
+		err := decoder.Decode(&crd)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+		if crd.Name != "vmrules.operator.victoriametrics.com" {
+			continue
+		}
+		for _, version := range crd.Spec.Versions {
+			if version.Name != "v1beta1" {
+				continue
+			}
+			require.NotNil(t, version.Schema)
+			require.NotNil(t, version.Schema.OpenAPIV3Schema)
+			spec := version.Schema.OpenAPIV3Schema.Properties["spec"]
+			groups := spec.Properties["groups"]
+			require.NotNil(t, groups.Items)
+			require.NotNil(t, groups.Items.Schema)
+			rules := groups.Items.Schema.Properties["rules"]
+			return rules
+		}
+	}
+
+	t.Fatal("VMRule v1beta1 schema not found")
+	return apiextensionsv1.JSONSchemaProps{}
 }

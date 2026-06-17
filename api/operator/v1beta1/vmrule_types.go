@@ -36,7 +36,11 @@ type RuleGroup struct {
 	// evaluation interval for group
 	// +optional
 	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
-	// Rules list of alert rules
+	// Rules list of alert rules.
+	// Rules are merged by record and alert fields.
+	// +listType=map
+	// +listMapKey=record
+	// +listMapKey=alert
 	Rules []Rule `json:"rules"`
 	// Limit the number of alerts an alerting rule and series a recording
 	// rule can produce
@@ -97,9 +101,11 @@ type RuleGroup struct {
 type Rule struct {
 	// Record represents a query, that will be recorded to dataSource
 	// +optional
+	// +kubebuilder:default=""
 	Record string `json:"record,omitempty" yaml:"record,omitempty"`
 	// Alert is a name for alert
 	// +optional
+	// +kubebuilder:default=""
 	Alert string `json:"alert,omitempty" yaml:"alert,omitempty"`
 	// Expr is query, that will be evaluated at dataSource
 	// +optional
@@ -183,6 +189,14 @@ func (cr *VMRule) Validate() error {
 			return fmt.Errorf("duplicate group name: %s", errContext)
 		}
 		uniqNames.Insert(group.Name)
+		for j, rule := range group.Rules {
+			if rule.Record != "" && rule.Alert != "" {
+				return fmt.Errorf("rule at group %s index %d has both record and alert set", group.Name, j)
+			}
+			if rule.Record == "" && rule.Alert == "" {
+				return fmt.Errorf("rule at group %s index %d has neither record nor alert set", group.Name, j)
+			}
+		}
 		groupBytes, err := yaml.Marshal(group)
 		if err != nil {
 			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)

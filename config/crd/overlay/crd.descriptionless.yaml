@@ -34528,6 +34528,7 @@ spec:
                       items:
                         properties:
                           alert:
+                            default: ""
                             type: string
                           annotations:
                             additionalProperties:
@@ -34546,11 +34547,16 @@ spec:
                               type: string
                             type: object
                           record:
+                            default: ""
                             type: string
                           update_entries_limit:
                             type: integer
                         type: object
                       type: array
+                      x-kubernetes-list-map-keys:
+                      - record
+                      - alert
+                      x-kubernetes-list-type: map
                     tenant:
                       type: string
                     type:

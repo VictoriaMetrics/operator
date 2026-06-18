@@ -221,9 +221,6 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 			case <-ctx.Done():
 				return
 			case event := <-dw.w.Events:
-				if event.Op == fsnotify.Remove {
-					continue
-				}
 				baseDir := filepath.Dir(event.Name)
 				logger.Infof("dir update: base dir: %s", baseDir)
 				reloadNeeded, err := updateCache(baseDir)

@@ -99,6 +99,22 @@ var (
 			},
 		},
 	}
+	vlagentK8sCollector = withVersion(vlagent, func(cr *vmv1.VLAgent, version string) {
+		cr.Spec.K8sCollector.Enabled = true
+		cr.Spec.ServiceAccountName = "vlagent-collector"
+		tmpPath := fmt.Sprintf("/var/lib/vlagent-data-%s", version)
+		cr.Spec.TmpDataPath = ptr.To(tmpPath)
+		cr.Spec.Volumes = append(cr.Spec.Volumes, corev1.Volume{
+			Name: "tmp-data",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{Path: tmpPath},
+			},
+		})
+		cr.Spec.VolumeMounts = append(cr.Spec.VolumeMounts, corev1.VolumeMount{
+			Name:      "tmp-data",
+			MountPath: tmpPath,
+		})
+	})
 	vmauth = &vmv1beta1.VMAuth{
 		Spec: vmv1beta1.VMAuthSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
@@ -410,15 +426,28 @@ var (
 )
 
 type object[T any] interface {
+	client.Object
 	DeepCopy() T
 }
 
-func with[T object[T]](cr T, opts ...func(T)) T {
-	obj := cr.DeepCopy()
-	for _, o := range opts {
-		o(obj)
+func with[T object[T]](cr T, opts ...func(T)) func(string) client.Object {
+	return func(_ string) client.Object {
+		obj := cr.DeepCopy()
+		for _, o := range opts {
+			o(obj)
+		}
+		return obj
 	}
-	return obj
+}
+
+func withVersion[T object[T]](cr T, opts ...func(T, string)) func(string) client.Object {
+	return func(version string) client.Object {
+		obj := cr.DeepCopy()
+		for _, o := range opts {
+			o(obj, version)
+		}
+		return obj
+	}
 }
 
 var (
@@ -428,7 +457,7 @@ var (
 
 type crVersionPair struct {
 	version      string
-	cr           client.Object
+	cr           func(string) client.Object
 	isEnterprise bool
 }
 
@@ -443,7 +472,7 @@ func entries(es []entry) []TableEntry {
 	var result []TableEntry
 	for _, e := range es {
 		for _, p := range e.pairs {
-			obj := p.cr.DeepCopyObject().(client.Object)
+			obj := p.cr(p.version)
 			result = append(result, Entry(fmt.Sprintf("from %s: %s (%T)", p.version, e.name, obj), p.version, e.genDeps, []client.Object{obj}, e.envs, p.isEnterprise))
 		}
 	}
@@ -626,10 +655,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.0", cr: with(vlagent)},
-				{version: "v0.68.0", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.0", cr: vlagentK8sCollector},
 				{version: "v0.68.1", cr: with(vmagent)},
 				{version: "v0.68.1", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -638,10 +664,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.1", cr: with(vlagent)},
-				{version: "v0.68.1", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.1", cr: vlagentK8sCollector},
 				{version: "v0.68.2", cr: with(vmagent)},
 				{version: "v0.68.2", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -650,10 +673,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.2", cr: with(vlagent)},
-				{version: "v0.68.2", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.2", cr: vlagentK8sCollector},
 				{version: "v0.68.3", cr: with(vmagent)},
 				{version: "v0.68.3", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -662,10 +682,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.3", cr: with(vlagent)},
-				{version: "v0.68.3", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.3", cr: vlagentK8sCollector},
 				{version: "v0.68.4", cr: with(vmagent)},
 				{version: "v0.68.4", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -674,10 +691,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.4", cr: with(vlagent)},
-				{version: "v0.68.4", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.4", cr: vlagentK8sCollector},
 				{version: "v0.68.5", cr: with(vmagent)},
 				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -686,10 +700,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.68.5", cr: with(vlagent)},
-				{version: "v0.68.5", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.68.5", cr: vlagentK8sCollector},
 				{version: "v0.70.0", cr: with(vmagent)},
 				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -698,10 +709,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.70.0", cr: with(vlagent)},
-				{version: "v0.70.0", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.70.0", cr: vlagentK8sCollector},
 				{version: "v0.71.0", cr: with(vmagent)},
 				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -710,10 +718,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.StatefulMode = true
 				})},
 				{version: "v0.71.0", cr: with(vlagent)},
-				{version: "v0.71.0", cr: with(vlagent, func(cr *vmv1.VLAgent) {
-					cr.Spec.K8sCollector.Enabled = true
-					cr.Spec.ServiceAccountName = "vlagent-collector"
-				})},
+				{version: "v0.71.0", cr: vlagentK8sCollector},
 			},
 		},
 		// nolint:dupl

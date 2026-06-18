@@ -32,7 +32,7 @@ func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonApp
 	port := intstr.Parse(cr.ProbePort())
 	scheme := cr.ProbeScheme()
 	path := cr.ProbePath()
-	getProbe := func(probe *corev1.Probe, createIfNil bool) *corev1.Probe {
+	getProbe := func(probe *corev1.Probe, createIfNil bool, forceTCP bool) *corev1.Probe {
 		if probe == nil {
 			if createIfNil {
 				probe = new(corev1.Probe)
@@ -41,13 +41,13 @@ func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonApp
 			}
 		}
 		if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
-			if cr.UseProxyProtocol() {
+			if forceTCP || cr.UseProxyProtocol() {
 				probe.TCPSocket = new(corev1.TCPSocketAction)
 			} else {
 				probe.HTTPGet = new(corev1.HTTPGetAction)
 			}
 		}
-		if cr.UseProxyProtocol() && probe.TCPSocket != nil {
+		if probe.TCPSocket != nil {
 			if probe.TCPSocket.Port.StrVal == "" && probe.TCPSocket.Port.IntVal == 0 {
 				probe.TCPSocket.Port = port
 			}
@@ -80,11 +80,16 @@ func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonApp
 	if params != nil {
 		liveness, readiness, startup = params.LivenessProbe, params.ReadinessProbe, params.StartupProbe
 	}
-	if cr.ProbeNeedLiveness() {
-		container.LivenessProbe = getProbe(liveness, true)
+	hasCustomProbe := liveness != nil || readiness != nil || startup != nil
+	if !hasCustomProbe && scheme == string(corev1.URISchemeHTTPS) {
+		container.StartupProbe = getProbe(nil, true, true)
+		return
 	}
-	container.StartupProbe = getProbe(startup, false)
-	container.ReadinessProbe = getProbe(readiness, true)
+	if cr.ProbeNeedLiveness() {
+		container.LivenessProbe = getProbe(liveness, true, false)
+	}
+	container.StartupProbe = getProbe(startup, false, true)
+	container.ReadinessProbe = getProbe(readiness, true, false)
 }
 
 // Resources creates container resources with conditional defaults values

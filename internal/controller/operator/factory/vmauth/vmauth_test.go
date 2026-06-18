@@ -839,6 +839,115 @@ containers:
 serviceaccountname: vmauth-auth
 
 `)
+
+	// tls-backed default probes use tcp startupProbe
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "auth-tls", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				UseDefaultResources: ptr.To(false),
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
+				},
+				Port: "8429",
+				ExtraArgs: map[string]string{
+					"tls": "true",
+				},
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
+			},
+		},
+	}, `
+volumes:
+  - name: config-out
+    volumesource:
+      emptydir: {}
+initcontainers:
+  - name: config-init
+    image: vmcustom:config-reloader-v0.35.0
+    args:
+      - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
+      - --config-secret-name=default/vmauth-config-auth-tls
+      - --only-init-config
+      - --reload-url=https://127.0.0.1:8429/-/reload
+      - --webhook-method=POST
+    volumemounts:
+      - name: config-out
+        mountpath: /opt/vmauth
+containers:
+  - name: vmauth
+    image: vm-repo:v1.97.1
+    imagepullpolicy: IfNotPresent
+    args:
+      - -auth.config=/opt/vmauth/config.yaml
+      - -httpListenAddr=:8429
+      - -tls=true
+    ports:
+      - name: http
+        containerport: 8429
+        protocol: TCP
+    volumemounts:
+      - name: config-out
+        mountpath: /opt/vmauth
+    startupprobe:
+      probehandler:
+        tcpsocket:
+          port:
+            intval: 8429
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
+    terminationmessagepolicy: FallbackToLogsOnError
+  - name: config-reloader
+    image: vmcustom:config-reloader-v0.35.0
+    args:
+      - --config-envsubst-file=/opt/vmauth/config.yaml
+      - --config-secret-key=config.yaml.gz
+      - --config-secret-name=default/vmauth-config-auth-tls
+      - --reload-url=https://127.0.0.1:8429/-/reload
+      - --webhook-method=POST
+    ports:
+      - name: reloader-http
+        containerport: 8435
+        protocol: TCP
+    volumemounts:
+      - name: config-out
+        mountpath: /opt/vmauth
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 8435
+          scheme: HTTP
+      timeoutseconds: 1
+      periodseconds: 10
+      successthreshold: 1
+      failurethreshold: 3
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 8435
+          scheme: HTTP
+      initialdelayseconds: 5
+      timeoutseconds: 1
+      periodseconds: 10
+      successthreshold: 1
+      failurethreshold: 3
+    terminationmessagepolicy: FallbackToLogsOnError
+serviceaccountname: vmauth-auth-tls
+
+`)
 }
 
 func TestBuildIngressForAuthOk(t *testing.T) {

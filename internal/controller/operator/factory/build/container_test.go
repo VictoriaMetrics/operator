@@ -72,6 +72,7 @@ func Test_buildProbe(t *testing.T) {
 			assert.NotNil(t, container.LivenessProbe)
 			assert.NotNil(t, container.ReadinessProbe)
 			assert.Equal(t, corev1.URIScheme("HTTP"), container.ReadinessProbe.HTTPGet.Scheme)
+			assert.Nil(t, container.StartupProbe)
 		},
 	})
 
@@ -85,10 +86,11 @@ func Test_buildProbe(t *testing.T) {
 		},
 		container: corev1.Container{},
 		validate: func(container corev1.Container) {
-			assert.NotNil(t, container.LivenessProbe)
-			assert.Equal(t, corev1.URIScheme("HTTPS"), container.LivenessProbe.HTTPGet.Scheme)
-			assert.NotNil(t, container.ReadinessProbe)
-			assert.Equal(t, corev1.URIScheme("HTTPS"), container.ReadinessProbe.HTTPGet.Scheme)
+			assert.Nil(t, container.LivenessProbe)
+			assert.Nil(t, container.ReadinessProbe)
+			require.NotNil(t, container.StartupProbe)
+			require.NotNil(t, container.StartupProbe.TCPSocket)
+			assert.Equal(t, intstr.Parse("8051"), container.StartupProbe.TCPSocket.Port)
 		},
 	})
 

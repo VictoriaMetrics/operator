@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -190,4 +191,65 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 	err = fclient.Get(ctx, nsn, &dep)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(1), *dep.Spec.Replicas)
+}
+
+func TestCreateOrUpdate_RemovesOrphanedFeatureConfigMaps(t *testing.T) {
+	ctx := context.TODO()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-single",
+			Namespace: "default",
+		},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				IngestOnlyMode: ptr.To(true),
+			},
+		},
+	}
+	cr.Status.LastAppliedSpec = &vmv1beta1.VMSingleSpec{
+		CommonRelabelParams: vmv1beta1.CommonRelabelParams{
+			InlineRelabelConfig: []*vmv1beta1.RelabelConfig{{
+				Action:       "drop",
+				SourceLabels: []string{"instance"},
+			}},
+		},
+		StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+			Rules: []vmv1beta1.StreamAggrRule{{
+				Match:    vmv1beta1.StringOrArray{"foo"},
+				Interval: "1m",
+				Outputs:  []string{"count_samples"},
+			}},
+		},
+	}
+
+	relabelName := types.NamespacedName{
+		Name:      build.ResourceName(build.RelabelConfigResourceKind, cr),
+		Namespace: cr.Namespace,
+	}
+	streamAggrName := types.NamespacedName{
+		Name:      build.ResourceName(build.StreamAggrConfigResourceKind, cr),
+		Namespace: cr.Namespace,
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		&corev1.ConfigMap{
+			ObjectMeta: build.ResourceMeta(build.RelabelConfigResourceKind, cr),
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr),
+		},
+	})
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	var relabelCM corev1.ConfigMap
+	err := fclient.Get(ctx, relabelName, &relabelCM)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
+
+	var streamAggrCM corev1.ConfigMap
+	err = fclient.Get(ctx, streamAggrName, &streamAggrCM)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
 }

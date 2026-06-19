@@ -651,13 +651,19 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) error {
 	// TODO check storage for nil
-	// TODO check for stream aggr removed
 
 	svcName := cr.PrefixedName()
 	keepServices := sets.New[string](svcName)
 	keepServiceScrapes := sets.New[string]()
+	keepConfigMaps := sets.New[string]()
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		keepServiceScrapes.Insert(svcName)
+	}
+	if cr.HasAnyRelabellingConfigs() {
+		keepConfigMaps.Insert(build.ResourceName(build.RelabelConfigResourceKind, cr))
+	}
+	if cr.HasAnyStreamAggrRule() {
+		keepConfigMaps.Insert(build.ResourceName(build.StreamAggrConfigResourceKind, cr))
 	}
 	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
 		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
@@ -668,6 +674,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 	if err := finalize.RemoveOrphanedVMServiceScrapes(ctx, rclient, cr, keepServiceScrapes, true); err != nil {
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
+	}
+	if err := finalize.RemoveOrphanedConfigMaps(ctx, rclient, cr, keepConfigMaps, true); err != nil {
+		return fmt.Errorf("cannot remove configmaps: %w", err)
 	}
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}

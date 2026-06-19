@@ -115,7 +115,57 @@ spec:
       paths: ["/targets/api/v1","/targets","/metrics"]
 ```
 
-Cluster components supports auto path generation for single tenant view:
+### VMCluster
+
+`VMCluster` exposes two user-facing services — `vminsert` (write path, port 8480) and `vmselect` (read path, port 8481).
+Both can be routed through a single `VMAuth` ingress using `VMUser` objects.
+See [VMCluster — Services and URLs](https://docs.victoriametrics.com/operator/resources/vmcluster/#services-and-urls) for the full list of service names and ports.
+
+The example below exposes VMUI and the query API (tenant `0`) for public read-only access via ingress,
+and write access for an authenticated user:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: cluster-proxy
+  namespace: default
+spec:
+  selectAllByDefault: true
+  ingress:
+    class_name: nginx                      # change to your ingress class
+    host: victoriametrics.example.org
+  unauthorizedUserAccessSpec:
+    targetRefs:
+      - crd:
+          kind: VMCluster/vmselect
+          name: example
+          namespace: default
+        target_path_suffix: "/select/0"
+        paths:
+          - "/prometheus/.*"
+          - "/vmui.*"
+---
+# Write access: Prometheus remote write
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: cluster-writer
+  namespace: default
+spec:
+  username: writer
+  generatePassword: true
+  targetRefs:
+    - crd:
+        kind: VMCluster/vminsert
+        name: example
+        namespace: default
+      target_path_suffix: "/insert/0"
+      paths:
+        - "/prometheus/.*"
+```
+
+Cluster components also support auto path generation for multi-tenant setups:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -150,6 +200,94 @@ spec:
 ```
 
 For each `VMUser` operator generates corresponding secret with username/password or bearer token at the same namespace as `VMUser`.
+
+### VLCluster
+
+`VLCluster` exposes two user-facing services — `vlinsert` (write path, port 9481) and `vlselect` (read path, port 9471).
+Both can be routed through a single `VMAuth` ingress using `VMUser` objects.
+See [VLCluster — Services and URLs](https://docs.victoriametrics.com/operator/resources/vlcluster/#services-and-urls) for the full list of service names and ports.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: logs-proxy
+  namespace: default
+spec:
+  selectAllByDefault: true
+  ingress:
+    class_name: nginx                      # change to your ingress class
+    host: victorialogs.example.org
+  unauthorizedUserAccessSpec:
+    targetRefs:
+      - crd:
+          kind: VLCluster/vlselect
+          name: example
+          namespace: default
+        paths:
+          - "/select/.*"
+---
+# Write access for log shippers (Fluentbit, Alloy, etc.)
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: logs-writer
+  namespace: default
+spec:
+  username: writer
+  generatePassword: true
+  targetRefs:
+    - crd:
+        kind: VLCluster/vlinsert
+        name: example
+        namespace: default
+      paths:
+        - "/insert/.*"
+```
+
+### VTCluster
+
+`VTCluster` exposes two user-facing services — `vtinsert` (write path, port 10481) and `vtselect` (read path, port 10471).
+Both can be routed through a single `VMAuth` ingress using `VMUser` objects.
+See [VTCluster — Services and URLs](https://docs.victoriametrics.com/operator/resources/vtcluster/#services-and-urls) for the full list of service names and ports.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: traces-proxy
+  namespace: default
+spec:
+  selectAllByDefault: true
+  ingress:
+    class_name: nginx                      # change to your ingress class
+    host: victoriatraces.example.org
+  unauthorizedUserAccessSpec:
+    targetRefs:
+      - crd:
+          kind: VTCluster/vtselect
+          name: example
+          namespace: default
+        paths:
+          - "/select/.*"
+---
+# Write access for OpenTelemetry collectors
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: traces-writer
+  namespace: default
+spec:
+  username: writer
+  generatePassword: true
+  targetRefs:
+    - crd:
+        kind: VTCluster/vtinsert
+        name: example
+        namespace: default
+      paths:
+        - "/insert/.*"
+```
 
 ## Basic auth for targets
 

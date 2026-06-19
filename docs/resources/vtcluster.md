@@ -31,6 +31,59 @@ see [Extra arguments section](https://docs.victoriametrics.com/operator/resource
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vtcluster/#examples) section.
 
+## Services and URLs
+
+For a `VTCluster` named `<name>` in namespace `<namespace>`, the Operator creates the following Kubernetes services:
+
+| Service name | Type | Port | Purpose |
+|---|---|---|---|
+| `vtinsert-<name>` | ClusterIP | 10481 | Trace ingestion via OTLP (write path) |
+| `vtselect-<name>` | Headless | 10471 | Trace querying (read path) |
+| `vtstorage-<name>` | Headless | 10491 | vtstorage admin HTTP API (not for direct user access) |
+
+Common internal cluster URLs (replace `<name>` and `<namespace>` with your values):
+
+| Use case | URL |
+|---|---|
+| OTLP/HTTP trace ingestion | `http://vtinsert-<name>.<namespace>.svc:10481/insert/opentelemetry/v1/traces` |
+| Query API | `http://vtselect-<name>.<namespace>.svc:10471/select/...` |
+| VMUI (built-in web UI) | `http://vtselect-<name>.<namespace>.svc:10471/select/vmui/` |
+
+`vtinsert` accepts trace spans via the [OpenTelemetry protocol (OTLP)](https://opentelemetry.io/docs/specs/otlp/) over HTTP and gRPC.
+See [data ingestion docs](https://docs.victoriametrics.com/victoriatraces/data-ingestion/opentelemetry/) for full configuration details.
+
+### Customizing service type or port
+
+By default each component service is created with the type and port shown in the table above.
+Use `serviceSpec` on each component to change these settings.
+Setting `useAsDefault: true` applies the changes to the main service rather than creating an additional one:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  insert:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+  select:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+```
+
+> **Note**: changing `select` or `storage` from headless to a ClusterIP/LoadBalancer type
+> may break internal pod-to-pod communication between cluster components.
+
+To expose VTCluster components outside the cluster via an ingress with authentication,
+see [Authorization and exposing components — VTCluster](https://docs.victoriametrics.com/operator/auth/#vtcluster).
+
 ## Version management
 
 To set `VTCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaTraces/releases)
@@ -62,6 +115,65 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Update strategy
+
+The Operator provides fine-grained control over how `VTCluster` nodes are restarted when their spec changes (image tag, flags, etc.).
+
+### storage
+
+`storage` nodes are restarted one by one by default.
+The `rollingUpdateStrategy` field controls this behavior:
+
+| Value | Behavior |
+|---|---|
+| `OnDelete` (default) | Operator restarts nodes one by one and waits for each to become ready before continuing |
+| `RollingUpdate` | Kubernetes restarts nodes natively; the Operator only waits for the rollout to complete |
+
+Use `rollingUpdateStrategyBehavior.maxUnavailable` to control how many nodes are restarted simultaneously (default is `1`):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  storage:
+    replicaCount: 6
+    rollingUpdateStrategy: OnDelete
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 2        # restart 2 nodes at a time
+```
+
+Setting `maxUnavailable: "100%"` restarts all `storage` nodes in parallel, minimizing total upgrade time
+at the cost of temporary unavailability.
+
+The timeout for each node to become ready is controlled by the Operator environment variable
+`VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
+
+### insert and select
+
+`insert` and `select` nodes support standard Deployment update parameters:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  insert:
+    replicaCount: 2
+    updateStrategy: RollingUpdate   # default; set to Recreate to stop all nodes before starting new ones
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  select:
+    replicaCount: 2
+    updateStrategy: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
 ```
 
 ## Resource management

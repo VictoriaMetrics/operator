@@ -115,6 +115,10 @@ type VMAnomalyWritersSpec struct {
 	// Metrics to save the output (in metric names or labels)
 	// +optional
 	MetricFormat VMAnomalyVMWriterMetricFormatSpec `json:"metricFormat,omitempty" yaml:"metric_format,omitempty"`
+	// ConnectionRetryAttempts defines the number of attempts to retry the connection in case of failure
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	ConnectionRetryAttempts int `json:"connectionRetryAttempts,omitempty" yaml:"connection_retry_attempts,omitempty"`
 	// +optional
 	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
 }
@@ -161,9 +165,12 @@ type VMAnomalyReadersSpec struct {
 	QueryFromLastSeenTimestamp bool `json:"queryFromLastSeenTimestamp,omitempty" yaml:"query_from_last_seen_timestamp,omitempty"`
 	// It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics
 	LatencyOffset string `json:"latencyOffset,omitempty" yaml:"latency_offset,omitempty"`
+	// Offset adds a time shift to the query window for all queries, e.g. to account for delayed data ingestion
+	// +optional
+	Offset string `json:"offset,omitempty" yaml:"offset,omitempty"`
 	// Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
 	MaxPointsPerQuery int `json:"maxPointsPerQuery,omitempty" yaml:"max_points_per_query,omitempty"`
-	// Optional argumentspecifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
+	// Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
 	Timezone string `json:"tz,omitempty" yaml:"tz,omitempty"`
 	// Optional argumentallows defining valid data ranges for input of all the queries in queries
 	DataRange               []string `json:"dataRange,omitempty" yaml:"data_range,omitempty"`
@@ -178,6 +185,11 @@ type VMAnomalyStatus struct {
 	vmv1beta1.StatusMetadata `json:",inline"`
 	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingSpecError string `json:"-" yaml:"-"`
+}
+
+// SetLastSpec implements objectWithLastAppliedState interface
+func (cr *VMAnomaly) SetLastSpec(prevSpec VMAnomalySpec) {
+	cr.ParsedLastAppliedSpec = &prevSpec
 }
 
 // GetStatusMetadata returns metadata for object status
@@ -205,9 +217,8 @@ type VMAnomaly struct {
 
 	Spec VMAnomalySpec `json:"spec,omitempty"`
 	// ParsedLastAppliedSpec contains last-applied configuration spec
-	ParsedLastAppliedSpec *VMAnomalySpec `json:"-" yaml:"-"`
-
-	Status VMAnomalyStatus `json:"status,omitempty"`
+	ParsedLastAppliedSpec *VMAnomalySpec  `json:"-" yaml:"-"`
+	Status                VMAnomalyStatus `json:"status,omitempty"`
 }
 
 // VMAnomalyMonitoringSpec defines configuration for VMAnomaly monitoring
@@ -218,7 +229,7 @@ type VMAnomalyMonitoringSpec struct {
 }
 
 // VMAnomalyMonitoringPullSpec defines pull monitoring configuration
-// which is enabled by default and served at POD_IP:8490/metrics
+// which is enabled by default and served at POD_IP:8080/metrics
 type VMAnomalyMonitoringPullSpec struct {
 	// Port defines a port for metrics scrape
 	Port string `json:"port"`
@@ -253,16 +264,14 @@ type VMAnomalyServerSpec struct {
 	// MaxConcurrentTasks defines maximum number of concurrent anomaly detection tasks
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=20
 	MaxConcurrentTasks int `json:"maxConcurrentTasks,omitempty" yaml:"max_concurrent_tasks,omitempty"`
 	// UIDefaultState defines default query state for anomaly UI
 	// +optional
 	UIDefaultState string `json:"uiDefaultState,omitempty" yaml:"ui_default_state,omitempty"`
-}
-
-// SetLastSpec implements objectWithLastAppliedState interface
-func (cr *VMAnomaly) SetLastSpec(prevSpec VMAnomalySpec) {
-	cr.ParsedLastAppliedSpec = &prevSpec
+	// UseReaderConnectionSettings when set to true, anomaly UI reuses connection settings
+	// (credentials, TLS, etc.) from the reader configuration to connect to datasources
+	// +optional
+	UseReaderConnectionSettings bool `json:"useReaderConnectionSettings,omitempty" yaml:"use_reader_connection_settings,omitempty"`
 }
 
 // AsOwner returns owner references with current object as owner
@@ -304,11 +313,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
-	var shardCnt int32
-	if cr.IsSharded() {
-		shardCnt = *cr.Spec.ShardCount
-	}
-	vs.Shards = shardCnt
+	vs.Shards = cr.GetShardCount()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -407,7 +412,10 @@ func (cr *VMAnomaly) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 
 // Port returns port for accessing anomaly UI
 func (cr *VMAnomaly) Port() string {
-	return cr.Spec.Port
+	if cr == nil || cr.Spec.Server == nil || len(cr.Spec.Server.Port) == 0 {
+		return "8490"
+	}
+	return cr.Spec.Server.Port
 }
 
 // GetVolumeName returns volume name for persistent storage
@@ -438,7 +446,10 @@ func (cr *VMAnomaly) ProbeScheme() string {
 
 // ProbePort implements build.probeCRD interface
 func (cr *VMAnomaly) ProbePort() string {
-	return cr.Port()
+	if cr == nil || cr.Spec.Monitoring == nil || cr.Spec.Monitoring.Pull == nil || len(cr.Spec.Monitoring.Pull.Port) == 0 {
+		return "8080"
+	}
+	return cr.Spec.Monitoring.Pull.Port
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface

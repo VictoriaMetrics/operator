@@ -179,6 +179,7 @@ settings:
 							"label2": "value2",
 						},
 					},
+					ConnectionRetryAttempts: 3,
 					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 						TenantID: "0:2",
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -211,6 +212,7 @@ settings:
 					DatasourceURL:  "http://custom.ds",
 					QueryRangePath: "/api/v1/query_range",
 					SamplingPeriod: "10s",
+					Offset:         "5m",
 					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 						TenantID: "0:1",
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -272,6 +274,7 @@ reader:
   datasource_url: http://custom.ds
   sampling_period: 10s
   query_range_path: /api/v1/query_range
+  offset: 5m
   queries:
     test:
       expr: vm_metric
@@ -290,6 +293,7 @@ writer:
     for: custom_$QUERY_KEY
     label1: value1
     label2: value2
+  connection_retry_attempts: 3
   tenant_id: "0:2"
   verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert
@@ -649,10 +653,11 @@ writer:
 					DatasourceURL: "http://writer.test",
 				},
 				Server: &vmv1.VMAnomalyServerSpec{
-					Addr:               "127.0.0.1",
-					Port:               "9090",
-					PathPrefix:         "my-anomaly",
-					MaxConcurrentTasks: 10,
+					Addr:                        "127.0.0.1",
+					Port:                        "9090",
+					PathPrefix:                  "my-anomaly",
+					MaxConcurrentTasks:          10,
+					UseReaderConnectionSettings: true,
 				},
 			},
 		},
@@ -687,6 +692,7 @@ server:
   port: "9090"
   path_prefix: my-anomaly
   max_concurrent_tasks: 10
+  use_reader_connection_settings: true
 `,
 	})
 
@@ -763,6 +769,8 @@ writer:
 monitoring:
   pull:
     port: "8080"
+server:
+  port: "8490"
 `,
 	})
 
@@ -785,6 +793,7 @@ models:
     scale: [0.5, 1.5]
     min_subseason: hourly
     decay: 0.5
+    global_smoothing: 0.5
 schedulers:
   scheduler_1m:
     class: "scheduler.periodic.PeriodicScheduler"
@@ -795,6 +804,7 @@ reader:
   queries:
     test_query:
       expr: vm_metric
+      offset: 1m
 writer:
   datasource_url: "http://test.com"
 `,
@@ -818,6 +828,7 @@ models:
     - 1.5
     decay: 0.5
     min_subseason: hourly
+    global_smoothing: 0.5
 schedulers:
   scheduler_1m:
     class: scheduler.periodic.PeriodicScheduler
@@ -831,16 +842,109 @@ reader:
   queries:
     test_query:
       expr: vm_metric
+      offset: 1m
 writer:
   class: vm
   datasource_url: http://writer.test
 monitoring:
   pull:
     port: "8080"
+server:
+  port: "8490"
 `,
 	})
 
-	// server section validation error - maxConcurrentTasks out of range
+	// ui preset with nil monitoring - must not panic
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly-ui",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `preset: ui`,
+				Server: &vmv1.VMAnomalyServerSpec{
+					PathPrefix: "/",
+				},
+				// Monitoring intentionally nil to reproduce the panic
+			},
+		},
+		expected: `
+models:
+  placeholder:
+    class: zscore
+    schedulers:
+    - noop
+schedulers:
+  noop:
+    class: noop
+reader:
+  class: noop
+  datasource_url: ""
+  sampling_period: null
+writer:
+  class: noop
+  datasource_url: ""
+monitoring:
+  pull:
+    addr: 0.0.0.0
+    port: "8080"
+server:
+  port: "8490"
+  path_prefix: /
+preset: ui
+`,
+	})
+
+	// ui preset with explicit monitoring pull port
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly-ui-monitoring",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `preset: ui`,
+				Monitoring: &vmv1.VMAnomalyMonitoringSpec{
+					Pull: &vmv1.VMAnomalyMonitoringPullSpec{
+						Port: "9999",
+					},
+				},
+			},
+		},
+		expected: `
+models:
+  placeholder:
+    class: zscore
+    schedulers:
+    - noop
+schedulers:
+  noop:
+    class: noop
+reader:
+  class: noop
+  datasource_url: ""
+  sampling_period: null
+writer:
+  class: noop
+  datasource_url: ""
+monitoring:
+  pull:
+    addr: 0.0.0.0
+    port: "9999"
+server:
+  port: "8490"
+preset: ui
+`,
+	})
+
+	// server section validation error - maxConcurrentTasks must be a positive integer
 	f(opts{
 		cr: &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{
@@ -878,10 +982,219 @@ writer:
 					DatasourceURL: "http://writer.test",
 				},
 				Server: &vmv1.VMAnomalyServerSpec{
-					MaxConcurrentTasks: 25, // out of range (1-20)
+					MaxConcurrentTasks: -1, // negative is invalid; vmanomaly imposes no upper bound
 				},
 			},
 		},
 		wantErr: true,
 	})
+
+	// tz is serialized as a string (reader/query/scheduler), an explicit zero
+	// anomaly_score_outside_data_range survives marshalling, and an unset decay is omitted
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+settings:
+  anomaly_score_outside_data_range: 0
+models:
+  m_online:
+    class: zscore_online
+    queries: ['q1']
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+    tz: "Europe/Kyiv"
+reader:
+  queries:
+    q1:
+      expr: up
+      tz: "America/New_York"
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+					Timezone:       "UTC",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  m_online:
+    class: zscore_online
+    queries:
+    - q1
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+    tz: Europe/Kyiv
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  tz: UTC
+  queries:
+    q1:
+      expr: up
+      tz: America/New_York
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  anomaly_score_outside_data_range: 0
+server:
+  port: "8490"
+`,
+	})
+
+	// contamination accepts a float
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries: ['q1']
+    contamination: 0.05
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    q1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					MaxConcurrentTasks: 50, // no upper bound
+				},
+			},
+		},
+		expected: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries:
+    - q1
+    contamination: 0.05
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+  max_concurrent_tasks: 50
+`,
+	})
+
+	// contamination accepts the string "auto"
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries: ['q1']
+    contamination: auto
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    q1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  m_iforest:
+    class: isolation_forest
+    queries:
+    - q1
+    contamination: auto
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
 }

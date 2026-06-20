@@ -18,6 +18,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -25,6 +26,7 @@ import (
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VMAnomaly
+		cfgMutator        func(*config.BaseOperatorConf)
 		validate          func(sts *appsv1.StatefulSet, idx int)
 		wantErr           bool
 		predefinedObjects []runtime.Object
@@ -35,6 +37,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
+		cfg := config.MustGetBaseConfig()
+		if o.cfgMutator != nil {
+			defaultCfg := *cfg
+			o.cfgMutator(cfg)
+			defer func() {
+				*config.MustGetBaseConfig() = defaultCfg
+			}()
+		}
 		err := CreateOrUpdate(ctx, o.cr, fclient)
 		if o.wantErr {
 			assert.Error(t, err)

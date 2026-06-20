@@ -31,8 +31,11 @@ func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 	return build.VMPodScrape(cr, "monitoring-http")
 }
 
-// CreateOrUpdate creates vmanomalyand and builds config for it
+// CreateOrUpdate creates vmanomaly and builds config for it
 func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Client) error {
+	if cr.Paused() {
+		return nil
+	}
 	var prevCR *vmv1.VMAnomaly
 	if cr.ParsedLastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
@@ -60,13 +63,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 		}
 	}
 
-	rcfg := map[build.ResourceKind]*build.ResourceCfg{
-		build.TLSAssetsResourceKind: {
-			MountDir:   tlsAssetsDir,
-			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
-		},
-	}
-	ac := build.NewAssetsCache(ctx, rclient, rcfg)
+	ac := getAssetsCache(ctx, rclient, cr)
 	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR, ac)
 	if err != nil {
 		return err
@@ -127,13 +124,12 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			"checksum/config": configHash,
 		})
 	}
-
 	app := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            build.ShardName(cr),
 			Namespace:       cr.GetNamespace(),
 			Labels:          cr.FinalLabels(),
-			Annotations:     cr.FinalAnnotations(),
+			Annotations:     podAnnotations,
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -147,7 +143,7 @@ func newK8sApp(cr *vmv1.VMAnomaly, configHash string, ac *build.AssetsCache) (*a
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      build.ShardPodLabels(cr),
-					Annotations: podAnnotations,
+					Annotations: cr.PodAnnotations(),
 				},
 				Spec: *podSpec,
 			},
@@ -288,4 +284,14 @@ func getShard(cr *vmv1.VMAnomaly, appTpl *appsv1.StatefulSet, num int32) (*appsv
 	}
 	patchShardContainers(app.Spec.Template.Spec.Containers, num, cr.GetShardCount())
 	return app, nil
+}
+
+func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) *build.AssetsCache {
+	cfg := map[build.ResourceKind]*build.ResourceCfg{
+		build.TLSAssetsResourceKind: {
+			MountDir:   tlsAssetsDir,
+			SecretName: build.ResourceName(build.TLSAssetsResourceKind, cr),
+		},
+	}
+	return build.NewAssetsCache(ctx, rclient, cfg)
 }

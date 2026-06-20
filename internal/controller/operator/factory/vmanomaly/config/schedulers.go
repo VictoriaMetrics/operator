@@ -7,8 +7,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type scheduler struct {
+type anomalyScheduler interface {
 	validatable
+	setClass(string)
+}
+
+type scheduler struct {
+	anomalyScheduler
 }
 
 var (
@@ -16,14 +21,32 @@ var (
 	_ yaml.Unmarshaler = (*scheduler)(nil)
 )
 
-// UnmarshalYAML implements yaml.Unmarshaller interface
+// Validate validates raw config
+func (s *scheduler) Validate(data []byte) error {
+	if err := yaml.Unmarshal(data, s); err != nil {
+		return err
+	}
+	return s.validate()
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler interface
 func (s *scheduler) UnmarshalYAML(unmarshal func(any) error) error {
 	var h header
 	if err := unmarshal(&h); err != nil {
 		return err
 	}
-	var sch validatable
-	switch h.Class {
+	if err := s.init(h.Class); err != nil {
+		return err
+	}
+	if err := unmarshal(s.anomalyScheduler); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *scheduler) init(class string) error {
+	var sch anomalyScheduler
+	switch class {
 	case "scheduler.periodic.PeriodicScheduler", "periodic":
 		sch = new(periodicScheduler)
 	case "scheduler.oneoff.OneoffScheduler", "oneoff":
@@ -31,51 +54,58 @@ func (s *scheduler) UnmarshalYAML(unmarshal func(any) error) error {
 	case "scheduler.backtesting.BacktestingScheduler", "backtesting":
 		sch = new(backtestingScheduler)
 	default:
-		return fmt.Errorf("anomaly scheduler class=%q is not supported", h.Class)
+		return fmt.Errorf("anomaly scheduler class=%q is not supported", class)
 	}
-	if err := unmarshal(sch); err != nil {
-		return err
-	}
-	s.validatable = sch
+	s.anomalyScheduler = sch
 	return nil
 }
 
 // MarshalYAML implements yaml.Marshaler interface
 func (s *scheduler) MarshalYAML() (any, error) {
-	return s.validatable, nil
+	return s.anomalyScheduler, nil
+}
+
+type commonSchedulerParams struct {
+	Class string `yaml:"class"`
+}
+
+func (p *commonSchedulerParams) setClass(class string) {
+	p.Class = class
 }
 
 type noopScheduler struct {
-	Class string `yaml:"class"`
+	commonSchedulerParams `yaml:",inline"`
 }
 
 func (s *noopScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-1
 type periodicScheduler struct {
-	Class      string        `yaml:"class"`
-	FitEvery   *duration     `yaml:"fit_every,omitempty"`
-	FitWindow  *duration     `yaml:"fit_window"`
-	InferEvery *duration     `yaml:"infer_every"`
-	StartFrom  time.Time     `yaml:"start_from,omitempty"`
-	Timezone   time.Location `yaml:"tz,omitempty"`
+	commonSchedulerParams `yaml:",inline"`
+	FitEvery              *duration `yaml:"fit_every,omitempty"`
+	FitWindow             *duration `yaml:"fit_window"`
+	InferEvery            *duration `yaml:"infer_every"`
+	StartFrom             time.Time `yaml:"start_from,omitempty"`
+	Timezone              string    `yaml:"tz,omitempty"`
 }
 
 func (s *periodicScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-2
 type oneoffScheduler struct {
-	Class         string    `yaml:"class"`
-	InferStartISO time.Time `yaml:"infer_start_iso,omitempty"`
-	InferStartS   int64     `yaml:"infer_start_s,omitempty"`
-	InferEndISO   time.Time `yaml:"infer_end_iso,omitempty"`
-	InferEndS     int64     `yaml:"infer_end_s,omitempty"`
-	FitStartISO   time.Time `yaml:"fit_start_iso"`
-	FitStartS     int64     `yaml:"fit_start_s"`
-	FitEndISO     time.Time `yaml:"fit_end_iso"`
-	FitEndS       int64     `yaml:"fit_end_s"`
+	commonSchedulerParams `yaml:",inline"`
+	InferStartISO         time.Time `yaml:"infer_start_iso,omitempty"`
+	InferStartS           int64     `yaml:"infer_start_s,omitempty"`
+	InferEndISO           time.Time `yaml:"infer_end_iso,omitempty"`
+	InferEndS             int64     `yaml:"infer_end_s,omitempty"`
+	FitStartISO           time.Time `yaml:"fit_start_iso"`
+	FitStartS             int64     `yaml:"fit_start_s"`
+	FitEndISO             time.Time `yaml:"fit_end_iso"`
+	FitEndS               int64     `yaml:"fit_end_s"`
 }
 
 func (s *oneoffScheduler) validate() error {
@@ -124,16 +154,19 @@ func (s *oneoffScheduler) validate() error {
 	return nil
 }
 
+// Docs: https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#parameters-3
 type backtestingScheduler struct {
-	Class         string    `yaml:"class"`
-	FitWindow     *duration `yaml:"fit_window"`
-	FromISO       time.Time `yaml:"from_iso"`
-	FromS         int64     `yaml:"from_s"`
-	ToISO         time.Time `yaml:"to_iso"`
-	ToS           int64     `yaml:"to_s"`
-	FitEvery      *duration `yaml:"fit_every"`
-	Jobs          int       `yaml:"n_jobs,omitempty"`
-	InferenceOnly bool      `yaml:"inference_only,omitempty"`
+	commonSchedulerParams `yaml:",inline"`
+	FitWindow             *duration `yaml:"fit_window"`
+	FromISO               time.Time `yaml:"from_iso"`
+	FromS                 int64     `yaml:"from_s"`
+	ToISO                 time.Time `yaml:"to_iso"`
+	ToS                   int64     `yaml:"to_s"`
+	FitEvery              *duration `yaml:"fit_every"`
+	Jobs                  int       `yaml:"n_jobs,omitempty"`
+	InferenceOnly         bool      `yaml:"inference_only,omitempty"`
+	Exact                 bool      `yaml:"exact,omitempty"`
+	InferEvery            *duration `yaml:"infer_every,omitempty"`
 }
 
 func (s *backtestingScheduler) validate() error {

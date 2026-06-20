@@ -21,6 +21,32 @@ type validatable interface {
 	validate() error
 }
 
+type PartialConfig struct {
+	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
+	Models     map[string]*model     `yaml:"models,omitempty"`
+	Queries    map[string]*query     `yaml:"queries,omitempty"`
+}
+
+func (pc *PartialConfig) Validate() error {
+	for name, s := range pc.Schedulers {
+		if s == nil {
+			return fmt.Errorf("scheduler=%q is nil", name)
+		}
+		if err := s.validate(); err != nil {
+			return fmt.Errorf("failed to validate scheduler=%q: %w", name, err)
+		}
+	}
+	for name, m := range pc.Models {
+		if m == nil {
+			return fmt.Errorf("model=%q is nil", name)
+		}
+		if err := m.validate(); err != nil {
+			return fmt.Errorf("failed to validate model=%q: %w", name, err)
+		}
+	}
+	return nil
+}
+
 type config struct {
 	Schedulers map[string]*scheduler `yaml:"schedulers,omitempty"`
 	Models     map[string]*model     `yaml:"models,omitempty"`
@@ -33,30 +59,39 @@ type config struct {
 }
 
 type server struct {
-	Addr               string `yaml:"addr,omitempty"`
-	Port               string `yaml:"port,omitempty"`
-	PathPrefix         string `yaml:"path_prefix,omitempty"`
-	MaxConcurrentTasks int    `yaml:"max_concurrent_tasks,omitempty"`
-	UIDefaultState     string `yaml:"ui_default_state,omitempty"`
+	Addr                        string `yaml:"addr,omitempty"`
+	Port                        string `yaml:"port,omitempty"`
+	PathPrefix                  string `yaml:"path_prefix,omitempty"`
+	MaxConcurrentTasks          int    `yaml:"max_concurrent_tasks,omitempty"`
+	UIDefaultState              string `yaml:"ui_default_state,omitempty"`
+	UseReaderConnectionSettings bool   `yaml:"use_reader_connection_settings,omitempty"`
 }
 
 func (s *server) validate() error {
 	if s == nil {
 		return nil
 	}
-	if s.MaxConcurrentTasks != 0 && (s.MaxConcurrentTasks < 1 || s.MaxConcurrentTasks > 20) {
-		return fmt.Errorf("max_concurrent_tasks must be between 1 and 20, got %d", s.MaxConcurrentTasks)
+	if s.MaxConcurrentTasks < 0 {
+		return fmt.Errorf("max_concurrent_tasks must be a positive integer, got %d", s.MaxConcurrentTasks)
 	}
 	return nil
 }
 
-type settings struct {
-	Workers           int     `yaml:"n_workers,omitempty"`
-	ScoreOutsideRange float64 `yaml:"anomaly_score_outside_data_range,omitempty"`
-	RestoreState      bool    `yaml:"restore_state,omitempty"`
+type retention struct {
+	TTL           duration `yaml:"ttl,omitempty"`
+	CheckInterval duration `yaml:"check_interval,omitempty"`
 }
 
-func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
+type settings struct {
+	Workers int `yaml:"n_workers,omitempty"`
+	// ScoreOutsideRange is a pointer so an explicit 0.0 survives marshalling.
+	ScoreOutsideRange *float64          `yaml:"anomaly_score_outside_data_range,omitempty"`
+	RestoreState      bool              `yaml:"restore_state,omitempty"`
+	Retention         *retention        `yaml:"retention,omitempty"`
+	LoggerLevels      map[string]string `yaml:"logger_levels,omitempty"`
+}
+
+func (c *config) build(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	crCanonicalName := strings.Join([]string{cr.Namespace, cr.Name}, "/")
 	if cr.Spec.Server != nil {
 		srv := cr.Spec.Server
@@ -72,6 +107,8 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 	}
 	c.Preset = strings.ToLower(c.Preset)
 	if strings.HasPrefix(c.Preset, "ui") {
+		s := new(noopScheduler)
+		s.setClass("noop")
 		c.Reader = &reader{
 			Class: "noop",
 		}
@@ -80,9 +117,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		}
 		c.Schedulers = map[string]*scheduler{
 			"noop": {
-				validatable: &noopScheduler{
-					Class: "noop",
-				},
+				anomalyScheduler: s,
 			},
 		}
 		c.Models = map[string]*model{
@@ -98,7 +133,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		c.Monitoring = &monitoring{
 			Pull: &endpoint{
 				Addr: "0.0.0.0",
-				Port: cr.Spec.Monitoring.Pull.Port,
+				Port: cr.ProbePort(),
 			},
 		}
 		return nil
@@ -166,6 +201,7 @@ func (c *config) override(cr *vmv1.VMAnomaly, ac *build.AssetsCache) error {
 		}
 		c.Monitoring = &m
 	}
+
 	return nil
 }
 
@@ -353,7 +389,7 @@ func Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anomaly configuration, name=%q: %w", cr.Name, err)
 	}
-	if err = c.override(cr, ac); err != nil {
+	if err = c.build(cr, ac); err != nil {
 		return nil, fmt.Errorf("failed to update secret values with values from anomaly instance, name=%q: %w", cr.Name, err)
 	}
 	if err = c.validate(); err != nil {

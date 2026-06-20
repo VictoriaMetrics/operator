@@ -25,7 +25,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	newSecretConfig := &corev1.Secret{
 		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, cr),
 		Data: map[string][]byte{
-			secretConfigKey: data,
+			configEnvsubstFilename: data,
 		},
 	}
 	owner := cr.AsOwner()

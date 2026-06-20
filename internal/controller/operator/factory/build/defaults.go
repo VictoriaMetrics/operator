@@ -322,11 +322,19 @@ func addVMAnomalyDefaults(objI any) {
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 	if cr.Spec.Monitoring == nil {
-		cr.Spec.Monitoring = &vmv1.VMAnomalyMonitoringSpec{
-			Pull: &vmv1.VMAnomalyMonitoringPullSpec{
-				Port: "8080",
-			},
-		}
+		cr.Spec.Monitoring = &vmv1.VMAnomalyMonitoringSpec{}
+	}
+	if cr.Spec.Monitoring.Pull == nil {
+		cr.Spec.Monitoring.Pull = &vmv1.VMAnomalyMonitoringPullSpec{}
+	}
+	if len(cr.Spec.Monitoring.Pull.Port) == 0 {
+		cr.Spec.Monitoring.Pull.Port = "8080"
+	}
+	if cr.Spec.Server == nil {
+		cr.Spec.Server = &vmv1.VMAnomalyServerSpec{}
+	}
+	if len(cr.Spec.Server.Port) == 0 {
+		cr.Spec.Server.Port = cv.Port
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -218,4 +219,29 @@ func TestCfgWatcherSuccessTimestampUsesSeconds(t *testing.T) {
 	if configLastReloadSuccess.Get() != 1 {
 		t.Fatalf("expected reload success metric to be 1, got %d", configLastReloadSuccess.Get())
 	}
+}
+
+func TestValidateTargetDirCount(t *testing.T) {
+	t.Run("accepts empty target dirs", func(t *testing.T) {
+		if err := validateTargetDirCount(0, 1); err != nil {
+			t.Fatalf("expected empty target-dir list to be accepted, got %v", err)
+		}
+	})
+
+	t.Run("accepts matching counts", func(t *testing.T) {
+		if err := validateTargetDirCount(2, 2); err != nil {
+			t.Fatalf("expected matching counts to be accepted, got %v", err)
+		}
+	})
+
+	t.Run("mentions both supported source flags on mismatch", func(t *testing.T) {
+		err := validateTargetDirCount(2, 1)
+		if err == nil {
+			t.Fatal("expected mismatched counts to return an error")
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, "--watched-dir/--rules-dir") {
+			t.Fatalf("expected error to mention both supported source flags, got %q", msg)
+		}
+	})
 }

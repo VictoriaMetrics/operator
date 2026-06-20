@@ -135,7 +135,7 @@ Usage of bin/config-reloader:
     	Supports an array of values separated by comma or specified via multiple flags.
     	Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -target-dir array
-    	when provided, must have the same number of argument as --watched-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change
+    	when provided, must have the same number of arguments as the directories passed via --watched-dir or --rules-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change
     	Supports an array of values separated by comma or specified via multiple flags.
     	Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -tls array

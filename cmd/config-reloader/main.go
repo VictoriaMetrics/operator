@@ -45,7 +45,7 @@ var (
 	rulesDir = flagutil.NewArrayString(
 		"rules-dir", "the same as watched-dir, legacy")
 	targetDir = flagutil.NewArrayString(
-		"target-dir", "when provided, must have the same number of argument as --watched-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change")
+		"target-dir", "when provided, must have the same number of arguments as the directories passed via --watched-dir or --rules-dir; each non-empty value causes files from the corresponding watched directory to be decompressed (if needed) and written to that target directory on change")
 	reloadURL = flag.String(
 		"reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
 	reloadURLAuthKey = flagutil.NewPassword("reload-url-auth-key", "authKey for config reload API requests")
@@ -97,8 +97,8 @@ func main() {
 	if len(activeDirs) == 0 {
 		activeDirs = *rulesDir
 	}
-	if len(*targetDir) > 0 && len(*targetDir) != len(activeDirs) {
-		logger.Fatalf("--target-dir count (%d) must match --watched-dir count (%d)", len(*targetDir), len(activeDirs))
+	if err := validateTargetDirCount(len(*targetDir), len(activeDirs)); err != nil {
+		logger.Fatalf("%s", err)
 	}
 	logger.Infof("starting config reloader")
 	r := reloader{
@@ -392,6 +392,13 @@ func writeNewContent(data []byte) error {
 	}
 	if err := os.Rename(tmpDst, *configFileDst); err != nil {
 		return fmt.Errorf("cannot rename tmp file: %w", err)
+	}
+	return nil
+}
+
+func validateTargetDirCount(targetCount, watchedCount int) error {
+	if targetCount > 0 && targetCount != watchedCount {
+		return fmt.Errorf("--target-dir count (%d) must match watched directory count (%d) from --watched-dir/--rules-dir", targetCount, watchedCount)
 	}
 	return nil
 }

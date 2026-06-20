@@ -183,8 +183,8 @@ type dirWatcher struct {
 // If targetDirs is non-empty it must have the same length as dirs.
 // A watched dir with no corresponding target only triggers a reload on change.
 func newDirWatchers(dirs []string, targetDirs []string) (*dirWatcher, error) {
-	if len(targetDirs) > 0 && len(targetDirs) != len(dirs) {
-		return nil, fmt.Errorf("--target-dir count (%d) must match --watched-dir count (%d)", len(targetDirs), len(dirs))
+	if err := validateTargetDirCount(len(targetDirs), len(dirs)); err != nil {
+		return nil, err
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {

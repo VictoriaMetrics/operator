@@ -1,6 +1,6 @@
 | Environment variables |
 | --- |
-| VM_METRICS_VERSION: `v1.145.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a><br>Defines default image version for VictoriaMetrics components: VMSingle, VMCluster (vmselect/vminsert/vmstorage), VMAgent, VMAlert, VMAuth, VMBackup. Used as the image tag when no explicit version is set in the CR spec. |
+| VM_METRICS_VERSION: `v1.146.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a><br>Defines default image version for VictoriaMetrics components: VMSingle, VMCluster (vmselect/vminsert/vmstorage), VMAgent, VMAlert, VMAuth, VMBackup. Used as the image tag when no explicit version is set in the CR spec. |
 | VM_LOGS_VERSION: `v1.51.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a><br>Defines default image version for VictoriaLogs components: VLogs, VLAgent, VLSingle, VLCluster (vlselect/vlinsert/vlstorage). Used as the image tag when no explicit version is set in the CR spec. |
 | VM_ANOMALY_VERSION: `v1.29.3` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a><br>Defines default image version for VMAnomaly. Used as the image tag when no explicit version is set in the CR spec. |
 | VM_TRACES_VERSION: `v0.9.3` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a><br>Defines default image version for VictoriaTraces components: VTSingle, VTCluster (vtselect/vtinsert/vtstorage). Used as the image tag when no explicit version is set in the CR spec. |

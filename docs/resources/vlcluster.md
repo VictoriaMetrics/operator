@@ -31,6 +31,73 @@ see [Extra arguments section](https://docs.victoriametrics.com/operator/resource
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vlcluster/#examples) section.
 
+## Services and URLs
+
+For a `VLCluster` named `<name>` in namespace `<namespace>`, the Operator creates the following Kubernetes services:
+
+| Service name | Type | Port | Purpose |
+|---|---|---|---|
+| `vlinsert-<name>` | ClusterIP | 9481 | Log ingestion (write path) |
+| `vlselect-<name>` | Headless | 9471 | Log querying (read path) |
+| `vlstorage-<name>` | Headless | 9491 | vlstorage admin HTTP API (not for direct user access) |
+
+Common internal cluster URLs (replace `<name>` and `<namespace>` with your values):
+
+| Use case | URL |
+|---|---|
+| VLAgent remoteWrite | `http://vlinsert-<name>.<namespace>.svc:9481/internal/insert` |
+| LogsQL query API | `http://vlselect-<name>.<namespace>.svc:9471/select/logsql/query` |
+| Grafana datasource URL | `http://vlselect-<name>.<namespace>.svc:9471/select` |
+| VMUI (built-in web UI) | `http://vlselect-<name>.<namespace>.svc:9471/select/vmui/` |
+
+`vlinsert` also accepts logs from all [data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/) supported by VictoriaLogs
+(Elasticsearch, Loki, OpenTelemetry, Syslog, etc.) directly at port `9481`.
+
+### Configuring VLAgent to write to VLCluster
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLAgent
+metadata:
+  name: example
+  namespace: default
+spec:
+  remoteWrite:
+    - url: "http://vlinsert-<name>.default.svc:9481/internal/insert"
+```
+
+### Customizing service type or port
+
+By default each component service is created with the type and port shown in the table above.
+Use `serviceSpec` on each component to change these settings.
+Setting `useAsDefault: true` applies the changes to the main service rather than creating an additional one:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  name: example
+spec:
+  vlinsert:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+  vlselect:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+```
+
+> **Note**: changing `vlselect` or `vlstorage` from headless to a ClusterIP/LoadBalancer type
+> may break internal pod-to-pod communication between cluster components.
+
+To expose VLCluster components outside the cluster via an ingress with authentication,
+see [Authorization and exposing components — VLCluster](https://docs.victoriametrics.com/operator/auth/#vlcluster).
+
 ## Version management
 
 To set `VLCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
@@ -62,6 +129,65 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Update strategy
+
+The Operator provides fine-grained control over how `VLCluster` nodes are restarted when their spec changes (image tag, flags, etc.).
+
+### vlstorage
+
+`vlstorage` nodes are restarted one by one by default.
+The `rollingUpdateStrategy` field controls this behavior:
+
+| Value | Behavior |
+|---|---|
+| `OnDelete` (default) | Operator restarts nodes one by one and waits for each to become ready before continuing |
+| `RollingUpdate` | Kubernetes restarts nodes natively; the Operator only waits for the rollout to complete |
+
+Use `rollingUpdateStrategyBehavior.maxUnavailable` to control how many nodes are restarted simultaneously (default is `1`):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  name: example
+spec:
+  vlstorage:
+    replicaCount: 6
+    rollingUpdateStrategy: OnDelete
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 2        # restart 2 nodes at a time
+```
+
+Setting `maxUnavailable: "100%"` restarts all `vlstorage` nodes in parallel, minimizing total upgrade time
+at the cost of temporary unavailability.
+
+The timeout for each node to become ready is controlled by the Operator environment variable
+`VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
+
+### vlinsert and vlselect
+
+`vlinsert` and `vlselect` nodes support standard Deployment update parameters:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  name: example
+spec:
+  vlinsert:
+    replicaCount: 2
+    updateStrategy: RollingUpdate   # default; set to Recreate to stop all nodes before starting new ones
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  vlselect:
+    replicaCount: 2
+    updateStrategy: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
 ```
 
 ## Resource management

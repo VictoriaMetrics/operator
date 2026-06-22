@@ -22,7 +22,7 @@ For each `VMCluster` resource, the Operator creates:
 - `VMSelect` as `StatefulSet`
 - and `VMInsert` as deployment.
 
-For `VMStorage` and `VMSelect` headless  services are created. `VMInsert` is created as service with clusterIP.
+For `VMStorage` and `VMSelect` headless services are created. `VMInsert` is created as service with clusterIP.
 
 There is a strict order for these objects creation and reconciliation:
 
@@ -45,6 +45,74 @@ If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmcluster/#examples) section.
+
+## Services and URLs
+
+For a `VMCluster` named `<name>` in namespace `<namespace>`, the Operator creates the following Kubernetes services:
+
+| Service name | Type | Port | Purpose |
+|---|---|---|---|
+| `vminsert-<name>` | ClusterIP | 8480 | Metrics ingestion (write path) |
+| `vmselect-<name>` | Headless | 8481 | Metrics querying (read path) |
+| `vmstorage-<name>` | Headless | 8482 | vmstorage admin HTTP API (not for direct user access) |
+
+VictoriaMetrics cluster uses a **tenant** model where data is namespaced by an account ID.
+For single-tenant setups the default tenant is `0`.
+
+Common internal cluster URLs (replace `<name>` and `<namespace>` with your values):
+
+| Use case | URL |
+|---|---|
+| Prometheus remote write (VMAgent / Prometheus) | `http://vminsert-<name>.<namespace>.svc:8480/insert/0/prometheus/api/v1/write` |
+| PromQL / MetricsQL query API | `http://vmselect-<name>.<namespace>.svc:8481/select/0/prometheus` |
+| Grafana datasource URL | `http://vmselect-<name>.<namespace>.svc:8481/select/0/prometheus` |
+| VMUI (built-in web UI) | `http://vmselect-<name>.<namespace>.svc:8481/select/0/vmui/` |
+
+### Configuring VMAgent to write to VMCluster
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example
+  namespace: default
+spec:
+  selectAllByDefault: true
+  remoteWrite:
+    - url: "http://vminsert-<name>.default.svc:8480/insert/0/prometheus/api/v1/write"
+```
+
+### Customizing service type or port
+
+By default each component service is created with the type and port shown in the table above.
+Use `serviceSpec` on each component to change these settings.
+Setting `useAsDefault: true` applies the changes to the main service rather than creating an additional one:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  vminsert:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+  vmselect:
+    replicaCount: 2
+    serviceSpec:
+      useAsDefault: true
+      spec:
+        type: LoadBalancer
+```
+
+> **Note**: changing `vmselect` or `vmstorage` from headless to a ClusterIP/LoadBalancer type
+> may break internal pod-to-pod communication between cluster components.
+
+To expose VMCluster components outside the cluster via an ingress with authentication,
+see [Authorization and exposing components — VMCluster](https://docs.victoriametrics.com/operator/auth/#vmcluster).
 
 ## Requests Load-Balancing
 
@@ -262,6 +330,85 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
   # ...
+```
+
+## Update strategy
+
+The Operator provides fine-grained control over how `VMCluster` nodes are restarted when their spec changes (image tag, flags, etc.).
+The available strategies map to the [no downtime and minimum downtime upgrade approaches](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#updating--reconfiguring-cluster-nodes)
+described in the VictoriaMetrics cluster documentation.
+
+### vmstorage and vmselect
+
+The `rollingUpdateStrategy` field controls how `vmstorage` and `vmselect` nodes are updated:
+
+| Value | Behavior |
+|---|---|
+| `OnDelete` (default) | Operator restarts nodes one by one and waits for each to become ready before continuing |
+| `RollingUpdate` | Kubernetes restarts nodes natively; the Operator only waits for the rollout to complete |
+
+The default `OnDelete` strategy implements the **no downtime** approach: nodes are restarted one at a time
+in the order recommended by VictoriaMetrics (`vmstorage` first, then `vmselect`).
+
+Use `rollingUpdateStrategyBehavior.maxUnavailable` to control how many nodes are restarted simultaneously.
+The default is `1`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  vmstorage:
+    replicaCount: 6
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: 2        # restart 2 nodes at a time
+  vmselect:
+    replicaCount: 3
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: "33%"   # restart up to 33% of nodes at a time
+```
+
+Setting `maxUnavailable: "100%"` restarts all nodes in parallel, implementing the **minimum downtime** strategy
+at the cost of temporary unavailability:
+
+```yaml
+spec:
+  vmstorage:
+    replicaCount: 3
+    rollingUpdateStrategyBehavior:
+      maxUnavailable: "100%"
+```
+
+To delegate the rolling restart entirely to Kubernetes, set `rollingUpdateStrategy: RollingUpdate`.
+In this mode `rollingUpdateStrategyBehavior` is ignored:
+
+```yaml
+spec:
+  vmstorage:
+    replicaCount: 3
+    rollingUpdateStrategy: RollingUpdate
+```
+
+The timeout for each node to become ready is controlled by the Operator environment variable
+`VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
+
+### vminsert
+
+`vminsert` nodes can be configured with standard Deployment update parameters:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  vminsert:
+    replicaCount: 3
+    updateStrategy: RollingUpdate   # default; set to Recreate for minimum downtime
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
 ```
 
 ## Resource management

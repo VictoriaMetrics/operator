@@ -111,7 +111,7 @@ type BaseOperatorConf struct {
 	// Defines default image version for VictoriaTraces components:
 	// VTSingle, VTCluster (vtselect/vtinsert/vtstorage).
 	// Used as the image tag when no explicit version is set in the CR spec.
-	TracesVertsion string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
+	TracesVersion string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
 	// Defines the operator's own version. Used for config-reloader image tag interpolation.
 	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"VM_OPERATOR_VERSION,expand"`
 	// Enables support for Kubernetes Gateway API.

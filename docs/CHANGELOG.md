@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.146.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.146.0) version
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix possible panic on Secret watch events when the informer's local cache fell out of sync and Kubernetes delivered a stale tombstone entry instead of the Secret object. The config-reloader now unwraps tombstones correctly and logs an error for any other unexpected types.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): switch default app probes to `tcpSocket` `startupProbe` when TLS is enabled on the managed HTTP endpoint. This avoids broken kubelet `httpGet` checks against TLS and mTLS-protected workloads. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
 

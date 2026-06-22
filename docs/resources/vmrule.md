@@ -37,7 +37,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 ## Enterprise features
 
 Custom resource `VMRule` supports feature [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 ### Multitenancy
 

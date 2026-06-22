@@ -11,8 +11,12 @@
     {{- $parts = append $parts (printf "since version <a href=\"https://docs.victoriametrics.com/operator/changelog/#%s\">%s</a>" $id .) }}
   {{- end }}
   {{- with $deprecated.removed_in }}
-    {{- $id := . | replace "." "" }}
-    {{- $parts = append $parts (printf "will be removed in <a href=\"https://docs.victoriametrics.com/operator/changelog/#%s\">%s</a>" $id .) }}
+    {{- if eq . "v1.0.0" }}
+      {{- $parts = append $parts (printf "will be removed in %s" .) }}
+    {{- else }}
+      {{- $id := . | replace "." "" }}
+      {{- $parts = append $parts (printf "will be removed in <a href=\"https://docs.victoriametrics.com/operator/changelog/#%s\">%s</a>" $id .) }}
+    {{- end }}
   {{- end }}
   {{- with $deprecated.replacements }}
     {{- $links := list }}

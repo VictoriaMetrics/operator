@@ -549,7 +549,7 @@ If you still want to upgrade, you can override the vmagent image version by sett
 
 **Release date:** 15 Apr 2025
 
-![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11500)
+![AppVersion: v1.115.0](https://img.shields.io/badge/v1.115.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11150)
 ![AppVersion: v1.18.0](https://img.shields.io/badge/v1.18.0-success?label=Default%20VL%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictorialogs%2Fchangelog%2F%23v180)
 
 **Update note 1**: config-reloader container now longer uses `proxy-protocol` for internal web-server if `reload-use-proxy-protocol` is set.
@@ -1001,7 +1001,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ![AppVersion: v1.100.1](https://img.shields.io/badge/v1.100.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v11001)
 
-- Update VictoriaMetrics image tags to [v1.101.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.101.0).
+- Update VictoriaMetrics image tags to [v1.101.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11010).
 
 ## [v0.43.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.43.4)
 
@@ -1050,7 +1050,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 **Update note: `Alertmanager` versions below `v0.22.0` are no longer supported. Version must upgraded - manually for resources or use default version bundled with operator config.**
 
 - [operator](https://docs.victoriametrics.com/operator/): properly reconcile `ServiceAccount` specified for `CRD`s. Previously operator didn't perform a check for actual owner of `ServiceAccount`. Now it creates and updates `ServiceAccount` only if this field is omitted at `CRD` definition. It fixes possible ownership race conditions.
-- Update VictoriaMetrics image tags to [v1.100.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.100.1).
+- Update VictoriaMetrics image tags to [v1.100.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v11001).
 - [operator](https://docs.victoriametrics.com/operator/): reduce number of watched resources owned by `CRD`s. Operator no longer watches for `Service`, `Secret`, `Configmap` changes owned by CRD object. It must reduce logging output, CPU and memory usage for operator.
 - [operator](https://docs.victoriametrics.com/operator/): exposes `config-reloader-http` port with `8435` number for the customer config-reloader containers. Operator may use own config-reloader implementation for `VMAuth`, `VMAlertmanager` and `VMAgent`.
 - [operator](https://docs.victoriametrics.com/operator/): adds new field `configReloaderExtraArgs` for `VMAgent`, `VMAlert`, `VMAuth` and `VMAlertmanager` CRDs. It allows to configure config-reloader container.
@@ -1072,7 +1072,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 - [vmprobe](https://docs.victoriametrics.com/operator/api/#vmprobe): add field `proxy_url`, see [this issue](https://github.com/VictoriaMetrics/operator/issues/731) for details.
 - scrape CRDs: add field `series_limit`, which can be used to limit the number of unique time series a single scrape target can expose.
 - scrape CRDs: fix scrape_config filed `disable_keep_alive`, before it's misconfigured as `disable_keepalive` and won't work.
-- scrape CRDs: deprecated option `relabel_debug` and  `metric_relabel_debug`, they were deprecated since [v1.85.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.85.0).
+- scrape CRDs: deprecated option `relabel_debug` and  `metric_relabel_debug`, they were deprecated since [v1.85.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1850).
 
 ## [v0.42.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3)
 
@@ -1109,7 +1109,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v1.99.0](https://img.shields.io/badge/v1.99.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1990)
 
 - [operator](https://docs.victoriametrics.com/operator/): adds more context to the log messages. It must greatly improve debugging process and log quality.
-- Update VictoriaMetrics image tags to [v1.99.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.99.0).
+- Update VictoriaMetrics image tags to [v1.99.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1990).
 - [operator](https://docs.victoriametrics.com/operator/): allow multiple comma separated values for `WATCH_NAMESPACE` param. It adds multiple watch namespace mode without cluster-wide permission. See this [issue](https://github.com/VictoriaMetrics/operator/issues/557) for details. Need namespace RBAC permissions located at `config/examples/operator_rbac_for_single_namespace.yaml`
 - [operator](https://docs.victoriametrics.com/operator/): updates runtime dependencies (controller-runtime, controller-gen). See this [issue](https://github.com/VictoriaMetrics/operator/issues/878) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates runtime dependencies (controller-runtime, controller-gen). See this [issue](https://github.com/VictoriaMetrics/operator/issues/878) for details.
@@ -1129,7 +1129,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 ![AppVersion: v1.98.0](https://img.shields.io/badge/v1.98.0-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1980)
 
 - Remove deprecated autoscaling/v2beta1 HPA objects, previously operator still use it for k8s 1.25. See [this issue](https://github.com/VictoriaMetrics/operator/issues/864) for details.
-- Update VictoriaMetrics image tags to [v1.98.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.98.0).
+- Update VictoriaMetrics image tags to [v1.98.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v1980).
 
 ## [v0.41.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.41.1)
 
@@ -1137,7 +1137,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ![AppVersion: v1.97.1](https://img.shields.io/badge/v1.97.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1971)
 
-- update VictoriaMetrics image tags to [v1.97.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.97.1).
+- update VictoriaMetrics image tags to [v1.97.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1971).
 
 ## [v0.41.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.41.0)
 
@@ -1175,7 +1175,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ![AppVersion: v1.95.1](https://img.shields.io/badge/v1.95.1-success?label=Default%20VM%20version&logo=VictoriaMetrics&labelColor=gray&link=https%3A%2F%2Fdocs.victoriametrics.com%2Fvictoriametrics%2Fchangelog%2F%23v1951)
 
-- update VictoriaMetrics image tags to [v1.95.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.95.1).
+- update VictoriaMetrics image tags to [v1.95.1](https://docs.victoriametrics.com/victoriametrics/changelog/#v1951).
 
 ## [v0.39.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.39.2)
 
@@ -1231,7 +1231,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 - [vmuser](https://docs.victoriametrics.com/operator/api/#vmuser): [Enterprise] fixes ip_filters indent for url_prefix. Previously it wasn't possible to use ip_filters with multiple target refs
 - [vmoperator](https://docs.victoriametrics.com/operator/): turn off `EnableStrictSecurity` by default. Before, upgrade operator to v0.36.0+ could fail components with volume attached, see [this issue](https://github.com/VictoriaMetrics/operator/issues/749) for details.
-- [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.93.4](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.93.4).
+- [vmoperator](https://docs.victoriametrics.com/operator/): bump default version of VictoriaMetrics components to [1.93.4](https://docs.victoriametrics.com/victoriametrics/changelog/#v1934).
 
 ### Features
 
@@ -1245,7 +1245,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 ### Updates
 
-- bump default version of Victoria Metrics components to [v1.93.3](https://docs.victoriametrics.com/victoriametrics/changelog/#v1.93.3)
+- bump default version of Victoria Metrics components to [v1.93.3](https://docs.victoriametrics.com/victoriametrics/changelog/#v1933)
 
 ## [v0.37.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.37.0)
 

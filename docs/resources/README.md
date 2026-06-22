@@ -199,7 +199,7 @@ Operator supports following [Enterprise features for VictoriaMetrics components]
     - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmuser/#ip-filters)
 
 More information about enterprise features you can read
-on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 ## Configuration synchronization
 

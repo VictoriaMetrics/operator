@@ -681,7 +681,7 @@ Also, you can specify requests without limits - in this case default values for 
 ## Enterprise features
 
 VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).

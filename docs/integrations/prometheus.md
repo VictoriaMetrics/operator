@@ -71,7 +71,7 @@ For more information about the operator's workflow, see [this doc](https://docs.
 ## Deletion synchronization
 
 By default, the operator doesn't make converted objects disappear after original ones are deleted. To change this behaviour
-configure adding `OwnerReferences` to converted objects with following [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings):
+configure adding `OwnerReferences` to converted objects with following [operator parameter](https://docs.victoriametrics.com/operator/setup/#configuring):
 
 ```sh
 VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true
@@ -170,7 +170,7 @@ And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametr
 and [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape/) because these objects are not created as a result of conversion.
 
 You can filter labels for syncing 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES`:
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#configuring) `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES`:
 
 ```sh
 # it excludes all labels that start with "helm.sh" or "argoproj.io" from synchronization
@@ -178,7 +178,7 @@ VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES=helm.sh,argoproj.io
 ```
 
 In the same way, annotations with specified prefixes can be excluded from synchronization 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES`:
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#configuring) `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES`:
 
 ```sh
 # it excludes all annotations that start with "helm.sh" or "argoproj.io" from synchronization
@@ -188,7 +188,7 @@ VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES=helm.sh,argoproj.io
 ## Using converter with ArgoCD
 
 If you use ArgoCD, you can allow ignoring objects at ArgoCD converted from Prometheus CRD 
-with [operator parameter](https://docs.victoriametrics.com/operator/setup/#settings) `VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS`. 
+with [operator parameter](https://docs.victoriametrics.com/operator/setup/#configuring) `VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS`.
 
 It helps to properly use converter with ArgoCD and should help prevent out-of-sync issues with argo-cd based deployments:
 

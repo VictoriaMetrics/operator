@@ -206,7 +206,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise):
+VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features):
 
 - [Downsampling](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling)
 - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention-filters)

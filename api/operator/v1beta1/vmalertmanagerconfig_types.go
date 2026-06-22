@@ -1513,7 +1513,7 @@ type RocketchatConfig struct {
 	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 
 	// The sender token and token_id
-	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+	// See https://docs.rocket.chat/docs/manage-personal-access-tokens
 	// +optional
 	TokenID *corev1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
 	// +optional

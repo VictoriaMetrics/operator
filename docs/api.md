@@ -3006,7 +3006,7 @@ Appears in: [Receiver](#receiver)
 | title<a href="#rocketchatconfig-title" id="rocketchatconfig-title">#</a><br/>_string_ | _(Optional)_<br/> |
 | title_link<a href="#rocketchatconfig-title_link" id="rocketchatconfig-title_link">#</a><br/>_string_ | _(Optional)_<br/> |
 | token<a href="#rocketchatconfig-token" id="rocketchatconfig-token">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/> |
-| token_id<a href="#rocketchatconfig-token_id" id="rocketchatconfig-token_id">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The sender token and token_id<br />See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens |
+| token_id<a href="#rocketchatconfig-token_id" id="rocketchatconfig-token_id">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The sender token and token_id<br />See https://docs.rocket.chat/docs/manage-personal-access-tokens |
 
 #### Route
 

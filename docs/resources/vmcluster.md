@@ -31,7 +31,7 @@ There is a strict order for these objects creation and reconciliation:
 1. `VMInsert` is the last object to sync.
 
 All [statefulsets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) are created
-with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) update type.
+with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies) update type.
 It allows to manually manage the rolling update process for Operator by deleting pods one by one and waiting for the ready status.
 
 Rolling update process may be configured by the operator env variables.

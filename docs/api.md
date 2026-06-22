@@ -606,7 +606,7 @@ VMAnomalyConfig is the Schema for the vmanomalyconfigs API.
 | apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1` |
 | kind<br/>_string_ | (Required)<br/>`VMAnomalyConfig` |
 | metadata<a href="#vmanomalyconfig-metadata" id="vmanomalyconfig-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
-| spec<a href="#vmanomalyconfig-spec" id="vmanomalyconfig-spec">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#rawextension-runtime-pkg)_ | _(Required)_<br/> |
+| spec<a href="#vmanomalyconfig-spec" id="vmanomalyconfig-spec">#</a><br/>_[RawExtension](https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension)_ | _(Required)_<br/> |
 
 #### VMAnomalyHTTPClientSpec
 
@@ -1286,9 +1286,9 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 
 | Field | Description |
 | --- | --- |
-| readyTimeout<a href="#vmdistributedzonecommon-readytimeout" id="vmdistributedzonecommon-readytimeout">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#duration-v1-meta)_ | _(Optional)_<br/>ReadyTimeout is the readiness timeout for each zone update. |
+| readyTimeout<a href="#vmdistributedzonecommon-readytimeout" id="vmdistributedzonecommon-readytimeout">#</a><br/>_[Duration](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration)_ | _(Optional)_<br/>ReadyTimeout is the readiness timeout for each zone update. |
 | remoteWrite<a href="#vmdistributedzonecommon-remotewrite" id="vmdistributedzonecommon-remotewrite">#</a><br/>_[VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
-| updatePause<a href="#vmdistributedzonecommon-updatepause" id="vmdistributedzonecommon-updatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#duration-v1-meta)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
+| updatePause<a href="#vmdistributedzonecommon-updatepause" id="vmdistributedzonecommon-updatepause">#</a><br/>_[Duration](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
 | vmagent<a href="#vmdistributedzonecommon-vmagent" id="vmdistributedzonecommon-vmagent">#</a><br/>_[VMDistributedZoneAgent](#vmdistributedzoneagent)_ | _(Optional)_<br/>VMAgent defines VMAgent to balance incoming traffic between VMClusters. |
 | vmcluster<a href="#vmdistributedzonecommon-vmcluster" id="vmdistributedzonecommon-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines VictoriaMetrics cluster database |
 
@@ -1714,7 +1714,7 @@ Appears in: [SecurityContext](#securitycontext)
 | allowPrivilegeEscalation<a href="#containersecuritycontext-allowprivilegeescalation" id="containersecuritycontext-allowprivilegeescalation">#</a><br/>_boolean_ | _(Optional)_<br/>AllowPrivilegeEscalation controls whether a process can gain more<br />privileges than its parent process. This bool directly controls if<br />the no_new_privs flag will be set on the container process.<br />AllowPrivilegeEscalation is true always when the container is:<br />1) run as Privileged<br />2) has CAP_SYS_ADMIN<br />Note that this field cannot be set when spec.os.name is windows. |
 | capabilities<a href="#containersecuritycontext-capabilities" id="containersecuritycontext-capabilities">#</a><br/>_[Capabilities](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#capabilities-v1-core)_ | _(Optional)_<br/>The capabilities to add/drop when running containers.<br />Defaults to the default set of capabilities granted by the container runtime.<br />Note that this field cannot be set when spec.os.name is windows. |
 | privileged<a href="#containersecuritycontext-privileged" id="containersecuritycontext-privileged">#</a><br/>_boolean_ | _(Optional)_<br/>Run containers in privileged mode.<br />Processes in privileged containers are essentially equivalent to root on the host.<br />Note that this field cannot be set when spec.os.name is windows. |
-| procMount<a href="#containersecuritycontext-procmount" id="containersecuritycontext-procmount">#</a><br/>_[ProcMountType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#procmounttype-v1-core)_ | _(Optional)_<br/>procMount denotes the type of proc mount to use for the containers.<br />The default is DefaultProcMount which uses the container runtime defaults for<br />readonly paths and masked paths.<br />This requires the ProcMountType feature flag to be enabled.<br />Note that this field cannot be set when spec.os.name is windows. |
+| procMount<a href="#containersecuritycontext-procmount" id="containersecuritycontext-procmount">#</a><br/>_[ProcMountType](https://pkg.go.dev/k8s.io/api/core/v1#ProcMountType)_ | _(Optional)_<br/>procMount denotes the type of proc mount to use for the containers.<br />The default is DefaultProcMount which uses the container runtime defaults for<br />readonly paths and masked paths.<br />This requires the ProcMountType feature flag to be enabled.<br />Note that this field cannot be set when spec.os.name is windows. |
 | readOnlyRootFilesystem<a href="#containersecuritycontext-readonlyrootfilesystem" id="containersecuritycontext-readonlyrootfilesystem">#</a><br/>_boolean_ | _(Optional)_<br/>Whether this containers has a read-only root filesystem.<br />Default is false.<br />Note that this field cannot be set when spec.os.name is windows. |
 
 #### DNSSDConfig
@@ -1946,7 +1946,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | Field | Description |
 | --- | --- |
 | annotations<a href="#embeddedhttproute-annotations" id="embeddedhttproute-annotations">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Annotations is an unstructured key value map stored with a resource that may be<br />set by external tools to store and retrieve arbitrary metadata. They are not<br />queryable and should be preserved when modifying objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations |
-| extraRules<a href="#embeddedhttproute-extrarules" id="embeddedhttproute-extrarules">#</a><br/>_[RawExtension](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#rawextension-runtime-pkg) array_ | _(Optional)_<br/>ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations. |
+| extraRules<a href="#embeddedhttproute-extrarules" id="embeddedhttproute-extrarules">#</a><br/>_[RawExtension](https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension) array_ | _(Optional)_<br/>ExtraRules defines custom HTTPRouteRule in raw form, bypassing Gateway API CEL validations. |
 | hostnames<a href="#embeddedhttproute-hostnames" id="embeddedhttproute-hostnames">#</a><br/>_Hostname array_ | _(Optional)_<br/>Hostnames defines a set of hostnames that should match against the HTTP Host<br />header to select a HTTPRoute used to process the request. |
 | labels<a href="#embeddedhttproute-labels" id="embeddedhttproute-labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects. May match selectors of replication controllers<br />and services.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
 | name<a href="#embeddedhttproute-name" id="embeddedhttproute-name">#</a><br/>_string_ | _(Optional)_<br/>Name must be unique within a namespace. Is required when creating resources, although<br />some resources may allow a client to request the generation of an appropriate name<br />automatically. Name is primarily intended for creation idempotence and configuration<br />definition.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names |
@@ -1962,8 +1962,8 @@ Appears in: [VMAuthSpec](#vmauthspec)
 | --- | --- |
 | annotations<a href="#embeddedingress-annotations" id="embeddedingress-annotations">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Annotations is an unstructured key value map stored with a resource that may be<br />set by external tools to store and retrieve arbitrary metadata. They are not<br />queryable and should be preserved when modifying objects.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations |
 | class_name<a href="#embeddedingress-class_name" id="embeddedingress-class_name">#</a><br/>_string_ | _(Optional)_<br/>ClassName defines ingress class name for VMAuth |
-| extraRules<a href="#embeddedingress-extrarules" id="embeddedingress-extrarules">#</a><br/>_[IngressRule](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#ingressrule-v1-networking) array_ | _(Optional)_<br/>ExtraRules - additional rules for ingress,<br />must be checked for correctness by user. |
-| extraTls<a href="#embeddedingress-extratls" id="embeddedingress-extratls">#</a><br/>_[IngressTLS](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#ingresstls-v1-networking) array_ | _(Optional)_<br/>ExtraTLS - additional TLS configuration for ingress<br />must be checked for correctness by user. |
+| extraRules<a href="#embeddedingress-extrarules" id="embeddedingress-extrarules">#</a><br/>_[IngressRule](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#ingressrule-v1-networking-k8s-io) array_ | _(Optional)_<br/>ExtraRules - additional rules for ingress,<br />must be checked for correctness by user. |
+| extraTls<a href="#embeddedingress-extratls" id="embeddedingress-extratls">#</a><br/>_[IngressTLS](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#ingresstls-v1-networking-k8s-io) array_ | _(Optional)_<br/>ExtraTLS - additional TLS configuration for ingress<br />must be checked for correctness by user. |
 | host<a href="#embeddedingress-host" id="embeddedingress-host">#</a><br/>_string_ | _(Optional)_<br/>Host defines ingress host parameter for default rule<br />It will be used, only if TlsHosts is empty |
 | labels<a href="#embeddedingress-labels" id="embeddedingress-labels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>Labels Map of string keys and values that can be used to organize and categorize<br />(scope and select) objects. May match selectors of replication controllers<br />and services.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels |
 | name<a href="#embeddedingress-name" id="embeddedingress-name">#</a><br/>_string_ | _(Optional)_<br/>Name must be unique within a namespace. Is required when creating resources, although<br />some resources may allow a client to request the generation of an appropriate name<br />automatically. Name is primarily intended for creation idempotence and configuration<br />definition.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names |
@@ -2002,8 +2002,8 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 
 | Field | Description |
 | --- | --- |
-| maxUnavailable<a href="#embeddedpoddisruptionbudgetspec-maxunavailable" id="embeddedpoddisruptionbudgetspec-maxunavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at most "maxUnavailable" pods selected by<br />"selector" are unavailable after the eviction, i.e. even in absence of<br />the evicted pod. For example, one can prevent all voluntary evictions<br />by specifying 0. This is a mutually exclusive setting with "minAvailable". |
-| minAvailable<a href="#embeddedpoddisruptionbudgetspec-minavailable" id="embeddedpoddisruptionbudgetspec-minavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#intorstring-intstr-util)_ | _(Optional)_<br/>An eviction is allowed if at least "minAvailable" pods selected by<br />"selector" will still be available after the eviction, i.e. even in the<br />absence of the evicted pod.  So for example you can prevent all voluntary<br />evictions by specifying "100%". |
+| maxUnavailable<a href="#embeddedpoddisruptionbudgetspec-maxunavailable" id="embeddedpoddisruptionbudgetspec-maxunavailable">#</a><br/>_[IntOrString](https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString)_ | _(Optional)_<br/>An eviction is allowed if at most "maxUnavailable" pods selected by<br />"selector" are unavailable after the eviction, i.e. even in absence of<br />the evicted pod. For example, one can prevent all voluntary evictions<br />by specifying 0. This is a mutually exclusive setting with "minAvailable". |
+| minAvailable<a href="#embeddedpoddisruptionbudgetspec-minavailable" id="embeddedpoddisruptionbudgetspec-minavailable">#</a><br/>_[IntOrString](https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString)_ | _(Optional)_<br/>An eviction is allowed if at least "minAvailable" pods selected by<br />"selector" will still be available after the eviction, i.e. even in the<br />absence of the evicted pod.  So for example you can prevent all voluntary<br />evictions by specifying "100%". |
 | selectorLabels<a href="#embeddedpoddisruptionbudgetspec-selectorlabels" id="embeddedpoddisruptionbudgetspec-selectorlabels">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>replaces default labels selector generated by operator<br />it's useful when you need to create custom budget |
 | unhealthyPodEvictionPolicy<a href="#embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy" id="embeddedpoddisruptionbudgetspec-unhealthypodevictionpolicy">#</a><br/>_string_ | _(Optional)_<br/>UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods<br />Valid policies are IfHealthyBudget and AlwaysAllow.<br />If no policy is specified, the default behavior will be used,<br />which corresponds to the IfHealthyBudget policy.<br />Available from operator v0.64.0 |
 
@@ -2050,7 +2050,7 @@ Appears in: [VMServiceScrapeSpec](#vmservicescrapespec)
 | scrapeTimeout<a href="#endpoint-scrapetimeout" id="endpoint-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#endpoint-scrape_interval" id="endpoint-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#endpoint-serieslimit" id="endpoint-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
-| targetPort<a href="#endpoint-targetport" id="endpoint-targetport">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#intorstring-intstr-util)_ | _(Optional)_<br/>TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. |
+| targetPort<a href="#endpoint-targetport" id="endpoint-targetport">#</a><br/>_[IntOrString](https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString)_ | _(Optional)_<br/>TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. |
 | tlsConfig<a href="#endpoint-tlsconfig" id="endpoint-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#endpoint-vm_scrape_params" id="endpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
@@ -2266,14 +2266,14 @@ Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), 
 
 | Field | Description |
 | --- | --- |
-| pullPolicy<a href="#image-pullpolicy" id="image-pullpolicy">#</a><br/>_[PullPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#pullpolicy-v1-core)_ | _(Required)_<br/>PullPolicy describes how to pull docker image |
+| pullPolicy<a href="#image-pullpolicy" id="image-pullpolicy">#</a><br/>_[PullPolicy](https://pkg.go.dev/k8s.io/api/core/v1#PullPolicy)_ | _(Required)_<br/>PullPolicy describes how to pull docker image |
 | repository<a href="#image-repository" id="image-repository">#</a><br/>_string_ | _(Required)_<br/>Repository contains name of docker image + it's repository if needed |
 | tag<a href="#image-tag" id="image-tag">#</a><br/>_string_ | _(Required)_<br/>Tag contains desired docker image version |
 
 #### ImageConfig
 
 ImageConfig is used to attach images to the incident.
-See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
+See https://developer.pagerduty.com/docs/send-alert-event#the-images-property
 for more information.
 
 Appears in: [PagerDutyConfig](#pagerdutyconfig)
@@ -2427,7 +2427,7 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSin
 #### LinkConfig
 
 LinkConfig is used to attach text links to the incident.
-See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-links-property
+See https://developer.pagerduty.com/docs/send-alert-event#the-links-property
 for more information.
 
 Appears in: [PagerDutyConfig](#pagerdutyconfig)
@@ -2786,7 +2786,7 @@ Appears in: [VMPodScrapeSpec](#vmpodscrapespec)
 | scrapeTimeout<a href="#podmetricsendpoint-scrapetimeout" id="podmetricsendpoint-scrapetimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout after which the scrape is ended |
 | scrape_interval<a href="#podmetricsendpoint-scrape_interval" id="podmetricsendpoint-scrape_interval">#</a><br/>_string_ | _(Optional)_<br/>ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used |
 | seriesLimit<a href="#podmetricsendpoint-serieslimit" id="podmetricsendpoint-serieslimit">#</a><br/>_integer_ | _(Optional)_<br/>SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. |
-| targetPort<a href="#podmetricsendpoint-targetport" id="podmetricsendpoint-targetport">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#intorstring-intstr-util)_ | _(Optional)_<br/>TargetPort defines name or number of the pod port this endpoint refers to.<br />Mutually exclusive with Port and PortNumber. |
+| targetPort<a href="#podmetricsendpoint-targetport" id="podmetricsendpoint-targetport">#</a><br/>_[IntOrString](https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString)_ | _(Optional)_<br/>TargetPort defines name or number of the pod port this endpoint refers to.<br />Mutually exclusive with Port and PortNumber. |
 | tlsConfig<a href="#podmetricsendpoint-tlsconfig" id="podmetricsendpoint-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig configuration to use when scraping the endpoint |
 | vm_scrape_params<a href="#podmetricsendpoint-vm_scrape_params" id="podmetricsendpoint-vm_scrape_params">#</a><br/>_[VMScrapeParams](#vmscrapeparams)_ | _(Optional)_<br/>VMScrapeParams defines VictoriaMetrics specific scrape parameters |
 
@@ -2968,7 +2968,7 @@ Appears in: [RocketchatConfig](#rocketchatconfig)
 #### RocketchatAttachmentField
 
 RocketchatAttachmentField defines API fields
-https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+https://developer.rocket.chat/apidocs/post-message
 
 Appears in: [RocketchatConfig](#rocketchatconfig)
 
@@ -3138,7 +3138,7 @@ Appears in: [SNSConfig](#snsconfig)
 
 SlackAction configures a single Slack action that is sent with each
 notification.
-See https://api.slack.com/docs/message-attachments#action_fields and
+See https://docs.slack.dev/legacy/legacy-messaging/legacy-interactive-message-field-guide/#action_fields and
 https://api.slack.com/docs/message-buttons for more information.
 
 Appears in: [SlackConfig](#slackconfig)
@@ -3206,7 +3206,7 @@ Appears in: [SlackAction](#slackaction)
 #### SlackField
 
 SlackField configures a single Slack field that is sent with each notification.
-See https://api.slack.com/docs/message-attachments#fields for more information.
+See https://docs.slack.dev/legacy/legacy-messaging/legacy-secondary-message-attachments/#field_objects for more information.
 
 Appears in: [SlackConfig](#slackconfig)
 
@@ -3224,7 +3224,7 @@ Appears in: [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMDistributed
 
 | Field | Description |
 | --- | --- |
-| maxUnavailable<a href="#statefulsetupdatestrategybehavior-maxunavailable" id="statefulsetupdatestrategybehavior-maxunavailable">#</a><br/>_[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#intorstring-intstr-util)_ | _(Optional)_<br/>MaxUnavailable defines the maximum number of pods that can be unavailable during the update.<br />It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").<br />For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed. |
+| maxUnavailable<a href="#statefulsetupdatestrategybehavior-maxunavailable" id="statefulsetupdatestrategybehavior-maxunavailable">#</a><br/>_[IntOrString](https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString)_ | _(Optional)_<br/>MaxUnavailable defines the maximum number of pods that can be unavailable during the update.<br />It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").<br />For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed. |
 
 #### StaticConfig
 
@@ -3676,7 +3676,7 @@ Appears in: [VMAgent](#vmagent)
 | containers<a href="#vmagentspec-containers" id="vmagentspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
 | daemonSetMode<a href="#vmagentspec-daemonsetmode" id="vmagentspec-daemonsetmode">#</a><br/>_boolean_ | _(Optional)_<br/>DaemonSetMode enables DaemonSet deployment mode instead of Deployment.<br />Supports only VMPodScrape<br />(available from v0.55.0).<br />Cannot be used with statefulMode |
 | daemonSetRollingUpdateStrategyBehavior<a href="#vmagentspec-daemonsetrollingupdatestrategybehavior" id="vmagentspec-daemonsetrollingupdatestrategybehavior">#</a><br/>_[RollingUpdateDaemonSet](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#rollingupdatedaemonset-v1-apps)_ | _(Optional)_<br/>DaemonSetRollingUpdateStrategyBehavior defines customized behavior for rolling updates.<br />It applies if the DaemonSetUpdateStrategy is set to RollingUpdate, which is the default. |
-| daemonSetUpdateStrategy<a href="#vmagentspec-daemonsetupdatestrategy" id="vmagentspec-daemonsetupdatestrategy">#</a><br/>_[DaemonSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#daemonsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>DaemonSetUpdateStrategy allows configuration for the DaemonSet update strategy type. |
+| daemonSetUpdateStrategy<a href="#vmagentspec-daemonsetupdatestrategy" id="vmagentspec-daemonsetupdatestrategy">#</a><br/>_[DaemonSetUpdateStrategyType](https://pkg.go.dev/k8s.io/api/apps/v1#DaemonSetUpdateStrategyType)_ | _(Optional)_<br/>DaemonSetUpdateStrategy allows configuration for the DaemonSet update strategy type. |
 | disableAutomountServiceAccountToken<a href="#vmagentspec-disableautomountserviceaccounttoken" id="vmagentspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount. |
 | disableSelfServiceScrape<a href="#vmagentspec-disableselfservicescrape" id="vmagentspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
 | dnsConfig<a href="#vmagentspec-dnsconfig" id="vmagentspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |

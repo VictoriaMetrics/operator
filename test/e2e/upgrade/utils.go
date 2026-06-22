@@ -101,7 +101,9 @@ func updateOperator(ctx context.Context, k8sClient client.Client, operatorImage,
 
 	var dep appsv1.Deployment
 	if err := k8sClient.Get(ctx, nsn, &dep); err == nil {
-		dep.Spec.Template.Spec.Containers[0].Image = operatorImage
+		container := &dep.Spec.Template.Spec.Containers[0]
+		container.Image = operatorImage
+		container.Env = operatorEnvVars(watchNamespace, envs)
 		Expect(k8sClient.Update(ctx, &dep)).ToNot(HaveOccurred())
 	} else {
 		By("creating ServiceAccount for operator")

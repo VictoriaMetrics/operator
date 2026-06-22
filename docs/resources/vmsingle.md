@@ -58,7 +58,7 @@ To enable scraping on VMSingle, set `spec.ingestOnlyMode` to `false`.
 - `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) objects.
 
 This enables access control configuration for objects across namespaces.
-See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for selector specifications.
+See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta) for selector specifications.
 
 In addition to these selectors, object filtering in a cluster can be done by the `selectAllByDefault` VMSingle spec field and the operator's `WATCH_NAMESPACE` environment variable.
 

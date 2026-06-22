@@ -48,7 +48,7 @@ type VMClusterSpec struct {
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 

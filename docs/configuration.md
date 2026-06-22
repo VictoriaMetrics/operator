@@ -453,16 +453,203 @@ It can be simplified with cert-manager and kustomize command:
 kustomize build config/deployments/webhook/
 ```
 
-## Requirements
+### Requirements
 
 - Valid certificate with key must be provided to operator
 - Valid CABundle must be added to the `ValidatingWebhookConfiguration`
 
 
-## Useful links
+### Useful links
 
 - [k8s admission webhooks](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/)
 
+## HPA 
+VictoriaMetrics operator can create and manage Kubernetes [HorizontalPodAutoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) objects for selected VictoriaMetrics components. Configure HPA in VictoriaMetrics custom resources instead of creating `HorizontalPodAutoscaler` objects manually - the operator needs to know that a workload is autoscaled so it can preserve autoscaler-managed replica counts during reconciliation.
+
+The operator owns generated `HorizontalPodAutoscaler` objects and keeps them synchronized with the `hpa` section of VictoriaMetrics custom resources, sets the correct `scaleTargetRef`, adds owner references and removes stale HPA objects when the CR spec changes.
+
+### Supported resources
+
+HPA configuration is available for:
+
+- `VMAgent` through `spec.hpa`.
+- `VMAuth` through `spec.hpa`.
+- `VMCluster` components through `spec.vmselect.hpa`, `spec.vminsert.hpa`, `spec.vmstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
+- `VLCluster` components through `spec.vlselect.hpa`, `spec.vlinsert.hpa`, `spec.vlstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
+- `VTCluster` components through `spec.select.hpa`, `spec.insert.hpa`, `spec.storage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
+- `VMDistributed` components that expose `hpa` in their component spec.
+
+### Configuration
+
+The `hpa` section embeds Kubernetes `autoscaling/v2` HorizontalPodAutoscaler spec fields:
+
+- `minReplicas` - minimum number of replicas. Defaults to `1` when omitted.
+- `maxReplicas` - maximum number of replicas.
+- `metrics` - metric sources used for scaling decisions.
+- `behavior` - scaling behavior configuration.
+
+The operator sets `scaleTargetRef` automatically, so it must not be specified in the VictoriaMetrics custom resource.
+
+Example for `VMAgent`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example
+spec:
+  remoteWrite:
+    - url: http://vmsingle-example:8429/api/v1/write
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 80
+```
+
+Example for `VMCluster` `vminsert`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  retentionPeriod: "1"
+  replicationFactor: 1
+  vmstorage:
+    replicaCount: 1
+    storageDataPath: /vm-data
+  vmselect:
+    replicaCount: 1
+  vminsert:
+    replicaCount: 2
+    hpa:
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 75
+```
+
+### Notes
+
+- HPA requires metrics API data, usually from [metrics-server](https://github.com/kubernetes-sigs/metrics-server) for CPU and memory resource metrics.
+- For `vmselect`, enabling HPA disables `vmselect` to `vmselect` communication. Without HPA, the operator builds a static `-selectNode` list from `replicaCount`. HPA changes replica count outside the CR, so keeping that static peer list would require StatefulSet restarts on each scale event and could leave stale or missing `vmselect` peers.
+- For `vmstorage`, downscaling is not supported.
+- HPA and VPA may interact unexpectedly when both manage the same workload.
+
+## VPA
+
+VictoriaMetrics operator can create and manage [VerticalPodAutoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler) objects for selected VictoriaMetrics components - the operator needs to know that a workload is vertically autoscaled so it can set the correct `targetRef`, add owner references, validate required policy fields and remove stale VPA objects when the CR spec changes.
+
+The operator owns generated `VerticalPodAutoscaler` objects and keeps them synchronized with the `vpa` section of VictoriaMetrics custom resources.
+
+### Prerequisites
+
+VPA is not part of Kubernetes core. Install Vertical Pod Autoscaler CRDs and controller before using `vpa` sections.
+
+Enable VPA support in the operator:
+
+```sh
+VM_VPA_API_ENABLED=true
+```
+
+If VPA support is disabled and a VictoriaMetrics custom resource contains `vpa`, reconciliation fails with validation error.
+
+### Supported resources
+
+VPA configuration is available for:
+
+- `VMAuth` through `spec.vpa`.
+- `VMCluster` components through `spec.vmselect.vpa`, `spec.vminsert.vpa` and `spec.vmstorage.vpa`.
+- `VLCluster` components through `spec.vlselect.vpa`, `spec.vlinsert.vpa` and `spec.vlstorage.vpa`.
+- `VTCluster` components through `spec.select.vpa`, `spec.insert.vpa` and `spec.storage.vpa`.
+- `VMDistributed` components that expose `vpa` in their component spec.
+
+### Configuration
+
+The `vpa` section embeds Kubernetes VPA spec fields:
+
+- `updatePolicy` - controls how VPA applies resource changes to pods.
+- `resourcePolicy` - controls recommendations and limits per container.
+- `recommenders` - optional custom VPA recommender selectors.
+
+The operator sets `targetRef` automatically, so it must not be specified in the VictoriaMetrics custom resource.
+
+`updatePolicy.updateMode` and at least one `resourcePolicy.containerPolicies` entry are required.
+
+Example for `VMAuth`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example
+spec:
+  selectAllByDefault: true
+  vpa:
+    updatePolicy:
+      updateMode: Auto
+    resourcePolicy:
+      containerPolicies:
+        - containerName: vmauth
+          minAllowed:
+            cpu: 100m
+            memory: 128Mi
+          maxAllowed:
+            cpu: "1"
+            memory: 1Gi
+```
+
+Example for `VMCluster` `vmselect`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  retentionPeriod: "1"
+  replicationFactor: 1
+  vmstorage:
+    replicaCount: 1
+    storageDataPath: /vm-data
+  vminsert:
+    replicaCount: 1
+  vmselect:
+    replicaCount: 2
+    vpa:
+      updatePolicy:
+        updateMode: Auto
+      resourcePolicy:
+        containerPolicies:
+          - containerName: vmselect
+            controlledResources:
+              - cpu
+              - memory
+            minAllowed:
+              cpu: 250m
+              memory: 256Mi
+            maxAllowed:
+              cpu: "2"
+              memory: 4Gi
+```
+
+### Notes
+
+- VPA `Auto` and `Recreate` modes can evict pods to apply recommendations. Configure PodDisruptionBudgets and replicas for availability.
+- Use `updateMode: Off` when you need recommendations only.
+- HPA and VPA may interact unexpectedly when both manage the same workload.
 
 ---
 

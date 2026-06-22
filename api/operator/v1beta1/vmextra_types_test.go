@@ -358,3 +358,143 @@ func TestVLogs_PrefixedName(t *testing.T) {
 	f("myapp", false, "vlogs-myapp")
 	f("myapp", true, "myapp")
 }
+
+func TestDeepMerge(t *testing.T) {
+	type opts struct {
+		override *VMClusterSpec
+		validate func(base, merged *VMClusterSpec, err error)
+	}
+	f := func(oss ...opts) {
+		t.Helper()
+		base := &VMClusterSpec{
+			ClusterVersion:     "v1.0.0",
+			ServiceAccountName: "base",
+			RetentionPeriod:    "30d",
+			VMSelect: &VMSelect{
+				CommonAppsParams: CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					ExtraArgs:    map[string]string{"keep": "x", "override": "old"},
+				},
+			},
+			VMInsert: &VMInsert{
+				CommonAppsParams: CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					ExtraArgs:    map[string]string{"insert-arg": "1"},
+				},
+			},
+		}
+		merged := base.DeepCopy()
+		for _, o := range oss {
+			o.validate(base, merged, MergeDeep(merged, o.override, false))
+		}
+	}
+
+	// with extra args override
+	f(opts{
+		override: &VMClusterSpec{
+			ClusterVersion: "v1.2.3",
+			VMSelect: &VMSelect{
+				CommonAppsParams: CommonAppsParams{
+					ReplicaCount: ptr.To(int32(3)),
+					ExtraArgs:    map[string]string{"override": "new", "add": "y"},
+				},
+			},
+			ServiceAccountName: "zone-sa",
+		},
+		validate: func(base, merged *VMClusterSpec, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, "v1.2.3", merged.ClusterVersion)
+			assert.Equal(t, "zone-sa", merged.ServiceAccountName)
+			if !assert.NotNil(t, merged.VMSelect) || !assert.NotNil(t, merged.VMSelect.ReplicaCount) {
+				return
+			}
+			assert.Equal(t, int32(3), *merged.VMSelect.ReplicaCount)
+			assert.Equal(t, "x", merged.VMSelect.ExtraArgs["keep"])
+			assert.Equal(t, "new", merged.VMSelect.ExtraArgs["override"])
+			assert.Equal(t, "y", merged.VMSelect.ExtraArgs["add"])
+			if !assert.NotNil(t, merged.VMInsert) || !assert.NotNil(t, merged.VMInsert.ReplicaCount) {
+				return
+			}
+			assert.Equal(t, int32(1), *merged.VMInsert.ReplicaCount)
+			assert.Equal(t, "1", merged.VMInsert.ExtraArgs["insert-arg"])
+		},
+	})
+
+	// with nil override spec
+	f(opts{
+		validate: func(base, merged *VMClusterSpec, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, base, merged)
+		},
+	})
+
+	// with empty override spec
+	f(opts{
+		override: &VMClusterSpec{},
+		validate: func(base, merged *VMClusterSpec, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, base, merged)
+		},
+	})
+
+	// with override spec that modifies top-level fields
+	f(opts{
+		override: &VMClusterSpec{
+			ClusterVersion:     "v2.0.0",
+			ServiceAccountName: "global-sa",
+		},
+		validate: func(_, merged *VMClusterSpec, err error) {
+			assert.Equal(t, "v2.0.0", merged.ClusterVersion)
+			assert.Equal(t, "global-sa", merged.ServiceAccountName)
+			assert.Equal(t, "30d", merged.RetentionPeriod)
+		},
+	})
+
+	// multiple overrides applied in sequence
+	f(opts{
+		override: &VMClusterSpec{
+			ClusterVersion:     "v2.0.0",
+			ServiceAccountName: "global-sa",
+		},
+		validate: func(_, merged *VMClusterSpec, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, "v2.0.0", merged.ClusterVersion)
+			assert.Equal(t, "global-sa", merged.ServiceAccountName)
+			assert.Equal(t, "30d", merged.RetentionPeriod)
+		},
+	}, opts{
+		override: &VMClusterSpec{
+			RetentionPeriod: "10d",
+			ClusterVersion:  "v3.0.0",
+		},
+		validate: func(_, merged *VMClusterSpec, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, "v3.0.0", merged.ClusterVersion)
+			assert.Equal(t, "global-sa", merged.ServiceAccountName)
+			assert.Equal(t, "10d", merged.RetentionPeriod)
+		},
+	})
+}
+
+func TestMergeMapsRecursive(t *testing.T) {
+	base := map[string]any{
+		"a": map[string]any{
+			"b": "keep",
+			"c": "override-me",
+		},
+		"d": "root-keep",
+	}
+	override := map[string]any{
+		"a": map[string]any{
+			"c": "new",
+			"z": "added",
+		},
+		"e": "root-added",
+	}
+	mergeMapsRecursive(base, override)
+	assert.Equal(t, "keep", base["a"].(map[string]any)["b"])
+	assert.Equal(t, "new", base["a"].(map[string]any)["c"])
+	assert.Equal(t, "added", base["a"].(map[string]any)["z"])
+	assert.Equal(t, "root-keep", base["d"])
+	assert.Equal(t, "root-added", base["e"])
+}

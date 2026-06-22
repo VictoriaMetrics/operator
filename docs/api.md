@@ -4386,6 +4386,19 @@ Appears in: [VMClusterSpec](#vmclusterspec), [VMInsert](#vminsert), [VMSelect](#
 | filter<a href="#vmclusterdiscovery-filter" id="vmclusterdiscovery-filter">#</a><br/>_string_ | _(Optional)_<br/>Filter is an optional regexp filter applied to discovered vmstorage addresses.<br />Only addresses matching the filter are used; non-matching addresses are ignored. |
 | interval<a href="#vmclusterdiscovery-interval" id="vmclusterdiscovery-interval">#</a><br/>_string_ | _(Optional)_<br/>Interval is the interval for refreshing the vmstorage node list resolved from DNS SRV records.<br />The minimum supported value is 1s.<br />Defaults to 2s if not set. |
 
+#### VMClusterPool
+
+VMClusterPool defines a named group of vmstorage (and optionally vminsert) components
+within a VMCluster. Each pool gets its own StatefulSet and headless Service.
+
+Appears in: [VMClusterSpec](#vmclusterspec)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vmclusterpool-name" id="vmclusterpool-name">#</a><br/>_string_ | _(Required)_<br/>Name is the unique identifier for this pool within the cluster.<br />Used as a suffix for generated resource names and as a storage group name in vmselect.<br />Must be a lowercase alphanumeric DNS label; hyphens allowed in the interior. |
+| vminsert<a href="#vmclusterpool-vminsert" id="vmclusterpool-vminsert">#</a><br/>_[VMInsert](#vminsert)_ | _(Optional)_<br/>VMInsert defines a dedicated vminsert for this pool.<br />Each field overrides the corresponding field in the top-level vminsert spec.<br />When nil, the top-level shared vminsert writes to this pool's storage nodes as well. |
+| vmstorage<a href="#vmclusterpool-vmstorage" id="vmclusterpool-vmstorage">#</a><br/>_[VMStorage](#vmstorage)_ | _(Optional)_<br/>VMStorage defines pool-specific vmstorage configuration.<br />Each field overrides the corresponding field in the top-level vmstorage spec.<br />Fields absent here inherit from the top-level vmstorage.<br />RetentionPeriod on VMStorage overrides the cluster-level retentionPeriod for this pool. |
+
 #### VMClusterSpec
 
 VMClusterSpec defines the desired state of VMCluster
@@ -4402,6 +4415,7 @@ Appears in: [VMCluster](#vmcluster), [VMDistributedZoneCluster](#vmdistributedzo
 | license<a href="#vmclusterspec-license" id="vmclusterspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | managedMetadata<a href="#vmclusterspec-managedmetadata" id="vmclusterspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | paused<a href="#vmclusterspec-paused" id="vmclusterspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| pools<a href="#vmclusterspec-pools" id="vmclusterspec-pools">#</a><br/>_[VMClusterPool](#vmclusterpool) array_ | _(Optional)_<br/>Pools defines named groups of vmstorage (and optionally vminsert) components.<br />Each pool gets its own StatefulSet and headless Service named <component>-<cluster>-<pool>.<br />Top-level vmstorage and vminsert specs act as defaults; pool specs override them field-by-field.<br />vmselect queries all pools using the pool name as a storage group name (-storageNode=<pool>/<addr>).<br />When pools are defined the top-level vmstorage is not deployed; pools replace it entirely.<br />The top-level vminsert is deployed as a shared insert across all pools only when no pool<br />defines its own vminsert; as soon as any pool has a dedicated vminsert the top-level one is skipped. |
 | replicationFactor<a href="#vmclusterspec-replicationfactor" id="vmclusterspec-replicationfactor">#</a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor defines how many copies of data make among<br />distinct storage nodes |
 | requestsLoadBalancer<a href="#vmclusterspec-requestsloadbalancer" id="vmclusterspec-requestsloadbalancer">#</a><br/>_[VMAuthLoadBalancer](#vmauthloadbalancer)_ | _(Required)_<br/>RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests.<br />It helps to evenly spread load across pods.<br />Usually it's not possible with Kubernetes TCP-based services.<br />See more [here](https://docs.victoriametrics.com/operator/resources/vmcluster/#requests-load-balancing) |
 | retentionPeriod<a href="#vmclusterspec-retentionperiod" id="vmclusterspec-retentionperiod">#</a><br/>_string_ | _(Optional)_<br/>RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").<br />Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.<br />The default value is 1 (one month).<br />See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details. |
@@ -4414,7 +4428,7 @@ Appears in: [VMCluster](#vmcluster), [VMDistributedZoneCluster](#vmdistributedzo
 
 #### VMInsert
 
-Appears in: [VMClusterSpec](#vmclusterspec)
+Appears in: [VMClusterPool](#vmclusterpool), [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -5035,7 +5049,7 @@ Appears in: [VMStaticScrape](#vmstaticscrape)
 
 #### VMStorage
 
-Appears in: [VMClusterSpec](#vmclusterspec)
+Appears in: [VMClusterPool](#vmclusterpool), [VMClusterSpec](#vmclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -5078,6 +5092,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | replicaCount<a href="#vmstorage-replicacount" id="vmstorage-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#vmstorage-resources" id="vmstorage-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | retentionFilters<a href="#vmstorage-retentionfilters" id="vmstorage-retentionfilters">#</a><br/>_[RetentionFiltersConfig](#retentionfiltersconfig)_ | _(Optional)_<br/>RetentionFilters defines per-series retention filters for vmstorage.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters |
+| retentionPeriod<a href="#vmstorage-retentionperiod" id="vmstorage-retentionperiod">#</a><br/>_string_ | _(Optional)_<br/>RetentionPeriod overrides the cluster-level retentionPeriod for this storage instance.<br />Useful when using Pools to implement multi-retention setups. |
 | revisionHistoryLimitCount<a href="#vmstorage-revisionhistorylimitcount" id="vmstorage-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
 | rollingUpdateStrategy<a href="#vmstorage-rollingupdatestrategy" id="vmstorage-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy defines strategy for application updates<br />Default is OnDelete, in this case operator handles update process<br />Can be changed for RollingUpdate |
 | rollingUpdateStrategyBehavior<a href="#vmstorage-rollingupdatestrategybehavior" id="vmstorage-rollingupdatestrategybehavior">#</a><br/>_[StatefulSetUpdateStrategyBehavior](#statefulsetupdatestrategybehavior)_ | _(Optional)_<br/>RollingUpdateStrategyBehavior defines customized behavior for rolling updates.<br />It applies if the RollingUpdateStrategy is set to OnDelete, which is the default. |

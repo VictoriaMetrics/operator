@@ -79,7 +79,7 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 				backends[ref.Name] = ref
 			} else {
 				if r, ok := backends[ref.Name]; ok {
-					if err := build.MergeDeep(ref, r, true); err != nil {
+					if err := vmv1beta1.MergeDeep(ref, r, true); err != nil {
 						return fmt.Errorf("failed to merge target refs: %w", err)
 					}
 				} else {

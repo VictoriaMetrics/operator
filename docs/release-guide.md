@@ -20,7 +20,7 @@ menu:
 1. Update config-reloader image in [config.go](https://github.com/VictoriaMetrics/operator/blob/a8dd788070d4c012753f7e8e32a3b13e0c50f9af/internal/config/config.go#L108) with the name of new tag.
 1. Run `make docs` in order to update variables documentation files.
 1. Run `make build-installer` to build Github tag artefacts. Everything inside `/dist` should be included to the release.
-1. Cut new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/victoriametrics/changelog/CHANGELOG.md)
+1. Cut new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md)
 1. Create release tag with `git tag <tag>` command and push it to the origin - `git push origin <tag>`, where `<tag>`:
    * `vX.Y.Z` - for operator
    * `api/vX.Y.Z` - for operator's api package

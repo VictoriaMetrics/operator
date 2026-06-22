@@ -53,7 +53,7 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1be
 		warnings = append(warnings, "deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
-	warnings = append(warnings, build.WarnOpenShiftClusterSpec(&obj.Spec)...)
+	warnings = append(warnings, warnOpenShiftCluster(ctx, obj)...)
 	return
 }
 
@@ -70,8 +70,45 @@ func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *
 		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
-	warnings = append(warnings, build.WarnOpenShiftClusterSpec(&newObj.Spec)...)
+	warnings = append(warnings, warnOpenShiftCluster(ctx, newObj)...)
 	return
+}
+
+// warnOpenShiftCluster returns OpenShift security context warnings for a VMCluster.
+func warnOpenShiftCluster(ctx context.Context, cr *vmv1beta1.VMCluster) admission.Warnings {
+	var warnings admission.Warnings
+	if cr.Spec.VMSelect != nil {
+		warnings = append(warnings, build.WarnOpenShiftSecurityContext(cr.Spec.VMSelect.SecurityContext)...)
+	}
+	if len(cr.Spec.Pools) == 0 && cr.Spec.VMStorage != nil {
+		warnings = append(warnings, build.WarnOpenShiftSecurityContext(cr.Spec.VMStorage.SecurityContext)...)
+	}
+	if !vmv1beta1.HasAnyPoolInsert(cr.Spec.Pools) && cr.Spec.VMInsert != nil {
+		warnings = append(warnings, build.WarnOpenShiftSecurityContext(cr.Spec.VMInsert.SecurityContext)...)
+	}
+	if cr.Spec.RequestsLoadBalancer.Enabled {
+		warnings = append(warnings, build.WarnOpenShiftSecurityContext(cr.Spec.RequestsLoadBalancer.Spec.SecurityContext)...)
+	}
+	poolWarnings, err := build.WarnOpenShiftClusterPools(cr)
+	if err != nil {
+		logger.WithContext(ctx).Error(err, "cannot resolve pool spec for OpenShift security context warnings")
+	}
+	warnings = append(warnings, poolWarnings...)
+	return dedupeWarnings(warnings)
+}
+
+// dedupeWarnings drops repeated warning strings, keeping the first occurrence's order.
+func dedupeWarnings(warnings admission.Warnings) admission.Warnings {
+	seen := make(map[string]struct{}, len(warnings))
+	deduped := make(admission.Warnings, 0, len(warnings))
+	for _, w := range warnings {
+		if _, ok := seen[w]; ok {
+			continue
+		}
+		seen[w] = struct{}{}
+		deduped = append(deduped, w)
+	}
+	return deduped
 }
 
 // ValidateDelete implements admission.Validator so a webhook will be registered for the type

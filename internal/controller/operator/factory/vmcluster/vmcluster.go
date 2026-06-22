@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,13 +29,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// CreateOrUpdate reconciled cluster object with order
-// first we check status of vmStorage and waiting for its readiness
-// then vmSelect and wait for it readiness as well
-// and last one is vmInsert
-// we manually handle statefulsets rolling updates
-// needed in update checked by revision status
-// its controlled by k8s controller-manager
+// CreateOrUpdate reconciles the cluster in order: vmstorage/vminsert per pool (waiting for
+// readiness before moving on), then vmselect. StatefulSet rolling updates are handled manually,
+// gated on revision status, since k8s controller-manager doesn't manage that for us here.
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) error {
 	if cr.Paused() {
 		return nil
@@ -54,6 +51,14 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 		if cr.Spec.VMInsert != nil && cr.Spec.VMInsert.VPA != nil {
 			return fmt.Errorf("spec.vminsert.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
+		}
+		for _, pool := range cr.Spec.Pools {
+			if pool.VMStorage != nil && pool.VMStorage.VPA != nil {
+				return fmt.Errorf("spec.pools[%s].vmstorage.vpa is set but VM_VPA_API_ENABLED=true env var was not provided", pool.Name)
+			}
+			if pool.VMInsert != nil && pool.VMInsert.VPA != nil {
+				return fmt.Errorf("spec.pools[%s].vminsert.vpa is set but VM_VPA_API_ENABLED=true env var was not provided", pool.Name)
+			}
 		}
 	}
 	var prevCR *vmv1beta1.VMCluster
@@ -82,85 +87,38 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 		}
 	}
 
-	if cr.Spec.VMStorage != nil {
-		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
-			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, rclient, cr, prevCR)
-			if err != nil {
-				return err
-			}
-		}
-		if cr.Spec.VMStorage.NetworkPolicy != nil {
-			if err := createOrUpdateNetworkPolicyForVMStorage(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
-		}
-		if err := createOrUpdateVMStorage(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
+	// base (non-pool) resources; createOrUpdatePool itself decides whether the shared
+	// top-level vmstorage/vminsert should still be created once pools are declared.
+	if err := createOrUpdatePool(ctx, rclient, cr, prevCR, nil, owner); err != nil {
+		return err
+	}
 
-		if err := createOrUpdateVMStorageService(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-		if err := createOrUpdateVMStorageHPA(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-		if err := createOrUpdateVMStorageVPA(ctx, rclient, cr, prevCR); err != nil {
-			return err
+	for _, pool := range cr.Spec.Pools {
+		if err := createOrUpdatePool(ctx, rclient, cr, prevCR, &pool, owner); err != nil {
+			return fmt.Errorf("pool %q: %w", pool.Name, err)
 		}
 	}
 
 	if cr.Spec.VMSelect != nil {
-		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
+		if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, rclient, cr, prevCR); err != nil {
+			return err
 		}
-		if cr.Spec.VMSelect.NetworkPolicy != nil {
-			if err := createOrUpdateNetworkPolicyForVMSelect(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
+		if err := createOrUpdateNetworkPolicyForVMSelect(ctx, rclient, cr, prevCR); err != nil {
+			return err
 		}
 		if err := createOrUpdateVMSelect(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-
 		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 		if err := createOrUpdateVMSelectVPA(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
-		// create vmselect service
 		if err := createOrUpdateVMSelectService(ctx, rclient, cr, prevCR); err != nil {
 			return err
 		}
 	}
-
-	if cr.Spec.VMInsert != nil {
-		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
-			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
-		}
-		if cr.Spec.VMInsert.NetworkPolicy != nil {
-			if err := createOrUpdateNetworkPolicyForVMInsert(ctx, rclient, cr, prevCR); err != nil {
-				return err
-			}
-		}
-		if err := createOrUpdateVMInsert(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-		if err := createOrUpdateVMInsertService(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-		if err := createOrUpdateVMInsertVPA(ctx, rclient, cr, prevCR); err != nil {
-			return err
-		}
-	}
-
 	if prevCR != nil {
 		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("failed to remove objects from previous cluster state: %w", err)
@@ -321,21 +279,22 @@ func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr
 	return nil
 }
 
-func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string, owner metav1.OwnerReference) error {
 	var prevDeploy *appsv1.Deployment
 
 	if prevCR != nil && prevCR.Spec.VMInsert != nil {
 		var err error
-		prevDeploy, err = genVMInsertSpec(prevCR)
+		prevDeploy, err = genVMInsertSpec(prevCR, poolName)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
+		prevDeploy.OwnerReferences = []metav1.OwnerReference{owner}
 	}
-	newDeployment, err := genVMInsertSpec(cr)
+	newDeployment, err := genVMInsertSpec(cr, poolName)
 	if err != nil {
 		return err
 	}
-	owner := cr.AsOwner()
+	newDeployment.OwnerReferences = []metav1.OwnerReference{owner}
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VMInsert.HPA != nil {
@@ -347,8 +306,8 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, &owner, &o)
 }
 
-func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+func buildVMInsertService(cr *vmv1beta1.VMCluster, poolName string) *corev1.Service {
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
 	svc := build.Service(b, cr.Spec.VMInsert.Port, func(svc *corev1.Service) {
 		build.AppendInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
 		if cr.Spec.VMInsert.ClusterNativePort != "" {
@@ -381,19 +340,20 @@ func buildVMInsertScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta
 	return svs
 }
 
-func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	svc := buildVMInsertService(cr)
+func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, owner metav1.OwnerReference, poolName string) error {
+	svc := buildVMInsertService(cr, poolName)
+	svc.OwnerReferences = []metav1.OwnerReference{owner}
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VMInsert != nil {
-		prevSvc = buildVMInsertService(prevCR)
+		prevSvc = buildVMInsertService(prevCR, poolName)
+		prevSvc.OwnerReferences = []metav1.OwnerReference{owner}
 		prevAdditionalSvcBase := *prevSvc
-		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		prevAdditionalSvcBase.Name = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentInsert, poolName).PrefixedName()
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VMInsert.ServiceSpec)
 	}
-	owner := cr.AsOwner()
 	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvcBase := *svc
-		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+		additionalSvcBase.Name = build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName).PrefixedName()
 		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
@@ -431,23 +391,25 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 	return nil
 }
 
-func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string, owner metav1.OwnerReference) error {
 	var prevSts *appsv1.StatefulSet
 
 	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		var err error
-		prevSts, err = buildVMStorageSpec(ctx, prevCR)
+		prevSts, err = buildVMStorageSpec(ctx, prevCR, poolName)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)
 		}
+		prevSts.OwnerReferences = []metav1.OwnerReference{owner}
 	}
-	newSts, err := buildVMStorageSpec(ctx, cr)
+	newSts, err := buildVMStorageSpec(ctx, cr, poolName)
 	if err != nil {
 		return err
 	}
+	newSts.OwnerReferences = []metav1.OwnerReference{owner}
 
 	o := reconcile.StatefulSetOpts{
-		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
+		SelectorLabels: newSts.Spec.Selector.MatchLabels,
 		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
 		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
 			if cr.Spec.VMStorage.HPA != nil {
@@ -456,12 +418,11 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 			}
 		},
 	}
-	owner := cr.AsOwner()
 	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
-func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+func buildVMStorageService(cr *vmv1beta1.VMCluster, poolName string) *corev1.Service {
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
 	return build.Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
@@ -498,14 +459,15 @@ func buildVMStorageScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1bet
 	return build.VMServiceScrape(svc, cr.Spec.VMStorage, "vmbackupmanager")
 }
 
-func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	svc := buildVMStorageService(cr)
+func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, owner metav1.OwnerReference, poolName string) error {
+	svc := buildVMStorageService(cr, poolName)
+	svc.OwnerReferences = []metav1.OwnerReference{owner}
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.VMStorage != nil {
-		prevSvc = buildVMStorageService(prevCR)
+		prevSvc = buildVMStorageService(prevCR, poolName)
+		prevSvc.OwnerReferences = []metav1.OwnerReference{owner}
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VMStorage.ServiceSpec)
 	}
-	owner := cr.AsOwner()
 	if err := cr.Spec.VMStorage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
 		if additionalSvc.Name == svc.Name {
@@ -607,6 +569,17 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 		}
 	}
+	if cr.Spec.GlobalReplicationFactor != nil {
+		var globalReplicationFactorIsSet bool
+		for arg := range cr.Spec.VMSelect.ExtraArgs {
+			if strings.Contains(arg, "globalReplicationFactor") {
+				globalReplicationFactorIsSet = true
+			}
+		}
+		if !globalReplicationFactorIsSet {
+			args = append(args, fmt.Sprintf("-globalReplicationFactor=%d", *cr.Spec.GlobalReplicationFactor))
+		}
+	}
 	if cr.Spec.Downsampling.HasAnyRule() {
 		for _, rule := range cr.Spec.Downsampling.Rules {
 			for _, p := range rule.Periods {
@@ -623,29 +596,61 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-	if d := cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery); d != nil && d.Enabled {
-		storageNode := fmt.Sprintf("srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName))
-		for _, node := range cr.Spec.VMSelect.ExtraStorageNodes {
-			storageNode += "," + node.Addr
+	storageNodeFlag := build.NewFlag("-storageNode", "")
+	var baseCount int
+	d := cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery)
+	if len(cr.Spec.Pools) == 0 {
+		if d != nil && d.Enabled {
+			storageNodeFlag.Add(fmt.Sprintf("srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)), 0)
+			baseCount = 1
+		} else {
+			storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
+			for idx, i := range storageNodeIds {
+				storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
+			}
+			baseCount = len(storageNodeIds)
 		}
-		args = append(args, fmt.Sprintf("-storageNode=%s", storageNode))
+	}
+
+	// Pool storage nodes — each pool is exposed as a named storage group.
+	poolCount := baseCount
+	for _, pool := range cr.Spec.Pools {
+		poolStr, err := poolStorage(cr, &pool)
+		if err != nil {
+			return nil, fmt.Errorf("pool %q: cannot build storage spec: %w", pool.Name, err)
+		}
+		if poolStr == nil {
+			continue
+		}
+		poolStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, pool.Name)
+		if d != nil && d.Enabled {
+			storageNodeFlag.Add(fmt.Sprintf("%s/srv+%s", pool.Name, storageNodeSRVAddr(poolStorageName, cr.Namespace, poolStr.VMSelectPort, cr.Spec.ClusterDomainName)), poolCount)
+			poolCount++
+		} else {
+			for _, i := range vmv1beta1.AvailableStorageNodeIDsFor(poolStr, vmv1beta1.ClusterComponentSelect) {
+				addr := vmv1beta1.PodDNSAddress(poolStorageName, i, cr.Namespace, poolStr.VMSelectPort, cr.Spec.ClusterDomainName)
+				storageNodeFlag.Add(fmt.Sprintf("%s/%s", pool.Name, addr), poolCount)
+				poolCount++
+			}
+		}
+		if pool.ReplicationFactor != nil {
+			args = append(args, fmt.Sprintf("-replicationFactor=%s:%d", pool.Name, *pool.ReplicationFactor))
+		}
+	}
+
+	if d != nil && d.Enabled {
 		if d.Interval != "" {
 			args = append(args, fmt.Sprintf("-storageNode.discoveryInterval=%s", d.Interval))
 		}
 		if d.Filter != "" {
 			args = append(args, fmt.Sprintf("-storageNode.filter=%s", d.Filter))
 		}
-	} else {
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
-		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
-		}
-		for i, node := range cr.Spec.VMSelect.ExtraStorageNodes {
-			storageNodeFlag.Add(node.Addr, i+len(storageNodeIds))
-		}
-		args = build.AppendFlagsToArgs(args, len(storageNodeIds)+len(cr.Spec.VMSelect.ExtraStorageNodes), storageNodeFlag)
 	}
+
+	for i, node := range cr.Spec.VMSelect.ExtraStorageNodes {
+		storageNodeFlag.Add(node.Addr, poolCount+i)
+	}
+	args = build.AppendFlagsToArgs(args, poolCount+len(cr.Spec.VMSelect.ExtraStorageNodes), storageNodeFlag)
 
 	// selectNode arg add for deployments without HPA
 	// HPA leads to rolling restart for vmselect statefulset in case of replicas count changes
@@ -775,6 +780,9 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMSelect.PodDisruptionBudget == nil {
+		return nil
+	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMSelect.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
@@ -787,6 +795,9 @@ func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient c
 }
 
 func createOrUpdateNetworkPolicyForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.VMSelect.NetworkPolicy == nil {
+		return nil
+	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	np := build.NetworkPolicy(b, cr.Spec.VMSelect.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
@@ -798,23 +809,26 @@ func createOrUpdateNetworkPolicyForVMSelect(ctx context.Context, rclient client.
 	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
 }
 
-func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
-
-	podSpec, err := makePodSpecForVMInsert(cr)
+func genVMInsertSpec(cr *vmv1beta1.VMCluster, poolName string) (*appsv1.Deployment, error) {
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
+	podSpec, err := makePodSpecForVMInsert(cr, poolName)
 	if err != nil {
 		return nil, err
+	}
+	for k, v := range b.SelectorLabels() {
+		podSpec.Labels[k] = v
 	}
 
 	strategyType := appsv1.RollingUpdateDeploymentStrategyType
 	if cr.Spec.VMInsert.UpdateStrategy != nil {
 		strategyType = *cr.Spec.VMInsert.UpdateStrategy
 	}
-	commonName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+	commonName := b.PrefixedName()
 	stsSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            commonName,
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentInsert),
+			Labels:          b.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
@@ -827,7 +841,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 				RollingUpdate: cr.Spec.VMInsert.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentInsert),
+				MatchLabels: b.SelectorLabels(),
 			},
 			Template: *podSpec,
 		},
@@ -836,7 +850,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 	return stsSpec, nil
 }
 
-func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster, poolName string) (*corev1.PodTemplateSpec, error) {
 	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMInsert.Port),
@@ -857,21 +871,53 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 
 	storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-	if d := cr.Spec.VMInsert.Discovery.OrDefault(cr.Spec.Discovery); d != nil && d.Enabled {
-		args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)))
+	if poolName != "" {
+		storageName = cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, poolName)
+	}
+	d := cr.Spec.VMInsert.Discovery.OrDefault(cr.Spec.Discovery)
+	if len(cr.Spec.Pools) == 0 {
+		if d != nil && d.Enabled {
+			args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName)))
+		} else {
+			storageNodeFlag := build.NewFlag("-storageNode", "")
+			storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
+			for idx, i := range storageNodeIds {
+				storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
+			}
+			args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
+		}
+	}
+
+	// Pool storage nodes for pools using the shared vminsert (no dedicated insert).
+	for _, pool := range cr.Spec.Pools {
+		if pool.VMInsert != nil {
+			continue
+		}
+		poolStr, err := poolStorage(cr, &pool)
+		if err != nil {
+			return nil, fmt.Errorf("pool %q: cannot build storage spec: %w", pool.Name, err)
+		}
+		if poolStr == nil {
+			continue
+		}
+		poolStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, pool.Name)
+		if d != nil && d.Enabled {
+			args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(poolStorageName, cr.Namespace, poolStr.VMInsertPort, cr.Spec.ClusterDomainName)))
+		} else {
+			for _, i := range vmv1beta1.AvailableStorageNodeIDsFor(poolStr, vmv1beta1.ClusterComponentInsert) {
+				addr := vmv1beta1.PodDNSAddress(poolStorageName, i, cr.Namespace, poolStr.VMInsertPort, cr.Spec.ClusterDomainName)
+				args = append(args, fmt.Sprintf("-storageNode=%s", addr))
+			}
+		}
+	}
+
+	if d != nil && d.Enabled {
 		if d.Interval != "" {
 			args = append(args, fmt.Sprintf("-storageNode.discoveryInterval=%s", d.Interval))
 		}
 		if d.Filter != "" {
 			args = append(args, fmt.Sprintf("-storageNode.filter=%s", d.Filter))
 		}
-	} else {
-		storageNodeFlag := build.NewFlag("-storageNode", "")
-		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
-		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
-		}
-		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
 	}
 
 	if cr.Spec.ReplicationFactor != nil {
@@ -976,7 +1022,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	for i := range cr.Spec.VMInsert.TopologySpreadConstraints {
 		if cr.Spec.VMInsert.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VMInsert.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentInsert),
+				MatchLabels: build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName).SelectorLabels(),
 			}
 		}
 	}
@@ -997,49 +1043,60 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	return vmInsertPodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
+	if cr.Spec.VMInsert.PodDisruptionBudget == nil {
+		return nil
+	}
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentInsert, poolName)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
-func createOrUpdateNetworkPolicyForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+func createOrUpdateNetworkPolicyForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
+	if cr.Spec.VMInsert.NetworkPolicy == nil {
+		return nil
+	}
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
 	np := build.NetworkPolicy(b, cr.Spec.VMInsert.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentInsert, poolName)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMInsert.NetworkPolicy)
 	}
 	owner := cr.AsOwner()
 	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
 }
 
-func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
-
-	commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-	podSpec, err := makePodSpecForVMStorage(ctx, cr)
+func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster, poolName string) (*appsv1.StatefulSet, error) {
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
+	commonName := b.PrefixedName()
+	podSpec, err := makePodSpecForVMStorage(ctx, cr, poolName)
 	if err != nil {
 		return nil, err
+	}
+	// Merge selector labels into pod template so the STS selector matches its pods.
+	// For pools this adds the pool label required to keep per-pool selectors disjoint.
+	for k, v := range b.SelectorLabels() {
+		podSpec.Labels[k] = v
 	}
 
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            commonName,
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
+			Labels:          b.FinalLabels(),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
+				MatchLabels: b.SelectorLabels(),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VMStorage.RollingUpdateStrategy,
@@ -1061,7 +1118,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	return stsSpec, nil
 }
 
-func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, poolName string) (*corev1.PodTemplateSpec, error) {
 	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
@@ -1071,7 +1128,9 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
-	if cr.Spec.RetentionPeriod != "" {
+	if rp := cr.Spec.VMStorage.RetentionPeriod; rp != "" {
+		args = append(args, fmt.Sprintf("-retentionPeriod=%s", rp))
+	} else if cr.Spec.RetentionPeriod != "" {
 		args = append(args, fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod))
 	}
 
@@ -1258,7 +1317,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	for i := range cr.Spec.VMStorage.TopologySpreadConstraints {
 		if cr.Spec.VMStorage.TopologySpreadConstraints[i].LabelSelector == nil {
 			cr.Spec.VMStorage.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
+				MatchLabels: build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName).SelectorLabels(),
 			}
 		}
 	}
@@ -1279,35 +1338,41 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	return vmStoragePodSpec, nil
 }
 
-func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
+	if cr.Spec.VMStorage.PodDisruptionBudget == nil {
+		return nil
+	}
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMStorage.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentStorage, poolName)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
 	return reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 }
 
-func createOrUpdateNetworkPolicyForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+func createOrUpdateNetworkPolicyForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
+	if cr.Spec.VMStorage.NetworkPolicy == nil {
+		return nil
+	}
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
 	np := build.NetworkPolicy(b, cr.Spec.VMStorage.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentStorage, poolName)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMStorage.NetworkPolicy)
 	}
 	owner := cr.AsOwner()
 	return reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner)
 }
 
-func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -1315,8 +1380,8 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newHPA := build.HPA(b, targetRef, cr.Spec.VMInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.HPA != nil {
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentInsert, poolName)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMInsert.HPA)
 	}
 	owner := cr.AsOwner()
@@ -1343,12 +1408,12 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
 }
 
-func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
 	hpa := cr.Spec.VMStorage.HPA
 	if hpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1356,19 +1421,19 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	}
 	defaultHPA := build.HPA(b, targetRef, hpa)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMStorage.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.HPA != nil {
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentStorage, poolName)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMStorage.HPA)
 	}
 	owner := cr.AsOwner()
 	return reconcile.HPA(ctx, rclient, defaultHPA, prevHPA, &owner)
 }
 
-func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
 	if cr.Spec.VMInsert.VPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentInsert, poolName)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -1377,7 +1442,7 @@ func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	newVPA := build.VPA(b, targetRef, cr.Spec.VMInsert.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentInsert, poolName)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMInsert.VPA)
 	}
 	owner := cr.AsOwner()
@@ -1404,12 +1469,12 @@ func createOrUpdateVMSelectVPA(ctx context.Context, rclient client.Client, cr, p
 	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
-func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, poolName string) error {
 	vpa := cr.Spec.VMStorage.VPA
 	if vpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := build.NewPoolBuilder(cr, vmv1beta1.ClusterComponentStorage, poolName)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1418,7 +1483,7 @@ func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	newVPA := build.VPA(b, targetRef, vpa)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = build.NewPoolBuilder(prevCR, vmv1beta1.ClusterComponentStorage, poolName)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMStorage.VPA)
 	}
 	owner := cr.AsOwner()
@@ -1431,32 +1496,60 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	newInsert := cr.Spec.VMInsert
 	newLB := cr.Spec.RequestsLoadBalancer
 
+	hasPools := len(cr.Spec.Pools) > 0
+	hasPoolInsert := vmv1beta1.HasAnyPoolInsert(cr.Spec.Pools)
+
 	cc := finalize.NewChildCleaner()
-	if newStorage == nil {
+
+	keepStorageResources := func(name string, storage *vmv1beta1.VMStorage) {
+		cc.KeepService(name)
+		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
+			cc.KeepService(storage.ServiceSpec.NameOrDefault(name))
+		}
+		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
+			cc.KeepScrape(name)
+		}
+		if storage.PodDisruptionBudget != nil {
+			cc.KeepPDB(name)
+		}
+		if storage.HPA != nil {
+			cc.KeepHPA(name)
+		}
+		if storage.VPA != nil {
+			cc.KeepVPA(name)
+		}
+		if storage.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(name)
+		}
+	}
+	keepInsertResources := func(name, scrapeName string, insert *vmv1beta1.VMInsert) {
+		cc.KeepService(name)
+		if insert.ServiceSpec != nil && !insert.ServiceSpec.UseAsDefault {
+			cc.KeepService(insert.ServiceSpec.NameOrDefault(name))
+		}
+		if !ptr.Deref(insert.DisableSelfServiceScrape, false) {
+			cc.KeepScrape(scrapeName)
+		}
+		if insert.PodDisruptionBudget != nil {
+			cc.KeepPDB(name)
+		}
+		if insert.HPA != nil {
+			cc.KeepHPA(name)
+		}
+		if insert.VPA != nil {
+			cc.KeepVPA(name)
+		}
+		if insert.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(name)
+		}
+	}
+
+	if newStorage == nil && !hasPools {
 		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
 		}
-	} else {
-		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		if newStorage.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if newStorage.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if newStorage.HPA != nil {
-			cc.KeepHPA(commonName)
-		}
-		if newStorage.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		if !ptr.Deref(newStorage.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(commonName)
-		}
-		cc.KeepService(commonName)
-		if newStorage.ServiceSpec != nil && !newStorage.ServiceSpec.UseAsDefault {
-			cc.KeepService(newStorage.ServiceSpec.NameOrDefault(commonName))
-		}
+	} else if newStorage != nil && !hasPools {
+		keepStorageResources(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), newStorage)
 	}
 
 	if newSelect == nil {
@@ -1491,36 +1584,18 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 
-	if newInsert == nil {
+	if newInsert == nil && !hasPoolInsert {
 		if err := finalize.OnInsertDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned insert resources: %w", err)
 		}
-	} else {
+	} else if newInsert != nil && !hasPoolInsert {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		if newInsert.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if newInsert.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if newInsert.HPA != nil {
-			cc.KeepHPA(commonName)
-		}
-		if newInsert.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		cc.KeepService(commonName)
-		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {
-			cc.KeepService(newInsert.ServiceSpec.NameOrDefault(commonName))
-		}
 		scrapeName := commonName
 		if newLB.Enabled && !newLB.DisableInsertBalancing {
 			scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
 			cc.KeepService(scrapeName)
 		}
-		if !ptr.Deref(newInsert.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(scrapeName)
-		}
+		keepInsertResources(commonName, scrapeName, newInsert)
 	}
 	if newLB.Enabled {
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
@@ -1553,6 +1628,53 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			return fmt.Errorf("cannot remove serviceaccount: %w", err)
 		}
 	}
+
+	// Pool resource cleanup: keep active pool services and remove orphaned pool StatefulSets/Deployments.
+	keepStorageSTSNames := sets.New[string]()
+	keepInsertDeploymentNames := sets.New[string]()
+	if newStorage != nil && !hasPools {
+		keepStorageSTSNames.Insert(cr.PrefixedName(vmv1beta1.ClusterComponentStorage))
+	}
+	if newInsert != nil && !hasPoolInsert {
+		keepInsertDeploymentNames.Insert(cr.PrefixedName(vmv1beta1.ClusterComponentInsert))
+	}
+	for _, pool := range cr.Spec.Pools {
+		poolStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, pool.Name)
+		poolStorageItem, err := poolStorage(cr, &pool)
+		if err != nil {
+			return fmt.Errorf("pool %q: cannot resolve storage: %w", pool.Name, err)
+		}
+		if poolStorageItem != nil {
+			keepStorageSTSNames.Insert(poolStorageName)
+			keepStorageResources(poolStorageName, poolStorageItem)
+		}
+		if pool.VMInsert != nil {
+			poolInsertName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentInsert, pool.Name)
+			keepInsertDeploymentNames.Insert(poolInsertName)
+			poolInsertItem, err := poolInsert(cr, pool)
+			if err != nil {
+				return fmt.Errorf("pool %q: cannot resolve insert: %w", pool.Name, err)
+			}
+			if poolInsertItem != nil {
+				scrapeName := poolInsertName
+				if newLB.Enabled && !newLB.DisableInsertBalancing {
+					scrapeName = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
+					cc.KeepService(scrapeName)
+					cc.KeepService(cr.PrefixedName(vmv1beta1.ClusterComponentInsert))
+				}
+				keepInsertResources(poolInsertName, scrapeName, poolInsertItem)
+			}
+		}
+	}
+	storageBuilder := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, storageBuilder, keepStorageSTSNames, true); err != nil {
+		return fmt.Errorf("cannot remove orphaned pool storage StatefulSets: %w", err)
+	}
+	insertBuilder := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, insertBuilder, keepInsertDeploymentNames, true); err != nil {
+		return fmt.Errorf("cannot remove orphaned pool insert Deployments: %w", err)
+	}
+
 	return cc.RemoveOrphaned(ctx, rclient, cr)
 }
 
@@ -1581,9 +1703,18 @@ func buildVMAuthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 			selectProto = "https"
 		}
 	}
-	if cr.Spec.VMInsert != nil {
-		insertPort = cr.Spec.VMInsert.Port
-		if cr.Spec.VMInsert.UseTLS() {
+	insert := cr.Spec.VMInsert
+	for i := range cr.Spec.Pools {
+		if cr.Spec.Pools[i].VMInsert != nil {
+			if resolved, err := cr.ResolvePoolVMInsert(&cr.Spec.Pools[i]); err == nil {
+				insert = resolved
+			}
+			break
+		}
+	}
+	if insert != nil {
+		insertPort = insert.Port
+		if insert.UseTLS() {
 			insertProto = "https"
 		}
 	}
@@ -1788,15 +1919,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if err := createOrUpdateVMAuthLBService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
-		}
+	if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
 	}
-	if cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
-		if err := createOrUpdateNetworkPolicyForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot create or update NetworkPolicy for vmauth lb: %w", err)
-		}
+	if err := createOrUpdateNetworkPolicyForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
+		return fmt.Errorf("cannot create or update NetworkPolicy for vmauth lb: %w", err)
 	}
 	if err := createOrUpdateVMAuthLBHPA(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot create or update HPA for vmauth lb: %w", err)
@@ -1834,6 +1961,9 @@ func storageNodeSRVAddr(svcName, namespace, port, clusterDomain string) string {
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget == nil {
+		return nil
+	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
@@ -1846,6 +1976,9 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 }
 
 func createOrUpdateNetworkPolicyForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
+	if cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy == nil {
+		return nil
+	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	np := build.NetworkPolicy(b, cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy

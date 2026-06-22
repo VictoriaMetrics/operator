@@ -121,7 +121,7 @@ func TestValidateVMDistributed(t *testing.T) {
 					{
 						Name:     "zone-1",
 						VMSingle: &VMDistributedZoneSingle{Name: "single-a"},
-						VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpec{
+						VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpecBase{
 							VMInsert: &vmv1beta1.VMInsert{},
 						}},
 					},
@@ -143,7 +143,7 @@ func TestValidateVMDistributed(t *testing.T) {
 					VMSingle: &VMDistributedZoneSingle{
 						Spec: &vmv1beta1.VMSingleSpec{},
 					},
-					VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpec{
+					VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpecBase{
 						VMInsert: &vmv1beta1.VMInsert{},
 					}},
 				},
@@ -176,6 +176,27 @@ func TestValidateVMDistributed(t *testing.T) {
 			},
 		},
 		isErr: true,
+	})
+
+	// backendType=VMCluster with a valid shared vminsert/vmselect - no error
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				ZoneCommon: VMDistributedZoneCommon{
+					VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpecBase{
+						VMInsert: &vmv1beta1.VMInsert{},
+						VMSelect: &vmv1beta1.VMSelect{},
+					}},
+				},
+				Zones: []VMDistributedZone{
+					{Name: "zone-1"},
+				},
+			},
+		},
+		isErr: false,
 	})
 }
 

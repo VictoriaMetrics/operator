@@ -8862,6 +8862,11 @@ spec:
                                         description: Namespace of the target Kubernetes
                                           object
                                         type: string
+                                      pool:
+                                        description: |-
+                                          Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                          (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                        type: string
                                       useExtraService:
                                         description: |-
                                           UseExtraService instructs the operator to prefer the CR's additional service
@@ -8872,6 +8877,11 @@ spec:
                                     - namespace
                                     type: object
                                   type: array
+                                pool:
+                                  description: |-
+                                    Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                    (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                  type: string
                                 useExtraService:
                                   description: |-
                                     UseExtraService instructs the operator to prefer the CR's additional service
@@ -11450,6 +11460,11 @@ spec:
                                             description: Namespace of the target Kubernetes
                                               object
                                             type: string
+                                          pool:
+                                            description: |-
+                                              Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                              (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                            type: string
                                           useExtraService:
                                             description: |-
                                               UseExtraService instructs the operator to prefer the CR's additional service
@@ -11460,6 +11475,11 @@ spec:
                                         - namespace
                                         type: object
                                       type: array
+                                    pool:
+                                      description: |-
+                                        Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                        (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                      type: string
                                     useExtraService:
                                       description: |-
                                         UseExtraService instructs the operator to prefer the CR's additional service
@@ -41130,6 +41150,11 @@ spec:
                               namespace:
                                 description: Namespace of the target Kubernetes object
                                 type: string
+                              pool:
+                                description: |-
+                                  Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                  (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                type: string
                               useExtraService:
                                 description: |-
                                   UseExtraService instructs the operator to prefer the CR's additional service
@@ -41140,6 +41165,11 @@ spec:
                             - namespace
                             type: object
                           type: array
+                        pool:
+                          description: |-
+                            Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                            (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                          type: string
                         useExtraService:
                           description: |-
                             UseExtraService instructs the operator to prefer the CR's additional service
@@ -43687,6 +43717,11 @@ spec:
                                     description: Namespace of the target Kubernetes
                                       object
                                     type: string
+                                  pool:
+                                    description: |-
+                                      Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                      (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                    type: string
                                   useExtraService:
                                     description: |-
                                       UseExtraService instructs the operator to prefer the CR's additional service
@@ -43697,6 +43732,11 @@ spec:
                                 - namespace
                                 type: object
                               type: array
+                            pool:
+                              description: |-
+                                Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                              type: string
                             useExtraService:
                               description: |-
                                 UseExtraService instructs the operator to prefer the CR's additional service
@@ -44841,6 +44881,16 @@ spec:
                       type: object
                     type: array
                 type: object
+              globalReplicationFactor:
+                description: |-
+                  GlobalReplicationFactor sets vmselect's -globalReplicationFactor, i.e. how many copies of
+                  every ingested sample are available across distinct storage groups (see Pools). vmselect
+                  continues returning full responses when up to GlobalReplicationFactor-1 groups are
+                  temporarily unavailable. Only meaningful when Pools is set and samples are actually
+                  replicated across pools (e.g. via a remote-write fan-out upstream of the cluster).
+                  See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#vmstorage-groups-at-vmselect
+                format: int32
+                type: integer
               imagePullSecrets:
                 description: |-
                   ImagePullSecrets An optional list of references to secrets in the same namespace
@@ -44935,6 +44985,57 @@ spec:
                   Paused If set to true all actions on the underlying managed objects are not
                   going to be performed, except for delete actions.
                 type: boolean
+              pools:
+                description: |-
+                  Pools defines named groups of vmstorage (and optionally vminsert) components.
+                  Each pool gets its own StatefulSet and headless Service named <component>-<cluster>-<pool>.
+                  Top-level vmstorage and vminsert specs act as defaults; pool specs override them field-by-field.
+                  vmselect queries all pools using the pool name as a storage group name (-storageNode=<pool>/<addr>).
+                  When pools are defined the top-level vmstorage is not deployed; pools replace it entirely.
+                  The top-level vminsert is deployed as a shared insert group across all pools only when no pool
+                  defines its own vminsert; as soon as any pool has a dedicated vminsert the top-level one is skipped.
+                items:
+                  description: |-
+                    VMClusterPool defines a named group of vmstorage (and optionally vminsert) components
+                    within a VMCluster. Each pool gets its own StatefulSet and headless Service.
+                  properties:
+                    name:
+                      description: |-
+                        Name is the unique identifier for this pool within the cluster.
+                        Used as a suffix for generated resource names (e.g. vmstorage-<cluster>-<pool>) and as a
+                        storage group name in vmselect. Kept short since the cluster name itself isn't length-limited,
+                        and generated StatefulSet/Deployment names must still fit Kubernetes' 63-character limit.
+                        Must be a lowercase alphanumeric DNS label; hyphens allowed in the interior.
+                      maxLength: 16
+                      pattern: ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$
+                      type: string
+                    replicationFactor:
+                      description: |-
+                        ReplicationFactor overrides the cluster-level replicationFactor for this pool's storage
+                        group at vmselect, rendered as -replicationFactor=<name>:<replicationFactor>. Pools
+                        without an override use the cluster-level ReplicationFactor, if set.
+                      format: int32
+                      type: integer
+                    vminsert:
+                      description: |-
+                        VMInsert defines a dedicated vminsert for this pool.
+                        Each field overrides the corresponding field in the top-level vminsert spec.
+                        When nil, the top-level shared vminsert writes to this pool's storage nodes as well.
+                      x-kubernetes-preserve-unknown-fields: true
+                    vmstorage:
+                      description: |-
+                        VMStorage defines pool-specific vmstorage configuration.
+                        Each field overrides the corresponding field in the top-level vmstorage spec.
+                        Fields absent here inherit from the top-level vmstorage.
+                        RetentionPeriod on VMStorage overrides the cluster-level retentionPeriod for this pool.
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               replicationFactor:
                 description: |-
                   ReplicationFactor defines how many copies of data make among
@@ -49965,6 +50066,12 @@ spec:
                       - retention
                       type: object
                     type: array
+                  retentionPeriod:
+                    description: |-
+                      RetentionPeriod overrides the cluster-level retentionPeriod for this storage instance.
+                      Useful when using Pools to implement multi-retention setups.
+                    pattern: ^[0-9]+(h|d|w|y)?$
+                    type: string
                   revisionHistoryLimitCount:
                     description: |-
                       The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -51442,6 +51549,11 @@ spec:
                                         description: Namespace of the target Kubernetes
                                           object
                                         type: string
+                                      pool:
+                                        description: |-
+                                          Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                          (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                        type: string
                                       useExtraService:
                                         description: |-
                                           UseExtraService instructs the operator to prefer the CR's additional service
@@ -51452,6 +51564,11 @@ spec:
                                     - namespace
                                     type: object
                                   type: array
+                                pool:
+                                  description: |-
+                                    Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                    (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                  type: string
                                 useExtraService:
                                   description: |-
                                     UseExtraService instructs the operator to prefer the CR's additional service
@@ -54030,6 +54147,11 @@ spec:
                                             description: Namespace of the target Kubernetes
                                               object
                                             type: string
+                                          pool:
+                                            description: |-
+                                              Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                              (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                            type: string
                                           useExtraService:
                                             description: |-
                                               UseExtraService instructs the operator to prefer the CR's additional service
@@ -54040,6 +54162,11 @@ spec:
                                         - namespace
                                         type: object
                                       type: array
+                                    pool:
+                                      description: |-
+                                        Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                        (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                      type: string
                                     useExtraService:
                                       description: |-
                                         UseExtraService instructs the operator to prefer the CR's additional service
@@ -84576,6 +84703,11 @@ spec:
                               namespace:
                                 description: Namespace of the target Kubernetes object
                                 type: string
+                              pool:
+                                description: |-
+                                  Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                                  (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                                type: string
                               useExtraService:
                                 description: |-
                                   UseExtraService instructs the operator to prefer the CR's additional service
@@ -84586,6 +84718,11 @@ spec:
                             - namespace
                             type: object
                           type: array
+                        pool:
+                          description: |-
+                            Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+                            (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+                          type: string
                         useExtraService:
                           description: |-
                             UseExtraService instructs the operator to prefer the CR's additional service

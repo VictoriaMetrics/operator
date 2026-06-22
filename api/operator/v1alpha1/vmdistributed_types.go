@@ -185,7 +185,7 @@ type VMDistributedZoneCluster struct {
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Spec vmv1beta1.VMClusterSpec `json:"spec"`
+	Spec vmv1beta1.VMClusterSpecBase `json:"spec"`
 }
 
 // +k8s:openapi-gen=true
@@ -517,7 +517,7 @@ func (cr *VMDistributed) Validate() error {
 	hasCommonVMInsert := cr.Spec.ZoneCommon.VMCluster.Spec.VMInsert != nil
 	hasCommonVMSelect := cr.Spec.ZoneCommon.VMCluster.Spec.VMSelect != nil
 	hasCommonVMSingle := cr.Spec.ZoneCommon.VMSingle != nil && (cr.Spec.ZoneCommon.VMSingle.Name != "" || cr.Spec.ZoneCommon.VMSingle.Spec != nil)
-	hasCommonVMCluster := cr.Spec.ZoneCommon.VMCluster.Name != "" || !equality.Semantic.DeepEqual(cr.Spec.ZoneCommon.VMCluster.Spec, vmv1beta1.VMClusterSpec{})
+	hasCommonVMCluster := cr.Spec.ZoneCommon.VMCluster.Name != "" || !equality.Semantic.DeepEqual(cr.Spec.ZoneCommon.VMCluster.Spec, vmv1beta1.VMClusterSpecBase{})
 	if isVMSingle && hasCommonVMCluster {
 		return fmt.Errorf("backendType=VMSingle is incompatible with zoneCommon.vmcluster configuration")
 	}
@@ -534,7 +534,7 @@ func (cr *VMDistributed) Validate() error {
 		}
 		zones.Insert(zone.Name)
 		if isVMSingle {
-			if zone.VMCluster.Name != "" || !equality.Semantic.DeepEqual(zone.VMCluster.Spec, vmv1beta1.VMClusterSpec{}) {
+			if zone.VMCluster.Name != "" || !equality.Semantic.DeepEqual(zone.VMCluster.Spec, vmv1beta1.VMClusterSpecBase{}) {
 				return fmt.Errorf("spec.zones[%d]: backendType=VMSingle is incompatible with vmcluster configuration", i)
 			}
 			singleName := zone.VMSingleName(cr)

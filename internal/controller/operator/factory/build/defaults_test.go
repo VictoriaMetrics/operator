@@ -257,12 +257,14 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 		"VMCluster/VMSelect": func(o opts) string {
 			cr := &vmv1beta1.VMCluster{
 				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: o.clusterVersion,
-					VMSelect: &vmv1beta1.VMSelect{
-						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+					VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+						ClusterVersion: o.clusterVersion,
+						VMSelect: &vmv1beta1.VMSelect{
+							ComponentVersion: o.componentVersion,
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -308,12 +310,14 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 		"VMCluster/VMInsert": func(o opts) string {
 			cr := &vmv1beta1.VMCluster{
 				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: o.clusterVersion,
-					VMInsert: &vmv1beta1.VMInsert{
-						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+					VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+						ClusterVersion: o.clusterVersion,
+						VMInsert: &vmv1beta1.VMInsert{
+							ComponentVersion: o.componentVersion,
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -325,12 +329,14 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 		"VMCluster/VMStorage": func(o opts) string {
 			cr := &vmv1beta1.VMCluster{
 				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: o.clusterVersion,
-					VMStorage: &vmv1beta1.VMStorage{
-						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+					VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+						ClusterVersion: o.clusterVersion,
+						VMStorage: &vmv1beta1.VMStorage{
+							ComponentVersion: o.componentVersion,
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -453,14 +459,16 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 		"VMCluster/RequestsLoadBalancer": func(o opts) string {
 			cr := &vmv1beta1.VMCluster{
 				Spec: vmv1beta1.VMClusterSpec{
-					ClusterVersion: o.clusterVersion,
-					RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
-						Enabled: true,
-						Spec: vmv1beta1.VMAuthLoadBalancerSpec{
-							ComponentVersion: o.componentVersion,
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								Image: vmv1beta1.Image{
-									Tag: o.imageTag,
+					VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+						ClusterVersion: o.clusterVersion,
+						RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+							Enabled: true,
+							Spec: vmv1beta1.VMAuthLoadBalancerSpec{
+								ComponentVersion: o.componentVersion,
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									Image: vmv1beta1.Image{
+										Tag: o.imageTag,
+									},
 								},
 							},
 						},

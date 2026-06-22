@@ -2493,7 +2493,7 @@ Operator will preserve `annotations`, but any changes to it will be ignored. `la
 
 - New CRD type `VMNodeScrape`, it's useful for kubernetes nodes exporters scraping. See details at <https://github.com/VictoriaMetrics/operator/issues/125>.
 - `VMAlert` support multiple notifiers with `notifiers` spec.  See details at <https://github.com/VictoriaMetrics/operator/issues/117>.
-- `VMRule` support `concurrency` for group execution, see detail at vmalert docs  <https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert/#groups>.
+- `VMRule` support `concurrency` for group execution, see detail at vmalert docs  <https://docs.victoriametrics.com/victoriametrics/vmalert/#groups>.
 
 ### Fixes
 

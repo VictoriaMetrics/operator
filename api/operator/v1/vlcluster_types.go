@@ -866,14 +866,14 @@ func (cr *VLCluster) IsOwnsServiceAccount() bool {
 
 // AsURL implements stub for interface.
 // nolint:dupl,lll
-func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string {
+func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) (string, error) {
 	var defaultPort string
 	var svcSpec *vmv1beta1.AdditionalServiceSpec
 	var extraArgs map[string]string
 	switch kind {
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.VLSelect == nil {
-			return ""
+			return "", fmt.Errorf("vlcluster %q has no spec.vlSelect configured", cr.Name)
 		}
 		defaultPort = "9471"
 		if cr.Spec.VLSelect.Port != "" {
@@ -883,7 +883,7 @@ func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		extraArgs = cr.Spec.VLSelect.ExtraArgs
 	case vmv1beta1.ClusterComponentInsert:
 		if cr.Spec.VLInsert == nil {
-			return ""
+			return "", fmt.Errorf("vlcluster %q has no spec.vlInsert configured", cr.Name)
 		}
 		defaultPort = "9481"
 		if cr.Spec.VLInsert.Port != "" {
@@ -893,7 +893,7 @@ func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		extraArgs = cr.Spec.VLInsert.ExtraArgs
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.VLStorage == nil {
-			return ""
+			return "", fmt.Errorf("vlcluster %q has no spec.vlStorage configured", cr.Name)
 		}
 		defaultPort = "9491"
 		if cr.Spec.VLStorage.Port != "" {
@@ -905,12 +905,16 @@ func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port), nil
 }
 
 // GetRemoteWriteURL returns the insert URL for VLCluster (used by VLDistributed)
 func (cr *VLCluster) GetRemoteWriteURL() string {
-	return cr.AsURL(vmv1beta1.ClusterComponentInsert, false) + "/insert/native"
+	url, err := cr.AsURL(vmv1beta1.ClusterComponentInsert, false)
+	if err != nil {
+		return ""
+	}
+	return url + "/insert/native"
 }
 
 // +kubebuilder:object:root=true

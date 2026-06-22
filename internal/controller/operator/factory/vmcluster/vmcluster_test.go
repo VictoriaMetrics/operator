@@ -13,6 +13,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,6 +29,16 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+// containerArgs returns the Args of the named container in spec, or nil if absent.
+func containerArgs(spec corev1.PodSpec, name string) []string {
+	for _, c := range spec.Containers {
+		if c.Name == name {
+			return c.Args
+		}
+	}
+	return nil
+}
 
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
@@ -858,6 +869,198 @@ func TestCreateOrUpdate(t *testing.T) {
 				"managed-by":                  "vm-operator",
 			}, svc.Labels)
 		}})
+
+	// pools: two pools with shared vminsert — pool STSes get pool label, instance label stays the cluster name, top-level vmstorage not created
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "cluster-1"},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				Pools: []vmv1beta1.VMClusterPool{
+					{Name: "hot"},
+					{Name: "cold"},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			for _, poolName := range []string{"hot", "cold"} {
+				stsName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, poolName)
+				var sts appsv1.StatefulSet
+				assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: stsName}, &sts), "pool STS %s should exist", stsName)
+				// instance label must be the cluster name, not cluster-pool
+				assert.Equal(t, cr.Name, sts.Labels["app.kubernetes.io/instance"], "instance label for pool %s", poolName)
+				// STS selector must include the pool label so per-pool selectors are disjoint
+				assert.Equal(t, poolName, sts.Spec.Selector.MatchLabels["app.kubernetes.io/pool"], "selector pool label for pool %s", poolName)
+				// pod template must also carry the pool label so the STS selector matches its pods
+				assert.Equal(t, poolName, sts.Spec.Template.Labels["app.kubernetes.io/pool"], "pod template pool label for pool %s", poolName)
+			}
+			// top-level vmstorage must NOT be created when pools are defined
+			var topSts appsv1.StatefulSet
+			err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &topSts)
+			assert.True(t, k8serrors.IsNotFound(err), "top-level vmstorage STS must not exist when pools are defined")
+			// shared vminsert must still be created (no pool has a dedicated insert)
+			var dep appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &dep))
+			// shared vminsert must route to both pools' own storage nodes
+			args := containerArgs(dep.Spec.Template.Spec, "vminsert")
+			hotStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, "hot")
+			coldStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, "cold")
+			var hasHot, hasCold bool
+			for _, a := range args {
+				if !strings.HasPrefix(a, "-storageNode=") {
+					continue
+				}
+				hasHot = hasHot || strings.Contains(a, hotStorageName)
+				hasCold = hasCold || strings.Contains(a, coldStorageName)
+			}
+			assert.True(t, hasHot, "vminsert args should reference hot pool storage, got %v", args)
+			assert.True(t, hasCold, "vminsert args should reference cold pool storage, got %v", args)
+		},
+	})
+
+	// pools: pool with dedicated vminsert — pool insert created, top-level vminsert skipped
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "cluster-1"},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				Pools: []vmv1beta1.VMClusterPool{
+					{
+						Name: "hot",
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+						},
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			// pool insert must exist with pool-scoped name
+			poolInsertName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentInsert, "hot")
+			var poolDep appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: poolInsertName}, &poolDep))
+			assert.Equal(t, cr.Name, poolDep.Labels["app.kubernetes.io/instance"])
+			assert.Equal(t, "hot", poolDep.Labels["app.kubernetes.io/pool"])
+			// a pool's dedicated vminsert must route to its own storage nodes, not the
+			// (nonexistent) top-level storage StatefulSet
+			args := containerArgs(poolDep.Spec.Template.Spec, "vminsert")
+			hotStorageName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, "hot")
+			baseStorageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+			var hasHot bool
+			for _, a := range args {
+				if !strings.HasPrefix(a, "-storageNode=") {
+					continue
+				}
+				assert.False(t, strings.Contains(a, baseStorageName) && !strings.Contains(a, hotStorageName),
+					"pool vminsert must not reference the top-level storage name, got %q", a)
+				hasHot = hasHot || strings.Contains(a, hotStorageName)
+			}
+			assert.True(t, hasHot, "pool vminsert args should reference hot pool storage, got %v", args)
+			// top-level vminsert must NOT be created when any pool has its own insert
+			var topDep appsv1.Deployment
+			err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &topDep)
+			assert.True(t, k8serrors.IsNotFound(err), "top-level vminsert must not exist when a pool has a dedicated insert")
+		},
+	})
+
+	// pools: NetworkPolicy for a pool's vmstorage/vminsert must be pool-scoped (name, selector,
+	// and labels), not collide with the base cluster's NetworkPolicy naming
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "cluster-1"},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				Pools: []vmv1beta1.VMClusterPool{
+					{
+						Name: "hot",
+						VMStorage: &vmv1beta1.VMStorage{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+							NetworkPolicy:    &vmv1beta1.EmbeddedNetworkPolicy{},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+							NetworkPolicy:    &vmv1beta1.EmbeddedNetworkPolicy{},
+						},
+					},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			storageNPName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentStorage, "hot")
+			var storageNP networkingv1.NetworkPolicy
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: storageNPName}, &storageNP))
+			assert.Equal(t, cr.Name, storageNP.Labels["app.kubernetes.io/instance"])
+			assert.Equal(t, "hot", storageNP.Labels["app.kubernetes.io/pool"])
+			assert.Equal(t, "hot", storageNP.Spec.PodSelector.MatchLabels["app.kubernetes.io/pool"])
+
+			insertNPName := cr.PoolPrefixedName(vmv1beta1.ClusterComponentInsert, "hot")
+			var insertNP networkingv1.NetworkPolicy
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: insertNPName}, &insertNP))
+			assert.Equal(t, cr.Name, insertNP.Labels["app.kubernetes.io/instance"])
+			assert.Equal(t, "hot", insertNP.Labels["app.kubernetes.io/pool"])
+			assert.Equal(t, "hot", insertNP.Spec.PodSelector.MatchLabels["app.kubernetes.io/pool"])
+		},
+	})
+
+	// pools: VMStorage.RetentionPeriod overrides cluster-level RetentionPeriod in the generated args
+	f(opts{
+		cr: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "cluster-1"},
+			Spec: vmv1beta1.VMClusterSpec{
+				RetentionPeriod: "1",
+				VMStorage: &vmv1beta1.VMStorage{
+					RetentionPeriod:  "90d",
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMCluster) {
+			var sts appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &sts))
+			var storageArgs []string
+			for _, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "vmstorage" {
+					storageArgs = c.Args
+				}
+			}
+			hasRetention90d := false
+			hasRetention1 := false
+			for _, a := range storageArgs {
+				if a == "-retentionPeriod=90d" {
+					hasRetention90d = true
+				}
+				if a == "-retentionPeriod=1" {
+					hasRetention1 = true
+				}
+			}
+			assert.True(t, hasRetention90d, "VMStorage.RetentionPeriod should override cluster-level: got args %v", storageArgs)
+			assert.False(t, hasRetention1, "cluster-level RetentionPeriod should be overridden: got args %v", storageArgs)
+		},
+	})
 }
 
 func TestCreatOrUpdateClusterServices(t *testing.T) {
@@ -1959,6 +2162,91 @@ func TestVMClusterDiscoveryArgs(t *testing.T) {
 			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=5s"), "vminsert: expected discoveryInterval flag, got %v", args)
 			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[0-1]\.`), "vminsert: expected filter flag, got %v", args)
 		},
+	)
+
+	// pools: vmselect gets pool-grouped storage nodes, shared vminsert gets plain addresses
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			Pools: []vmv1beta1.VMClusterPool{
+				{Name: "hot", VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))}}},
+				{Name: "cold", VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))}}},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			// vmselect: pools are grouped into a single storageNode flag (poolName/addr entries)
+			var storageNodeArg string
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					storageNodeArg = a
+					break
+				}
+			}
+			assert.Contains(t, storageNodeArg, "hot/", "vmselect: expected hot pool storageNode, got %v", args)
+			assert.Contains(t, storageNodeArg, "cold/", "vmselect: expected cold pool storageNode, got %v", args)
+			// no top-level (ungrouped) storage node when pools are defined
+			for _, val := range strings.Split(strings.TrimPrefix(storageNodeArg, "-storageNode="), ",") {
+				assert.True(t, strings.Contains(val, "/"), "vmselect: expected all storageNodes to be pool-grouped, got %q", val)
+			}
+		},
+		func(t *testing.T, args []string) {
+			// shared vminsert: pool storage nodes are plain addresses without pool prefix
+			assert.True(t, hasArg(args, "-storageNode="), "vminsert: expected storageNode flag, got %v", args)
+			assert.False(t, hasArg(args, "-storageNode=hot/"), "vminsert: should not have pool-grouped addresses, got %v", args)
+			assert.False(t, hasArg(args, "-storageNode=cold/"), "vminsert: should not have pool-grouped addresses, got %v", args)
+		},
+	)
+
+	// pools + discovery: srv+ addresses stay pool-grouped, and discoveryInterval/filter
+	// must still be emitted (previously dropped entirely whenever pools were defined)
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License: &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{
+				Enabled:  true,
+				Interval: "5s",
+				Filter:   `vmstorage-test-.*\.`,
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			Pools: []vmv1beta1.VMClusterPool{
+				{Name: "hot", VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(2))}}},
+				{Name: "cold", VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))}}},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			var storageNodeArg string
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					storageNodeArg = a
+					break
+				}
+			}
+			assert.Contains(t, storageNodeArg, "hot/srv+", "vmselect: expected hot pool srv+ storageNode, got %v", args)
+			assert.Contains(t, storageNodeArg, "cold/srv+", "vmselect: expected cold pool srv+ storageNode, got %v", args)
+			assert.True(t, hasArg(args, "-storageNode.discoveryInterval=5s"), "vmselect: expected discoveryInterval flag even with pools, got %v", args)
+			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-.*\.`), "vmselect: expected filter flag even with pools, got %v", args)
+		},
+		nil,
 	)
 
 	// component-level discovery overrides interval and filter

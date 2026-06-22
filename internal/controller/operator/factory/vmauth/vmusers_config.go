@@ -53,6 +53,11 @@ func updateCRDObjURLs(ctx context.Context, rclient client.Client, crd *vmv1beta1
 		}
 		crdObj.SetName(nsn.Name)
 		crdObj.SetNamespace(nsn.Namespace)
+		if cw, ok := crdObj.(*clusterWithURL); ok {
+			cw.pool = nsn.Pool
+		} else if nsn.Pool != "" {
+			return fmt.Errorf("pool=%q is not supported for kind=%q", nsn.Pool, crd.Kind)
+		}
 		url, err := getAsURLObject(ctx, rclient, crdObj, nsn.UseExtraService)
 		if err != nil {
 			if !build.IsNotFound(err) {
@@ -79,7 +84,7 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 				backends[ref.Name] = ref
 			} else {
 				if r, ok := backends[ref.Name]; ok {
-					if err := build.MergeDeep(ref, r, true); err != nil {
+					if err := vmv1beta1.MergeDeep(ref, r, true); err != nil {
 						return fmt.Errorf("failed to merge target refs: %w", err)
 					}
 				} else {
@@ -173,7 +178,7 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 
 type objectWithURL interface {
 	client.Object
-	AsURL(isExtra bool) string
+	AsURL(isExtra bool) (string, error)
 }
 
 func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL, isExtra bool) (string, error) {
@@ -191,7 +196,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return objT.AsURL(isExtra), nil
+	return objT.AsURL(isExtra)
 }
 
 func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
@@ -335,40 +340,52 @@ type unwrapObject interface {
 	origin() client.Object
 }
 
-var clusterComponentToURL = map[string]func(obj client.Object, isExtra bool) string{
-	"vminsert": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
+// rejectPool wraps a pool-unaware cluster AsURL so its kind rejects a non-empty pool instead of
+// silently ignoring it - only VMCluster currently supports spec.pools.
+func rejectPool(kind string, f func(obj client.Object, isExtra bool) (string, error)) func(obj client.Object, poolName string, isExtra bool) (string, error) {
+	return func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		if poolName != "" {
+			return "", fmt.Errorf("pool=%q is not supported for kind=%q", poolName, kind)
+		}
+		return f(obj, isExtra)
+	}
+}
+
+var clusterComponentToURL = map[string]func(obj client.Object, poolName string, isExtra bool) (string, error){
+	"vminsert": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentInsert, poolName, isExtra)
 	},
-	"vmselect": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
+	"vmselect": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentSelect, poolName, isExtra)
 	},
-	"vmstorage": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
+	"vmstorage": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentStorage, poolName, isExtra)
 	},
-	"vlinsert": func(obj client.Object, isExtra bool) string {
+	"vlinsert": rejectPool("VLCluster/vlinsert", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
-	},
-	"vlselect": func(obj client.Object, isExtra bool) string {
+	}),
+	"vlselect": rejectPool("VLCluster/vlselect", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
-	},
-	"vlstorage": func(obj client.Object, isExtra bool) string {
+	}),
+	"vlstorage": rejectPool("VLCluster/vlstorage", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
-	},
-	"vtinsert": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtinsert": rejectPool("VTCluster/vtinsert", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
-	},
-	"vtselect": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtselect": rejectPool("VTCluster/vtselect", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
-	},
-	"vtstorage": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtstorage": rejectPool("VTCluster/vtstorage", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
-	},
+	}),
 }
 
 type clusterWithURL struct {
 	client.Object
 	originObj client.Object
 	component string
+	pool      string
 }
 
 func newClusterWithURL(component string) *clusterWithURL {
@@ -383,7 +400,7 @@ func newClusterWithURL(component string) *clusterWithURL {
 	default:
 		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
 	}
-	return &clusterWithURL{clusterObj, clusterObj, component}
+	return &clusterWithURL{clusterObj, clusterObj, component, ""}
 }
 
 func (c *clusterWithURL) origin() client.Object {
@@ -391,12 +408,12 @@ func (c *clusterWithURL) origin() client.Object {
 }
 
 // AsURL implements AsURL interface
-func (c *clusterWithURL) AsURL(isExtra bool) string {
+func (c *clusterWithURL) AsURL(isExtra bool) (string, error) {
 	builder, ok := clusterComponentToURL[c.component]
 	if !ok {
 		panic(fmt.Sprintf("BUG: not expected component=%q for clusterWithURL object", c.component))
 	}
-	return builder(c.Object, isExtra)
+	return builder(c.Object, c.pool, isExtra)
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.

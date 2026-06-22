@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 )
 
@@ -100,6 +101,18 @@ type VMClusterSpec struct {
 	// See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
 	// +optional
 	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
+
+	// Pools defines named groups of vmstorage (and optionally vminsert) components.
+	// Each pool gets its own StatefulSet and headless Service named <component>-<cluster>-<pool>.
+	// Top-level vmstorage and vminsert specs act as defaults; pool specs override them field-by-field.
+	// vmselect queries all pools using the pool name as a storage group name (-storageNode=<pool>/<addr>).
+	// When pools are defined the top-level vmstorage is not deployed; pools replace it entirely.
+	// The top-level vminsert is deployed as a shared insert group across all pools only when no pool
+	// defines its own vminsert; as soon as any pool has a dedicated vminsert the top-level one is skipped.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	Pools []VMClusterPool `json:"pools,omitempty"`
 }
 
 // VMClusterDiscovery configures automatic vmstorage node discovery for vminsert and vmselect.
@@ -134,7 +147,16 @@ func (d *VMClusterDiscovery) enabled() bool {
 	return d != nil && d.Enabled
 }
 
-func (d *VMClusterDiscovery) validate() error {
+func (d *VMClusterDiscovery) validate(license *License) error {
+	if !d.enabled() {
+		return nil
+	}
+	if !license.IsProvided() {
+		return fmt.Errorf("discovery requires a valid license key, see https://docs.victoriametrics.com/victoriametrics/enterprise/")
+	}
+	if err := license.validate(); err != nil {
+		return err
+	}
 	if len(d.Filter) > 0 {
 		if _, err := regexp.Compile(d.Filter); err != nil {
 			return fmt.Errorf("discovery.filter is not a valid regexp: %w", err)
@@ -520,6 +542,11 @@ type VMStorage struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
+	// RetentionPeriod overrides the cluster-level retentionPeriod for this storage instance.
+	// Useful when using Pools to implement multi-retention setups.
+	// +optional
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
+	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// LogFormat for VMStorage to be configured with.
@@ -738,8 +765,59 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 	if cr == nil || cr.Spec.VMInsert == nil {
 		return ""
 	}
-	insertURL := cr.AsURL(ClusterComponentInsert, false)
+	insertURL, err := cr.AsURL(ClusterComponentInsert, "", false)
+	if err != nil {
+		return ""
+	}
 	return fmt.Sprintf("%s%s", insertURL, BuildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/multitenant/prometheus/api/v1/write"))
+}
+
+func (vms *VMStorage) validate(license *License, clusterRetentionPeriod string) error {
+	if vms.VMBackup != nil {
+		if err := vms.VMBackup.validate(license); err != nil {
+			return err
+		}
+	}
+	retention := clusterRetentionPeriod
+	if vms.RetentionPeriod != "" {
+		retention = vms.RetentionPeriod
+	}
+	if err := vms.RetentionFilters.validate(license, retention); err != nil {
+		return err
+	}
+	if vms.HPA != nil {
+		if vms.HPA.Behaviour != nil && vms.HPA.Behaviour.ScaleDown != nil {
+			return fmt.Errorf("scaledown HPA behavior is not supported")
+		}
+		if err := vms.HPA.Validate(); err != nil {
+			return err
+		}
+	}
+	if vms.VPA != nil {
+		if err := vms.VPA.Validate(); err != nil {
+			return err
+		}
+	}
+	if vms.RollingUpdateStrategyBehavior != nil {
+		if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
+			return err
+		}
+	}
+	return vms.Validate()
+}
+
+func (vmi *VMInsert) validate() error {
+	if vmi.HPA != nil {
+		if err := vmi.HPA.Validate(); err != nil {
+			return err
+		}
+	}
+	if vmi.VPA != nil {
+		if err := vmi.VPA.Validate(); err != nil {
+			return err
+		}
+	}
+	return vmi.Validate()
 }
 
 func (cr *VMCluster) Validate() error {
@@ -802,17 +880,7 @@ func (cr *VMCluster) Validate() error {
 		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
-		if vmi.HPA != nil {
-			if err := vmi.HPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if vmi.VPA != nil {
-			if err := vmi.VPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if err := vmi.Validate(); err != nil {
+		if err := vmi.validate(); err != nil {
 			return fmt.Errorf("vminsert: %w", err)
 		}
 	}
@@ -825,28 +893,7 @@ func (cr *VMCluster) Validate() error {
 		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
-		if cr.Spec.VMStorage.VMBackup != nil {
-			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {
-				return err
-			}
-		}
-		if err := vms.RetentionFilters.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
-			return err
-		}
-		if vms.RollingUpdateStrategyBehavior != nil {
-			if err := vms.RollingUpdateStrategyBehavior.Validate(); err != nil {
-				return fmt.Errorf("vmstorage: %w", err)
-			}
-		}
-		if vms.HPA != nil && vms.HPA.Behaviour != nil && vms.HPA.Behaviour.ScaleDown != nil {
-			return fmt.Errorf("vmstorage scaledown HPA behavior is not supported")
-		}
-		if vms.VPA != nil {
-			if err := vms.VPA.Validate(); err != nil {
-				return err
-			}
-		}
-		if err := vms.Validate(); err != nil {
+		if err := vms.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
 			return fmt.Errorf("vmstorage: %w", err)
 		}
 	}
@@ -867,28 +914,69 @@ func (cr *VMCluster) Validate() error {
 	if cr.Spec.VMSelect != nil {
 		vmselectDiscovery = cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery)
 	}
-	if vminsertDiscovery.enabled() || vmselectDiscovery.enabled() {
-		if !cr.Spec.License.IsProvided() {
-			return fmt.Errorf("discovery requires a valid license key, see https://docs.victoriametrics.com/victoriametrics/enterprise/")
-		}
-		if err := cr.Spec.License.validate(); err != nil {
-			return err
-		}
-	}
 	if vminsertDiscovery.enabled() {
 		if cr.Spec.VMStorage != nil && len(cr.Spec.VMStorage.MaintenanceInsertNodeIDs) > 0 {
 			return fmt.Errorf("maintenanceInsertNodeIDs cannot be used when vminsert discovery is enabled")
 		}
-		if err := vminsertDiscovery.validate(); err != nil {
-			return fmt.Errorf("vminsert: %w", err)
-		}
+	}
+	if err := vminsertDiscovery.validate(cr.Spec.License); err != nil {
+		return fmt.Errorf("vminsert: %w", err)
 	}
 	if vmselectDiscovery.enabled() {
 		if cr.Spec.VMStorage != nil && len(cr.Spec.VMStorage.MaintenanceSelectNodeIDs) > 0 {
 			return fmt.Errorf("maintenanceSelectNodeIDs cannot be used when vmselect discovery is enabled")
 		}
-		if err := vmselectDiscovery.validate(); err != nil {
-			return fmt.Errorf("vmselect: %w", err)
+	}
+	if err := vmselectDiscovery.validate(cr.Spec.License); err != nil {
+		return fmt.Errorf("vmselect: %w", err)
+	}
+
+	poolNames := make(map[string]struct{}, len(cr.Spec.Pools))
+	var hasPoolInsert bool
+	for i, pool := range cr.Spec.Pools {
+		if errs := validation.IsDNS1123Subdomain(pool.Name); len(errs) > 0 {
+			return fmt.Errorf("pools[%d].name %q is invalid: %s", i, pool.Name, strings.Join(errs, "; "))
+		}
+		if len(pool.Name) > maxVMClusterPoolNameLength {
+			return fmt.Errorf("pools[%d].name %q is too long: max %d characters", i, pool.Name, maxVMClusterPoolNameLength)
+		}
+		if _, dup := poolNames[pool.Name]; dup {
+			return fmt.Errorf("pools[%d].name %q is duplicated", i, pool.Name)
+		}
+		poolNames[pool.Name] = struct{}{}
+		if pool.VMStorage != nil {
+			vms := pool.VMStorage.DeepCopy()
+			if cr.Spec.VMStorage != nil {
+				if err := MergeDeep(vms, cr.Spec.VMStorage, true); err != nil {
+					return fmt.Errorf("pools[%d] vmstorage merge: %w", i, err)
+				}
+			}
+			if err := vms.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
+				return fmt.Errorf("pools[%d] vmstorage: %w", i, err)
+			}
+		}
+		if pool.VMInsert != nil {
+			hasPoolInsert = true
+			vmi := pool.VMInsert.DeepCopy()
+			if cr.Spec.VMInsert != nil {
+				if err := MergeDeep(vmi, cr.Spec.VMInsert, true); err != nil {
+					return fmt.Errorf("pools[%d] vminsert merge: %w", i, err)
+				}
+			}
+			if err := vmi.validate(); err != nil {
+				return fmt.Errorf("pools[%d] vminsert: %w", i, err)
+			}
+			poolDiscovery := vmi.Discovery.OrDefault(cr.Spec.Discovery)
+			if err := poolDiscovery.validate(cr.Spec.License); err != nil {
+				return fmt.Errorf("pools[%d] vminsert: %w", i, err)
+			}
+		}
+	}
+	if hasPoolInsert {
+		for i, pool := range cr.Spec.Pools {
+			if pool.VMInsert == nil {
+				return fmt.Errorf("pools[%d] %q: vminsert must be defined once any pool defines its own vminsert, otherwise this pool has no ingestion path", i, pool.Name)
+			}
 		}
 	}
 
@@ -1051,15 +1139,73 @@ func (cr *VMCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// AsURL implements stub for interface.
-func (cr *VMCluster) AsURL(kind ClusterComponent, isExtra bool) string {
+// findPool returns the pool with the given name, if any.
+func (cr *VMCluster) findPool(name string) (*VMClusterPool, bool) {
+	for i := range cr.Spec.Pools {
+		if cr.Spec.Pools[i].Name == name {
+			return &cr.Spec.Pools[i], true
+		}
+	}
+	return nil, false
+}
+
+// hasAnyPoolInsert reports whether any pool defines its own dedicated vminsert, which is
+// exactly the condition under which the operator skips creating the shared top-level vminsert.
+func hasAnyPoolInsert(pools []VMClusterPool) bool {
+	for _, p := range pools {
+		if p.VMInsert != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// mergedPoolInsert merges pool.VMInsert over the top-level base, mirroring how the operator
+// resolves a pool's own vminsert when reconciling it.
+func (cr *VMCluster) mergedPoolInsert(pool *VMClusterPool) (*VMInsert, error) {
+	merged := pool.VMInsert.DeepCopy()
+	if cr.Spec.VMInsert != nil {
+		if err := MergeDeep(merged, cr.Spec.VMInsert, true); err != nil {
+			return nil, fmt.Errorf("pool %q vminsert merge: %w", pool.Name, err)
+		}
+	}
+	return merged, nil
+}
+
+// mergedPoolStorage merges pool.VMStorage over the top-level base, mirroring how the operator
+// resolves a pool's own vmstorage when reconciling it. A pool without its own override falls
+// back to the base as-is.
+func (cr *VMCluster) mergedPoolStorage(pool *VMClusterPool) (*VMStorage, error) {
+	if pool.VMStorage == nil {
+		return cr.Spec.VMStorage, nil
+	}
+	merged := pool.VMStorage.DeepCopy()
+	if cr.Spec.VMStorage != nil {
+		if err := MergeDeep(merged, cr.Spec.VMStorage, true); err != nil {
+			return nil, fmt.Errorf("pool %q vmstorage merge: %w", pool.Name, err)
+		}
+	}
+	return merged, nil
+}
+
+// AsURL builds the Service URL for the given cluster component. poolName selects a specific
+// entry from spec.pools instead of the shared (non-pool) component; it's only meaningful for
+// ClusterComponentInsert and ClusterComponentStorage, since vmselect is never pool-scoped.
+// It errors instead of silently returning a URL for a Service the operator wouldn't actually
+// create - e.g. the shared vminsert once any pool defines its own, or the top-level vmstorage
+// once any pool is defined at all.
+func (cr *VMCluster) AsURL(kind ClusterComponent, poolName string, isExtra bool) (string, error) {
 	var defaultPort string
 	var svcSpec *AdditionalServiceSpec
 	var extraArgs map[string]string
+	svcName := cr.PrefixedName(kind)
 	switch kind {
 	case ClusterComponentSelect:
+		if poolName != "" {
+			return "", fmt.Errorf("vmcluster %q: pool %q is not applicable to vmselect, since vmselect is never pool-scoped", cr.Name, poolName)
+		}
 		if cr.Spec.VMSelect == nil {
-			return ""
+			return "", fmt.Errorf("vmcluster %q has no spec.vmSelect configured", cr.Name)
 		}
 		defaultPort = "8481"
 		if cr.Spec.VMSelect.Port != "" {
@@ -1068,30 +1214,63 @@ func (cr *VMCluster) AsURL(kind ClusterComponent, isExtra bool) string {
 		svcSpec = cr.Spec.VMSelect.ServiceSpec
 		extraArgs = cr.Spec.VMSelect.ExtraArgs
 	case ClusterComponentInsert:
-		if cr.Spec.VMInsert == nil {
-			return ""
-		}
 		defaultPort = "8480"
-		if cr.Spec.VMInsert.Port != "" {
-			defaultPort = cr.Spec.VMInsert.Port
+		vmi := cr.Spec.VMInsert
+		if poolName != "" {
+			pool, ok := cr.findPool(poolName)
+			if !ok {
+				return "", fmt.Errorf("vmcluster %q has no pool named %q", cr.Name, poolName)
+			}
+			if pool.VMInsert != nil {
+				merged, err := cr.mergedPoolInsert(pool)
+				if err != nil {
+					return "", err
+				}
+				vmi = merged
+				svcName = cr.PoolPrefixedName(kind, poolName)
+			}
+			// pool has no dedicated vminsert: falls through to the shared top-level one below.
+		} else if hasAnyPoolInsert(cr.Spec.Pools) {
+			return "", fmt.Errorf("vmcluster %q has per-pool vminsert(s); target a specific pool instead of the shared vminsert", cr.Name)
 		}
-		svcSpec = cr.Spec.VMInsert.ServiceSpec
-		extraArgs = cr.Spec.VMInsert.ExtraArgs
+		if vmi == nil {
+			return "", fmt.Errorf("vmcluster %q has no shared spec.vmInsert configured", cr.Name)
+		}
+		if vmi.Port != "" {
+			defaultPort = vmi.Port
+		}
+		svcSpec = vmi.ServiceSpec
+		extraArgs = vmi.ExtraArgs
 	case ClusterComponentStorage:
-		if cr.Spec.VMStorage == nil {
-			return ""
-		}
 		defaultPort = "8482"
-		if cr.Spec.VMStorage.Port != "" {
-			defaultPort = cr.Spec.VMStorage.Port
+		vms := cr.Spec.VMStorage
+		if poolName != "" {
+			pool, ok := cr.findPool(poolName)
+			if !ok {
+				return "", fmt.Errorf("vmcluster %q has no pool named %q", cr.Name, poolName)
+			}
+			merged, err := cr.mergedPoolStorage(pool)
+			if err != nil {
+				return "", err
+			}
+			vms = merged
+			svcName = cr.PoolPrefixedName(kind, poolName)
+		} else if len(cr.Spec.Pools) > 0 {
+			return "", fmt.Errorf("vmcluster %q defines pools; target a specific pool instead of the top-level vmstorage", cr.Name)
 		}
-		svcSpec = cr.Spec.VMStorage.ServiceSpec
-		extraArgs = cr.Spec.VMStorage.ExtraArgs
+		if vms == nil {
+			return "", fmt.Errorf("vmcluster %q has no shared spec.vmStorage configured", cr.Name)
+		}
+		if vms.Port != "" {
+			defaultPort = vms.Port
+		}
+		svcSpec = vms.ServiceSpec
+		extraArgs = vms.ExtraArgs
 	default:
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
+	resolvedName, port := ResolveServiceURL(svcName, defaultPort, "http", svcSpec, isExtra)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), resolvedName, cr.Namespace, port), nil
 }
 
 func (cr *VMSelect) ProbePath() string {
@@ -1230,4 +1409,41 @@ func (cr *VMAuthLoadBalancerSpec) UseTLS() bool {
 // GetMetricsPath implements build.serviceScrapeBuilder interface
 func (cr *VMAuthLoadBalancerSpec) GetMetricsPath() string {
 	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
+}
+
+// maxVMClusterPoolNameLength must match the kubebuilder MaxLength on VMClusterPool.Name below.
+const maxVMClusterPoolNameLength = 16
+
+// VMClusterPool defines a named group of vmstorage (and optionally vminsert) components
+// within a VMCluster. Each pool gets its own StatefulSet and headless Service.
+// +k8s:openapi-gen=true
+type VMClusterPool struct {
+	// Name is the unique identifier for this pool within the cluster.
+	// Used as a suffix for generated resource names (e.g. vmstorage-<cluster>-<pool>) and as a
+	// storage group name in vmselect. Kept short since the cluster name itself isn't length-limited,
+	// and generated StatefulSet/Deployment names must still fit Kubernetes' 63-character limit.
+	// Must be a lowercase alphanumeric DNS label; hyphens allowed in the interior.
+	// +kubebuilder:validation:Pattern:="^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+	// +kubebuilder:validation:MaxLength=16
+	Name string `json:"name"`
+	// VMStorage defines pool-specific vmstorage configuration.
+	// Each field overrides the corresponding field in the top-level vmstorage spec.
+	// Fields absent here inherit from the top-level vmstorage.
+	// RetentionPeriod on VMStorage overrides the cluster-level retentionPeriod for this pool.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	VMStorage *VMStorage `json:"vmstorage,omitempty"`
+	// VMInsert defines a dedicated vminsert for this pool.
+	// Each field overrides the corresponding field in the top-level vminsert spec.
+	// When nil, the top-level shared vminsert writes to this pool's storage nodes as well.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	VMInsert *VMInsert `json:"vminsert,omitempty"`
+}
+
+// PoolPrefixedName returns the Kubernetes resource name for the given component in a pool.
+func (cr *VMCluster) PoolPrefixedName(kind ClusterComponent, poolName string) string {
+	return ClusterPrefixedName(kind, cr.Name, "vm", false) + "-" + poolName
 }

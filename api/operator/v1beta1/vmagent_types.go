@@ -612,13 +612,13 @@ func (cr *VMAgent) GetRBACName() string {
 }
 
 // AsURL - returns url for http access
-func (cr *VMAgent) AsURL(isExtra bool) string {
+func (cr *VMAgent) AsURL(isExtra bool) (string, error) {
 	specPort := cr.Spec.Port
 	if specPort == "" {
 		specPort = "8429"
 	}
 	svcName, port := ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port), nil
 }
 
 func (cr *VMAgent) ProbePath() string {

@@ -334,13 +334,13 @@ func (cr *VTSingle) IsOwnsServiceAccount() bool {
 }
 
 // AsURL returns URL for components access
-func (cr *VTSingle) AsURL(isExtra bool) string {
+func (cr *VTSingle) AsURL(isExtra bool) (string, error) {
 	specPort := cr.Spec.Port
 	if specPort == "" {
 		specPort = "10428"
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port), nil
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

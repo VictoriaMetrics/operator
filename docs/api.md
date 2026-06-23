@@ -3012,7 +3012,7 @@ Appears in: [Receiver](#receiver)
 
 Route defines a node in the routing tree.
 
-Appears in: [SubRoute](#subroute), [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+Appears in: [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
 
 | Field | Description |
 | --- | --- |

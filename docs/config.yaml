@@ -17,6 +17,7 @@ processor:
     - ".*Status$"
     - "StatusMetadata"
     - "Condition"
+    - "SubRoute"
   ignoreFields:
     - "status$"
     - "TypeMeta$"

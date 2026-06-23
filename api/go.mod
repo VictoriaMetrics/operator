@@ -6,7 +6,7 @@ go 1.26.4
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.146.0
-	github.com/VictoriaMetrics/metricsql v0.87.1
+	github.com/VictoriaMetrics/metricsql v0.87.2
 	github.com/prometheus/alertmanager v0.33.0
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0

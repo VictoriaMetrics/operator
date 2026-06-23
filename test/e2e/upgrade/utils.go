@@ -83,6 +83,7 @@ func operatorEnvVars(watchNamespace string, extraEnvs map[string]string) []corev
 		"MEM": "20Mi",
 	}
 	for _, prefix := range resourceEnvsPrefixes {
+		envs[fmt.Sprintf("VM_%s_USEDEFAULTRESOURCES", prefix)] = "true"
 		for _, t := range []string{"LIMIT", "REQUEST"} {
 			for rn, rv := range resources {
 				envName := fmt.Sprintf("VM_%s_RESOURCE_%s_%s", prefix, t, rn)

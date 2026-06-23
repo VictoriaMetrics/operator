@@ -99,7 +99,7 @@ Additional fields like `path` and `scheme` can be added to `CRDRef` config.
 ## Enterprise features
 
 Custom resource `VMUser` supports feature [IP filters](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 ### IP Filters
 

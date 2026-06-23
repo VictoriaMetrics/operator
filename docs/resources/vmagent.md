@@ -68,7 +68,7 @@ These objects specify which targets VMAgent should scrape and how to collect met
 - `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig/) objects.
 
 This enables access control configuration for objects across namespaces.
-See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta/) for selector specifications.
+See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta) for selector specifications.
 
 In addition to these selectors, object filtering in a cluster can be done by the `selectAllByDefault` VMAgent spec field and the operator's `WATCH_NAMESPACE` environment variable.
 
@@ -681,7 +681,7 @@ Also, you can specify requests without limits - in this case default values for 
 ## Enterprise features
 
 VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).

@@ -302,7 +302,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 VMAlert supports features [Reading rules from object storage](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage)
 and [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).

@@ -52,7 +52,7 @@ type VTClusterSpec struct {
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
@@ -405,7 +405,7 @@ type VTStorage struct {
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
 	// RetentionPeriod for the stored traces
-	// https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
+	// https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
@@ -413,20 +413,20 @@ type VTStorage struct {
 	// VictoriaTraces keeps at least two last days of data in order to guarantee that the traces for the last day can be returned in queries.
 	// This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
 	// if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
-	// https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
+	// https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
 	RetentionMaxDiskSpaceUsageBytes vmv1beta1.BytesString `json:"retentionMaxDiskSpaceUsageBytes,omitempty"`
 	// FutureRetention for the stored traces
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion
-	// see https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
+	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
 	// LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams
-	// see https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
+	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	LogNewStreams bool `json:"logNewStreams,omitempty"`
 	// Whether to log all the ingested log entries; this can be useful for debugging of data ingestion
-	// see https://docs.victoriametrics.com/victoriatraces/#configure-and-run-victoriatraces
+	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	LogIngestedRows bool `json:"logIngestedRows,omitempty"`
 
 	// PodMetadata configures Labels and Annotations which are propagated to the VTStorage pods.

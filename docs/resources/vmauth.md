@@ -265,7 +265,7 @@ Also, you can specify requests without limits - in this case default values for 
 ## Enterprise features
 
 Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise).
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).

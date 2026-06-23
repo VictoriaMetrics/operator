@@ -5587,7 +5587,7 @@ spec:
                               description: |-
                                 SlackAction configures a single Slack action that is sent with each
                                 notification.
-                                See https://api.slack.com/docs/message-attachments#action_fields and
+                                See https://docs.slack.dev/legacy/legacy-messaging/legacy-interactive-message-field-guide/#action_fields and
                                 https://api.slack.com/docs/message-buttons for more information.
                               properties:
                                 confirm:
@@ -5671,7 +5671,7 @@ spec:
                                 SlackField configures a single Slack field that is sent with each notification.
                                 Each field must contain a title, value, and optionally, a boolean value to indicate if the field
                                 is short enough to be displayed next to other fields designated as short.
-                                See https://api.slack.com/docs/message-attachments#fields for more information.
+                                See https://docs.slack.dev/legacy/legacy-messaging/legacy-secondary-message-attachments/#field_objects for more information.
                               properties:
                                 short:
                                   type: boolean

@@ -31,7 +31,7 @@ There is a strict order for these objects creation and reconciliation:
 1. `VMInsert` is the last object to sync.
 
 All [statefulsets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) are created
-with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) update type.
+with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies) update type.
 It allows to manually manage the rolling update process for Operator by deleting pods one by one and waiting for the ready status.
 
 Rolling update process may be configured by the operator env variables.
@@ -482,7 +482,7 @@ Also, you can specify requests without limits - in this case default values for 
 ## Enterprise features
 
 VMCluster supports following features
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise):
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features):
 
 - [Downsampling](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling)
 - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters)

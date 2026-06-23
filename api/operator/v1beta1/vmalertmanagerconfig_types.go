@@ -928,7 +928,7 @@ func (c *SlackConfig) validate() error {
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
-// See https://api.slack.com/docs/message-attachments#fields for more information.
+// See https://docs.slack.dev/legacy/legacy-messaging/legacy-secondary-message-attachments/#field_objects for more information.
 type SlackField struct {
 	// +kubebuilder:validation:MinLength=1
 	// +required
@@ -942,7 +942,7 @@ type SlackField struct {
 
 // SlackAction configures a single Slack action that is sent with each
 // notification.
-// See https://api.slack.com/docs/message-attachments#action_fields and
+// See https://docs.slack.dev/legacy/legacy-messaging/legacy-interactive-message-field-guide/#action_fields and
 // https://api.slack.com/docs/message-buttons for more information.
 type SlackAction struct {
 	// +kubebuilder:validation:MinLength=1
@@ -1144,7 +1144,7 @@ func (c *PagerDutyConfig) validate() error {
 }
 
 // ImageConfig is used to attach images to the incident.
-// See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
+// See https://developer.pagerduty.com/docs/send-alert-event#the-images-property
 // for more information.
 type ImageConfig struct {
 	// +optional
@@ -1155,7 +1155,7 @@ type ImageConfig struct {
 }
 
 // LinkConfig is used to attach text links to the incident.
-// See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-links-property
+// See https://developer.pagerduty.com/docs/send-alert-event#the-links-property
 // for more information.
 type LinkConfig struct {
 	Href string `json:"href"`
@@ -1513,7 +1513,7 @@ type RocketchatConfig struct {
 	APIURL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 
 	// The sender token and token_id
-	// See https://docs.rocket.chat/use-rocket.chat/user-guides/user-panel/my-account#personal-access-tokens
+	// See https://docs.rocket.chat/docs/manage-personal-access-tokens
 	// +optional
 	TokenID *corev1.SecretKeySelector `yaml:"token_id,omitempty" json:"token_id,omitempty"`
 	// +optional
@@ -1565,7 +1565,7 @@ func (c *RocketchatConfig) validate() error {
 }
 
 // RocketchatAttachmentField defines API fields
-// https://developer.rocket.chat/reference/api/rest-api/endpoints/messaging/chat-endpoints/postmessage#attachment-field-objects
+// https://developer.rocket.chat/apidocs/post-message
 type RocketchatAttachmentField struct {
 	// +optional
 	Short *bool `json:"short"`

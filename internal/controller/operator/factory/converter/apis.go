@@ -169,7 +169,7 @@ func ConvertOAuth(src *promv1.OAuth2) *vmv1beta1.OAuth2 {
 		ClientID:       convertSecretOrConfigmap(src.ClientID),
 		ClientSecret:   &src.ClientSecret,
 		Scopes:         src.Scopes,
-		TokenURL:       src.TokenURL,
+		TokenURL:       string(src.TokenURL),
 		EndpointParams: src.EndpointParams,
 	}
 	return &o

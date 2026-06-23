@@ -461,27 +461,17 @@ type crVersionPair struct {
 	isEnterprise bool
 }
 
-type entry struct {
-	name    string
-	genDeps func(string) []client.Object
-	pairs   []crVersionPair
-	envs    map[string]string
-}
-
-func entries(es []entry) []TableEntry {
-	var result []TableEntry
-	for _, e := range es {
-		for _, p := range e.pairs {
-			obj := p.cr(p.version)
-			result = append(result, Entry(fmt.Sprintf("from %s: %s (%T)", p.version, e.name, obj), p.version, e.genDeps, []client.Object{obj}, e.envs, p.isEnterprise))
-		}
+func ensureNoPodRollout(pairs []crVersionPair, genDeps func(string) []client.Object, envs map[string]string) {
+	for _, p := range pairs {
+		By(fmt.Sprintf("version: %s", p.version))
+		runPairUpgrade(p.version, genDeps, []client.Object{p.cr(p.version)}, envs, p.isEnterprise)
 	}
-	return result
 }
 
-func ensureNoPodRollout(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string, isEnterprise bool) {
+func runPairUpgrade(version string, genDeps func(string) []client.Object, objs []client.Object, envs map[string]string, isEnterprise bool) {
 	if isEnterprise && e2e.LICENSE_KEY == "" {
-		Skip("skipping enterprise test: LICENSE_KEY is not set")
+		GinkgoWriter.Printf("skipping enterprise pair from %s (%T): LICENSE_KEY is not set\n", version, objs[0])
+		return
 	}
 
 	namespace := createRandomNamespace(ctx, k8sClient)
@@ -549,7 +539,7 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 	}
 	wg.Wait()
 
-	By("snapshotting child workload specs")
+	By(fmt.Sprintf("snapshotting child workload specs for %s from %s", displayNames, version))
 	apps := getApplications(objs...)
 	podSpecs := getSnapshots(ctx, k8sClient, apps...)
 
@@ -566,20 +556,16 @@ func ensureNoPodRollout(version string, genDeps func(string) []client.Object, ob
 	}
 	wg.Wait()
 
-	By("verifying workload spec remains stable over time")
+	By(fmt.Sprintf("verifying workload spec remains stable after upgrade from %s", version))
 	Consistently(func() string {
 		return checkWorkloads(ctx, k8sClient, podSpecs, apps)
 	}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 }
 
 var _ = Describe("operator upgrade", Label("upgrade"), func() {
-	DescribeTable("should not rollout changes", ensureNoPodRollout, entries([]entry{
-		{
-			name: "pre stop hook",
-			envs: map[string]string{
-				"VM_ENABLE_DEFAULT_PRESTOP_HOOK": "false",
-			},
-			pairs: []crVersionPair{
+	DescribeTable("should not rollout changes", ensureNoPodRollout,
+		Entry("pre stop hook",
+			[]crVersionPair{
 				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
@@ -599,54 +585,14 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
 			},
-		},
-		// nolint:dupl
-		{
-			name: "VMAgent/VLAgent",
-			genDeps: func(ns string) []client.Object {
-				return []client.Object{
-					&corev1.ServiceAccount{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "vlagent-collector",
-							Namespace: ns,
-						},
-					},
-					&rbacv1.ClusterRoleBinding{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: fmt.Sprintf("vlagent-collector-%s", ns),
-						},
-						Subjects: []rbacv1.Subject{{
-							Kind:      rbacv1.ServiceAccountKind,
-							Name:      "vlagent-collector",
-							Namespace: ns,
-						}},
-						RoleRef: rbacv1.RoleRef{
-							APIGroup: rbacv1.GroupName,
-							Name:     fmt.Sprintf("vlagent-collector-%s", ns),
-							Kind:     "ClusterRole",
-						},
-					},
-					&rbacv1.ClusterRole{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: fmt.Sprintf("vlagent-collector-%s", ns),
-						},
-						Rules: []rbacv1.PolicyRule{{
-							APIGroups: []string{""},
-							Verbs: []string{
-								"get",
-								"list",
-								"watch",
-							},
-							Resources: []string{
-								"pods",
-								"namespaces",
-								"nodes",
-							},
-						}},
-					},
-				}
+			nil,
+			map[string]string{
+				"VM_ENABLE_DEFAULT_PRESTOP_HOOK": "false",
 			},
-			pairs: []crVersionPair{
+		),
+		// nolint:dupl
+		Entry("VMAgent/VLAgent",
+			[]crVersionPair{
 				{version: "v0.68.0", cr: with(vmagent)},
 				{version: "v0.68.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -720,11 +666,54 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.71.0", cr: with(vlagent)},
 				{version: "v0.71.0", cr: vlagentK8sCollector},
 			},
-		},
+			func(ns string) []client.Object {
+				return []client.Object{
+					&corev1.ServiceAccount{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "vlagent-collector",
+							Namespace: ns,
+						},
+					},
+					&rbacv1.ClusterRoleBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("vlagent-collector-%s", ns),
+						},
+						Subjects: []rbacv1.Subject{{
+							Kind:      rbacv1.ServiceAccountKind,
+							Name:      "vlagent-collector",
+							Namespace: ns,
+						}},
+						RoleRef: rbacv1.RoleRef{
+							APIGroup: rbacv1.GroupName,
+							Name:     fmt.Sprintf("vlagent-collector-%s", ns),
+							Kind:     "ClusterRole",
+						},
+					},
+					&rbacv1.ClusterRole{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("vlagent-collector-%s", ns),
+						},
+						Rules: []rbacv1.PolicyRule{{
+							APIGroups: []string{""},
+							Verbs: []string{
+								"get",
+								"list",
+								"watch",
+							},
+							Resources: []string{
+								"pods",
+								"namespaces",
+								"nodes",
+							},
+						}},
+					},
+				}
+			},
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VMAuth/VMAlertmanager",
-			pairs: []crVersionPair{
+		Entry("VMAuth/VMAlertmanager",
+			[]crVersionPair{
 				{version: "v0.68.0", cr: with(vmauth)},
 				{version: "v0.68.0", cr: with(vmalertmanager)},
 				{version: "v0.68.1", cr: with(vmauth)},
@@ -742,11 +731,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.71.0", cr: with(vmauth)},
 				{version: "v0.71.0", cr: with(vmalertmanager)},
 			},
-		},
+			nil,
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VM/VL/VTSingle",
-			pairs: []crVersionPair{
+		Entry("VM/VL/VTSingle",
+			[]crVersionPair{
 				{version: "v0.65.0", cr: with(vmsingle)},
 				{version: "v0.65.0", cr: with(vtsingle)},
 				{version: "v0.65.0", cr: with(vlsingle)},
@@ -772,11 +762,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.5", cr: with(vtsingle)},
 				{version: "v0.68.5", cr: with(vlsingle)},
 			},
-		},
+			nil,
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VLCluster",
-			pairs: []crVersionPair{
+		Entry("VLCluster",
+			[]crVersionPair{
 				{version: "v0.65.0", cr: with(vlcluster)},
 				{version: "v0.65.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
@@ -818,11 +809,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
 			},
-		},
+			nil,
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VTCluster",
-			pairs: []crVersionPair{
+		Entry("VTCluster",
+			[]crVersionPair{
 				{version: "v0.65.0", cr: with(vtcluster)},
 				{version: "v0.65.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
@@ -860,11 +852,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
 			},
-		},
+			nil,
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VMCluster",
-			pairs: []crVersionPair{
+		Entry("VMCluster",
+			[]crVersionPair{
 				{version: "v0.65.0", cr: with(vmcluster)},
 				{version: "v0.67.0", cr: with(vmcluster)},
 				{version: "v0.68.0", cr: with(vmcluster)},
@@ -877,11 +870,12 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.70.0", cr: with(vmcluster)},
 				{version: "v0.71.0", cr: with(vmcluster)},
 			},
-		},
+			nil,
+			nil,
+		),
 		// nolint:dupl
-		{
-			name: "VMCluster with VMBackup",
-			pairs: []crVersionPair{
+		Entry("VMCluster with VMBackup",
+			[]crVersionPair{
 				{version: "v0.65.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
@@ -1021,19 +1015,21 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					}
 				})},
 			},
-			envs: map[string]string{
+			nil,
+			map[string]string{
 				"VM_LOOPBACK":                          "localhost",
 				"VM_USE_OLD_BACKUP_RESTORE_PORT_NAMES": "true",
 			},
-		},
+		),
 		// nolint:dupl
-		{
-			name: "VMDistributed",
-			pairs: []crVersionPair{
+		Entry("VMDistributed",
+			[]crVersionPair{
 				{version: "v0.68.5", cr: with(vmdistributed)},
 				{version: "v0.70.0", cr: with(vmdistributed)},
 				{version: "v0.71.0", cr: with(vmdistributed)},
 			},
-		},
-	}))
+			nil,
+			nil,
+		),
+	)
 })

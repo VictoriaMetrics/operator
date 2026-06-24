@@ -32,6 +32,8 @@ var (
 		suite.ShutdownTestEnv()
 	})
 
+	_ = AfterEach(suite.CollectK8SResources)
+
 	_ = ReportAfterSuite("allure report", func(report Report) {
 		_ = allure.FromGinkgoReport(report)
 	})

@@ -196,6 +196,61 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "sigstore/cosign"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "\"VM_METRICS_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "VictoriaMetrics/VictoriaMetrics"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "\"VM_LOGS_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "VictoriaMetrics/VictoriaLogs"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "\"VM_ANOMALY_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "VictoriaMetrics/vmanomaly"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "\"VM_TRACES_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "VictoriaMetrics/VictoriaTraces"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "\"VM_OPERATOR_VERSION\": getVersion\\(\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "VictoriaMetrics/operator"
     }
   ]
 }

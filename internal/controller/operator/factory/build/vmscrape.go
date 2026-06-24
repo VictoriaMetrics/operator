@@ -210,7 +210,8 @@ func addVictoriaMetricsAppRelabelConfig(relabelings *vmv1beta1.EndpointRelabelin
 
 func victoriaMetricsAppRelabelConfig() *vmv1beta1.RelabelConfig {
 	return &vmv1beta1.RelabelConfig{
-		TargetLabel: "victoriametrics_app",
-		Replacement: ptr.To("true"),
+		TargetLabel:           "victoriametrics_app",
+		UnderScoreTargetLabel: "victoriametrics_app",
+		Replacement:           ptr.To("true"),
 	}
 }

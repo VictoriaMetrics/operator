@@ -591,7 +591,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			},
 		),
 		// nolint:dupl
-		Entry("VMAgent/VLAgent",
+		Entry("VMAgent",
 			[]crVersionPair{
 				{version: "v0.68.0", cr: with(vmagent)},
 				{version: "v0.68.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
@@ -600,8 +600,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.0", cr: with(vlagent)},
-				{version: "v0.68.0", cr: vlagentK8sCollector},
 				{version: "v0.68.1", cr: with(vmagent)},
 				{version: "v0.68.1", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -609,8 +607,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.1", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.1", cr: with(vlagent)},
-				{version: "v0.68.1", cr: vlagentK8sCollector},
 				{version: "v0.68.2", cr: with(vmagent)},
 				{version: "v0.68.2", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -618,8 +614,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.2", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.2", cr: with(vlagent)},
-				{version: "v0.68.2", cr: vlagentK8sCollector},
 				{version: "v0.68.3", cr: with(vmagent)},
 				{version: "v0.68.3", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -627,8 +621,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.3", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.3", cr: with(vlagent)},
-				{version: "v0.68.3", cr: vlagentK8sCollector},
 				{version: "v0.68.4", cr: with(vmagent)},
 				{version: "v0.68.4", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -636,8 +628,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.4", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.4", cr: with(vlagent)},
-				{version: "v0.68.4", cr: vlagentK8sCollector},
 				{version: "v0.68.5", cr: with(vmagent)},
 				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -645,8 +635,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.68.5", cr: with(vlagent)},
-				{version: "v0.68.5", cr: vlagentK8sCollector},
 				{version: "v0.70.0", cr: with(vmagent)},
 				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -654,8 +642,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
-				{version: "v0.70.0", cr: with(vlagent)},
-				{version: "v0.70.0", cr: vlagentK8sCollector},
 				{version: "v0.71.0", cr: with(vmagent)},
 				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -663,6 +649,27 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.StatefulMode = true
 				})},
+			},
+			nil,
+			nil,
+		),
+		// nolint:dupl
+		Entry("VLAgent",
+			[]crVersionPair{
+				{version: "v0.68.0", cr: with(vlagent)},
+				{version: "v0.68.0", cr: vlagentK8sCollector},
+				{version: "v0.68.1", cr: with(vlagent)},
+				{version: "v0.68.1", cr: vlagentK8sCollector},
+				{version: "v0.68.2", cr: with(vlagent)},
+				{version: "v0.68.2", cr: vlagentK8sCollector},
+				{version: "v0.68.3", cr: with(vlagent)},
+				{version: "v0.68.3", cr: vlagentK8sCollector},
+				{version: "v0.68.4", cr: with(vlagent)},
+				{version: "v0.68.4", cr: vlagentK8sCollector},
+				{version: "v0.68.5", cr: with(vlagent)},
+				{version: "v0.68.5", cr: vlagentK8sCollector},
+				{version: "v0.70.0", cr: with(vlagent)},
+				{version: "v0.70.0", cr: vlagentK8sCollector},
 				{version: "v0.71.0", cr: with(vlagent)},
 				{version: "v0.71.0", cr: vlagentK8sCollector},
 			},
@@ -712,55 +719,76 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			nil,
 		),
 		// nolint:dupl
-		Entry("VMAuth/VMAlertmanager",
+		Entry("VMAuth",
 			[]crVersionPair{
 				{version: "v0.68.0", cr: with(vmauth)},
-				{version: "v0.68.0", cr: with(vmalertmanager)},
 				{version: "v0.68.1", cr: with(vmauth)},
-				{version: "v0.68.1", cr: with(vmalertmanager)},
 				{version: "v0.68.2", cr: with(vmauth)},
-				{version: "v0.68.2", cr: with(vmalertmanager)},
 				{version: "v0.68.3", cr: with(vmauth)},
-				{version: "v0.68.3", cr: with(vmalertmanager)},
 				{version: "v0.68.4", cr: with(vmauth)},
-				{version: "v0.68.4", cr: with(vmalertmanager)},
 				{version: "v0.68.5", cr: with(vmauth)},
-				{version: "v0.68.5", cr: with(vmalertmanager)},
 				{version: "v0.70.0", cr: with(vmauth)},
-				{version: "v0.70.0", cr: with(vmalertmanager)},
 				{version: "v0.71.0", cr: with(vmauth)},
+			},
+			nil,
+			nil,
+		),
+		// nolint:dupl
+		Entry("VMAlertmanager",
+			[]crVersionPair{
+				{version: "v0.68.0", cr: with(vmalertmanager)},
+				{version: "v0.68.1", cr: with(vmalertmanager)},
+				{version: "v0.68.2", cr: with(vmalertmanager)},
+				{version: "v0.68.3", cr: with(vmalertmanager)},
+				{version: "v0.68.4", cr: with(vmalertmanager)},
+				{version: "v0.68.5", cr: with(vmalertmanager)},
+				{version: "v0.70.0", cr: with(vmalertmanager)},
 				{version: "v0.71.0", cr: with(vmalertmanager)},
 			},
 			nil,
 			nil,
 		),
 		// nolint:dupl
-		Entry("VM/VL/VTSingle",
+		Entry("VMSingle",
 			[]crVersionPair{
 				{version: "v0.65.0", cr: with(vmsingle)},
-				{version: "v0.65.0", cr: with(vtsingle)},
-				{version: "v0.65.0", cr: with(vlsingle)},
 				{version: "v0.67.0", cr: with(vmsingle)},
-				{version: "v0.67.0", cr: with(vtsingle)},
-				{version: "v0.67.0", cr: with(vlsingle)},
 				{version: "v0.68.0", cr: with(vmsingle)},
-				{version: "v0.68.0", cr: with(vtsingle)},
-				{version: "v0.68.0", cr: with(vlsingle)},
 				{version: "v0.68.1", cr: with(vmsingle)},
-				{version: "v0.68.1", cr: with(vtsingle)},
-				{version: "v0.68.1", cr: with(vlsingle)},
 				{version: "v0.68.2", cr: with(vmsingle)},
-				{version: "v0.68.2", cr: with(vtsingle)},
-				{version: "v0.68.2", cr: with(vlsingle)},
 				{version: "v0.68.3", cr: with(vmsingle)},
-				{version: "v0.68.3", cr: with(vtsingle)},
-				{version: "v0.68.3", cr: with(vlsingle)},
 				{version: "v0.68.4", cr: with(vmsingle)},
-				{version: "v0.68.4", cr: with(vtsingle)},
-				{version: "v0.68.4", cr: with(vlsingle)},
 				{version: "v0.68.5", cr: with(vmsingle)},
-				{version: "v0.68.5", cr: with(vtsingle)},
+			},
+			nil,
+			nil,
+		),
+		// nolint:dupl
+		Entry("VLSingle",
+			[]crVersionPair{
+				{version: "v0.65.0", cr: with(vlsingle)},
+				{version: "v0.67.0", cr: with(vlsingle)},
+				{version: "v0.68.0", cr: with(vlsingle)},
+				{version: "v0.68.1", cr: with(vlsingle)},
+				{version: "v0.68.2", cr: with(vlsingle)},
+				{version: "v0.68.3", cr: with(vlsingle)},
+				{version: "v0.68.4", cr: with(vlsingle)},
 				{version: "v0.68.5", cr: with(vlsingle)},
+			},
+			nil,
+			nil,
+		),
+		// nolint:dupl
+		Entry("VTSingle",
+			[]crVersionPair{
+				{version: "v0.65.0", cr: with(vtsingle)},
+				{version: "v0.67.0", cr: with(vtsingle)},
+				{version: "v0.68.0", cr: with(vtsingle)},
+				{version: "v0.68.1", cr: with(vtsingle)},
+				{version: "v0.68.2", cr: with(vtsingle)},
+				{version: "v0.68.3", cr: with(vtsingle)},
+				{version: "v0.68.4", cr: with(vtsingle)},
+				{version: "v0.68.5", cr: with(vtsingle)},
 			},
 			nil,
 			nil,

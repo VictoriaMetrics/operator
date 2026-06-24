@@ -109,3 +109,15 @@ func TestVMAlert_ValidateFail(t *testing.T) {
 		},
 	})
 }
+
+func TestVMAlert_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMAlert{Spec: VMAlertSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vmalert-myapp")
+	f("myapp", true, "myapp")
+}

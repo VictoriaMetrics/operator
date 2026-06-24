@@ -151,3 +151,15 @@ func TestVMAgent_DefaultStatusFields(t *testing.T) {
 	// replicaCount is tracked independently
 	f(&VMAgent{Spec: VMAgentSpec{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(2))}}}, 1, 2)
 }
+
+func TestVMAgent_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMAgent{Spec: VMAgentSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vmagent-myapp")
+	f("myapp", true, "myapp")
+}

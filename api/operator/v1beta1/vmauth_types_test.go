@@ -129,3 +129,15 @@ spec:
 		wantErr: "at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both",
 	})
 }
+
+func TestVMAuth_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMAuth{Spec: VMAuthSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vmauth-myapp")
+	f("myapp", true, "myapp")
+}

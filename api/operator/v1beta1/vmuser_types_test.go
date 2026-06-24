@@ -110,3 +110,15 @@ func TestVMUser_Validate(t *testing.T) {
 		},
 	}, false)
 }
+
+func TestVMUser_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMUser{Spec: VMUserSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vmuser-myapp")
+	f("myapp", true, "myapp")
+}

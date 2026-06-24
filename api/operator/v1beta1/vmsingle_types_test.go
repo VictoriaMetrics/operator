@@ -213,3 +213,18 @@ func TestVMSingle_Validate(t *testing.T) {
 		RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
 	}, false)
 }
+
+func TestVMSingle_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMSingle{Spec: VMSingleSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	// default — type prefix applied
+	f("myapp", false, "vmsingle-myapp")
+
+	// useLegacyNaming — CR name used as-is
+	f("myapp", true, "myapp")
+}

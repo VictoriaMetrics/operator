@@ -99,6 +99,22 @@ var (
 			},
 		},
 	}
+	vlagentK8sCollector = withVersion(vlagent, func(cr *vmv1.VLAgent, version string) {
+		cr.Spec.K8sCollector.Enabled = true
+		cr.Spec.ServiceAccountName = "vlagent-collector"
+		tmpPath := fmt.Sprintf("/var/lib/vlagent-data-%s", version)
+		cr.Spec.TmpDataPath = ptr.To(tmpPath)
+		cr.Spec.Volumes = append(cr.Spec.Volumes, corev1.Volume{
+			Name: "tmp-data",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{Path: tmpPath},
+			},
+		})
+		cr.Spec.VolumeMounts = append(cr.Spec.VolumeMounts, corev1.VolumeMount{
+			Name:      "tmp-data",
+			MountPath: tmpPath,
+		})
+	})
 	vmauth = &vmv1beta1.VMAuth{
 		Spec: vmv1beta1.VMAuthSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
@@ -410,12 +426,24 @@ type object[T any] interface {
 	DeepCopy() T
 }
 
-func with[T object[T]](cr T, opts ...func(T)) T {
-	obj := cr.DeepCopy()
-	for _, o := range opts {
-		o(obj)
+func with[T object[T]](cr T, opts ...func(T)) func(string) client.Object {
+	return func(_ string) client.Object {
+		obj := cr.DeepCopy()
+		for _, o := range opts {
+			o(obj)
+		}
+		return any(obj).(client.Object)
 	}
-	return obj
+}
+
+func withVersion[T object[T]](cr T, opts ...func(T, string)) func(string) client.Object {
+	return func(version string) client.Object {
+		obj := cr.DeepCopy()
+		for _, o := range opts {
+			o(obj, version)
+		}
+		return any(obj).(client.Object)
+	}
 }
 
 var (
@@ -678,7 +706,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					with(vmsingle, func(cr *vmv1beta1.VMSingle) {
 						cr.Name = "anomaly"
 						cr.Namespace = ns
-					}),
+					})("latest"),
 				}
 			},
 			pairs: []crVersionPair{

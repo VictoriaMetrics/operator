@@ -203,6 +203,10 @@ docker-build: ## Build docker image with the manager.
 docker-build-config-reloader: ## Build docker image with config-reloader.
 	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-build
 
+.PHONY: docker-push-config-reloader
+docker-push-config-reloader: ## Push docker image with config-reloader.
+	$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO):config-reloader-$(TAG)
+
 build-operator: ROOT=./cmd
 build-operator: build
 

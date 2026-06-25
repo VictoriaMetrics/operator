@@ -7,7 +7,8 @@ on:
     types:
       - completed
 
-permissions: {}
+permissions:
+  workflows: write
 
 jobs:
   update:

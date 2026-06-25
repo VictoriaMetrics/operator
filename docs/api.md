@@ -1495,6 +1495,7 @@ Appears in: [TargetRef](#targetref)
 | name<a href="#crdref-name" id="crdref-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#crdref-namespace" id="crdref-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
 | objects<a href="#crdref-objects" id="crdref-objects">#</a><br/>_[NamespacedName](#namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |
+| useExtraService<a href="#crdref-useextraservice" id="crdref-useextraservice">#</a><br/>_boolean_ | _(Optional)_<br/>UseExtraService instructs the operator to prefer the CR's additional service<br />(created via spec.serviceSpec) over the default service when building the target URL. |
 
 #### Certs
 
@@ -2607,6 +2608,7 @@ Appears in: [CRDRef](#crdref)
 | --- | --- |
 | name<a href="#namespacedname-name" id="namespacedname-name">#</a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#namespacedname-namespace" id="namespacedname-namespace">#</a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+| useExtraService<a href="#namespacedname-useextraservice" id="namespacedname-useextraservice">#</a><br/>_boolean_ | _(Optional)_<br/>UseExtraService instructs the operator to prefer the CR's additional service<br />(created via spec.serviceSpec) over the default service when building the target URL. |
 
 #### NomadSDConfig
 

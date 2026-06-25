@@ -645,7 +645,7 @@ func (cr *VTCluster) Validate() error {
 	}
 	storageNodes := sets.New[string]()
 	if cr.Spec.Storage != nil {
-		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage))
+		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage, false))
 		vts := cr.Spec.Storage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
@@ -767,62 +767,46 @@ func (cr *VTCluster) IsOwnsServiceAccount() bool {
 
 // AsURL implements stub for interface.
 // nolint:dupl,lll
-func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent) string {
-	var port string
+func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string {
+	var defaultPort string
+	var svcSpec *vmv1beta1.AdditionalServiceSpec
 	var extraArgs map[string]string
 	switch kind {
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.Select == nil {
 			return ""
 		}
-		port = cr.Spec.Select.Port
-		if port == "" {
-			port = "10471"
+		defaultPort = "10471"
+		if cr.Spec.Select.Port != "" {
+			defaultPort = cr.Spec.Select.Port
 		}
-		if cr.Spec.Select.ServiceSpec != nil && cr.Spec.Select.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.Select.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.Select.ServiceSpec
 		extraArgs = cr.Spec.Select.ExtraArgs
 	case vmv1beta1.ClusterComponentInsert:
 		if cr.Spec.Insert == nil {
 			return ""
 		}
-		port = cr.Spec.Insert.Port
-		if port == "" {
-			port = "10481"
+		defaultPort = "10481"
+		if cr.Spec.Insert.Port != "" {
+			defaultPort = cr.Spec.Insert.Port
 		}
-		if cr.Spec.Insert.ServiceSpec != nil && cr.Spec.Insert.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.Insert.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.Insert.ServiceSpec
 		extraArgs = cr.Spec.Insert.ExtraArgs
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
 			return ""
 		}
-		port = cr.Spec.Storage.Port
-		if port == "" {
-			port = "10491"
+		defaultPort = "10491"
+		if cr.Spec.Storage.Port != "" {
+			defaultPort = cr.Spec.Storage.Port
 		}
-		if cr.Spec.Storage.ServiceSpec != nil && cr.Spec.Storage.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.Storage.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.Storage.ServiceSpec
 		extraArgs = cr.Spec.Storage.ExtraArgs
 	default:
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), cr.PrefixedName(kind), cr.Namespace, port)
+	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
 }
 
 // +kubebuilder:object:root=true

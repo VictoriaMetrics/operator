@@ -3092,4 +3092,141 @@ unauthorized_user:
   bearer_token: bearer
 `,
 	})
+
+	// UseExtraService: CR without ServiceSpec falls back to <name>-additional-service suffix
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-vmauth", Namespace: "default"},
+			Spec:       vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMSingle{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{Name: "user-1", Namespace: "default"},
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken: ptr.To("bearer"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMSingle",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:            "test",
+									Namespace:       "default",
+									UseExtraService: true,
+								},
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+		},
+		want: `users:
+- url_prefix:
+  - http://vmsingle-test-additional-service.default.svc:8428
+  bearer_token: bearer
+`,
+	})
+
+	// UseExtraService: CR with ServiceSpec uses the additional service name and port
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-vmauth", Namespace: "default"},
+			Spec:       vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMSingle{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+				Spec: vmv1beta1.VMSingleSpec{
+					ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "my-extra-svc"},
+						Spec: corev1.ServiceSpec{
+							Ports: []corev1.ServicePort{
+								{Name: "http", Port: 9999},
+							},
+						},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{Name: "user-1", Namespace: "default"},
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken: ptr.To("bearer"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMSingle",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:            "test",
+									Namespace:       "default",
+									UseExtraService: true,
+								},
+							},
+							Paths: []string{"/"},
+						},
+					},
+				},
+			},
+		},
+		want: `users:
+- url_prefix:
+  - http://my-extra-svc.default.svc:9999
+  bearer_token: bearer
+`,
+	})
+
+	// UseExtraService: cluster component uses the additional service
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-vmauth", Namespace: "default"},
+			Spec:       vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMInsert: &vmv1beta1.VMInsert{
+						ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Name: "http", Port: 18480},
+								},
+							},
+						},
+					},
+					VMSelect:  &vmv1beta1.VMSelect{},
+					VMStorage: &vmv1beta1.VMStorage{},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{Name: "user-1", Namespace: "default"},
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken: ptr.To("bearer"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMCluster/vminsert",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:            "test",
+									Namespace:       "default",
+									UseExtraService: true,
+								},
+							},
+							Paths: []string{"/insert/.*"},
+						},
+					},
+				},
+			},
+		},
+		want: `users:
+- url_map:
+  - url_prefix:
+    - http://vminsert-test-additional-service.default.svc:18480
+    src_paths:
+    - /insert/.*
+  bearer_token: bearer
+`,
+	})
 }

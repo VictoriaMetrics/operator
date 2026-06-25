@@ -378,10 +378,30 @@ func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec
 
 // NameOrDefault returns name or default value with suffix
 func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
-	if ss.Name != "" {
+	if ss != nil && ss.Name != "" {
 		return ss.Name
 	}
 	return defaultName + "-additional-service"
+}
+
+// ResolveServiceURL returns the service name and port for building a CR's URL.
+// When isExtra is true it targets the additional service (spec.serviceSpec).
+// portName is the named port to look up in the service spec (typically "http").
+func ResolveServiceURL(prefixedName, defaultPort, portName string, svcSpec *AdditionalServiceSpec, isExtra bool) (svcName, port string) {
+	port = defaultPort
+	svcName = prefixedName
+	if isExtra {
+		svcName = svcSpec.NameOrDefault(prefixedName)
+	}
+	if svcSpec != nil && (isExtra || svcSpec.UseAsDefault) {
+		for _, svcPort := range svcSpec.Spec.Ports {
+			if svcPort.Name == portName {
+				port = fmt.Sprintf("%d", svcPort.Port)
+				break
+			}
+		}
+	}
+	return svcName, port
 }
 
 // BuildLocalURL builds API path for given args

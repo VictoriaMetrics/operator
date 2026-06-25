@@ -1377,4 +1377,72 @@ server:
 `,
 	})
 
+	// periodic scheduler with scatter_infer_jobs — regression test for #2328
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  zscore:
+    class: zscore
+    queries: [q1]
+schedulers:
+  periodic_online:
+    class: periodic
+    infer_every: 5m
+    scatter_infer_jobs: true
+    fit_every: 10000d
+    fit_window: 3d
+reader:
+  queries:
+    q1:
+      expr: up
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://vm:8428",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://vm:8428",
+				},
+			},
+		},
+		expected: `
+models:
+  zscore:
+    class: zscore
+    queries:
+    - q1
+schedulers:
+  periodic_online:
+    class: periodic
+    fit_every: 10000d
+    fit_window: 3d
+    infer_every: 5m
+    scatter_infer_jobs: true
+reader:
+  class: vm
+  datasource_url: http://vm:8428
+  sampling_period: 1m
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://vm:8428
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
 }

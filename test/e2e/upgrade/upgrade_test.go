@@ -562,7 +562,7 @@ func runPairUpgrade(version string, genDeps func(string) []client.Object, objs [
 	}, 5*time.Second, 1*time.Second).Should(BeEmpty())
 }
 
-var _ = Describe("operator upgrade", Label("upgrade"), func() {
+var _ = Describe("operator upgrade", Label("upgrade"), Serial, func() {
 	DescribeTable("should not rollout changes", ensureNoPodRollout,
 		Entry("pre stop hook",
 			[]crVersionPair{

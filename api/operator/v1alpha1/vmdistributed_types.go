@@ -39,6 +39,12 @@ const (
 // VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
+	// BackendType defines the storage backend type used across all zones.
+	// VMCluster uses a distributed VMCluster per zone; VMSingle uses a single-node VMSingle per zone.
+	// All zones must use the same backend type; mixed configurations are not supported.
+	// +optional
+	// +kubebuilder:validation:Enum=VMCluster;VMSingle
+	BackendType VMDistributedBackendType `json:"backendType,omitempty"`
 	// VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.
 	// Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth.
 	// +optional
@@ -66,6 +72,9 @@ type VMDistributedZoneCommon struct {
 	// VMCluster defines VictoriaMetrics cluster database
 	// +optional
 	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
+	// VMSingle defines VictoriaMetrics single-node database.
+	// +optional
+	VMSingle *VMDistributedZoneSingle `json:"vmsingle,omitempty"`
 	// VMAgent defines VMAgent to balance incoming traffic between VMClusters.
 	// +optional
 	VMAgent VMDistributedZoneAgent `json:"vmagent,omitempty"`
@@ -91,6 +100,16 @@ const (
 	VMDistributedTrafficModeMaintenance VMDistributedTrafficMode = "maintenance"
 )
 
+// VMDistributedBackendType defines the storage backend type for all zones.
+type VMDistributedBackendType string
+
+const (
+	// VMDistributedBackendTypeVMCluster uses VMCluster as the storage backend for all zones.
+	VMDistributedBackendTypeVMCluster VMDistributedBackendType = "VMCluster"
+	// VMDistributedBackendTypeVMSingle uses VMSingle as the storage backend for all zones.
+	VMDistributedBackendTypeVMSingle VMDistributedBackendType = "VMSingle"
+)
+
 // +k8s:openapi-gen=true
 // VMDistributedZone defines items within a single zone to update.
 type VMDistributedZone struct {
@@ -99,9 +118,14 @@ type VMDistributedZone struct {
 	// TrafficMode defines allowed traffic mode for a zone: read-only, write-only, read-write, maintenance
 	// +kubebuilder:validation:Enum=read-only;write-only;read-write;maintenance
 	TrafficMode VMDistributedTrafficMode `json:"trafficMode,omitempty"`
-	// VMCluster defines a new inline or referencing existing one VMCluster
+	// VMCluster defines a new inline or referencing existing one VMCluster.
+	// Mutually exclusive with VMSingle in the same zone.
 	// +optional
 	VMCluster VMDistributedZoneCluster `json:"vmcluster,omitempty"`
+	// VMSingle defines a new inline or referencing existing one VMSingle.
+	// Mutually exclusive with VMCluster in the same zone.
+	// +optional
+	VMSingle *VMDistributedZoneSingle `json:"vmsingle,omitempty"`
 	// VMAgent defines VMAgent to balance incoming traffic between VMClusters.
 	// +optional
 	VMAgent VMDistributedZoneAgent `json:"vmagent,omitempty"`
@@ -136,6 +160,18 @@ func (z *VMDistributedZone) VMClusterName(cr *VMDistributed) string {
 	}
 }
 
+// VMSingleName returns single name for zone
+func (z *VMDistributedZone) VMSingleName(cr *VMDistributed) string {
+	switch {
+	case z.VMSingle != nil && len(z.VMSingle.Name) > 0:
+		return z.VMSingle.Name
+	case cr.Spec.ZoneCommon.VMSingle != nil && len(cr.Spec.ZoneCommon.VMSingle.Name) > 0:
+		return strings.ReplaceAll(cr.Spec.ZoneCommon.VMSingle.Name, ZonePlaceholder, z.Name)
+	default:
+		return fmt.Sprintf("%s-%s", cr.Name, z.Name)
+	}
+}
+
 // +k8s:openapi-gen=true
 // VMDistributedZoneCluster defines the name and specification of a VMCluster to be created or updated.
 type VMDistributedZoneCluster struct {
@@ -148,6 +184,20 @@ type VMDistributedZoneCluster struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Spec vmv1beta1.VMClusterSpec `json:"spec"`
+}
+
+// +k8s:openapi-gen=true
+// VMDistributedZoneSingle defines the name and specification of a VMSingle to be created or updated.
+type VMDistributedZoneSingle struct {
+	// Name specifies the static name to be used for the new VMSingle.
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Spec defines the desired state of a new or update spec for existing VMSingle.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Spec *vmv1beta1.VMSingleSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -456,10 +506,20 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 func (cr *VMDistributed) Validate() error {
 	zones := sets.New[string]()
 	clusters := sets.New[string]()
+	singles := sets.New[string]()
 	agents := sets.New[string]()
 	spec := cr.Spec
+	isVMSingle := cr.Spec.BackendType == VMDistributedBackendTypeVMSingle
 	hasCommonVMInsert := cr.Spec.ZoneCommon.VMCluster.Spec.VMInsert != nil
 	hasCommonVMSelect := cr.Spec.ZoneCommon.VMCluster.Spec.VMSelect != nil
+	hasCommonVMSingle := cr.Spec.ZoneCommon.VMSingle != nil && (cr.Spec.ZoneCommon.VMSingle.Name != "" || cr.Spec.ZoneCommon.VMSingle.Spec != nil)
+	hasCommonVMCluster := cr.Spec.ZoneCommon.VMCluster.Name != "" || !equality.Semantic.DeepEqual(cr.Spec.ZoneCommon.VMCluster.Spec, vmv1beta1.VMClusterSpec{})
+	if isVMSingle && hasCommonVMCluster {
+		return fmt.Errorf("backendType=VMSingle is incompatible with zoneCommon.vmcluster configuration")
+	}
+	if !isVMSingle && hasCommonVMSingle {
+		return fmt.Errorf("backendType=VMCluster is incompatible with zoneCommon.vmsingle configuration")
+	}
 	for i := range spec.Zones {
 		zone := &spec.Zones[i]
 		if len(zone.Name) == 0 {
@@ -469,14 +529,34 @@ func (cr *VMDistributed) Validate() error {
 			return fmt.Errorf("spec.zones[%d].name=%s is duplicated, zone names must be unique", i, zone.Name)
 		}
 		zones.Insert(zone.Name)
-		clusterName := zone.VMClusterName(cr)
-		agentName := zone.VMAgentName(cr)
-		if len(clusterName) > 0 {
-			if clusters.Has(clusterName) {
-				return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
+		if isVMSingle {
+			if zone.VMCluster.Name != "" || !equality.Semantic.DeepEqual(zone.VMCluster.Spec, vmv1beta1.VMClusterSpec{}) {
+				return fmt.Errorf("spec.zones[%d]: backendType=VMSingle is incompatible with vmcluster configuration", i)
 			}
-			clusters.Insert(clusterName)
+			singleName := zone.VMSingleName(cr)
+			if singles.Has(singleName) {
+				return fmt.Errorf("spec.zones[%d].vmsingle.name=%s is already added in a different zone", i, singleName)
+			}
+			singles.Insert(singleName)
+		} else {
+			if zone.VMSingle != nil && (zone.VMSingle.Name != "" || zone.VMSingle.Spec != nil) {
+				return fmt.Errorf("spec.zones[%d]: backendType=VMCluster is incompatible with vmsingle configuration", i)
+			}
+			clusterName := zone.VMClusterName(cr)
+			if len(clusterName) > 0 {
+				if clusters.Has(clusterName) {
+					return fmt.Errorf("spec.zones[%d].vmcluster.name=%s is already added in a different zone", i, clusterName)
+				}
+				clusters.Insert(clusterName)
+			}
+			if zone.VMCluster.Spec.VMInsert == nil && !hasCommonVMInsert {
+				return fmt.Errorf("either zoneCommon.vmcluster.spec.vminsert or spec.zones[%d].vmcluster.spec.vminsert is required", i)
+			}
+			if zone.VMCluster.Spec.VMSelect == nil && !hasCommonVMSelect {
+				return fmt.Errorf("either zoneCommon.vmcluster.spec.vmselect or spec.zones[%d].vmcluster.spec.vmselect is required", i)
+			}
 		}
+		agentName := zone.VMAgentName(cr)
 		if len(agentName) > 0 {
 			if agents.Has(agentName) {
 				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
@@ -489,12 +569,6 @@ func (cr *VMDistributed) Validate() error {
 					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
 				}
 			}
-		}
-		if zone.VMCluster.Spec.VMInsert == nil && !hasCommonVMInsert {
-			return fmt.Errorf("either zoneCommon.vmcluster.spec.vminsert or spec.zones[%d].vmcluster.spec.vminsert is required", i)
-		}
-		if zone.VMCluster.Spec.VMSelect == nil && !hasCommonVMSelect {
-			return fmt.Errorf("either zoneCommon.vmcluster.spec.vmselect or spec.zones[%d].vmcluster.spec.vmselect is required", i)
 		}
 	}
 	return nil

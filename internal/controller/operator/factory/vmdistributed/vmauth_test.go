@@ -11,6 +11,15 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle, isVMSingle bool) *zones {
+	return &zones{
+		vmagents:   vmAgents,
+		vmclusters: vmClusters,
+		vmsingles:  vmSingles,
+		isVMSingle: isVMSingle,
+	}
+}
+
 func TestVMClusterTargetRefZoneOrder(t *testing.T) {
 	now := metav1.Now()
 	owner := metav1.OwnerReference{
@@ -160,7 +169,7 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		vmAuth := buildVMAuthLB(cr, o.agents, o.clusters, nil, o.excludeIds...)
+		vmAuth := buildVMAuthLB(cr, newTestLBZones(o.agents, o.clusters, nil, false), o.excludeIds...)
 		assert.NotNil(t, vmAuth)
 		assert.Len(t, vmAuth.Spec.DefaultTargetRefs, 2)
 
@@ -203,4 +212,45 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 		excludeIds:       []int{1},
 		wantClusterNames: []string{"zone-gen1", "zone-gen5"},
 	})
+}
+
+func TestBuildVMAuthLBVMSingleBackend(t *testing.T) {
+	now := metav1.Now()
+	cr := &vmv1alpha1.VMDistributed{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1alpha1",
+			Kind:       "VMDistributed",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-dist",
+			Namespace: "ns",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+		},
+	}
+	owner := cr.AsOwner()
+	vmAuth := buildVMAuthLB(cr, newTestLBZones(
+		[]*vmv1beta1.VMAgent{
+			{ObjectMeta: metav1.ObjectMeta{Name: "agent-a", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "agent-b", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
+		},
+		nil,
+		[]*vmv1beta1.VMSingle{
+			{ObjectMeta: metav1.ObjectMeta{Name: "single-a", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "single-b", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
+		},
+		true,
+	))
+
+	assert.NotNil(t, vmAuth)
+	assert.Len(t, vmAuth.Spec.DefaultTargetRefs, 2)
+	assert.Equal(t, "write", vmAuth.Spec.DefaultTargetRefs[0].Name)
+	assert.Equal(t, "VMAgent", vmAuth.Spec.DefaultTargetRefs[0].CRD.Kind)
+	assert.Equal(t, "read", vmAuth.Spec.DefaultTargetRefs[1].Name)
+	assert.Equal(t, "VMSingle", vmAuth.Spec.DefaultTargetRefs[1].CRD.Kind)
+	assert.Equal(t, []vmv1beta1.NamespacedName{
+		{Name: "single-b", Namespace: "ns"},
+		{Name: "single-a", Namespace: "ns"},
+	}, vmAuth.Spec.DefaultTargetRefs[1].CRD.Objects)
 }

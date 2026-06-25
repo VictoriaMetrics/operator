@@ -12,7 +12,7 @@ tags:
   - vmdistributed
 ---
 
-`VMDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters. It allows you to define and manage cluster components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
+`VMDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaMetrics clusters or single-node instances. It allows you to define and manage components of a distributed VictoriaMetrics setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
 
 **Note:** `VMDistributed` is an experimental feature and may not be suitable for production environments. API is not yet stabilized and may change in future releases.
 
@@ -24,10 +24,11 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 
 *   `retain`: If set to `true`, the operator will keep managed components during VMDistributed CR removal.
 *   `paused`: If set to `true`, the operator will not perform any actions on the underlying managed objects. Useful for temporarily halting reconciliation.
+*   `backendType`: Specifies the backend type for **all** zones. Either `VMCluster` (default) or `VMSingle`. All zones must use the same backend type.
 *   `vmauth`: Configuration for a `VMAuth` instance that acts as a proxy/load-balancer for the `vmselect` and `vmagent` components of the managed clusters. It acts as a global read and write path entry point.
 *   `zoneCommon`: Defines `VMDistributedZoneCommon` common zone configuration, which is default for each zone resource.
 *   `zones`: Defines the list of `VMDistributedZone` that form the distributed setup.
-*   `license`: Configures the license key for enterprise features. If provided, it is automatically passed to the managed `VMAuth`, all `VMAgent`, and `VMCluster` instances.
+*   `license`: Configures the license key for enterprise features. If provided, it is automatically passed to the managed `VMAuth`, all `VMAgent`, `VMCluster`, and `VMSingle` instances.
 
 ### `VMDistributedZoneCommon`
 
@@ -39,15 +40,21 @@ The `VMDistributed` resource allows you to configure various aspects of your Vic
 Each entry in the `zones` array includes:
 
 *   `name` defines name of zone, which is used as for default per zone resource name or can be used in `zoneCommon` template using `%ZONE%` placeholder.
-*   `vmcluster` defines `VMDistributedZoneCluster`, that allows either reference an existing `VMCluster` resource or creates a new one.
-*   `vmagent` defines `VMDistributedZoneAgent`, that allows either reference an existing `VMAgent` resource or creates a one. It receives write traffic from `vmauth` and sends to `vmcluster` instances.
+*   `vmcluster` defines `VMDistributedZoneCluster`, that allows either reference an existing `VMCluster` resource or creates a new one. Only used when `spec.backendType: VMCluster`.
+*   `vmsingle` defines `VMDistributedZoneSingle`, that allows either reference an existing `VMSingle` resource or creates a new one. Only used when `spec.backendType: VMSingle`.
+*   `vmagent` defines `VMDistributedZoneAgent`, that allows either reference an existing `VMAgent` resource or creates a one. It receives write traffic from `vmauth` and sends to `VMCluster` or `VMSingle` instances.
 
 ### `VMDistributedZoneCluster`
 
 *   `name`: Optional name of an existing `VMCluster` or one to be created; when omitted it defaults to  `zoneCommon.vmcluster.name` (where `%ZONE%` is used to template the zone name) or `${cr.Name}-${zone.name}` when unset.
 *   `spec`: A `vmv1beta1.VMClusterSpec` object that defines the desired state of a new or referenced `VMCluster` managed by this resource.
 
-**Example: Defining a `VMDistributed` resource:**
+### `VMDistributedZoneSingle`
+
+*   `name`: Optional name of an existing `VMSingle` or one to be created; when omitted it defaults to `zoneCommon.vmsingle.name` (where `%ZONE%` is used to template the zone name) or `${cr.Name}-${zone.name}` when unset.
+*   `spec`: A `vmv1beta1.VMSingleSpec` object that defines the desired state of a new or referenced `VMSingle` managed by this resource.
+
+**Example: Defining a `VMDistributed` resource with `VMCluster` backend:**
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1alpha1
@@ -84,6 +91,42 @@ spec:
   zones:
     - name: zone-a
     - name: zone-b
+      vmcluster:
+        spec:
+          vmselect:
+            replicaCount: 2
+```
+
+**Example: Defining a `VMDistributed` resource with `VMSingle` backend:**
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: my-distributed-singles
+spec:
+  backendType: VMSingle
+  vmauth:
+    name: my-distributed-vmauth
+    spec:
+      replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
+    vmsingle:
+      spec:
+        retentionPeriod: "30d"
+  zones:
+    - name: zone-a
+    - name: zone-b
+      vmsingle:
+        spec:
+          retentionPeriod: "14d"
 ```
 
 ### VMDistributed and distributed chart
@@ -157,13 +200,15 @@ Note that VMDistributed will create a single VMAuth, which encapsulates rules fo
 
 ### Ownership and references
 
-VMDistributed creates or becomes an owner of existing VMAuth, VMAgent and VMCluster resources and by default it removes all resources it owns on CR deletion. To remove VMDistributed but keep all owned resources set `spec.retain: true` before VMDistributed removal.
+VMDistributed creates or becomes an owner of existing VMAuth, VMAgent, VMCluster and VMSingle resources and by default it removes all resources it owns on CR deletion. To remove VMDistributed but keep all owned resources set `spec.retain: true` before VMDistributed removal.
 
 ### Current shortcomings
-- Only `VMCluster` objects are supported for distributed management.
 - Only one `VMAuth` can be managed per `VMDistributed`.
 - All objects must belong to the same namespace as the `VMDistributed`.
-- Objects must be referred to by name; label selectors are not supported for cluster selection.
+- Objects must be referred to by name; label selectors are not supported for `VMAuth`, `VMAgent`, `VMCluster` or `VMSingle` selection.
+- `VMAgent`, `VMCluster` and `VMSingle` names must be unique across zones within one `VMDistributed` resource.
+- All zones must use the same backend type (controlled by `spec.backendType`); mixing `VMCluster` and `VMSingle` zones in one `VMDistributed` is not supported.
+- `VMCluster` read targets use `vmselect` API paths (`/select/...`); `VMSingle` read targets use single-node API paths (`/api/v1/...`). Both are exposed as a `read` backend.
 
 ### Authorization
 By default VMDistributed provides no access to read/write endpoints. Instead it provides preconfigured named backends `read` and `write`, which can be referenced in `spec.vmauth.spec.unauthorizedUserAccessSpec` section for provide unauthorized access or in VMUser spec for authorized access.

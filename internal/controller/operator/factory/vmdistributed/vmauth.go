@@ -45,11 +45,48 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerRe
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
-		Paths: []string{"/select/.+", "/admin/tenants"},
+		Paths: []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"},
 	}
 	if len(nsns) > 0 {
 		ref.CRD = &vmv1beta1.CRDRef{
 			Kind:    "VMCluster/vmselect",
+			Objects: nsns,
+		}
+	} else {
+		ref.Static = &vmv1beta1.StaticRef{
+			URL: defaultStubAddr,
+		}
+	}
+	return ref
+}
+
+func vmSingleReadTargetRef(vmSingles []*vmv1beta1.VMSingle, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
+	var nsns []vmv1beta1.NamespacedName
+	// iterate in reverse so that vmauth would be more likely to route requests to older, stable VMSingles
+	for i := len(vmSingles) - 1; i >= 0; i-- {
+		if slices.Contains(excludeIds, i) {
+			continue
+		}
+		vmSingle := vmSingles[i]
+		if vmSingle.CreationTimestamp.IsZero() || !hasOwnerReference(vmSingle.OwnerReferences, owner) {
+			continue
+		}
+		nsns = append(nsns, vmv1beta1.NamespacedName{
+			Name:      vmSingle.Name,
+			Namespace: vmSingle.Namespace,
+		})
+	}
+	ref := vmv1beta1.TargetRef{
+		Name: "read",
+		URLMapCommon: vmv1beta1.URLMapCommon{
+			LoadBalancingPolicy: ptr.To("first_available"),
+			RetryStatusCodes:    []int{500, 502, 503},
+		},
+		Paths: []string{"/api/v1/.+", "/flags", "/metrics"},
+	}
+	if len(nsns) > 0 {
+		ref.CRD = &vmv1beta1.CRDRef{
+			Kind:    "VMSingle",
 			Objects: nsns,
 		}
 	} else {
@@ -96,7 +133,7 @@ func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReferenc
 	return ref
 }
 
-func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, trafficModes []vmv1alpha1.VMDistributedTrafficMode, excludeIds ...int) *vmv1beta1.VMAuth {
+func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, zs *zones, excludeIds ...int) *vmv1beta1.VMAuth {
 	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) || build.IsControllerDisabled("VMAuth") {
 		return nil
 	}
@@ -110,7 +147,7 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 	}
 	writeExcludeIds := slices.Clone(excludeIds)
 	readExcludeIds := slices.Clone(excludeIds)
-	for i, mode := range trafficModes {
+	for i, mode := range zs.trafficModes {
 		switch mode {
 		case vmv1alpha1.VMDistributedTrafficModeReadOnly:
 			writeExcludeIds = append(writeExcludeIds, i)
@@ -121,10 +158,16 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, vmAgents []*vmv1beta1.VMAgent, 
 			readExcludeIds = append(readExcludeIds, i)
 		}
 	}
-	var targetRefs []vmv1beta1.TargetRef
+
 	owner := cr.AsOwner()
-	targetRefs = append(targetRefs, vmAgentTargetRef(vmAgents, &owner, writeExcludeIds...))
-	targetRefs = append(targetRefs, vmClusterTargetRef(vmClusters, &owner, readExcludeIds...))
+	var targetRefs []vmv1beta1.TargetRef
+	targetRefs = append(targetRefs, vmAgentTargetRef(zs.vmagents, &owner, writeExcludeIds...))
+	if cr.Spec.BackendType == vmv1alpha1.VMDistributedBackendTypeVMSingle {
+		targetRefs = append(targetRefs, vmSingleReadTargetRef(zs.vmsingles, &owner, readExcludeIds...))
+	} else {
+		targetRefs = append(targetRefs, vmClusterTargetRef(zs.vmclusters, &owner, readExcludeIds...))
+	}
+
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth
 }

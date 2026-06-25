@@ -77,6 +77,9 @@ func addVMDistributedDefaults(objI any) {
 			Duration: 1 * time.Minute,
 		}
 	}
+	if len(cr.Spec.BackendType) == 0 {
+		cr.Spec.BackendType = vmv1alpha1.VMDistributedBackendTypeVMCluster
+	}
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
 		if len(z.TrafficMode) == 0 {
@@ -92,6 +95,9 @@ func addVMDistributedDefaults(objI any) {
 		}
 		if !cr.Spec.ZoneCommon.VMCluster.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VMCluster.Spec.License = cr.Spec.License.DeepCopy()
+		}
+		if !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
+			cr.Spec.ZoneCommon.VMSingle.Spec.License = cr.Spec.License.DeepCopy()
 		}
 	}
 }

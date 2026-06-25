@@ -85,6 +85,98 @@ func TestValidateVMDistributed(t *testing.T) {
 		},
 		isErr: true,
 	})
+
+	// same vmsingle in two zones
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				BackendType: VMDistributedBackendTypeVMSingle,
+				Zones: []VMDistributedZone{
+					{
+						Name:     "zone-1",
+						VMSingle: &VMDistributedZoneSingle{Name: "a"},
+					},
+					{
+						Name:     "zone-2",
+						VMSingle: &VMDistributedZoneSingle{Name: "a"},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
+
+	// backendType=VMSingle incompatible with vmcluster config in zone
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				BackendType: VMDistributedBackendTypeVMSingle,
+				Zones: []VMDistributedZone{
+					{
+						Name:     "zone-1",
+						VMSingle: &VMDistributedZoneSingle{Name: "single-a"},
+						VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpec{
+							VMInsert: &vmv1beta1.VMInsert{},
+						}},
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
+
+	// backendType=VMSingle incompatible with common vmcluster config
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				BackendType: VMDistributedBackendTypeVMSingle,
+				ZoneCommon: VMDistributedZoneCommon{
+					VMSingle: &VMDistributedZoneSingle{
+						Spec: &vmv1beta1.VMSingleSpec{},
+					},
+					VMCluster: VMDistributedZoneCluster{Spec: vmv1beta1.VMClusterSpec{
+						VMInsert: &vmv1beta1.VMInsert{},
+					}},
+				},
+				Zones: []VMDistributedZone{
+					{
+						Name: "zone-1",
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
+	// backendType=VMCluster (default) incompatible with common vmsingle config
+	f(opts{
+		cr: VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: VMDistributedSpec{
+				ZoneCommon: VMDistributedZoneCommon{
+					VMSingle: &VMDistributedZoneSingle{
+						Spec: &vmv1beta1.VMSingleSpec{},
+					},
+				},
+				Zones: []VMDistributedZone{
+					{
+						Name: "zone-1",
+					},
+				},
+			},
+		},
+		isErr: true,
+	})
 }
 
 func TestEnsureNoVMOwners(t *testing.T) {

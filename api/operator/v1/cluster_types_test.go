@@ -78,3 +78,89 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 		},
 	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
 }
+
+func TestVLSingle_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VLSingle{Spec: VLSingleSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vlsingle-myapp")
+	f("myapp", true, "myapp")
+}
+
+func TestVTSingle_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VTSingle{Spec: VTSingleSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vtsingle-myapp")
+	f("myapp", true, "myapp")
+}
+
+func TestVLAgent_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VLAgent{Spec: VLAgentSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vlagent-myapp")
+	f("myapp", true, "myapp")
+}
+
+func TestVMAnomaly_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VMAnomaly{Spec: VMAnomalySpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vmanomaly-myapp")
+	f("myapp", true, "myapp")
+}
+
+func TestVLCluster_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, kind vmv1beta1.ClusterComponent, want string) {
+		t.Helper()
+		cr := &VLCluster{Spec: VLClusterSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName(kind))
+	}
+
+	// default — <component>-<name>
+	f("myapp", false, vmv1beta1.ClusterComponentSelect, "vlselect-myapp")
+	f("myapp", false, vmv1beta1.ClusterComponentInsert, "vlinsert-myapp")
+	f("myapp", false, vmv1beta1.ClusterComponentStorage, "vlstorage-myapp")
+
+	// useLegacyNaming — <name>-<component>
+	f("myapp", true, vmv1beta1.ClusterComponentSelect, "myapp-vlselect")
+	f("myapp", true, vmv1beta1.ClusterComponentInsert, "myapp-vlinsert")
+	f("myapp", true, vmv1beta1.ClusterComponentStorage, "myapp-vlstorage")
+}
+
+func TestVTCluster_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, kind vmv1beta1.ClusterComponent, want string) {
+		t.Helper()
+		cr := &VTCluster{Spec: VTClusterSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName(kind))
+	}
+
+	// default — <component>-<name>
+	f("myapp", false, vmv1beta1.ClusterComponentSelect, "vtselect-myapp")
+	f("myapp", false, vmv1beta1.ClusterComponentInsert, "vtinsert-myapp")
+	f("myapp", false, vmv1beta1.ClusterComponentStorage, "vtstorage-myapp")
+
+	// useLegacyNaming — <name>-<component>
+	f("myapp", true, vmv1beta1.ClusterComponentSelect, "myapp-vtselect")
+	f("myapp", true, vmv1beta1.ClusterComponentInsert, "myapp-vtinsert")
+	f("myapp", true, vmv1beta1.ClusterComponentStorage, "myapp-vtstorage")
+}

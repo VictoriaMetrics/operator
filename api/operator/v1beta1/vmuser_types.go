@@ -74,6 +74,11 @@ type VMUserSpec struct {
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
+
+	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
+	// the CR name is used directly instead of the default "<type>-<name>" convention.
+	// +optional
+	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.
@@ -261,6 +266,9 @@ type VMUserList struct {
 
 // SecretName builds secret name for VMUser.
 func (cr *VMUser) PrefixedName() string {
+	if cr.Spec.UseLegacyNaming {
+		return cr.Name
+	}
 	return fmt.Sprintf("vmuser-%s", cr.Name)
 }
 

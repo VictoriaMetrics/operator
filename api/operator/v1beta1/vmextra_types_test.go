@@ -346,3 +346,15 @@ func TestCommonAppsParamsValidate(t *testing.T) {
 		TerminationGracePeriodSeconds: ptr.To[int64](15),
 	}, true)
 }
+
+func TestVLogs_PrefixedName(t *testing.T) {
+	f := func(name string, omit bool, want string) {
+		t.Helper()
+		cr := &VLogs{Spec: VLogsSpec{UseLegacyNaming: omit}}
+		cr.Name = name
+		assert.Equal(t, want, cr.PrefixedName())
+	}
+
+	f("myapp", false, "vlogs-myapp")
+	f("myapp", true, "myapp")
+}

@@ -118,7 +118,12 @@ type VMAnomalySpec struct {
 	License *vmv1beta1.License `json:"license,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName         string `json:"serviceAccountName,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
+	// the CR name is used directly instead of the default "<type>-<name>" convention.
+	// +optional
+	UseLegacyNaming            bool `json:"useLegacyNaming,omitempty"`
 	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
@@ -378,6 +383,9 @@ func (cr *VMAnomaly) FinalLabels() map[string]string {
 
 // PrefixedName format name of the component with hard-coded prefix
 func (cr *VMAnomaly) PrefixedName() string {
+	if cr.Spec.UseLegacyNaming {
+		return cr.Name
+	}
 	return fmt.Sprintf("vmanomaly-%s", cr.Name)
 }
 

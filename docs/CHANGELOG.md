@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `useLegacyNaming` field to all operator CRs. When enabled, managed resources are named using the standalone Helm chart convention (CR name directly for single-component CRs; `<name>-<component>` for cluster CRs) instead of the default operator prefix convention. Useful when migrating from standalone charts to operator-managed resources without recreating existing resources.
 
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix possible panic on Secret watch events when the informer's local cache fell out of sync and Kubernetes delivered a stale tombstone entry instead of the Secret object. The config-reloader now unwraps tombstones correctly and logs an error for any other unexpected types.
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): switch default app probes to `tcpSocket` `startupProbe` when TLS is enabled on the managed HTTP endpoint. This avoids broken kubelet `httpGet` checks against TLS and mTLS-protected workloads. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
 
 ## [v0.72.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.72.0)

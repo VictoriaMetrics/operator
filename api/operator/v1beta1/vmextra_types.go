@@ -1486,7 +1486,7 @@ type CommonAppsParams struct {
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated.
-	/// +optional
+	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the Application container

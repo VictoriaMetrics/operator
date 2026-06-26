@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.146.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.145.1-0.20260616130439-5b31a047a5bf
 	github.com/VictoriaMetrics/metrics v1.44.0
 	github.com/VictoriaMetrics/metricsql v0.87.2
 	github.com/VictoriaMetrics/operator/api v0.72.0
@@ -36,7 +36,7 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/VictoriaLogs v1.121.1-0.20260616132739-c901a1e31cb3 // indirect
+	github.com/VictoriaMetrics/VictoriaLogs v1.51.1-0.20260624061259-dc94972a8708 // indirect
 	github.com/VictoriaMetrics/easyproto v1.2.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.42.0 // indirect

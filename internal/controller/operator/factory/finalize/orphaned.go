@@ -88,6 +88,16 @@ func RemoveOrphanedVPAs(ctx context.Context, rclient client.Client, cr crObject,
 	return removeOrphaned(ctx, rclient, cr, gvk, keepNames, shouldRemove)
 }
 
+// RemoveOrphanedNetworkPolicies removes NetworkPolicies detached from given object
+func RemoveOrphanedNetworkPolicies(ctx context.Context, rclient client.Client, cr crObject, keepNames sets.Set[string], shouldRemove bool) error {
+	gvk := schema.GroupVersionKind{
+		Group:   "networking.k8s.io",
+		Version: "v1",
+		Kind:    "NetworkPolicy",
+	}
+	return removeOrphaned(ctx, rclient, cr, gvk, keepNames, shouldRemove)
+}
+
 // RemoveOrphanedVMServiceScrapes removes VMServiceScrapes detached from given object
 func RemoveOrphanedVMServiceScrapes(ctx context.Context, rclient client.Client, cr crObject, keepNames sets.Set[string], shouldRemove bool) error {
 	if build.IsControllerDisabled("VMServiceScrape") {

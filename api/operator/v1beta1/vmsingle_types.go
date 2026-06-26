@@ -106,6 +106,9 @@ type VMSingleSpec struct {
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
 
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy              *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
 	CommonConfigReloaderParams `json:",inline,omitempty"`

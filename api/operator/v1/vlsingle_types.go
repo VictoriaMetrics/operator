@@ -111,6 +111,9 @@ type VLSingleSpec struct {
 	// SyslogSpec defines syslog listener configuration
 	// +optional
 	SyslogSpec *SyslogServerSpec `json:"syslogSpec,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 }
 
 // VLSingleStatus defines the observed state of VLSingle

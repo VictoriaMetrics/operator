@@ -382,6 +382,9 @@ type VMSelect struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
@@ -465,6 +468,9 @@ type VMInsert struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// Discovery overrides the cluster-level discovery config for vminsert.
 	// +optional
@@ -553,6 +559,9 @@ type VMStorage struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	// lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3].
 	// Useful at storage expanding, when you want to rebalance some data at cluster.
@@ -1132,6 +1141,9 @@ type VMAuthLoadBalancerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// Available from operator v0.64.0

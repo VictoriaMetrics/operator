@@ -18,6 +18,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -504,6 +505,17 @@ func (cr *EmbeddedVPA) Validate() error {
 		return fmt.Errorf("VPA must have resourcePolicy.containerPolicies")
 	}
 	return nil
+}
+
+// EmbeddedNetworkPolicy defines configuration for a NetworkPolicy protecting pods owned by the CR.
+type EmbeddedNetworkPolicy struct {
+	// Ingress defines the list of ingress rules applied to pods selected by this CR.
+	// Each rule allows traffic which matches both the from and ports sections.
+	// +optional
+	Ingress []networkingv1.NetworkPolicyIngressRule `json:"ingress,omitempty"`
+	// Egress defines the list of egress rules applied to pods selected by this CR.
+	// +optional
+	Egress []networkingv1.NetworkPolicyEgressRule `json:"egress,omitempty"`
 }
 
 // DiscoverySelector can be used at CRD components discovery

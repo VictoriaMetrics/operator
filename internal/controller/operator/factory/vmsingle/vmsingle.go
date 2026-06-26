@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -109,6 +110,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	}
 	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return err
+	}
+	if cr.Spec.NetworkPolicy != nil {
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.NetworkPolicy != nil {
+			prevNP = build.NetworkPolicy(prevCR, prevCR.Spec.NetworkPolicy)
+		}
+		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(cr, cr.Spec.NetworkPolicy), prevNP, &owner); err != nil {
+			return fmt.Errorf("cannot update network policy for vmsingle: %w", err)
+		}
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
@@ -681,6 +691,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
+	if cr.Spec.NetworkPolicy == nil {
+		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})
+	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}

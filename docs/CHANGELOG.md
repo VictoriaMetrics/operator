@@ -13,14 +13,15 @@ aliases:
 
 ## tip
 
-* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `useLegacyNaming` field to all operator CRs. When enabled, managed resources are named using the standalone Helm chart convention (CR name directly for single-component CRs; `<name>-<component>` for cluster CRs) instead of the default operator prefix convention. Useful when migrating from standalone charts to operator-managed resources without recreating existing resources.
-
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.146.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.146.0) version
-* BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix possible panic on Secret watch events when the informer's local cache fell out of sync and Kubernetes delivered a stale tombstone entry instead of the Secret object. The config-reloader now unwraps tombstones correctly and logs an error for any other unexpected types.
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): switch default app probes to `tcpSocket` `startupProbe` when TLS is enabled on the managed HTTP endpoint. This avoids broken kubelet `httpGet` checks against TLS and mTLS-protected workloads. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
-
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.3](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.3) version. 
+
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `useLegacyNaming` field to all operator CRs. When enabled, managed resources are named using the standalone Helm chart convention (CR name directly for single-component CRs; `<name>-<component>` for cluster CRs) instead of the default operator prefix convention. Useful when migrating from standalone charts to operator-managed resources without recreating existing resources.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `networkPolicy` field to all supported CRDs (`VMSingle`, `VMAgent`, `VMAlert`, `VMAlertmanager`, `VMAuth`, `VLSingle`, `VLAgent`, `VTSingle`, `VMAnomaly`, and all cluster sub-components). When set, the operator creates and manages a `NetworkPolicy` resource that restricts ingress/egress to the component's pods. See [#2977](https://github.com/VictoriaMetrics/helm-charts/issues/2977).
+
+* BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix possible panic on Secret watch events when the informer's local cache fell out of sync and Kubernetes delivered a stale tombstone entry instead of the Secret object. The config-reloader now unwraps tombstones correctly and logs an error for any other unexpected types.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): switch default app probes to `tcpSocket` `startupProbe` when TLS is enabled on the managed HTTP endpoint. This avoids broken kubelet `httpGet` checks against TLS and mTLS-protected workloads. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
 
 ## [v0.72.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.72.0)
 **Release date:** 15 June 2026

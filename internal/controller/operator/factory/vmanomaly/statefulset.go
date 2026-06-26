@@ -8,6 +8,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -96,6 +97,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1.VMAnomaly, rclient client.Clie
 	if err != nil {
 		return fmt.Errorf("cannot build new statefulSet for vmanomaly: %w", err)
 	}
+	if cr.Spec.NetworkPolicy != nil {
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.NetworkPolicy != nil {
+			prevNP = build.NetworkPolicy(prevCR, prevCR.Spec.NetworkPolicy)
+		}
+		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(cr, cr.Spec.NetworkPolicy), prevNP, &owner); err != nil {
+			return fmt.Errorf("cannot update network policy for vmanomaly: %w", err)
+		}
+	}
 	return createOrUpdateApp(ctx, rclient, cr, prevCR, newAppTpl, prevAppTpl)
 }
 
@@ -181,6 +191,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
+	if cr.Spec.NetworkPolicy == nil {
+		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})
+	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}

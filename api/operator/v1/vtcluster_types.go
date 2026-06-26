@@ -247,6 +247,9 @@ type VTInsert struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
@@ -346,6 +349,9 @@ type VTSelect struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
@@ -476,6 +482,9 @@ type VTStorage struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 
 	// StorageDataPath - path to storage data
 	// +optional

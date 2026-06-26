@@ -139,6 +139,9 @@ type VMAlertmanagerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector.
 	// with selectAllByDefault: true and undefined ConfigSelector and ConfigNamespaceSelector
 	// Operator selects all exist alertManagerConfigs

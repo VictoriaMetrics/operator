@@ -248,6 +248,7 @@ schedulers:
 	},
 		want{
 			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "NetworkPolicy", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "Service", Resource: vmanomalyName},
 				{Verb: "Get", Kind: "VMPodScrape", Resource: vmanomalyName},

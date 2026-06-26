@@ -100,6 +100,15 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cl
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
+	if cr.Spec.NetworkPolicy != nil {
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.NetworkPolicy != nil {
+			prevNP = build.NetworkPolicy(prevCR, prevCR.Spec.NetworkPolicy)
+		}
+		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(cr, cr.Spec.NetworkPolicy), prevNP, &owner); err != nil {
+			return fmt.Errorf("cannot update network policy for vmauth: %w", err)
+		}
+	}
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
 		var err error
@@ -649,6 +658,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	var objsToRemove []client.Object
 	if cr.Spec.PodDisruptionBudget == nil {
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
+	}
+	if cr.Spec.NetworkPolicy == nil {
+		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})
 	}
 	if cfg.GatewayAPIEnabled && cr.Spec.HTTPRoute == nil {
 		objsToRemove = append(objsToRemove, &gwapiv1.HTTPRoute{ObjectMeta: objMeta})

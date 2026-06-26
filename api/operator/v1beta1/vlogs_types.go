@@ -298,20 +298,13 @@ func (cr *VLogs) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLogs) AsURL() string {
-	port := cr.Spec.Port
-	if port == "" {
-		port = "9428"
+func (cr *VLogs) AsURL(isExtra bool) string {
+	specPort := cr.Spec.Port
+	if specPort == "" {
+		specPort = "9428"
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
-		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
-			if svcPort.Name == "http" {
-				port = fmt.Sprintf("%d", svcPort.Port)
-				break
-			}
-		}
-	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
+	svcName, port := ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

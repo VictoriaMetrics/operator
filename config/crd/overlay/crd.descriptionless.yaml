@@ -13990,11 +13990,15 @@ spec:
                                 type: string
                               namespace:
                                 type: string
+                              useExtraService:
+                                type: boolean
                             required:
                             - name
                             - namespace
                             type: object
                           type: array
+                        useExtraService:
+                          type: boolean
                       required:
                       - kind
                       - name
@@ -15074,11 +15078,15 @@ spec:
                                     type: string
                                   namespace:
                                     type: string
+                                  useExtraService:
+                                    type: boolean
                                 required:
                                 - name
                                 - namespace
                                 type: object
                               type: array
+                            useExtraService:
+                              type: boolean
                           required:
                           - kind
                           - name
@@ -19614,11 +19622,15 @@ spec:
                                         type: string
                                       namespace:
                                         type: string
+                                      useExtraService:
+                                        type: boolean
                                     required:
                                     - name
                                     - namespace
                                     type: object
                                   type: array
+                                useExtraService:
+                                  type: boolean
                               required:
                               - kind
                               - name
@@ -22511,11 +22523,15 @@ spec:
                                             type: string
                                           namespace:
                                             type: string
+                                          useExtraService:
+                                            type: boolean
                                         required:
                                         - name
                                         - namespace
                                         type: object
                                       type: array
+                                    useExtraService:
+                                      type: boolean
                                   required:
                                   - kind
                                   - name
@@ -45187,11 +45203,15 @@ spec:
                                 type: string
                               namespace:
                                 type: string
+                              useExtraService:
+                                type: boolean
                             required:
                             - name
                             - namespace
                             type: object
                           type: array
+                        useExtraService:
+                          type: boolean
                       required:
                       - kind
                       - name

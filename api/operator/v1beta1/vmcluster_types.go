@@ -714,7 +714,7 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 	if cr == nil || cr.Spec.VMInsert == nil {
 		return ""
 	}
-	insertURL := cr.AsURL(ClusterComponentInsert)
+	insertURL := cr.AsURL(ClusterComponentInsert, false)
 	return fmt.Sprintf("%s%s", insertURL, BuildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/multitenant/prometheus/api/v1/write"))
 }
 
@@ -1003,62 +1003,46 @@ func (cr *VMCluster) IsOwnsServiceAccount() bool {
 }
 
 // AsURL implements stub for interface.
-func (cr *VMCluster) AsURL(kind ClusterComponent) string {
-	var port string
+func (cr *VMCluster) AsURL(kind ClusterComponent, isExtra bool) string {
+	var defaultPort string
+	var svcSpec *AdditionalServiceSpec
 	var extraArgs map[string]string
 	switch kind {
 	case ClusterComponentSelect:
 		if cr.Spec.VMSelect == nil {
 			return ""
 		}
-		port = cr.Spec.VMSelect.Port
-		if port == "" {
-			port = "8481"
+		defaultPort = "8481"
+		if cr.Spec.VMSelect.Port != "" {
+			defaultPort = cr.Spec.VMSelect.Port
 		}
-		if cr.Spec.VMSelect.ServiceSpec != nil && cr.Spec.VMSelect.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.VMSelect.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.VMSelect.ServiceSpec
 		extraArgs = cr.Spec.VMSelect.ExtraArgs
 	case ClusterComponentInsert:
 		if cr.Spec.VMInsert == nil {
 			return ""
 		}
-		port = cr.Spec.VMInsert.Port
-		if port == "" {
-			port = "8480"
+		defaultPort = "8480"
+		if cr.Spec.VMInsert.Port != "" {
+			defaultPort = cr.Spec.VMInsert.Port
 		}
-		if cr.Spec.VMInsert.ServiceSpec != nil && cr.Spec.VMInsert.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.VMInsert.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.VMInsert.ServiceSpec
 		extraArgs = cr.Spec.VMInsert.ExtraArgs
 	case ClusterComponentStorage:
 		if cr.Spec.VMStorage == nil {
 			return ""
 		}
-		port = cr.Spec.VMStorage.Port
-		if port == "" {
-			port = "8482"
+		defaultPort = "8482"
+		if cr.Spec.VMStorage.Port != "" {
+			defaultPort = cr.Spec.VMStorage.Port
 		}
-		if cr.Spec.VMStorage.ServiceSpec != nil && cr.Spec.VMStorage.ServiceSpec.UseAsDefault {
-			for _, svcPort := range cr.Spec.VMStorage.ServiceSpec.Spec.Ports {
-				if svcPort.Name == "http" {
-					port = fmt.Sprintf("%d", svcPort.Port)
-				}
-			}
-		}
+		svcSpec = cr.Spec.VMStorage.ServiceSpec
 		extraArgs = cr.Spec.VMStorage.ExtraArgs
 	default:
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), cr.PrefixedName(kind), cr.Namespace, port)
+	svcName, port := ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
 }
 
 func (cr *VMSelect) ProbePath() string {

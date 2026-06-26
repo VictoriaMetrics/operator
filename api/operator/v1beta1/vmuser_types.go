@@ -193,6 +193,10 @@ type NamespacedName struct {
 	Name string `json:"name"`
 	// Namespace of the target Kubernetes object
 	Namespace string `json:"namespace"`
+	// UseExtraService instructs the operator to prefer the CR's additional service
+	// (created via spec.serviceSpec) over the default service when building the target URL.
+	// +optional
+	UseExtraService bool `json:"useExtraService,omitempty"`
 }
 
 // CRDRef describe CRD target reference.

@@ -13,14 +13,15 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.146.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.146.0) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.3](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.3) version.
+
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `useExtraService` boolean field to `crd.namespacedName` and `crd.objects` entries in `VMUser` target references. When set to `true`, the operator resolves the target URL using the CR's additional service (configured via `spec.serviceSpec`) instead of the default service. This lets you route VMAuth traffic to a dedicated service with different port mappings or service type without changing the primary service. See related types: `CRDRef`, `NamespacedName`. See [#2333](https://github.com/VictoriaMetrics/operator/issues/2333).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `useLegacyNaming` field to all operator CRs. When enabled, managed resources are named using the standalone Helm chart convention (CR name directly for single-component CRs; `<name>-<component>` for cluster CRs) instead of the default operator prefix convention. Useful when migrating from standalone charts to operator-managed resources without recreating existing resources.
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.146.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.146.0) version
 * BUGFIX: [config-reloader](https://docs.victoriametrics.com/operator/): fix possible panic on Secret watch events when the informer's local cache fell out of sync and Kubernetes delivered a stale tombstone entry instead of the Secret object. The config-reloader now unwraps tombstones correctly and logs an error for any other unexpected types.
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): switch default app probes to `tcpSocket` `startupProbe` when TLS is enabled on the managed HTTP endpoint. This avoids broken kubelet `httpGet` checks against TLS and mTLS-protected workloads. See [#1824](https://github.com/VictoriaMetrics/operator/issues/1824).
-
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.3](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.3) version. 
 
 ## [v0.72.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.72.0)
 **Release date:** 15 June 2026

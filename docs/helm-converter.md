@@ -10,8 +10,6 @@ aliases:
   - /operator/helm-converter.html
 ---
 
-# Helm to Operator Converter
-
 The `helm-converter` is a CLI tool designed to help with the migration process from Helm charts to their corresponding VictoriaMetrics Operator Custom Resources (CRs).
 
 It takes your existing Helm `values.yaml` file and generates the equivalent Operator Custom Resource YAML manifest. This manifest is not a 1:1 replacement, but it takes care of the bulk of the conversion work.

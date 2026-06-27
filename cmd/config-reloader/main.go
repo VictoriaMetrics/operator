@@ -240,26 +240,25 @@ type reloader struct {
 func (r *reloader) reload(ctx context.Context) error {
 	configReloadsTotal.Inc()
 	authKey := reloadURLAuthKey.Get()
-
-	var resp *http.Response
+	reloadTarget := *reloadURL
 	if len(authKey) > 0 {
-		formData := url.Values{
-			"authKey": []string{authKey},
-		}
-		var err error
-		resp, err = r.c.PostForm(*reloadURL, formData)
+		reloadURLParsed, err := url.Parse(reloadTarget)
 		if err != nil {
-			return fmt.Errorf("cannot execute postForm request for reload api: %w", err)
+			return fmt.Errorf("cannot parse reload api url: %w", err)
 		}
-	} else {
-		req, err := http.NewRequestWithContext(ctx, *webhookMethod, *reloadURL, nil)
-		if err != nil {
-			return fmt.Errorf("cannot build request for reload api: %w", err)
-		}
-		resp, err = r.c.Do(req)
-		if err != nil {
-			return fmt.Errorf("cannot execute request for reload api: %w", err)
-		}
+		query := reloadURLParsed.Query()
+		query.Set("authKey", authKey)
+		reloadURLParsed.RawQuery = query.Encode()
+		reloadTarget = reloadURLParsed.String()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, *webhookMethod, reloadTarget, nil)
+	if err != nil {
+		return fmt.Errorf("cannot build request for reload api: %w", err)
+	}
+	resp, err := r.c.Do(req)
+	if err != nil {
+		return fmt.Errorf("cannot execute request for reload api: %w", err)
 	}
 	defer resp.Body.Close()
 	text, _ := io.ReadAll(resp.Body)

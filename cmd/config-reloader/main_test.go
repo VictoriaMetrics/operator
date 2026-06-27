@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -244,4 +246,40 @@ func TestValidateTargetDirCount(t *testing.T) {
 			t.Fatalf("expected error to mention both supported source flags, got %q", msg)
 		}
 	})
+}
+
+func TestReloadPreservesWebhookMethodWhenAuthKeyIsConfigured(t *testing.T) {
+	origReloadURL := *reloadURL
+	origWebhookMethod := *webhookMethod
+	origAuthKey := reloadURLAuthKey.Get()
+	defer func() {
+		*reloadURL = origReloadURL
+		*webhookMethod = origWebhookMethod
+		_ = flag.Set("reload-url-auth-key", origAuthKey)
+	}()
+
+	var gotMethod string
+	var gotAuthKey string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotAuthKey = r.URL.Query().Get("authKey")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	*reloadURL = server.URL
+	*webhookMethod = http.MethodPut
+	_ = flag.Set("reload-url-auth-key", "secret-value")
+
+	r := reloader{c: server.Client()}
+	if err := r.reload(context.Background()); err != nil {
+		t.Fatalf("reload returned unexpected error: %v", err)
+	}
+
+	if gotMethod != http.MethodPut {
+		t.Fatalf("expected reload request method %q, got %q", http.MethodPut, gotMethod)
+	}
+	if gotAuthKey != "secret-value" {
+		t.Fatalf("expected authKey query value to be forwarded, got %q", gotAuthKey)
+	}
 }

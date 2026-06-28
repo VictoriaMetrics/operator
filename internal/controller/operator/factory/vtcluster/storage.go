@@ -168,7 +168,7 @@ func createOrUpdateVTStorageSTS(ctx context.Context, rclient client.Client, cr, 
 		UpdateBehavior: cr.Spec.Storage.RollingUpdateStrategyBehavior,
 		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
 			if cr.Spec.Storage.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.Storage.ReplicaCount = existingSpec.Replicas
 			}
 		},

@@ -178,8 +178,40 @@ func TestDeployReconcile(t *testing.T) {
 		},
 		o: &DeploymentOpts{
 			PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 			},
+		},
+	})
+
+	// update image when HPA has scaled replicas beyond CR desired count
+	// this is the regression test for https://github.com/VictoriaMetrics/operator/issues/2324
+	f(opts{
+		new: getDeploy(func(d *appsv1.Deployment) {
+			d.Spec.Template.Spec.Containers[0].Image = "some-image:new-tag"
+		}),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Spec.Replicas = ptr.To[int32](4)
+				d.Status.ReadyReplicas = 4
+				d.Status.UpdatedReplicas = 4
+				d.Status.Replicas = 4
+				d.Status.Conditions[0].Reason = "ReplicaSetUpdated"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Update", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
+		o: &DeploymentOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
+				newSpec.Replicas = nil
+			},
+		},
+		validate: func(d *appsv1.Deployment) {
+			assert.Equal(t, "some-image:new-tag", d.Spec.Template.Spec.Containers[0].Image)
+			assert.Equal(t, ptr.To[int32](4), d.Spec.Replicas)
 		},
 	})
 }

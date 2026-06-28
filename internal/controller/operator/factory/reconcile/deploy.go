@@ -37,6 +37,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	if o == nil {
 		o = new(DeploymentOpts)
 	}
+	var hpaManaged bool
 	err := retryOnConflict(func() error {
 		var existingObj appsv1.Deployment
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
@@ -54,6 +55,12 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 		}
 		if o.PatchSpec != nil {
 			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
+			// nil replicas is a convention from PatchSpec meaning HPA manages the replica count;
+			// restore the live value so the update does not overwrite it.
+			if newObj.Spec.Replicas == nil && existingObj.Spec.Replicas != nil {
+				hpaManaged = true
+				newObj.Spec.Replicas = existingObj.Spec.Replicas
+			}
 		}
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
@@ -76,14 +83,14 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	if err != nil {
 		return err
 	}
+	if hpaManaged {
+		newObj.Spec.Replicas = nil
+	}
 	return waitForDeploymentReady(ctx, rclient, newObj, appWaitReadyTimeout)
 }
 
 // waitForDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *appsv1.Deployment, deadline time.Duration) error {
-	if newObj.Spec.Replicas == nil {
-		return nil
-	}
 	var isErrDeadline bool
 	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {
@@ -110,7 +117,16 @@ func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *
 			isErrDeadline = true
 			return true, fmt.Errorf("progress deadline exceeded for Deployment=%s", nsn.String())
 		}
-		if *newObj.Spec.Replicas != existingObj.Status.ReadyReplicas || *newObj.Spec.Replicas != existingObj.Status.UpdatedReplicas {
+		// nil replicas signals HPA manages the count; use the live value so the
+		// comparison stays self-consistent even when HPA changes replicas mid-rollout.
+		targetReplicas := newObj.Spec.Replicas
+		if targetReplicas == nil {
+			targetReplicas = existingObj.Spec.Replicas
+		}
+		if targetReplicas == nil {
+			return true, nil
+		}
+		if *targetReplicas != existingObj.Status.ReadyReplicas || *targetReplicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil

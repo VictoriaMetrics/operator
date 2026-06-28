@@ -189,7 +189,7 @@ func createOrUpdateVLSelectDeployment(ctx context.Context, rclient client.Client
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VLSelect.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.VLSelect.ReplicaCount = existingSpec.Replicas
 			}
 		},

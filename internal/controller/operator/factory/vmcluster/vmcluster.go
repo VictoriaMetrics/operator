@@ -173,7 +173,7 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 		UpdateBehavior: cr.Spec.VMSelect.RollingUpdateStrategyBehavior,
 		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
 			if cr.Spec.VMSelect.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.VMSelect.ReplicaCount = existingSpec.Replicas
 			}
 		},
@@ -323,7 +323,7 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VMInsert.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.VMInsert.ReplicaCount = existingSpec.Replicas
 			}
 		},
@@ -435,7 +435,7 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 		UpdateBehavior: cr.Spec.VMStorage.RollingUpdateStrategyBehavior,
 		PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
 			if cr.Spec.VMStorage.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.VMStorage.ReplicaCount = existingSpec.Replicas
 			}
 		},
@@ -1706,7 +1706,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.RequestsLoadBalancer.Spec.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = existingSpec.Replicas
 			}
 		},

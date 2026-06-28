@@ -48,7 +48,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.RequestsLoadBalancer.Spec.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = existingSpec.Replicas
 			}
 		},

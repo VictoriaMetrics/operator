@@ -25,6 +25,12 @@
         "golang"
       ],
       "groupName": "golang"
+    },
+    {
+      "matchPackageNames": [
+        "github.com/onsi/ginkgo/v2"
+      ],
+      "groupName": "ginkgo"
     }
   ],
   "customManagers": [

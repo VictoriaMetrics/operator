@@ -184,7 +184,8 @@
         "MIRRORD_VERSION \\?= (?<currentValue>.*)"
       ],
       "datasourceTemplate": "github-releases",
-      "depNameTemplate": "metalbear-co/mirrord"
+      "depNameTemplate": "metalbear-co/mirrord",
+      "versioning": "semver"
     },
     {
       "customType": "regex",

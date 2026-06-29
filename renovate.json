@@ -31,6 +31,12 @@
         "github.com/onsi/ginkgo/v2"
       ],
       "groupName": "ginkgo"
+    },
+    {
+      "matchPackageNames": [
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "groupName": "controller-runtime"
     }
   ],
   "customManagers": [

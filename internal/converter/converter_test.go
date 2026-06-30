@@ -24,6 +24,46 @@ func unmarshalYAML(t *testing.T, data []byte) map[string]any {
 	return m
 }
 
+func TestUnmarshalValuesSupportsQuotedResourceQuantities(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  resources:
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+`), "victoria-metrics-single")
+	require.NoError(t, err)
+
+	got := values.(*VMSingleHelmValues)
+	require.NotNil(t, got.Server.Resources)
+	assert.Equal(t, resource.MustParse("2"), got.Server.Resources.Requests[corev1.ResourceCPU])
+	assert.Equal(t, resource.MustParse("4Gi"), got.Server.Resources.Requests[corev1.ResourceMemory])
+	assert.Equal(t, resource.MustParse("4"), got.Server.Resources.Limits[corev1.ResourceCPU])
+	assert.Equal(t, resource.MustParse("8Gi"), got.Server.Resources.Limits[corev1.ResourceMemory])
+}
+
+func TestUnmarshalValuesSupportsEnvAliasFields(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+env:
+  - name: FOO
+    value: bar
+remoteWrite:
+  - url: http://vminsert:8480/insert/0/prometheus
+image:
+  repository: victoriametrics/vmagent
+  tag: v1.93.0
+`), "victoria-metrics-agent")
+	require.NoError(t, err)
+
+	got := values.(*VMAgentHelmValues)
+	require.Len(t, got.ExtraEnvs, 1)
+	assert.Equal(t, "FOO", got.ExtraEnvs[0].Name)
+	assert.Equal(t, "bar", got.ExtraEnvs[0].Value)
+}
+
 func TestConvertVMSingle(t *testing.T) {
 	f := func(values *VMSingleHelmValues, expected func() *vmv1beta1.VMSingle) {
 		t.Helper()

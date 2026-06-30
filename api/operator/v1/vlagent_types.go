@@ -174,6 +174,9 @@ func (cr *VLAgent) Validate() error {
 				return fmt.Errorf("spec.k8sCollector.extraFields is not a valid JSON: %w", err)
 			}
 		}
+		if cr.Spec.VPA != nil {
+			return fmt.Errorf("vpa cannot be used with k8sCollector mode")
+		}
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {

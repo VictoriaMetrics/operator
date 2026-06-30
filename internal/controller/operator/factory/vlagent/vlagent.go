@@ -704,7 +704,7 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 }
 
 func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
-	if cr.Spec.VPA == nil {
+	if cr.Spec.VPA == nil || cr.Spec.K8sCollector.Enabled {
 		return nil
 	}
 	targetRef := autoscalingv1.CrossVersionObjectReference{
@@ -748,7 +748,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 	if cr.Spec.PodDisruptionBudget == nil {
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}
-	if config.MustGetBaseConfig().VPAAPIEnabled && cr.Spec.VPA == nil {
+	if config.MustGetBaseConfig().VPAAPIEnabled && (cr.Spec.VPA == nil || cr.Spec.K8sCollector.Enabled) {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !cr.IsOwnsServiceAccount() {

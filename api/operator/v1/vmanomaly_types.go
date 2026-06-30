@@ -126,6 +126,7 @@ type VMAnomalySpec struct {
 	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
 	// the CR name is used directly instead of the default "<type>-<name>" convention.
 	// +optional
+	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming            bool `json:"useLegacyNaming,omitempty"`
 	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }

@@ -68,6 +68,7 @@ type VTClusterSpec struct {
 	// (<component>-<name>, e.g. "vtselect-myapp") to a suffix convention (<name>-<component>,
 	// e.g. "myapp-vtselect"). Useful when migrating from standalone Helm charts.
 	// +optional
+	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access

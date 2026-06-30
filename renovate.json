@@ -25,6 +25,18 @@
         "golang"
       ],
       "groupName": "golang"
+    },
+    {
+      "matchPackageNames": [
+        "github.com/onsi/ginkgo/v2"
+      ],
+      "groupName": "ginkgo"
+    },
+    {
+      "matchPackageNames": [
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "groupName": "controller-runtime"
     }
   ],
   "customManagers": [
@@ -184,7 +196,8 @@
         "MIRRORD_VERSION \\?= (?<currentValue>.*)"
       ],
       "datasourceTemplate": "github-releases",
-      "depNameTemplate": "metalbear-co/mirrord"
+      "depNameTemplate": "metalbear-co/mirrord",
+      "versioning": "semver"
     },
     {
       "customType": "regex",
@@ -227,8 +240,8 @@
       "matchStrings": [
         "\"VM_ANOMALY_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
       ],
-      "datasourceTemplate": "github-tags",
-      "depNameTemplate": "VictoriaMetrics/vmanomaly"
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "victoriametrics/vmanomaly"
     },
     {
       "customType": "regex",

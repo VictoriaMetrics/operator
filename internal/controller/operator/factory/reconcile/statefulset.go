@@ -38,9 +38,6 @@ type StatefulSetOpts struct {
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
-	if newObj.Spec.Replicas == nil {
-		return nil
-	}
 	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
@@ -55,7 +52,16 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 			newObj.Generation > existingObj.Generation {
 			return false, nil
 		}
-		if *newObj.Spec.Replicas != existingObj.Status.ReadyReplicas || *newObj.Spec.Replicas != existingObj.Status.UpdatedReplicas {
+		// nil replicas signals HPA manages the count; use the live value so the
+		// comparison stays self-consistent even when HPA changes replicas mid-rollout.
+		targetReplicas := newObj.Spec.Replicas
+		if targetReplicas == nil {
+			targetReplicas = existingObj.Spec.Replicas
+		}
+		if targetReplicas == nil {
+			return true, nil
+		}
+		if *targetReplicas != existingObj.Status.ReadyReplicas || *targetReplicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil
@@ -89,6 +95,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 		o = new(StatefulSetOpts)
 	}
 	var existingObj appsv1.StatefulSet
+	var hpaManaged bool
 	err := retryOnConflict(func() error {
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -107,6 +114,12 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 
 		if o.PatchSpec != nil {
 			o.PatchSpec(&existingObj.Spec, &newObj.Spec)
+			// nil replicas is a convention from PatchSpec meaning HPA manages the replica count;
+			// restore the live value so the update does not overwrite it.
+			if newObj.Spec.Replicas == nil && existingObj.Spec.Replicas != nil {
+				hpaManaged = true
+				newObj.Spec.Replicas = existingObj.Spec.Replicas
+			}
 		}
 
 		mustRecreateSTS, mustRecreatePod := isSTSRecreateRequired(ctx, &existingObj, newObj, prevVCTs)
@@ -176,6 +189,9 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 		return nil
 	default:
 		logger.WithContext(ctx).Info(fmt.Sprintf("ignoring custom update behavior settings with update strategy=%s on StatefulSet=%s", updateStrategy, nsn.String()))
+		if hpaManaged {
+			newObj.Spec.Replicas = nil
+		}
 		if err := waitForStatefulSetReady(ctx, rclient, newObj); err != nil {
 			return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", updateStrategy, err)
 		}

@@ -78,7 +78,7 @@ func createOrUpdateVLInsertDeployment(ctx context.Context, rclient client.Client
 	o := reconcile.DeploymentOpts{
 		PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {
 			if cr.Spec.VLInsert.HPA != nil {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 				cr.Spec.VLInsert.ReplicaCount = existingSpec.Replicas
 			}
 		},

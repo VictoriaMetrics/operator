@@ -1286,8 +1286,39 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 		o: &StatefulSetOpts{
 			PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
-				newSpec.Replicas = existingSpec.Replicas
+				newSpec.Replicas = nil
 			},
+		},
+	})
+
+	// update image when HPA has scaled replicas beyond CR desired count
+	// this is the regression test for https://github.com/VictoriaMetrics/operator/issues/2324
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.Template.Spec.Containers[0].Image = "some-image:new-tag"
+		}),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.Replicas = ptr.To[int32](6)
+				s.Status.Replicas = 6
+				s.Status.ReadyReplicas = 6
+				s.Status.UpdatedReplicas = 6
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Update", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+		o: &StatefulSetOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {
+				newSpec.Replicas = nil
+			},
+		},
+		validate: func(s *appsv1.StatefulSet) {
+			assert.Equal(t, "some-image:new-tag", s.Spec.Template.Spec.Containers[0].Image)
+			assert.Equal(t, ptr.To[int32](6), s.Spec.Replicas)
 		},
 	})
 }

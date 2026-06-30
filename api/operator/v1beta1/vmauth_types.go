@@ -82,12 +82,12 @@ type VMAuthSpec struct {
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
+	// +notes={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty" yaml:"unauthorizedAccessConfig,omitempty"`
 	// VMUserConfigOptions applies configurations to above UnauthorizedAccessConfig
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +deprecated={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
+	// +notes={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
 	VMUserConfigOptions `json:",inline" yaml:",inline"`
 	// DefaultTargetRefs list of named targetRefs, which may be referenced by VMUser and at unauthorizedUserAccessSpec.
 	DefaultTargetRefs []TargetRef `json:"defaultTargetRefs,omitempty" yaml:"-"`
@@ -111,7 +111,7 @@ type VMAuthSpec struct {
 	// configuration must be inside secret key: config.yaml.
 	// It must be created and managed manually.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
-	// +deprecated={deprecated_in: "v0.49.0", removed_in: "v0.69.0", replacements: {externalConfig}}
+	// +notes={deprecated_in: "v0.49.0", removed_in: "v0.69.0", replacements: {externalConfig}}
 	ConfigSecret string `json:"configSecret,omitempty" yaml:"configSecret,omitempty"`
 	// ExternalConfig defines a source of external VMAuth configuration.
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
@@ -125,15 +125,16 @@ type VMAuthSpec struct {
 	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
 	// the CR name is used directly instead of the default "<type>-<name>" convention.
 	// +optional
+	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty" yaml:"useLegacyNaming,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
 	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
-	// available from v0.56.0 operator
-	// and v1.111.0 vmauth version
+	// available from v1.111.0 vmauth version
 	// related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
 	// +optional
+	// +notes={available_from: "v0.56.0"}
 	InternalListenPort string `json:"internalListenPort,omitempty"`
 
 	// UseProxyProtocol enables proxy protocol for vmauth
@@ -141,13 +142,13 @@ type VMAuthSpec struct {
 	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
-	// Available from operator v0.64.0
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
 	// +optional
+	// +notes={available_from: "v0.64.0"}
 	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
 	// RollingUpdate - overrides deployment update params.
-	// Available from operator v0.64.0
 	// +optional
+	// +notes={available_from: "v0.64.0"}
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// Configures horizontal pod autoscaling.
 	// +optional
@@ -162,10 +163,10 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 	// URLPrefix defines url prefix for destination
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
+	// +notes={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
 	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 	// URLMap defines url map for destination
-	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
+	// +notes={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {targetRefs}}
 	URLMap []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
 
 	// TargetRefs - reference to endpoints, which user may access.

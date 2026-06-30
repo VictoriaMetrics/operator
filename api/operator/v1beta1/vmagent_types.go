@@ -81,9 +81,9 @@ type VMAgentSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
 	// Supports only VMPodScrape
-	// (available from v0.55.0).
 	// Cannot be used with statefulMode
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
 	// DaemonSetUpdateStrategy allows configuration for the DaemonSet update strategy type.
 	// +optional
@@ -127,6 +127,7 @@ type VMAgentSpec struct {
 	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
 	// the CR name is used directly instead of the default "<type>-<name>" convention.
 	// +optional
+	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 
 	// ComponentVersion defines default images tag for all components.

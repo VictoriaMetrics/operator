@@ -77,6 +77,7 @@ type VMClusterSpec struct {
 	// (<component>-<name>, e.g. "vmselect-myapp") to a suffix convention (<name>-<component>,
 	// e.g. "myapp-vmselect"). Useful when migrating from standalone Helm charts.
 	// +optional
+	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
@@ -582,7 +583,7 @@ type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
 	// https://victoriametrics.com/legal/esa/
-	// +deprecated={deprecated_in: "v0.61.0", removed_in: "v0.69.0", replacements: {VMClusterSpec.license}}
+	// +notes={deprecated_in: "v0.61.0", removed_in: "v0.69.0", replacements: {VMClusterSpec.license}}
 	// +optional
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
@@ -1118,13 +1119,13 @@ type VMAuthLoadBalancerSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
-	// Available from operator v0.64.0
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
 	// +optional
+	// +notes={available_from: "v0.64.0"}
 	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
 	// RollingUpdate - overrides deployment update params.
-	// Available from operator v0.64.0
 	// +optional
+	// +notes={available_from: "v0.64.0"}
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 	// License configures enterprise features license key
 	// +optional

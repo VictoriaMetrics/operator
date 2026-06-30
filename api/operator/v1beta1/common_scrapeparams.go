@@ -156,16 +156,16 @@ type OAuth2 struct {
 	EndpointParams map[string]string `json:"endpoint_params,omitempty" yaml:"endpoint_params"`
 
 	// The proxy URL for token_url connection
-	// ( available from v0.55.0).
 	// Is only supported by Scrape objects family
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	ProxyURL string `json:"proxy_url,omitempty"`
 	// TLSConfig for token_url connection
-	// ( available from v0.55.0).
 	// Is only supported by Scrape objects family
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// +notes={available_from: "v0.55.0"}
 	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
 }
 
@@ -640,7 +640,7 @@ type CommonScrapeParams struct {
 	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
-	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {externalLabelName}}
+	// +notes={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {externalLabelName}}
 	// +optional
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 	// ExternalLabelName Name of external label used to denote scraping agent instance

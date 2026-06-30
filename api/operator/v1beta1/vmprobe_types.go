@@ -53,7 +53,7 @@ type VMProbeSpec struct {
 // +k8s:openapi-gen=true
 type VMProbeTargets struct {
 	// StaticConfig defines static targets which are considers for probing.
-	// +deprecated={deprecated_in: "v0.68.0", removed_in: "v0.71.0", replacements: {static}}
+	// +notes={deprecated_in: "v0.68.0", removed_in: "v0.71.0", replacements: {static}}
 	// +optional
 	StaticConfig *VMProbeTargetStatic `json:"staticConfig,omitempty"`
 	// Static defines static targets which are considers for probing.
@@ -63,7 +63,7 @@ type VMProbeTargets struct {
 	// +optional
 	Kubernetes []*VMProbeTargetKubernetes `json:"kubernetes,omitempty"`
 	// Ingress defines the set of dynamically discovered Ingress objects which hosts are considered for probing.
-	// +deprecated={deprecated_in: "v0.68.0", removed_in: "v0.71.0", replacements: {kubernetes}}
+	// +notes={deprecated_in: "v0.68.0", removed_in: "v0.71.0", replacements: {kubernetes}}
 	// +optional
 	Ingress *VMProbeTargetKubernetes `json:"ingress,omitempty"`
 }

@@ -27,13 +27,13 @@
       "groupName": "golang"
     },
     {
-      "matchPackageNames": [
+      "matchDepNames": [
         "github.com/onsi/ginkgo/v2"
       ],
       "groupName": "ginkgo"
     },
     {
-      "matchPackageNames": [
+      "matchDepNames": [
         "sigs.k8s.io/controller-runtime"
       ],
       "groupName": "controller-runtime"
@@ -197,7 +197,7 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "metalbear-co/mirrord",
-      "versioning": "semver"
+      "versioningTemplate": "semver"
     },
     {
       "customType": "regex",

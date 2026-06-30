@@ -35,6 +35,15 @@ const (
 	UpdateStatusPaused      UpdateStatus = "paused"
 )
 
+// WorkloadKind represents the kind of Kubernetes workload managed by an operator component.
+type WorkloadKind string
+
+const (
+	WorkloadKindDaemonSet   WorkloadKind = "DaemonSet"
+	WorkloadKindStatefulSet WorkloadKind = "StatefulSet"
+	WorkloadKindDeployment  WorkloadKind = "Deployment"
+)
+
 // ClusterComponent defines component kind for cluster
 type ClusterComponent string
 

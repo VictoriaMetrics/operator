@@ -105,6 +105,9 @@ type VTSingleSpec struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 }
 
 // VTSingleStatus defines the observed state of VTSingle
@@ -291,6 +294,11 @@ func (cr *VTSingle) Validate() error {
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
+		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

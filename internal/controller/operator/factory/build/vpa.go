@@ -1,6 +1,8 @@
 package build
 
 import (
+	"fmt"
+
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -25,4 +27,15 @@ func VPA(opts builderOpts, targetRef autoscalingv1.CrossVersionObjectReference, 
 			Recommenders:   spec.Recommenders,
 		},
 	}
+}
+
+// ShardVPA creates a VerticalPodAutoscaler targeting the workload for the given shard number
+func ShardVPA(opts builderOpts, spec *vmv1beta1.EmbeddedVPA, workloadKind vmv1beta1.WorkloadKind, shardNum int32) *vpav1.VerticalPodAutoscaler {
+	name := fmt.Sprintf("%s-%d", opts.PrefixedName(), shardNum)
+	targetRef := autoscalingv1.CrossVersionObjectReference{
+		Name:       name,
+		Kind:       string(workloadKind),
+		APIVersion: "apps/v1",
+	}
+	return VPA(opts, targetRef, spec)
 }

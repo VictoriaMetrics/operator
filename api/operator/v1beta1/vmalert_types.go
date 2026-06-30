@@ -135,6 +135,9 @@ type VMAlertSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
@@ -402,6 +405,11 @@ func (cr *VMAlert) Validate() error {
 	}
 	if err := validateNotifierConfigs(); err != nil {
 		return err
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
+		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

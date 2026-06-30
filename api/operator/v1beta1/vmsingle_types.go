@@ -105,6 +105,9 @@ type VMSingleSpec struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
@@ -453,6 +456,11 @@ func (cr *VMSingle) Validate() error {
 		}
 		if len(cr.Spec.VolumeMounts) == 0 && !storageVolumeFound {
 			return fmt.Errorf("spec.volumeMounts must have at least 1 value OR spec.volumes must have volume.name `data` for spec.storageDataPath=%q", cr.Spec.StorageDataPath)
+		}
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
 		}
 	}
 	if err := cr.Spec.Validate(); err != nil {

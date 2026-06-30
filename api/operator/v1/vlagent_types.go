@@ -97,7 +97,10 @@ type VLAgentSpec struct {
 	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
 	// the CR name is used directly instead of the default "<type>-<name>" convention.
 	// +optional
-	UseLegacyNaming            bool `json:"useLegacyNaming,omitempty"`
+	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
+	// Configures vertical pod autoscaling.
+	// +optional
+	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
 }
 
@@ -171,6 +174,9 @@ func (cr *VLAgent) Validate() error {
 				return fmt.Errorf("spec.k8sCollector.extraFields is not a valid JSON: %w", err)
 			}
 		}
+		if cr.Spec.VPA != nil {
+			return fmt.Errorf("vpa cannot be used with k8sCollector mode")
+		}
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {
@@ -181,6 +187,11 @@ func (cr *VLAgent) Validate() error {
 		}
 		if err := rw.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("remoteWrite.tlsConfig has incorrect syntax at idx: %d: %w", idx, err)
+		}
+	}
+	if cr.Spec.VPA != nil {
+		if err := cr.Spec.VPA.Validate(); err != nil {
+			return err
 		}
 	}
 	if err := cr.Spec.Validate(); err != nil {
@@ -415,6 +426,14 @@ func (cr *VLAgent) PrefixedName() string {
 		return cr.Name
 	}
 	return fmt.Sprintf("vlagent-%s", cr.Name)
+}
+
+// WorkloadKind returns the kind of workload deployed for VLAgent based on the current mode.
+func (cr *VLAgent) WorkloadKind() vmv1beta1.WorkloadKind {
+	if cr.Spec.K8sCollector.Enabled {
+		return vmv1beta1.WorkloadKindDaemonSet
+	}
+	return vmv1beta1.WorkloadKindStatefulSet
 }
 
 // HealthPath returns path for health requests

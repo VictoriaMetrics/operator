@@ -38,6 +38,25 @@ test_metric{path="no path"} 24
 `, "test_metric", "path", map[string]float64{
 		"no path": 24,
 	})
+
+	t.Run("ignores similarly prefixed metrics", func(t *testing.T) {
+		f(`
+test_metric_total{path="wrong"} 99
+test_metric{path="correct"} 24
+`, "test_metric", "path", map[string]float64{
+			"correct": 24,
+		})
+	})
+
+	t.Run("ignores prometheus metadata lines", func(t *testing.T) {
+		f(`
+# HELP test_metric queue size
+# TYPE test_metric gauge
+test_metric{path="correct"} 24
+`, "test_metric", "path", map[string]float64{
+			"correct": 24,
+		})
+	})
 }
 
 func TestMergeSpecs(t *testing.T) {

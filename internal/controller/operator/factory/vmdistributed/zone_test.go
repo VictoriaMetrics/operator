@@ -36,7 +36,7 @@ func TestGetZones(t *testing.T) {
 		ctx := context.Background()
 		got, err := getZones(ctx, rclient, o.cr)
 		assert.NoError(t, err)
-		assert.Len(t, got.vmclusters, len(o.cr.Spec.Zones))
+		assert.Len(t, got.backends, len(o.cr.Spec.Zones))
 		assert.Len(t, got.vmagents, len(o.cr.Spec.Zones))
 		o.validate(o.cr, got)
 	}
@@ -73,10 +73,11 @@ func TestGetZones(t *testing.T) {
 			},
 		},
 		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
-			assert.Equal(t, "external", zs.vmclusters[0].Name)
-			assert.Equal(t, "inline", zs.vmclusters[1].Name)
-			assert.Equal(t, cr.Spec.Zones[1].VMCluster.Spec.ClusterVersion, zs.vmclusters[1].Spec.ClusterVersion)
-			assert.Equal(t, cr.Spec.ZoneCommon.VMCluster.Spec.ClusterVersion, zs.vmclusters[0].Spec.ClusterVersion)
+			clusters := zs.clusterObjects()
+			assert.Equal(t, "external", clusters[0].Name)
+			assert.Equal(t, "inline", clusters[1].Name)
+			assert.Equal(t, cr.Spec.Zones[1].VMCluster.Spec.ClusterVersion, clusters[1].Spec.ClusterVersion)
+			assert.Equal(t, cr.Spec.ZoneCommon.VMCluster.Spec.ClusterVersion, clusters[0].Spec.ClusterVersion)
 		},
 	})
 
@@ -115,8 +116,9 @@ func TestGetZones(t *testing.T) {
 			},
 		},
 		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
-			assert.NotNil(t, zs.vmclusters[0].Spec.VMStorage)
-			assert.Equal(t, cr.Spec.ZoneCommon.VMCluster.Spec.VMStorage.VMInsertPort, zs.vmclusters[0].Spec.VMStorage.VMInsertPort)
+			clusters := zs.clusterObjects()
+			assert.NotNil(t, clusters[0].Spec.VMStorage)
+			assert.Equal(t, cr.Spec.ZoneCommon.VMCluster.Spec.VMStorage.VMInsertPort, clusters[0].Spec.VMStorage.VMInsertPort)
 		},
 	})
 
@@ -159,8 +161,8 @@ func TestGetZones(t *testing.T) {
 			// Index 0 = zone-b (new): prevAcceptsWrites must be false.
 			// Index 1 = zone-a (existing, maintenance): prevAcceptsWrites must be true —
 			// traffic mode must NOT suppress PQ drain for an already-existing VMSingle.
-			assert.False(t, zs.prevAcceptsWrites[0], "new VMSingle must not trigger PQ drain")
-			assert.True(t, zs.prevAcceptsWrites[1], "existing VMSingle in maintenance must still drain PQ")
+			assert.False(t, zs.backends[0].prevAccepts, "new VMSingle must not trigger PQ drain")
+			assert.True(t, zs.backends[1].prevAccepts, "existing VMSingle in maintenance must still drain PQ")
 		},
 	})
 
@@ -189,11 +191,11 @@ func TestGetZones(t *testing.T) {
 			},
 		},
 		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
-			assert.True(t, zs.isVMSingle)
-			assert.Equal(t, "dist-zone-a", zs.vmsingles[0].Name)
-			assert.Equal(t, "dist-zone-b", zs.vmsingles[1].Name)
-			assert.Equal(t, "14d", zs.vmsingles[1].Spec.RetentionPeriod)
-			assert.Equal(t, zs.vmsingles[1].AsURL(false)+"/api/v1/write", zs.vmagents[0].Spec.RemoteWrite[1].URL)
+			singles := zs.singleObjects()
+			assert.Equal(t, "dist-zone-a", singles[0].Name)
+			assert.Equal(t, "dist-zone-b", singles[1].Name)
+			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
+			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
 }
@@ -265,8 +267,8 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
-			vmagents:   []*vmv1beta1.VMAgent{vmAgent},
-			vmclusters: []*vmv1beta1.VMCluster{{ObjectMeta: objMeta}},
+			vmagents: []*vmv1beta1.VMAgent{vmAgent},
+			backends: []vmBackend{{obj: &vmv1beta1.VMCluster{ObjectMeta: objMeta}}},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
@@ -337,24 +339,24 @@ func TestZonesSorting(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		zs := &zones{
-			vmclusters:        o.clusters,
-			vmagents:          make([]*vmv1beta1.VMAgent, len(o.clusters)),
-			hasChanges:        make([]bool, len(o.clusters)),
-			trafficModes:      make([]vmv1alpha1.VMDistributedTrafficMode, len(o.clusters)),
-			prevAcceptsWrites: make([]bool, len(o.clusters)),
+			backends:     make([]vmBackend, len(o.clusters)),
+			vmagents:     make([]*vmv1beta1.VMAgent, len(o.clusters)),
+			hasChanges:   make([]bool, len(o.clusters)),
+			trafficModes: make([]vmv1alpha1.VMDistributedTrafficMode, len(o.clusters)),
 		}
-		for i := range o.clusters {
+		for i, c := range o.clusters {
+			zs.backends[i] = vmBackend{obj: c}
 			zs.vmagents[i] = &vmv1beta1.VMAgent{
-				ObjectMeta: metav1.ObjectMeta{Name: o.clusters[i].Name},
+				ObjectMeta: metav1.ObjectMeta{Name: c.Name},
 			}
 		}
 		if o.hasChanges != nil {
 			zs.hasChanges = o.hasChanges
 		}
 		sort.Sort(zs)
-		names := make([]string, len(zs.vmclusters))
-		for i, c := range zs.vmclusters {
-			names[i] = c.Name
+		names := make([]string, len(zs.backends))
+		for i, b := range zs.backends {
+			names[i] = b.obj.GetName()
 		}
 		assert.Equal(t, o.wantNames, names)
 		if o.validate != nil {
@@ -502,8 +504,8 @@ func TestZonesSorting(t *testing.T) {
 		hasChanges: []bool{true, false},
 		wantNames:  []string{"zone-a", "zone-b"},
 		validate: func(zs *zones) {
-			assert.Equal(t, zs.vmclusters[0].Name, zs.vmagents[0].Name)
-			assert.Equal(t, zs.vmclusters[1].Name, zs.vmagents[1].Name)
+			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vmagents[0].Name)
+			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vmagents[1].Name)
 			assert.False(t, zs.hasChanges[0])
 			assert.True(t, zs.hasChanges[1])
 		},

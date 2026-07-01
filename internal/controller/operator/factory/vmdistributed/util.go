@@ -39,40 +39,54 @@ func fetchMetricValues(ctx context.Context, httpClient *http.Client, url, metric
 }
 
 func unmarshalMetric(values map[string]float64, s, name, dimension string) error {
-	for {
-		idx := strings.Index(s, name)
-		if idx == -1 {
-			break
-		}
-		s = s[idx+len(name):]
-		s = skipLeadingWhitespace(s)
-		n := strings.IndexByte(s, '{')
-		var dimValue string
-		if n >= 0 {
-			// Tags found. Parse them.
+	for len(s) > 0 {
+		line := s
+		if n := strings.IndexByte(s, '\n'); n >= 0 {
+			line = s[:n]
 			s = s[n+1:]
+		} else {
+			s = ""
+		}
+		line = strings.TrimSpace(line)
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		n := strings.IndexAny(line, "{ \t\r")
+		metricName := line
+		if n >= 0 {
+			metricName = line[:n]
+		}
+		if metricName != name {
+			continue
+		}
+
+		line = line[len(metricName):]
+		line = skipLeadingWhitespace(line)
+		var dimValue string
+		if len(line) > 0 && line[0] == '{' {
+			line = line[1:]
 			var err error
 			var tags map[string]string
-			s, tags, err = unmarshalTags(s)
+			line, tags, err = unmarshalTags(line)
 			if err != nil {
 				return fmt.Errorf("cannot unmarshal tags: %w", err)
 			}
 			dimValue = tags[dimension]
 		}
-		s = skipLeadingWhitespace(s)
-		if len(s) == 0 {
+		line = skipLeadingWhitespace(line)
+		if len(line) == 0 {
 			return fmt.Errorf("value cannot be empty")
 		}
-		valStr := s
-		n = strings.IndexAny(s, " \t\r\n")
+		valStr := line
+		n = strings.IndexAny(line, " \t\r\n")
 		if n >= 0 {
 			valStr = valStr[:n]
 		}
 		v, err := strconv.ParseFloat(valStr, 64)
 		if err != nil {
-			return fmt.Errorf("cannot parse value %q: %w", s, err)
+			return fmt.Errorf("cannot parse value %q: %w", line, err)
 		}
-		s = s[len(valStr):]
 		if len(dimValue) > 0 {
 			values[dimValue] = v
 		}

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
+
 ## [v0.68.6](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.6)
 **Release date:** 25 June 2026
 

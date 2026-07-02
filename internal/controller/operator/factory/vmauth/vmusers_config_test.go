@@ -767,6 +767,64 @@ name: user1
 bearer_token: secret-token
 `,
 	})
+
+	// access_log enabled with no filters
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log: {}
+username: basic
+password: pass
+`,
+	})
+
+	// access_log with skip_status_codes filter
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{
+						Filters: &vmv1beta1.VMUserAccessLogFilters{
+							SkipStatusCodes: []int{200, 204},
+						},
+					},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  filters:
+    skip_status_codes:
+    - 200
+    - 204
+username: basic
+password: pass
+`,
+	})
 }
 
 func Test_genPassword(t *testing.T) {

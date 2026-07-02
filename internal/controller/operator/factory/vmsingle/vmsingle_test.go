@@ -227,6 +227,63 @@ func TestCreateOrUpdate(t *testing.T) {
 				"env": "test",
 			})
 		}})
+
+	// openshift service CA volume — mode enabled mounts regardless of cluster
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.OpenshiftCompatibilityMode = "enabled"
+		},
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			var caVol *corev1.Volume
+			for i := range got.Spec.Template.Spec.Volumes {
+				if got.Spec.Template.Spec.Volumes[i].Name == "openshift-service-ca" {
+					caVol = &got.Spec.Template.Spec.Volumes[i]
+					break
+				}
+			}
+			if assert.NotNil(t, caVol, "expected openshift-service-ca volume") {
+				assert.Equal(t, "openshift-service-ca.crt", caVol.ConfigMap.Name)
+			}
+			for _, c := range got.Spec.Template.Spec.Containers {
+				if c.Name != "vmsingle" {
+					continue
+				}
+				var caMount *corev1.VolumeMount
+				for i := range c.VolumeMounts {
+					if c.VolumeMounts[i].Name == "openshift-service-ca" {
+						caMount = &c.VolumeMounts[i]
+						break
+					}
+				}
+				if assert.NotNil(t, caMount, "expected openshift-service-ca volumeMount in vmsingle container") {
+					assert.Equal(t, "/etc/ssl/certs/openshift-service-ca", caMount.MountPath)
+					assert.True(t, caMount.ReadOnly)
+				}
+			}
+		},
+	})
+
+	// openshift service CA volume — mode disabled skips regardless of config
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.OpenshiftCompatibilityMode = "disabled"
+		},
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+			var got appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &got))
+			for _, v := range got.Spec.Template.Spec.Volumes {
+				assert.NotEqual(t, "openshift-service-ca", v.Name)
+			}
+		},
+	})
 }
 
 func TestMakeSpecForVMSingleOk(t *testing.T) {

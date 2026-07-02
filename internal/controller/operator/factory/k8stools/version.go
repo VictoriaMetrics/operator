@@ -13,7 +13,16 @@ var (
 	ServerMajorVersion uint64
 	// ServerMinorVersion defines minor number for current kubernetes API server version
 	ServerMinorVersion uint64
+	// IsOpenShiftDetected is true when the operator detects the cluster is running OpenShift
+	// by checking for the security.openshift.io/v1 API group.
+	// Set once during operator startup via SetIsOpenShiftDetected.
+	IsOpenShiftDetected bool
 )
+
+// SetIsOpenShiftDetected sets the IsOpenShiftDetected flag. Call once during operator startup.
+func SetIsOpenShiftDetected(v bool) {
+	IsOpenShiftDetected = v
+}
 
 // SetKubernetesVersionWithDefaults parses kubernetes version response with given default versions
 func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMajor uint64) error {

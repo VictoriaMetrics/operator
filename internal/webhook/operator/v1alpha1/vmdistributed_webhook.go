@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // SetupVMDistributedWebhookWithManager will setup the manager to manage the webhooks
@@ -38,6 +39,27 @@ type VMDistributedCustomValidator struct{}
 
 var _ admission.Validator[*vmv1alpha1.VMDistributed] = &VMDistributedCustomValidator{}
 
+// warnDistributedOpenShiftSC collects OpenShift security context warnings for all sub-components
+// of a VMDistributed spec: VMAuth, ZoneCommon, and each individual zone.
+func warnDistributedOpenShiftSC(spec *vmv1alpha1.VMDistributedSpec) admission.Warnings {
+	var w admission.Warnings
+	w = append(w, build.WarnOpenShiftSecurityContext(spec.VMAuth.Spec.SecurityContext)...)
+	w = append(w, build.WarnOpenShiftClusterSpec(&spec.ZoneCommon.VMCluster.Spec)...)
+	if s := spec.ZoneCommon.VMSingle; s != nil && s.Spec != nil {
+		w = append(w, build.WarnOpenShiftSecurityContext(s.Spec.SecurityContext)...)
+	}
+	w = append(w, build.WarnOpenShiftSecurityContext(spec.ZoneCommon.VMAgent.Spec.SecurityContext)...)
+	for i := range spec.Zones {
+		z := &spec.Zones[i]
+		w = append(w, build.WarnOpenShiftClusterSpec(&z.VMCluster.Spec)...)
+		if s := z.VMSingle; s != nil && s.Spec != nil {
+			w = append(w, build.WarnOpenShiftSecurityContext(s.Spec.SecurityContext)...)
+		}
+		w = append(w, build.WarnOpenShiftSecurityContext(z.VMAgent.Spec.SecurityContext)...)
+	}
+	return w
+}
+
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
 func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1alpha1.VMDistributed) (warnings admission.Warnings, err error) {
 	if obj.Status.ParsingSpecError != "" {
@@ -49,6 +71,7 @@ func (*VMDistributedCustomValidator) ValidateCreate(ctx context.Context, obj *vm
 		return
 	}
 
+	warnings = warnDistributedOpenShiftSC(&obj.Spec)
 	return
 }
 
@@ -63,6 +86,7 @@ func (*VMDistributedCustomValidator) ValidateUpdate(ctx context.Context, _, newO
 		return
 	}
 
+	warnings = warnDistributedOpenShiftSC(&newObj.Spec)
 	return
 }
 

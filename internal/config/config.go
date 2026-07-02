@@ -774,6 +774,23 @@ type BaseOperatorConf struct {
 	// They cannot override annotations already set by the operator or via spec.managedMetadata.
 	// Format: key=value,key2=value2
 	CommonAnnotations map[string]string `default:"" env:"VM_COMMON_ANNOTATIONS" envSeparator:"," envKeyValSeparator:"="`
+
+	// OpenshiftCompatibilityMode enables OpenShift-specific compatibility features for managed pods.
+	// When active, the following adaptations are applied to all operator-managed pods:
+	//   - Pod security context: RunAsUser, RunAsGroup, FSGroup, FSGroupChangePolicy are omitted so
+	//     OpenShift SCCs can assign namespace-allocated UIDs/GIDs (hardcoded values like 65534 are
+	//     typically outside the namespace range and cause admission failures on restricted-v2 SCCs).
+	//     SeccompProfile (RuntimeDefault), RunAsNonRoot, AllowPrivilegeEscalation, and Capabilities
+	//     are kept as they are required by the restricted-v2 SCC.
+	//   - Container security context: RunAsUser and RunAsGroup are omitted for the same reason.
+	//   - The openshift-service-ca.crt ConfigMap is mounted into VMAgent and VMSingle pods at
+	//     /etc/ssl/certs/openshift-service-ca/service-ca.crt, allowing scrape targets signed with
+	//     OpenShift's service signing CA to be verified without per-target TLS config.
+	// Possible values:
+	//   auto     - enable when running on OpenShift (detected via security.openshift.io/v1 API group)
+	//   enabled  - always enable regardless of cluster type
+	//   disabled - never enable
+	OpenshiftCompatibilityMode string `default:"auto" env:"VM_OPENSHIFT_COMPATIBILITY"`
 }
 
 // ResyncAfterDuration returns requeue duration for object period reconcile
@@ -889,6 +906,11 @@ func (boc BaseOperatorConf) validate() error {
 	}
 	if err := validateResource("vtstorage", Resource(boc.VTCluster.Storage.Resource)); err != nil {
 		return err
+	}
+	switch boc.OpenshiftCompatibilityMode {
+	case "auto", "enabled", "disabled":
+	default:
+		return fmt.Errorf("VM_OPENSHIFT_COMPATIBILITY=%q is not valid; must be one of: auto, enabled, disabled", boc.OpenshiftCompatibilityMode)
 	}
 	return nil
 }

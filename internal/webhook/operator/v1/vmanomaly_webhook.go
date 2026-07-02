@@ -25,6 +25,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // SetupVMAnomalyWebhookWithManager registers the webhook for VMAnomaly in the manager.
@@ -47,7 +48,7 @@ func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1
 	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return build.WarnOpenShiftSecurityContext(obj.Spec.SecurityContext), nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.
@@ -58,7 +59,7 @@ func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return build.WarnOpenShiftSecurityContext(newObj.Spec.SecurityContext), nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type VMAnomaly.

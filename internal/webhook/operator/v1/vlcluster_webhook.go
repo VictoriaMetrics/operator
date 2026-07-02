@@ -25,6 +25,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // SetupVLClusterWebhookWithManager will setup the manager to manage the webhooks
@@ -47,7 +48,7 @@ func (*VLClusterCustomValidator) ValidateCreate(_ context.Context, obj *vmv1.VLC
 	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return build.WarnOpenShiftVLClusterSpec(&obj.Spec), nil
 }
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
@@ -58,7 +59,7 @@ func (*VLClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vm
 	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return build.WarnOpenShiftVLClusterSpec(&newObj.Spec), nil
 }
 
 // ValidateDelete implements admission.Validator so a webhook will be registered for the type

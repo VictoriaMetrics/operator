@@ -340,6 +340,12 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot parse kubernetes version, using default flag values, fallback to default values")
 	}
 
+	_, err = baseClient.ServerResourcesForGroupVersion("security.openshift.io/v1")
+	k8stools.SetIsOpenShiftDetected(err == nil)
+	if k8stools.IsOpenShiftDetected {
+		setupLog.Info("openshift cluster detected")
+	}
+
 	setupLog.Info(fmt.Sprintf("using kubernetes server version: %s", k8sServerVersion.String()))
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("cannot start controller manager: %w", err)

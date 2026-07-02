@@ -11,6 +11,8 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestLicenseAddArgsTo(t *testing.T) {
@@ -76,6 +78,85 @@ func TestLicenseAddArgsTo(t *testing.T) {
 		args:           []string{},
 		secretMountDir: "/etc/secrets",
 		want:           []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
+	})
+}
+
+func TestOpenShiftServiceCAVolumeTo(t *testing.T) {
+	type opts struct {
+		setup      func()
+		teardown   func()
+		wantVolume bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		if o.setup != nil {
+			o.setup()
+		}
+		if o.teardown != nil {
+			defer o.teardown()
+		}
+		vols, mounts := OpenShiftServiceCAVolumeTo(nil, nil)
+		if o.wantVolume {
+			if assert.Len(t, vols, 1) {
+				assert.Equal(t, "openshift-service-ca", vols[0].Name)
+				assert.NotNil(t, vols[0].ConfigMap)
+				assert.Equal(t, "openshift-service-ca.crt", vols[0].ConfigMap.Name)
+				assert.NotNil(t, vols[0].ConfigMap.Optional)
+				assert.True(t, *vols[0].ConfigMap.Optional)
+			}
+			if assert.Len(t, mounts, 1) {
+				assert.Equal(t, "openshift-service-ca", mounts[0].Name)
+				assert.Equal(t, "/etc/ssl/certs/openshift-service-ca", mounts[0].MountPath)
+				assert.True(t, mounts[0].ReadOnly)
+			}
+		} else {
+			assert.Empty(t, vols)
+			assert.Empty(t, mounts)
+		}
+	}
+
+	// disabled always skips regardless of cluster type
+	f(opts{
+		setup: func() {
+			config.MustGetBaseConfig().OpenshiftCompatibilityMode = "disabled"
+			k8stools.SetIsOpenShiftDetected(true)
+		},
+		teardown: func() {
+			config.MustGetBaseConfig().OpenshiftCompatibilityMode = "auto"
+			k8stools.SetIsOpenShiftDetected(false)
+		},
+		wantVolume: false,
+	})
+	f(opts{
+		setup:      func() { config.MustGetBaseConfig().OpenshiftCompatibilityMode = "disabled" },
+		teardown:   func() { config.MustGetBaseConfig().OpenshiftCompatibilityMode = "auto" },
+		wantVolume: false,
+	})
+	// enabled always mounts regardless of cluster type
+	f(opts{
+		setup: func() {
+			config.MustGetBaseConfig().OpenshiftCompatibilityMode = "enabled"
+			k8stools.SetIsOpenShiftDetected(true)
+		},
+		teardown: func() {
+			config.MustGetBaseConfig().OpenshiftCompatibilityMode = "auto"
+			k8stools.SetIsOpenShiftDetected(false)
+		},
+		wantVolume: true,
+	})
+	f(opts{
+		setup:      func() { config.MustGetBaseConfig().OpenshiftCompatibilityMode = "enabled" },
+		teardown:   func() { config.MustGetBaseConfig().OpenshiftCompatibilityMode = "auto" },
+		wantVolume: true,
+	})
+	// auto mounts only on OpenShift
+	f(opts{
+		setup:      func() { k8stools.SetIsOpenShiftDetected(true) },
+		teardown:   func() { k8stools.SetIsOpenShiftDetected(false) },
+		wantVolume: true,
+	})
+	f(opts{
+		wantVolume: false,
 	})
 }
 

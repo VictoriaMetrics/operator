@@ -115,6 +115,35 @@ func LicenseVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, l *vm
 	return volumes, mounts
 }
 
+// OpenShiftServiceCAVolumeTo conditionally mounts the OpenShift service signing CA
+// (openshift-service-ca.crt ConfigMap) into the given volumes and mounts.
+// Active when OpenshiftCompatibilityMode is "enabled" or "auto" with OpenShift detected.
+// The CA is mounted at /etc/ssl/certs/openshift-service-ca (directory), making it
+// accessible at /etc/ssl/certs/openshift-service-ca/service-ca.crt.
+func OpenShiftServiceCAVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount) ([]corev1.Volume, []corev1.VolumeMount) {
+	if !IsOpenShiftCompatibilityActive() {
+		return volumes, mounts
+	}
+	optional := true
+	volumes = append(volumes, corev1.Volume{
+		Name: "openshift-service-ca",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "openshift-service-ca.crt",
+				},
+				Optional: &optional,
+			},
+		},
+	})
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "openshift-service-ca",
+		MountPath: "/etc/ssl/certs/openshift-service-ca",
+		ReadOnly:  true,
+	})
+	return volumes, mounts
+}
+
 func NewFlag(name, empty string) *Flag {
 	return &Flag{
 		name:  name,

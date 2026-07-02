@@ -5,7 +5,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/utils/ptr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -52,14 +54,104 @@ var (
 	runNonRoot               = true
 )
 
+// IsOpenShiftCompatibilityActive reports whether OpenShift-specific adaptations should be applied.
+func IsOpenShiftCompatibilityActive() bool {
+	mode := config.MustGetBaseConfig().OpenshiftCompatibilityMode
+	return mode == "enabled" || (mode == "auto" && k8stools.IsOpenShiftDetected)
+}
+
+// WarnOpenShiftClusterSpec returns OpenShift security context warnings for all sub-components
+// of a VMClusterSpec (VMSelect, VMInsert, VMStorage, RequestsLoadBalancer).
+func WarnOpenShiftClusterSpec(spec *vmv1beta1.VMClusterSpec) []string {
+	var w []string
+	if c := spec.VMSelect; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.VMInsert; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.VMStorage; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if spec.RequestsLoadBalancer.Enabled {
+		w = append(w, WarnOpenShiftSecurityContext(spec.RequestsLoadBalancer.Spec.SecurityContext)...)
+	}
+	return w
+}
+
+// WarnOpenShiftVLClusterSpec returns OpenShift security context warnings for all sub-components
+// of a VLClusterSpec (VLInsert, VLSelect, VLStorage, RequestsLoadBalancer).
+func WarnOpenShiftVLClusterSpec(spec *vmv1.VLClusterSpec) []string {
+	var w []string
+	if c := spec.VLInsert; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.VLSelect; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.VLStorage; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if spec.RequestsLoadBalancer.Enabled {
+		w = append(w, WarnOpenShiftSecurityContext(spec.RequestsLoadBalancer.Spec.SecurityContext)...)
+	}
+	return w
+}
+
+// WarnOpenShiftVTClusterSpec returns OpenShift security context warnings for all sub-components
+// of a VTClusterSpec (Insert, Select, Storage, RequestsLoadBalancer).
+func WarnOpenShiftVTClusterSpec(spec *vmv1.VTClusterSpec) []string {
+	var w []string
+	if c := spec.Insert; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.Select; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.Storage; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if spec.RequestsLoadBalancer.Enabled {
+		w = append(w, WarnOpenShiftSecurityContext(spec.RequestsLoadBalancer.Spec.SecurityContext)...)
+	}
+	return w
+}
+
+// WarnOpenShiftSecurityContext returns warning messages for each security context field
+// that is explicitly set but would cause pod admission failures on OpenShift when the
+// restricted-v2 SCC assigns UIDs/GIDs from the namespace-allocated range.
+// Returns nil when OpenShift compatibility is not active or sc is nil.
+func WarnOpenShiftSecurityContext(sc *vmv1beta1.SecurityContext) []string {
+	if !IsOpenShiftCompatibilityActive() || sc == nil || sc.PodSecurityContext == nil {
+		return nil
+	}
+	psc := sc.PodSecurityContext
+	var warnings []string
+	if psc.RunAsUser != nil {
+		warnings = append(warnings, "spec.securityContext.runAsUser is explicitly set; in OpenShift setting  this value may require additional SCC permission - or fall within the namespace-allocated UID range otherwise pod admission will fail; consider removing it and letting the controller assign the UID")
+	}
+	if psc.RunAsGroup != nil {
+		warnings = append(warnings, "spec.securityContext.runAsGroup is explicitly set; in OpenShift setting  this value may require additional SCC permissions - or fall within the namespace-allocated GID range otherwise pod admission will fail; consider removing it and letting the controller assign the GID")
+	}
+	if psc.FSGroup != nil {
+		warnings = append(warnings, "spec.securityContext.fsGroup is explicitly set; in OpenShift setting  this value may require additional SCC permissions - or fall within the namespace-allocated supplemental group range otherwise pod admission will fail; consider removing it and letting the controller assign the fsGroup")
+	}
+	return warnings
+}
+
 // AddStrictSecuritySettingsToContainers conditionally adds Security settings to given containers
 func AddStrictSecuritySettingsToContainers(containers []corev1.Container, params *vmv1beta1.CommonAppsParams) {
 	if !ptr.Deref(params.UseStrictSecurity, false) && (params == nil || params.SecurityContext == nil) {
 		return
 	}
+	openShift := params.SecurityContext == nil && IsOpenShiftCompatibilityActive()
 	for idx := range containers {
 		container := &containers[idx]
 		container.SecurityContext = containerSecurityContext(params.SecurityContext, false)
+		if openShift {
+			container.SecurityContext.RunAsUser = nil
+			container.SecurityContext.RunAsGroup = nil
+		}
 	}
 }
 
@@ -68,9 +160,14 @@ func AddStrictSecuritySettingsWithRootToContainers(containers []corev1.Container
 	if !ptr.Deref(params.UseStrictSecurity, false) && (params == nil || params.SecurityContext == nil) {
 		return
 	}
+	openShift := params.SecurityContext == nil && IsOpenShiftCompatibilityActive()
 	for idx := range containers {
 		container := &containers[idx]
 		container.SecurityContext = containerSecurityContext(params.SecurityContext, true)
+		if openShift {
+			container.SecurityContext.RunAsUser = nil
+			container.SecurityContext.RunAsGroup = nil
+		}
 	}
 }
 
@@ -110,6 +207,12 @@ func addStrictSecuritySettingsToPod(params *vmv1beta1.CommonAppsParams) *corev1.
 		onRootMismatch := corev1.FSGroupChangeOnRootMismatch
 		securityContext.FSGroupChangePolicy = &onRootMismatch
 	}
+	if IsOpenShiftCompatibilityActive() {
+		securityContext.RunAsUser = nil
+		securityContext.RunAsGroup = nil
+		securityContext.FSGroup = nil
+		securityContext.FSGroupChangePolicy = nil
+	}
 	return securityContext
 }
 
@@ -125,6 +228,10 @@ func addStrictSecuritySettingsWithRootToPod(params *vmv1beta1.CommonAppsParams) 
 	if k8stools.IsFSGroupChangePolicySupported() {
 		onRootMismatch := corev1.FSGroupChangeOnRootMismatch
 		securityContext.FSGroupChangePolicy = &onRootMismatch
+	}
+	if IsOpenShiftCompatibilityActive() {
+		securityContext.FSGroup = nil
+		securityContext.FSGroupChangePolicy = nil
 	}
 	return securityContext
 }

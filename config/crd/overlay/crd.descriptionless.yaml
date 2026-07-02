@@ -19161,6 +19161,11 @@ spec:
             type: object
           spec:
             properties:
+              backendType:
+                enum:
+                - VMCluster
+                - VMSingle
+                type: string
               license:
                 properties:
                   forceOffline:
@@ -28904,6 +28909,13 @@ spec:
                       spec:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                  vmsingle:
+                    properties:
+                      name:
+                        type: string
+                      spec:
+                        x-kubernetes-preserve-unknown-fields: true
+                    type: object
                 type: object
               zones:
                 items:
@@ -33167,6 +33179,13 @@ spec:
                           type: object
                       type: object
                     vmcluster:
+                      properties:
+                        name:
+                          type: string
+                        spec:
+                          x-kubernetes-preserve-unknown-fields: true
+                      type: object
+                    vmsingle:
                       properties:
                         name:
                           type: string

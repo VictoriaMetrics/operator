@@ -1163,6 +1163,14 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | name<a href="#vmdistributedauth-name" id="vmdistributedauth-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMDistributedAuth when Spec is provided. |
 | spec<a href="#vmdistributedauth-spec" id="vmdistributedauth-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
 
+#### VMDistributedBackendType
+
+_Underlying type:_ _string_
+
+VMDistributedBackendType defines the storage backend type for all zones.
+
+Appears in: [VMDistributedSpec](#vmdistributedspec)
+
 #### VMDistributedSpec
 
 VMDistributedSpec defines configurable parameters for VMDistributed CR
@@ -1171,6 +1179,7 @@ Appears in: [VMDistributed](#vmdistributed)
 
 | Field | Description |
 | --- | --- |
+| backendType<a href="#vmdistributedspec-backendtype" id="vmdistributedspec-backendtype">#</a><br/>_[VMDistributedBackendType](#vmdistributedbackendtype)_ | _(Optional)_<br/>BackendType defines the storage backend type used across all zones.<br />VMCluster uses a distributed VMCluster per zone; VMSingle uses a single-node VMSingle per zone.<br />All zones must use the same backend type; mixed configurations are not supported. |
 | license<a href="#vmdistributedspec-license" id="vmdistributedspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License configures license key for enterprise features. If not nil, it will be passed to VMAgent, VMAuth and VMClusters. |
 | paused<a href="#vmdistributedspec-paused" id="vmdistributedspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
 | retain<a href="#vmdistributedspec-retain" id="vmdistributedspec-retain">#</a><br/>_boolean_ | _(Optional)_<br/>Retain keeps resources in case of VMDistributed removal |
@@ -1196,7 +1205,8 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | remoteWrite<a href="#vmdistributedzone-remotewrite" id="vmdistributedzone-remotewrite">#</a><br/>_[VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VMAgent remote write settings for given zone |
 | trafficMode<a href="#vmdistributedzone-trafficmode" id="vmdistributedzone-trafficmode">#</a><br/>_[VMDistributedTrafficMode](#vmdistributedtrafficmode)_ | _(Required)_<br/>TrafficMode defines allowed traffic mode for a zone: read-only, write-only, read-write, maintenance |
 | vmagent<a href="#vmdistributedzone-vmagent" id="vmdistributedzone-vmagent">#</a><br/>_[VMDistributedZoneAgent](#vmdistributedzoneagent)_ | _(Optional)_<br/>VMAgent defines VMAgent to balance incoming traffic between VMClusters. |
-| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster |
+| vmcluster<a href="#vmdistributedzone-vmcluster" id="vmdistributedzone-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines a new inline or referencing existing one VMCluster.<br />Mutually exclusive with VMSingle in the same zone. |
+| vmsingle<a href="#vmdistributedzone-vmsingle" id="vmdistributedzone-vmsingle">#</a><br/>_[VMDistributedZoneSingle](#vmdistributedzonesingle)_ | _(Optional)_<br/>VMSingle defines a new inline or referencing existing one VMSingle.<br />Mutually exclusive with VMCluster in the same zone. |
 
 #### VMDistributedZoneAgent
 
@@ -1301,6 +1311,7 @@ Appears in: [VMDistributedSpec](#vmdistributedspec)
 | updatePause<a href="#vmdistributedzonecommon-updatepause" id="vmdistributedzonecommon-updatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#duration-v1-meta)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
 | vmagent<a href="#vmdistributedzonecommon-vmagent" id="vmdistributedzonecommon-vmagent">#</a><br/>_[VMDistributedZoneAgent](#vmdistributedzoneagent)_ | _(Optional)_<br/>VMAgent defines VMAgent to balance incoming traffic between VMClusters. |
 | vmcluster<a href="#vmdistributedzonecommon-vmcluster" id="vmdistributedzonecommon-vmcluster">#</a><br/>_[VMDistributedZoneCluster](#vmdistributedzonecluster)_ | _(Optional)_<br/>VMCluster defines VictoriaMetrics cluster database |
+| vmsingle<a href="#vmdistributedzonecommon-vmsingle" id="vmdistributedzonecommon-vmsingle">#</a><br/>_[VMDistributedZoneSingle](#vmdistributedzonesingle)_ | _(Optional)_<br/>VMSingle defines VictoriaMetrics single-node database. |
 
 #### VMDistributedZoneRemoteWriteSpec
 
@@ -1321,6 +1332,17 @@ Appears in: [VMDistributedZone](#vmdistributedzone), [VMDistributedZoneCommon](#
 | proxyURL<a href="#vmdistributedzoneremotewritespec-proxyurl" id="vmdistributedzoneremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
 | sendTimeout<a href="#vmdistributedzoneremotewritespec-sendtimeout" id="vmdistributedzoneremotewritespec-sendtimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
 | tlsConfig<a href="#vmdistributedzoneremotewritespec-tlsconfig" id="vmdistributedzoneremotewritespec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig describes tls configuration for remote write target |
+
+#### VMDistributedZoneSingle
+
+VMDistributedZoneSingle defines the name and specification of a VMSingle to be created or updated.
+
+Appears in: [VMDistributedZone](#vmdistributedzone), [VMDistributedZoneCommon](#vmdistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vmdistributedzonesingle-name" id="vmdistributedzonesingle-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VMSingle. |
+| spec<a href="#vmdistributedzonesingle-spec" id="vmdistributedzonesingle-spec">#</a><br/>_[VMSingleSpec](#vmsinglespec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMSingle. |
 
 ## operator.victoriametrics.com/v1beta1
 
@@ -4893,7 +4915,7 @@ VMSingle  is fast, cost-effective and scalable time-series database.
 
 VMSingleSpec defines the desired state of VMSingle
 
-Appears in: [VMSingle](#vmsingle)
+Appears in: [VMDistributedZoneSingle](#vmdistributedzonesingle), [VMSingle](#vmsingle)
 
 | Field | Description |
 | --- | --- |

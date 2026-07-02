@@ -1,0 +1,35 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: vmsingle-zone-b
+spec:
+  retentionPeriod: "14d"
+---
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: sample-with-vmsingle
+spec:
+  backendType: VMSingle
+  vmauth:
+    spec:
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+      replicaCount: 1
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
+    vmsingle:
+      spec:
+        retentionPeriod: "30d"
+  zones:
+    - name: zone-a
+    - name: zone-b
+      # Reference an explicitly pre-created VMSingle object
+      vmsingle:
+        name: vmsingle-zone-b
+        spec:
+          retentionPeriod: "14d"

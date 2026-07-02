@@ -119,6 +119,83 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, cr.Spec.ZoneCommon.VMCluster.Spec.VMStorage.VMInsertPort, zs.vmclusters[0].Spec.VMStorage.VMInsertPort)
 		},
 	})
+
+	// prevAcceptsWrites for VMSingle is based on CreationTimestamp, not desired traffic mode.
+	// A zone already in maintenance/read-only mode should still have prevAcceptsWrites=true if
+	// the VMSingle already existed, so that the VMAgent PQ is drained before LB exclusion.
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name:        "zone-a",
+						TrafficMode: vmv1alpha1.VMDistributedTrafficModeMaintenance,
+					},
+					{
+						Name:        "zone-b",
+						TrafficMode: vmv1alpha1.VMDistributedTrafficModeReadWrite,
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			// zone-a VMSingle already exists (non-zero CreationTimestamp)
+			&vmv1beta1.VMSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "dist-zone-a",
+					Namespace:         "ns",
+					CreationTimestamp: metav1.Now(),
+				},
+			},
+			// zone-b VMSingle does not exist yet (will be created by operator)
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			// After sorting: zone-b (zero TS, new) sorts before zone-a (existing).
+			// Index 0 = zone-b (new): prevAcceptsWrites must be false.
+			// Index 1 = zone-a (existing, maintenance): prevAcceptsWrites must be true —
+			// traffic mode must NOT suppress PQ drain for an already-existing VMSingle.
+			assert.False(t, zs.prevAcceptsWrites[0], "new VMSingle must not trigger PQ drain")
+			assert.True(t, zs.prevAcceptsWrites[1], "existing VMSingle in maintenance must still drain PQ")
+		},
+	})
+
+	// use VMSingle as zone backend (backendType=VMSingle applies to all zones)
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+					},
+					{
+						Name: "zone-b",
+						VMSingle: &vmv1alpha1.VMDistributedZoneSingle{
+							Spec: &vmv1beta1.VMSingleSpec{
+								RetentionPeriod: "14d",
+							},
+						},
+					},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			assert.True(t, zs.isVMSingle)
+			assert.Equal(t, "dist-zone-a", zs.vmsingles[0].Name)
+			assert.Equal(t, "dist-zone-b", zs.vmsingles[1].Name)
+			assert.Equal(t, "14d", zs.vmsingles[1].Spec.RetentionPeriod)
+			assert.Equal(t, zs.vmsingles[1].AsURL(false)+"/api/v1/write", zs.vmagents[0].Spec.RemoteWrite[1].URL)
+		},
+	})
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {

@@ -67,6 +67,18 @@ func newVMCluster(name, namespace, version string, owner metav1.OwnerReference) 
 	}
 }
 
+func newVMSingle(name, namespace string, owner metav1.OwnerReference) *vmv1beta1.VMSingle {
+	return &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              name,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Now(),
+			OwnerReferences:   []metav1.OwnerReference{owner},
+		},
+		Spec: vmv1beta1.VMSingleSpec{},
+	}
+}
+
 type opts struct {
 	prepare  func(d *testData)
 	preRun   func(c client.Client, d *testData)
@@ -276,7 +288,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters, d.zones.trafficModes)
+			vmAuth := buildVMAuthLB(d.cr, d.zones)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 		},
@@ -291,7 +303,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			c.Scheme().Default(lb)
 			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
@@ -316,7 +328,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				LogLevel: "INFO",
 			}
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 		},
@@ -333,7 +345,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			c.Scheme().Default(lb)
 			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
@@ -351,7 +363,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 		},
@@ -389,7 +401,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters, d.zones.trafficModes)
+			vmAuth := buildVMAuthLB(d.cr, d.zones)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
@@ -421,7 +433,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				{
 					Name:  "read",
-					Paths: []string{"/select/.+", "/admin/tenants"},
+					Paths: []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMCluster/vmselect",
 						Objects: vmClusterObjs,
@@ -445,6 +457,43 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// should create VMAuth with VMSingle read target
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.BackendType = vmv1alpha1.VMDistributedBackendTypeVMSingle
+			owner := d.cr.AsOwner()
+			// Pre-create VMSingle objects with names matching z.VMSingleName(cr) = "{cr.Name}-{zone.Name}"
+			for i := range d.cr.Spec.Zones {
+				name := fmt.Sprintf("%s-%s", d.cr.Name, d.cr.Spec.Zones[i].Name)
+				vmSingle := newVMSingle(name, d.cr.Namespace, owner)
+				d.predefinedObjects = append(d.predefinedObjects, vmSingle)
+			}
+		},
+		validate: func(ctx context.Context, rclient client.Client, d *testData) {
+			zs, err := getZones(ctx, rclient, d.cr)
+			assert.NoError(t, err)
+			vmAuth := buildVMAuthLB(d.cr, zs)
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
+
+			var got vmv1beta1.VMAuth
+			nsn := types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.Len(t, got.Spec.DefaultTargetRefs, 2)
+			assert.Equal(t, "write", got.Spec.DefaultTargetRefs[0].Name)
+			assert.Equal(t, "VMAgent", got.Spec.DefaultTargetRefs[0].CRD.Kind)
+			assert.Equal(t, "read", got.Spec.DefaultTargetRefs[1].Name)
+			assert.Equal(t, "VMSingle", got.Spec.DefaultTargetRefs[1].CRD.Kind)
+			// sorted alphabetically then reversed: vmcluster-3, vmcluster-2, vmcluster-1
+			assert.Equal(t, []vmv1beta1.NamespacedName{
+				{Name: "test-vdc-vmcluster-3", Namespace: d.cr.Namespace},
+				{Name: "test-vdc-vmcluster-2", Namespace: d.cr.Namespace},
+				{Name: "test-vdc-vmcluster-1", Namespace: d.cr.Namespace},
+			}, got.Spec.DefaultTargetRefs[1].CRD.Objects)
+		},
+	})
+
 	// should adopt existing VMAuth if owner reference is missing
 	f(opts{
 		prepare: func(d *testData) {
@@ -456,7 +505,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			c.Scheme().Default(lb)
 			lb.OwnerReferences = nil
 			assert.NoError(t, c.Create(context.TODO(), lb))
@@ -483,7 +532,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.zones.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, clusters, nil)
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil, false))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			var got vmv1beta1.VMAuth
@@ -529,7 +578,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
-			vmAuth := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters, d.zones.trafficModes)
+			vmAuth := buildVMAuthLB(d.cr, d.zones)
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
@@ -561,7 +610,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				{
 					Name:  "read",
-					Paths: []string{"/select/.+", "/admin/tenants"},
+					Paths: []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"},
 					CRD: &vmv1beta1.CRDRef{
 						Kind:    "VMCluster/vmselect",
 						Objects: vmClusterObjs,
@@ -592,7 +641,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			// Create initial VMAuth backed by CRD targets
-			lb := buildVMAuthLB(d.cr, d.zones.vmagents, d.zones.vmclusters, d.zones.trafficModes)
+			lb := buildVMAuthLB(d.cr, d.zones)
 			c.Scheme().Default(lb)
 			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
@@ -618,7 +667,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			// Simulate removing both backends by passing empty slices
-			vmAuth := buildVMAuthLB(d.cr, nil, nil, nil)
+			vmAuth := buildVMAuthLB(d.cr, &zones{})
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 
@@ -639,7 +688,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				},
 				{
 					Name:  "read",
-					Paths: []string{"/select/.+", "/admin/tenants"},
+					Paths: []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"},
 					URLMapCommon: vmv1beta1.URLMapCommon{
 						LoadBalancingPolicy: ptr.To("first_available"),
 					},

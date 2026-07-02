@@ -33,40 +33,83 @@ type zones struct {
 	httpClient        *http.Client
 	vmagents          []*vmv1beta1.VMAgent
 	vmclusters        []*vmv1beta1.VMCluster
+	vmsingles         []*vmv1beta1.VMSingle
+	isVMSingle        bool
 	hasChanges        []bool
 	trafficModes      []vmv1alpha1.VMDistributedTrafficMode
 	prevAcceptsWrites []bool
 }
 
 func (zs *zones) Len() int {
-	return len(zs.vmclusters)
+	return len(zs.vmagents)
 }
 
-// Apply custom sorting for VMClusters and VMAgents updating first not existing or failed zones
+// name returns the storage backend name for zone i
+func (zs *zones) name(i int) string {
+	if zs.isVMSingle {
+		return zs.vmsingles[i].Name
+	}
+	return zs.vmclusters[i].Name
+}
+
+// updateStatus returns the UpdateStatus for zone i
+func (zs *zones) updateStatus(i int) vmv1beta1.UpdateStatus {
+	if zs.isVMSingle {
+		return zs.vmsingles[i].Status.UpdateStatus
+	}
+	return zs.vmclusters[i].Status.UpdateStatus
+}
+
+// observedGeneration returns the ObservedGeneration for zone i
+func (zs *zones) observedGeneration(i int) int64 {
+	if zs.isVMSingle {
+		return zs.vmsingles[i].Status.ObservedGeneration
+	}
+	return zs.vmclusters[i].Status.ObservedGeneration
+}
+
+// creationTimestampIsZero returns true if the storage backend has not been created yet
+func (zs *zones) creationTimestampIsZero(i int) bool {
+	if zs.isVMSingle {
+		return zs.vmsingles[i].CreationTimestamp.IsZero()
+	}
+	return zs.vmclusters[i].CreationTimestamp.IsZero()
+}
+
+// remoteWriteURL returns the remote write URL for zone i
+func (zs *zones) remoteWriteURL(i int) string {
+	if zs.isVMSingle {
+		return zs.vmsingles[i].AsURL(false) + "/api/v1/write"
+	}
+	return zs.vmclusters[i].GetRemoteWriteURL()
+}
+
+// Apply custom sorting for storage backends and VMAgents updating first not existing or failed zones
 // The rest is sorted by observedGeneration in descending order
-// If all above is equal then zones are sorted by VMCluster name in ascending order
+// If all above is equal then zones are sorted by backend name in ascending order
 func (zs *zones) Less(i, j int) bool {
-	statusI := zs.vmclusters[i].Status
-	statusJ := zs.vmclusters[j].Status
-	isNonOperationalI := statusI.UpdateStatus != vmv1beta1.UpdateStatusOperational
-	isNonOperationalJ := statusJ.UpdateStatus != vmv1beta1.UpdateStatusOperational
+	isNonOperationalI := zs.updateStatus(i) != vmv1beta1.UpdateStatusOperational
+	isNonOperationalJ := zs.updateStatus(j) != vmv1beta1.UpdateStatusOperational
 	if isNonOperationalI != isNonOperationalJ {
 		return isNonOperationalI
 	}
-	isZeroI := zs.vmclusters[i].CreationTimestamp.IsZero()
-	isZeroJ := zs.vmclusters[j].CreationTimestamp.IsZero()
+	isZeroI := zs.creationTimestampIsZero(i)
+	isZeroJ := zs.creationTimestampIsZero(j)
 	if isZeroI != isZeroJ {
 		return isZeroI
 	}
-	if statusI.ObservedGeneration != statusJ.ObservedGeneration {
-		return statusI.ObservedGeneration > statusJ.ObservedGeneration
+	if zs.observedGeneration(i) != zs.observedGeneration(j) {
+		return zs.observedGeneration(i) > zs.observedGeneration(j)
 	}
-	return zs.vmclusters[i].Name < zs.vmclusters[j].Name
+	return zs.name(i) < zs.name(j)
 }
 
 func (zs *zones) Swap(i, j int) {
 	zs.vmagents[i], zs.vmagents[j] = zs.vmagents[j], zs.vmagents[i]
 	zs.vmclusters[i], zs.vmclusters[j] = zs.vmclusters[j], zs.vmclusters[i]
+	if len(zs.vmsingles) > i && len(zs.vmsingles) > j {
+		zs.vmsingles[i], zs.vmsingles[j] = zs.vmsingles[j], zs.vmsingles[i]
+	}
 	zs.hasChanges[i], zs.hasChanges[j] = zs.hasChanges[j], zs.hasChanges[i]
 	zs.trafficModes[i], zs.trafficModes[j] = zs.trafficModes[j], zs.trafficModes[i]
 	zs.prevAcceptsWrites[i], zs.prevAcceptsWrites[j] = zs.prevAcceptsWrites[j], zs.prevAcceptsWrites[i]
@@ -80,12 +123,62 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		},
 		vmagents:          make([]*vmv1beta1.VMAgent, len(cr.Spec.Zones)),
 		vmclusters:        make([]*vmv1beta1.VMCluster, len(cr.Spec.Zones)),
+		vmsingles:         make([]*vmv1beta1.VMSingle, len(cr.Spec.Zones)),
+		isVMSingle:        cr.Spec.BackendType == vmv1alpha1.VMDistributedBackendTypeVMSingle,
 		hasChanges:        make([]bool, len(cr.Spec.Zones)),
 		trafficModes:      make([]vmv1alpha1.VMDistributedTrafficMode, len(cr.Spec.Zones)),
 		prevAcceptsWrites: make([]bool, len(cr.Spec.Zones)),
 	}
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
+		zs.trafficModes[i] = z.TrafficMode
+		if zs.isVMSingle {
+			nsn := types.NamespacedName{
+				Name:      z.VMSingleName(cr),
+				Namespace: cr.Namespace,
+			}
+			var vmSingle vmv1beta1.VMSingle
+			if err := rclient.Get(ctx, nsn, &vmSingle); err != nil {
+				if !k8serrors.IsNotFound(err) {
+					return nil, fmt.Errorf("unexpected error during attempt to get VMSingle=%s: %w", nsn.String(), err)
+				}
+				vmSingle.ObjectMeta = metav1.ObjectMeta{
+					Name:            z.VMSingleName(cr),
+					Namespace:       cr.Namespace,
+					OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+				}
+			}
+			var commonSpec *vmv1beta1.VMSingleSpec
+			if cr.Spec.ZoneCommon.VMSingle != nil {
+				commonSpec = cr.Spec.ZoneCommon.VMSingle.Spec
+			}
+			if commonSpec == nil {
+				commonSpec = &vmv1beta1.VMSingleSpec{}
+			}
+			var zoneSpec *vmv1beta1.VMSingleSpec
+			if z.VMSingle != nil {
+				zoneSpec = z.VMSingle.Spec
+			}
+			if zoneSpec == nil {
+				zoneSpec = &vmv1beta1.VMSingleSpec{}
+			}
+			vmSingleSpec, err := mergeSpecs(commonSpec, zoneSpec, z.Name)
+			if err != nil {
+				return nil, fmt.Errorf("spec.zones[%d].vmsingle.spec: %w", i, err)
+			}
+			prevSingleSpec := vmSingle.Spec
+			vmSingle.Spec = *vmSingleSpec
+			rclient.Scheme().Default(&vmSingle)
+			zs.hasChanges[i] = !equality.Semantic.DeepEqual(&vmSingle.Spec, &prevSingleSpec)
+			zs.vmsingles[i] = &vmSingle
+			// VMSingle accepts writes if it already exists.
+			// Traffic mode changes are handled via LB exclusion in buildVMAuthLB;
+			// prevAcceptsWrites only controls whether to drain the VMAgent PQ before excluding.
+			zs.prevAcceptsWrites[i] = !vmSingle.CreationTimestamp.IsZero()
+			// placeholder so index-based access to vmclusters remains valid
+			zs.vmclusters[i] = &vmv1beta1.VMCluster{}
+			continue
+		}
 		nsn := types.NamespacedName{
 			Name:      z.VMClusterName(cr),
 			Namespace: cr.Namespace,
@@ -115,8 +208,9 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		}
 		zs.hasChanges[i] = !equality.Semantic.DeepEqual(&vmCluster.Spec, &prevClusterSpec)
 		zs.vmclusters[i] = &vmCluster
-		zs.trafficModes[i] = z.TrafficMode
 		zs.prevAcceptsWrites[i] = prevClusterSpec.VMInsert != nil && ptr.Deref(prevClusterSpec.VMInsert.ReplicaCount, 1) > 0
+		// placeholder so index-based access to vmsingles remains valid
+		zs.vmsingles[i] = &vmv1beta1.VMSingle{}
 	}
 
 	for i := range cr.Spec.Zones {
@@ -161,7 +255,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			if err != nil {
 				return nil, fmt.Errorf("spec.zones[%d].vmagent: spec.zones[%d].remoteWrite: %w", i, j, err)
 			}
-			remoteWrite.URL = zs.vmclusters[j].GetRemoteWriteURL()
+			remoteWrite.URL = zs.remoteWriteURL(j)
 			vmAgentSpec.RemoteWrite = append(vmAgentSpec.RemoteWrite, *remoteWrite)
 		}
 		// sorting VMAgent's remote write configurations
@@ -196,38 +290,60 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	defer cancel()
 
 	owner := cr.AsOwner()
-	vmCluster := zs.vmclusters[i]
 	vmAgent := zs.vmagents[i]
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
-	nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
-	logger.WithContext(ctx).Info("reconciling VMCluster", "item", item, "name", nsnCluster)
 
-	// vmCluster or vmAgent have been created
-	needsLBUpdate := !vmCluster.CreationTimestamp.IsZero() && !vmAgent.CreationTimestamp.IsZero()
-	// No vmcluster or vmagent spec changes required
+	backendCreated := !zs.creationTimestampIsZero(i)
+	// backend or vmAgent have been created
+	needsLBUpdate := backendCreated && !vmAgent.CreationTimestamp.IsZero()
+	// No backend or vmagent spec changes required
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
-	newAcceptsWrites := vmCluster.Spec.VMInsert != nil && ptr.Deref(vmCluster.Spec.VMInsert.ReplicaCount, 1) > 0
+
+	// newAcceptsWrites: VMSingle always accepts writes (unless read-only/maintenance mode handled via LB exclusion),
+	// VMCluster accepts writes when VMInsert replicas > 0
+	var newAcceptsWrites bool
+	if zs.isVMSingle {
+		mode := zs.trafficModes[i]
+		newAcceptsWrites = mode != vmv1alpha1.VMDistributedTrafficModeReadOnly && mode != vmv1alpha1.VMDistributedTrafficModeMaintenance
+	} else {
+		vmCluster := zs.vmclusters[i]
+		newAcceptsWrites = vmCluster.Spec.VMInsert != nil && ptr.Deref(vmCluster.Spec.VMInsert.ReplicaCount, 1) > 0
+	}
 
 	if needsLBUpdate {
 		if zs.prevAcceptsWrites[i] {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
-				return fmt.Errorf("zone=%s: failed to wait till VMCluster=%s queue is empty", item, nsnCluster.String())
+				backendName := zs.name(i)
+				return fmt.Errorf("zone=%s: failed to wait till backend=%s queue is empty", item, backendName)
 			}
 		}
 
 		// excluding zone from VMAuth LB
 		if err := zs.updateLB(ctx, rclient, cr, i); err != nil {
-			return fmt.Errorf("zone=%s: failed to update VMAuth LB with excluded VMCluster=%s: %w", item, nsnCluster.String(), err)
+			backendName := zs.name(i)
+			return fmt.Errorf("zone=%s: failed to update VMAuth LB with excluded backend=%s: %w", item, backendName, err)
 		}
 	}
 
-	// reconcile VMCluster
-	if err := reconcile.VMCluster(ctx, rclient, vmCluster, nil, &owner); err != nil {
-		return fmt.Errorf("zone=%s: failed to reconcile VMCluster=%s: %w", item, nsnCluster.String(), err)
+	// reconcile storage backend
+	if zs.isVMSingle {
+		vmSingle := zs.vmsingles[i]
+		nsnSingle := types.NamespacedName{Name: vmSingle.Name, Namespace: vmSingle.Namespace}
+		logger.WithContext(ctx).Info("reconciling VMSingle", "item", item, "name", nsnSingle)
+		if err := reconcile.VMSingle(ctx, rclient, vmSingle, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VMSingle=%s: %w", item, nsnSingle.String(), err)
+		}
+	} else {
+		vmCluster := zs.vmclusters[i]
+		nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
+		logger.WithContext(ctx).Info("reconciling VMCluster", "item", item, "name", nsnCluster)
+		if err := reconcile.VMCluster(ctx, rclient, vmCluster, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VMCluster=%s: %w", item, nsnCluster.String(), err)
+		}
 	}
 
 	// reconcile VMAgent
@@ -240,7 +356,8 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
-			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for VMCluster=%s is drained", item, nsnCluster.String())
+			backendName := zs.name(i)
+			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for backend=%s is drained", item, backendName)
 		}
 	}
 
@@ -257,7 +374,7 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 	if !ptr.Deref(cr.Spec.VMAuth.Enabled, true) {
 		return nil
 	}
-	vmAuth := buildVMAuthLB(cr, zs.vmagents, zs.vmclusters, zs.trafficModes, excludeIds...)
+	vmAuth := buildVMAuthLB(cr, zs, excludeIds...)
 	if vmAuth == nil {
 		return nil
 	}
@@ -314,10 +431,11 @@ func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1be
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
-	vmCluster := zs.vmclusters[clusterIdx]
-	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(vmCluster.GetRemoteWriteURL())))
+	backendURL := zs.remoteWriteURL(clusterIdx)
+	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(backendURL)))
 
-	nsnCluster := types.NamespacedName{Name: vmCluster.Name, Namespace: vmCluster.Namespace}
+	backendName := zs.name(clusterIdx)
+	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vmagents[clusterIdx].Namespace}
 	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {

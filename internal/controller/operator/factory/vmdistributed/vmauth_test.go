@@ -11,16 +11,18 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle, isVMSingle bool) *zones {
-	return &zones{
-		vmagents:   vmAgents,
-		vmclusters: vmClusters,
-		vmsingles:  vmSingles,
-		isVMSingle: isVMSingle,
+func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle) *zones {
+	zs := &zones{vmagents: vmAgents}
+	for _, c := range vmClusters {
+		zs.backends = append(zs.backends, vmBackend{obj: c})
 	}
+	for _, s := range vmSingles {
+		zs.backends = append(zs.backends, vmBackend{obj: s})
+	}
+	return zs
 }
 
-func TestVMClusterTargetRefZoneOrder(t *testing.T) {
+func TestVMBackendTargetRef(t *testing.T) {
 	now := metav1.Now()
 	owner := metav1.OwnerReference{
 		APIVersion: "operator.victoriametrics.com/v1alpha1",
@@ -52,7 +54,11 @@ func TestVMClusterTargetRefZoneOrder(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		ref := vmClusterTargetRef(o.clusters, &owner, o.excludeIds...)
+		backends := make([]vmBackend, len(o.clusters))
+		for i, c := range o.clusters {
+			backends[i] = vmBackend{obj: c}
+		}
+		ref := vmBackendTargetRef(backends, "VMCluster/vmselect", []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"}, &owner, o.excludeIds...)
 		var gotNames []string
 		for _, nsn := range ref.CRD.Objects {
 			gotNames = append(gotNames, nsn.Name)
@@ -169,7 +175,7 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 
 	f := func(o opts) {
 		t.Helper()
-		vmAuth := buildVMAuthLB(cr, newTestLBZones(o.agents, o.clusters, nil, false), o.excludeIds...)
+		vmAuth := buildVMAuthLB(cr, newTestLBZones(o.agents, o.clusters, nil), o.excludeIds...)
 		assert.NotNil(t, vmAuth)
 		assert.Len(t, vmAuth.Spec.DefaultTargetRefs, 2)
 
@@ -240,7 +246,6 @@ func TestBuildVMAuthLBVMSingleBackend(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "single-a", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
 			{ObjectMeta: metav1.ObjectMeta{Name: "single-b", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
 		},
-		true,
 	))
 
 	assert.NotNil(t, vmAuth)

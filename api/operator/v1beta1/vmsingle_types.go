@@ -372,6 +372,10 @@ func (cr *VMSingle) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
+func (cr *VMSingle) GetRemoteWriteURL() string {
+	return cr.AsURL(false) + BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, "/api/v1/write")
+}
+
 func (cr *VMSingle) AsURL(isExtra bool) string {
 	specPort := cr.Spec.Port
 	if specPort == "" {

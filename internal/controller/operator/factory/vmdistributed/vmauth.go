@@ -23,20 +23,20 @@ func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerRefere
 	return false
 }
 
-func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
+func vmBackendTargetRef(backends []vmBackend, kind string, paths []string, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
 	var nsns []vmv1beta1.NamespacedName
-	// iterate in reverse so that vmauth would be more likely to route requests to older, stable vmClusters
-	for i := len(vmClusters) - 1; i >= 0; i-- {
+	// iterate in reverse so that vmauth would be more likely to route requests to older, stable backends
+	for i := len(backends) - 1; i >= 0; i-- {
 		if slices.Contains(excludeIds, i) {
 			continue
 		}
-		vmCluster := vmClusters[i]
-		if vmCluster.CreationTimestamp.IsZero() || !hasOwnerReference(vmCluster.OwnerReferences, owner) {
+		b := backends[i].obj
+		if b.GetCreationTimestamp().Time.IsZero() || !hasOwnerReference(b.GetOwnerReferences(), owner) {
 			continue
 		}
 		nsns = append(nsns, vmv1beta1.NamespacedName{
-			Name:      vmCluster.Name,
-			Namespace: vmCluster.Namespace,
+			Name:      b.GetName(),
+			Namespace: b.GetNamespace(),
 		})
 	}
 	ref := vmv1beta1.TargetRef{
@@ -45,48 +45,11 @@ func vmClusterTargetRef(vmClusters []*vmv1beta1.VMCluster, owner *metav1.OwnerRe
 			LoadBalancingPolicy: ptr.To("first_available"),
 			RetryStatusCodes:    []int{500, 502, 503},
 		},
-		Paths: []string{"/select/.+", "/admin/tenants", "/flags", "/metrics"},
+		Paths: paths,
 	}
 	if len(nsns) > 0 {
 		ref.CRD = &vmv1beta1.CRDRef{
-			Kind:    "VMCluster/vmselect",
-			Objects: nsns,
-		}
-	} else {
-		ref.Static = &vmv1beta1.StaticRef{
-			URL: defaultStubAddr,
-		}
-	}
-	return ref
-}
-
-func vmSingleReadTargetRef(vmSingles []*vmv1beta1.VMSingle, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
-	var nsns []vmv1beta1.NamespacedName
-	// iterate in reverse so that vmauth would be more likely to route requests to older, stable VMSingles
-	for i := len(vmSingles) - 1; i >= 0; i-- {
-		if slices.Contains(excludeIds, i) {
-			continue
-		}
-		vmSingle := vmSingles[i]
-		if vmSingle.CreationTimestamp.IsZero() || !hasOwnerReference(vmSingle.OwnerReferences, owner) {
-			continue
-		}
-		nsns = append(nsns, vmv1beta1.NamespacedName{
-			Name:      vmSingle.Name,
-			Namespace: vmSingle.Namespace,
-		})
-	}
-	ref := vmv1beta1.TargetRef{
-		Name: "read",
-		URLMapCommon: vmv1beta1.URLMapCommon{
-			LoadBalancingPolicy: ptr.To("first_available"),
-			RetryStatusCodes:    []int{500, 502, 503},
-		},
-		Paths: []string{"/api/v1/.+", "/flags", "/metrics"},
-	}
-	if len(nsns) > 0 {
-		ref.CRD = &vmv1beta1.CRDRef{
-			Kind:    "VMSingle",
+			Kind:    kind,
 			Objects: nsns,
 		}
 	} else {
@@ -160,13 +123,18 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, zs *zones, excludeIds ...int) *
 	}
 
 	owner := cr.AsOwner()
+	var kind string
+	paths := []string{"/flags", "/metrics"}
+	if cr.Spec.BackendType == vmv1alpha1.VMDistributedBackendTypeVMSingle {
+		kind = "VMSingle"
+		paths = append(paths, "/api/v1/.+")
+	} else {
+		kind = "VMCluster/vmselect"
+		paths = append(paths, "/select/.+", "/admin/tenants")
+	}
 	var targetRefs []vmv1beta1.TargetRef
 	targetRefs = append(targetRefs, vmAgentTargetRef(zs.vmagents, &owner, writeExcludeIds...))
-	if cr.Spec.BackendType == vmv1alpha1.VMDistributedBackendTypeVMSingle {
-		targetRefs = append(targetRefs, vmSingleReadTargetRef(zs.vmsingles, &owner, readExcludeIds...))
-	} else {
-		targetRefs = append(targetRefs, vmClusterTargetRef(zs.vmclusters, &owner, readExcludeIds...))
-	}
+	targetRefs = append(targetRefs, vmBackendTargetRef(zs.backends, kind, paths, &owner, readExcludeIds...))
 
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
 	return &vmAuth

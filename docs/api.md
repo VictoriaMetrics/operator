@@ -4243,6 +4243,7 @@ Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 
 | Field | Description |
 | --- | --- |
+| access_log<a href="#vmauthspec-access_log" id="vmauthspec-access_log">#</a><br/>_[VMUserAccessLog](#vmuseraccesslog)_ | _(Optional)_<br/>AccessLog configures per-user access logging.<br />When set, vmauth logs each request for this user with fields including<br />request_uri, status_code, duration_ms, username, etc.<br />See https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log<br />available since v1.138.0 vmauth version<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0730">v0.73.0</a> |
 | affinity<a href="#vmauthspec-affinity" id="vmauthspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
 | arbitraryFSAccessThroughSMs<a href="#vmauthspec-arbitraryfsaccessthroughsms" id="vmauthspec-arbitraryfsaccessthroughsms">#</a><br/>_[ArbitraryFSAccessThroughSMsConfig](#arbitraryfsaccessthroughsmsconfig)_ | _(Optional)_<br/>ArbitraryFSAccessThroughSMs configures whether configuration<br />can contain paths to arbitrary files on the file system<br />e.g bearer token files, basic auth password files, tls certs file paths |
 | componentVersion<a href="#vmauthspec-componentversion" id="vmauthspec-componentversion">#</a><br/>_string_ | _(Optional)_<br/>ComponentVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
@@ -4338,6 +4339,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 
 | Field | Description |
 | --- | --- |
+| access_log<a href="#vmauthunauthorizeduseraccessspec-access_log" id="vmauthunauthorizeduseraccessspec-access_log">#</a><br/>_[VMUserAccessLog](#vmuseraccesslog)_ | _(Optional)_<br/>AccessLog configures per-user access logging.<br />When set, vmauth logs each request for this user with fields including<br />request_uri, status_code, duration_ms, username, etc.<br />See https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log<br />available since v1.138.0 vmauth version<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0730">v0.73.0</a> |
 | default_url<a href="#vmauthunauthorizeduseraccessspec-default_url" id="vmauthunauthorizeduseraccessspec-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | discover_backend_ips<a href="#vmauthunauthorizeduseraccessspec-discover_backend_ips" id="vmauthunauthorizeduseraccessspec-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |
 | drop_src_path_prefix_parts<a href="#vmauthunauthorizeduseraccessspec-drop_src_path_prefix_parts" id="vmauthunauthorizeduseraccessspec-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
@@ -5135,6 +5137,26 @@ VMUser is the Schema for the vmusers API
 | metadata<a href="#vmuser-metadata" id="vmuser-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#objectmeta-v1-meta)_ | _(Required)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
 | spec<a href="#vmuser-spec" id="vmuser-spec">#</a><br/>_[VMUserSpec](#vmuserspec)_ | _(Required)_<br/> |
 
+#### VMUserAccessLog
+
+VMUserAccessLog defines per-user access log configuration for vmauth.
+
+Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmauthunauthorizeduseraccessspec), [VMUserConfigOptions](#vmuserconfigoptions), [VMUserSpec](#vmuserspec)
+
+| Field | Description |
+| --- | --- |
+| filters<a href="#vmuseraccesslog-filters" id="vmuseraccesslog-filters">#</a><br/>_[VMUserAccessLogFilters](#vmuseraccesslogfilters)_ | _(Optional)_<br/>Filters defines optional filters that control which requests are logged. |
+
+#### VMUserAccessLogFilters
+
+VMUserAccessLogFilters defines filters for vmauth per-user access log.
+
+Appears in: [VMUserAccessLog](#vmuseraccesslog)
+
+| Field | Description |
+| --- | --- |
+| skip_status_codes<a href="#vmuseraccesslogfilters-skip_status_codes" id="vmuseraccesslogfilters-skip_status_codes">#</a><br/>_integer array_ | _(Optional)_<br/>SkipStatusCodes lists HTTP status codes whose responses are excluded from the access log.<br />For example, [200, 204] suppresses logging of successful responses. |
+
 #### VMUserConfigOptions
 
 VMUserConfigOptions defines configuration options for VMUser object
@@ -5143,6 +5165,7 @@ Appears in: [VMAuthSpec](#vmauthspec), [VMAuthUnauthorizedUserAccessSpec](#vmaut
 
 | Field | Description |
 | --- | --- |
+| access_log<a href="#vmuserconfigoptions-access_log" id="vmuserconfigoptions-access_log">#</a><br/>_[VMUserAccessLog](#vmuseraccesslog)_ | _(Optional)_<br/>AccessLog configures per-user access logging.<br />When set, vmauth logs each request for this user with fields including<br />request_uri, status_code, duration_ms, username, etc.<br />See https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log<br />available since v1.138.0 vmauth version<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0730">v0.73.0</a> |
 | default_url<a href="#vmuserconfigoptions-default_url" id="vmuserconfigoptions-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | discover_backend_ips<a href="#vmuserconfigoptions-discover_backend_ips" id="vmuserconfigoptions-discover_backend_ips">#</a><br/>_boolean_ | _(Required)_<br/>DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. |
 | drop_src_path_prefix_parts<a href="#vmuserconfigoptions-drop_src_path_prefix_parts" id="vmuserconfigoptions-drop_src_path_prefix_parts">#</a><br/>_integer_ | _(Optional)_<br/>DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details. |
@@ -5199,6 +5222,7 @@ Appears in: [VMUser](#vmuser)
 
 | Field | Description |
 | --- | --- |
+| access_log<a href="#vmuserspec-access_log" id="vmuserspec-access_log">#</a><br/>_[VMUserAccessLog](#vmuseraccesslog)_ | _(Optional)_<br/>AccessLog configures per-user access logging.<br />When set, vmauth logs each request for this user with fields including<br />request_uri, status_code, duration_ms, username, etc.<br />See https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log<br />available since v1.138.0 vmauth version<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0730">v0.73.0</a> |
 | bearerToken<a href="#vmuserspec-bearertoken" id="vmuserspec-bearertoken">#</a><br/>_string_ | _(Optional)_<br/>BearerToken Authorization header value for accessing protected endpoint. |
 | default_url<a href="#vmuserspec-default_url" id="vmuserspec-default_url">#</a><br/>_string array_ | _(Required)_<br/>DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message |
 | disable_secret_creation<a href="#vmuserspec-disable_secret_creation" id="vmuserspec-disable_secret_creation">#</a><br/>_boolean_ | _(Required)_<br/>DisableSecretCreation skips related secret creation for vmuser |

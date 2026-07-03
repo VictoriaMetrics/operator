@@ -375,6 +375,31 @@ type VMUserConfigOptions struct {
 	// available since v1.107.0 vmauth version
 	// +optional
 	DumpRequestOnErrors *bool `json:"dump_request_on_errors,omitempty"`
+
+	// AccessLog configures per-user access logging.
+	// When set, vmauth logs each request for this user with fields including
+	// request_uri, status_code, duration_ms, username, etc.
+	// See https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log
+	//
+	// available since v1.138.0 vmauth version
+	// +optional
+	// +notes={available_from: "v0.73.0"}
+	AccessLog *VMUserAccessLog `json:"access_log,omitempty" yaml:"access_log,omitempty"`
+}
+
+// VMUserAccessLog defines per-user access log configuration for vmauth.
+type VMUserAccessLog struct {
+	// Filters defines optional filters that control which requests are logged.
+	// +optional
+	Filters *VMUserAccessLogFilters `json:"filters,omitempty" yaml:"filters,omitempty"`
+}
+
+// VMUserAccessLogFilters defines filters for vmauth per-user access log.
+type VMUserAccessLogFilters struct {
+	// SkipStatusCodes lists HTTP status codes whose responses are excluded from the access log.
+	// For example, [200, 204] suppresses logging of successful responses.
+	// +optional
+	SkipStatusCodes []int `json:"skip_status_codes,omitempty" yaml:"skip_status_codes,omitempty"`
 }
 
 // Validate performs semantic syntax validation

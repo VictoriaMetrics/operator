@@ -15836,6 +15836,16 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               unauthorizedUserAccessSpec:
                 properties:
+                  access_log:
+                    properties:
+                      filters:
+                        properties:
+                          skip_status_codes:
+                            items:
+                              type: integer
+                            type: array
+                        type: object
+                    type: object
                   default_url:
                     items:
                       type: string
@@ -23286,6 +23296,16 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       unauthorizedUserAccessSpec:
                         properties:
+                          access_log:
+                            properties:
+                              filters:
+                                properties:
+                                  skip_status_codes:
+                                    items:
+                                      type: integer
+                                    type: array
+                                type: object
+                            type: object
                           default_url:
                             items:
                               type: string
@@ -46051,6 +46071,16 @@ spec:
             type: object
           spec:
             properties:
+              access_log:
+                properties:
+                  filters:
+                    properties:
+                      skip_status_codes:
+                        items:
+                          type: integer
+                        type: array
+                    type: object
+                type: object
               bearerToken:
                 type: string
               default_url:

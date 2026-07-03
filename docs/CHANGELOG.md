@@ -17,6 +17,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.4](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.4) version.
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): preserve insertion order of keys in `ProphetModel` `seasonalities`, `tz_seasonalities`, `compression`, and `args` fields; previously the operator re-emitted them with keys sorted alphabetically, which broke round-trips for configs that specified keys in a non-alphabetical order. Also renamed the singular `seasonality`/`tz_seasonality` YAML keys (deprecated) to the plural `seasonalities`/`tz_seasonalities` to match the vmanomaly configuration format. See [#2356](https://github.com/VictoriaMetrics/operator/issues/2356).
 
 ## [v0.68.6](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.6)
 **Release date:** 25 June 2026

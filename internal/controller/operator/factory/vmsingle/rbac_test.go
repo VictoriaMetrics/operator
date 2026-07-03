@@ -21,61 +21,62 @@ func TestCreateVMSingleRBAC(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMSingle
 		validate          func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle)
-		clusterWide       bool
+		namespaces        []string
 		predefinedObjects []runtime.Object
 	}
 	f := func(o opts) {
 		t.Helper()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
-		assert.NoError(t, createK8sAPIAccess(ctx, fclient, o.cr, nil, o.clusterWide))
+		assert.NoError(t, createK8sAPIAccess(ctx, fclient, o.cr, nil, o.namespaces))
 		if o.validate != nil {
 			o.validate(ctx, fclient, o.cr)
 		}
 	}
 
-	// create default cluster-wide rbac
+	// create cluster-wide rbac for scraping mode (IngestOnlyMode=false)
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMSingleSpec{},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
+			},
 		},
-		clusterWide: true,
+		namespaces: []string{},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
-			nsn := types.NamespacedName{
-				Name: cr.GetRBACName(),
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
-			assert.Len(t, got.Rules, 6)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName()}, &got))
+			assert.Len(t, got.Rules, 5)
 		},
 	})
 
-	// create namespaced rbac
+	// create namespaced rbac for scraping mode (IngestOnlyMode=false)
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMSingleSpec{},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
+			},
 		},
-		clusterWide: false,
+		namespaces: []string{"default"},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
-			nsn := types.NamespacedName{
-				Name:      cr.GetRBACName(),
-				Namespace: cr.Namespace,
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: cr.Namespace}, &got))
 			assert.Len(t, got.Rules, 4)
 		},
 	})
 
-	// create cluster-wide rbac for relabeling
+	// ingest-only mode: no cluster-wide rules (relabeling/streamaggr configs are in ConfigMaps, not Secrets)
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
@@ -94,18 +95,15 @@ func TestCreateVMSingleRBAC(t *testing.T) {
 				},
 			},
 		},
-		clusterWide: true,
+		namespaces: []string{},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
-			nsn := types.NamespacedName{
-				Name: cr.GetRBACName(),
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
-			assert.Len(t, got.Rules, 1)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName()}, &got))
+			assert.Empty(t, got.Rules)
 		},
 	})
 
-	// create namespaced rbac for relabeling
+	// ingest-only namespaced: namespace role has no rules
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
@@ -124,81 +122,66 @@ func TestCreateVMSingleRBAC(t *testing.T) {
 				},
 			},
 		},
-		clusterWide: false,
+		namespaces: []string{"default"},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
-			nsn := types.NamespacedName{
-				Name:      cr.GetRBACName(),
-				Namespace: cr.Namespace,
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
-			assert.Len(t, got.Rules, 1)
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: cr.Namespace}, &got))
+			assert.Empty(t, got.Rules)
 		},
 	})
 
-	// cluster-wide rbac with no rules
+	// default ingest-only (nil IngestOnlyMode defaults to true): cluster-wide has no rules
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
-					IngestOnlyMode: ptr.To(true),
-				},
-			},
+			Spec: vmv1beta1.VMSingleSpec{},
 		},
-		clusterWide: true,
+		namespaces: []string{},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.ClusterRole
-			nsn := types.NamespacedName{
-				Name: cr.GetRBACName(),
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName()}, &got))
 			assert.Empty(t, got.Rules)
 		},
 	})
 
-	// no namespaced rbac
+	// default ingest-only (nil IngestOnlyMode defaults to true): namespace role has no rules
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMSingleSpec{
-				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
-					IngestOnlyMode: ptr.To(true),
-				},
-			},
+			Spec: vmv1beta1.VMSingleSpec{},
 		},
-		clusterWide: false,
+		namespaces: []string{"default"},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
 			var got rbacv1.Role
-			nsn := types.NamespacedName{
-				Name:      cr.GetRBACName(),
-				Namespace: cr.Namespace,
-			}
-			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: cr.Namespace}, &got))
 			assert.Empty(t, got.Rules)
 		},
 	})
 
-	// ok with exist rbac
+	// ok with existing rbac
 	f(opts{
 		cr: &vmv1beta1.VMSingle{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default-2",
 				Name:      "rbac-test",
 			},
-			Spec: vmv1beta1.VMSingleSpec{},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode: ptr.To(false),
+				},
+			},
 		},
+		namespaces: []string{},
 		predefinedObjects: []runtime.Object{
 			&rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmsingle-cluster-access-rbac-test",
-					Namespace: "default-2",
+					Name: "monitoring:vmsingle-cluster-access-rbac-test",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":      "vmsingle",
 						"app.kubernetes.io/instance":  "rbac-test",
@@ -209,8 +192,7 @@ func TestCreateVMSingleRBAC(t *testing.T) {
 			},
 			&rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring:vmsingle-cluster-access-rbac-test",
-					Namespace: "default-2",
+					Name: "monitoring:vmsingle-cluster-access-rbac-test",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":      "vmsingle",
 						"app.kubernetes.io/instance":  "rbac-test",

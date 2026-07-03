@@ -131,6 +131,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 	owner := cr.AsOwner()
+	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -139,8 +140,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || hasRemoteWriteSecrets(cr) {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
@@ -153,7 +154,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	if err := createOrUpdateHPA(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	cfg := config.MustGetBaseConfig()
 	if cr.Spec.VPA != nil && !cfg.VPAAPIEnabled {
 		return fmt.Errorf("spec.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
 	}
@@ -591,7 +591,10 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 		return nil, fmt.Errorf("cannot configure persistent queue volume: %w", err)
 	}
 
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+	ingestOnly := ptr.Deref(cr.Spec.IngestOnlyMode, false)
+	needsConfigSecret := !ingestOnly || hasRemoteWriteSecrets(cr)
+
+	if !ingestOnly {
 		args = append(args,
 			fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
@@ -605,7 +608,8 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 				},
 			},
 		})
-
+	}
+	if needsConfigSecret {
 		volumes = append(volumes, corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
@@ -626,13 +630,15 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 			MountPath: confOutDir,
 		}
 		crMounts = append(crMounts, m)
-		m.ReadOnly = true
-		vmMounts = append(vmMounts, m)
-		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      string(build.TLSAssetsResourceKind),
-			MountPath: tlsAssetsDir,
-			ReadOnly:  true,
-		})
+		if !ingestOnly {
+			m.ReadOnly = true
+			vmMounts = append(vmMounts, m)
+			vmMounts = append(vmMounts, corev1.VolumeMount{
+				Name:      string(build.TLSAssetsResourceKind),
+				MountPath: tlsAssetsDir,
+				ReadOnly:  true,
+			})
+		}
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      string(build.SecretConfigResourceKind),
 			MountPath: confDir,
@@ -641,7 +647,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 		// Shared EmptyDir for overflow: config-reloader writes decompressed job files here,
 		// vmagent reads them via scrape_config_files. Only present when overflow is active.
-		if extraConfigSecretCount > 0 {
+		if !ingestOnly && extraConfigSecretCount > 0 {
 			volumes = append(volumes, corev1.Volume{
 				Name: "sc-files-out",
 				VolumeSource: corev1.VolumeSource{
@@ -654,7 +660,6 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 				ReadOnly:  true,
 			})
 		}
-
 	}
 	mountsLen := len(vmMounts)
 	volumes, vmMounts = build.StreamAggrVolumeTo(volumes, vmMounts, cr)
@@ -733,9 +738,9 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if !ingestOnly || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() || hasRemoteWriteSecrets(cr) {
 		var ss *corev1.SecretKeySelector
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		if needsConfigSecret {
 			ss = &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: cr.PrefixedName(),
@@ -992,6 +997,21 @@ func sortMap(m map[string]string) []item {
 		return kv[i].key < kv[j].key
 	})
 	return kv
+}
+
+func hasRemoteWriteSecrets(cr *vmv1beta1.VMAgent) bool {
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
+			return true
+		}
+		if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
+			return true
+		}
+		if rw.OAuth2 != nil && rw.OAuth2.ClientSecret != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
@@ -1284,18 +1304,20 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
-		if config.IsClusterWideAccessAllowed() {
+		rbacName := cr.GetRBACName()
+		watchNamespaces := config.MustGetBaseConfig().WatchNamespaces
+		if len(watchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
-				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
+				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			rbacMeta.Namespace = cr.Namespace
-			objsToRemove = append(objsToRemove,
-				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.Role{ObjectMeta: rbacMeta},
-			)
+			for _, ns := range watchNamespaces {
+				objsToRemove = append(objsToRemove,
+					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+				)
+			}
 		}
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
@@ -1331,6 +1353,34 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 
 func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		if !hasRemoteWriteSecrets(cr) {
+			return 0, nil
+		}
+		// ingest-only mode with remote write credentials: reconcile a credential-only secret
+		// so vmagent can read credentials from files and the config-reloader can watch for changes.
+		if _, err := buildRemoteWriteArgs(cr, ac); err != nil {
+			return 0, fmt.Errorf("cannot load remote write assets for ingest-only mode: %w", err)
+		}
+		owner := cr.AsOwner()
+		for kind, secret := range ac.GetOutput() {
+			var prevSecretMeta *metav1.ObjectMeta
+			if prevCR != nil {
+				prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
+			}
+			if kind == build.SecretConfigResourceKind {
+				// placeholder gzipped config so config-reloader finds its expected key
+				d, err := build.GzipConfig([]byte{})
+				if err != nil {
+					return 0, fmt.Errorf("cannot gzip placeholder config: %w", err)
+				}
+				secret.Data[scrapeGzippedFilename] = d
+			}
+			secret.ObjectMeta = build.ResourceMeta(kind, cr)
+			secret.Annotations = map[string]string{"generated": "true"}
+			if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+				return 0, err
+			}
+		}
 		return 0, nil
 	}
 	// HACK: newPodSpec could load content into ac and it must be called

@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.6](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1286) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.4](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.4) version.
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
 

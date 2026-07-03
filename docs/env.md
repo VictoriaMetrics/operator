@@ -3,7 +3,7 @@
 | VM_METRICS_VERSION: `v1.146.0` <a href="#variables-vm-metrics-version" id="variables-vm-metrics-version">#</a> |
 | VM_LOGS_VERSION: `v1.51.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a> |
 | VM_ANOMALY_VERSION: `v1.29.7` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a> |
-| VM_TRACES_VERSION: `v0.9.3` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |
+| VM_TRACES_VERSION: `v0.9.4` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a> |
 | VM_OPERATOR_VERSION: `v0.68.6` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a> |
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a> |
 | VM_VPA_API_ENABLED: `false` <a href="#variables-vm-vpa-api-enabled" id="variables-vm-vpa-api-enabled">#</a> |

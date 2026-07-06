@@ -13,8 +13,9 @@ aliases:
 
 ## tip
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.6](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1286) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.147.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.147.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.4](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.4) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.7](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1287) version
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): preserve insertion order of keys in `ProphetModel` `seasonalities`, `tz_seasonalities`, `compression`, and `args` fields; previously the operator re-emitted them with keys sorted alphabetically, which broke round-trips for configs that specified keys in a non-alphabetical order. Also renamed the singular `seasonality`/`tz_seasonality` YAML keys (deprecated) to the plural `seasonalities`/`tz_seasonalities` to match the vmanomaly configuration format. See [#2356](https://github.com/VictoriaMetrics/operator/issues/2356).

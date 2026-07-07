@@ -89,6 +89,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		}
 	}
 	owner := cr.AsOwner()
+	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -97,8 +98,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
 		}
@@ -112,7 +113,6 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	if err := createOrUpdateService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	cfg := config.MustGetBaseConfig()
 	if cr.Spec.VPA != nil && !cfg.VPAAPIEnabled {
 		return fmt.Errorf("spec.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
 	}
@@ -249,7 +249,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 		return nil, err
 	}
 
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 		args = append(args, fmt.Sprintf("-promscrape.config=%s", path.Join(confOutDir, configFilename)))
 
 		// preserve order of volumes and volumeMounts
@@ -405,9 +405,9 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	containers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container
 
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if !ptr.Deref(cr.Spec.IngestOnlyMode, true) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		var ss *corev1.SecretKeySelector
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 			ss = &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: cr.PrefixedName(),
@@ -707,25 +707,27 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		return fmt.Errorf("cannot remove configmaps: %w", err)
 	}
 
+	cfg := config.MustGetBaseConfig()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
-	if config.MustGetBaseConfig().VPAAPIEnabled && cr.Spec.VPA == nil {
+	if cfg.VPAAPIEnabled && cr.Spec.VPA == nil {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
-		if config.IsClusterWideAccessAllowed() {
+		rbacName := cr.GetRBACName()
+		if len(cfg.WatchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
-				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
+				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			rbacMeta.Namespace = cr.Namespace
-			objsToRemove = append(objsToRemove,
-				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.Role{ObjectMeta: rbacMeta},
-			)
+			for _, ns := range cfg.WatchNamespaces {
+				objsToRemove = append(objsToRemove,
+					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+				)
+			}
 		}
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
@@ -760,7 +762,7 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 }
 
 func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache) (int, error) {
-	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 		return 0, nil
 	}
 

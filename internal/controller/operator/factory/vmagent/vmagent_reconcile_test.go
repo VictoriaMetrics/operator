@@ -30,6 +30,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 
 	vmagentName := types.NamespacedName{Namespace: "default", Name: "vmagent-vmagent"}
 	clusterRoleName := types.NamespacedName{Name: "monitoring:default:vmagent-vmagent"}
+	roleName := types.NamespacedName{Namespace: "default", Name: "monitoring:default:vmagent-vmagent"}
 	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmagent-vmagent"}
 
 	defaultCR := &vmv1beta1.VMAgent{
@@ -124,6 +125,10 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Create", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
 				{Verb: "Create", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Role", Resource: roleName},
+				{Verb: "Create", Kind: "Role", Resource: roleName},
+				{Verb: "Get", Kind: "RoleBinding", Resource: roleName},
+				{Verb: "Create", Kind: "RoleBinding", Resource: roleName},
 				{Verb: "Get", Kind: "Service", Resource: vmagentName},
 				{Verb: "Create", Kind: "Service", Resource: vmagentName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
@@ -148,6 +153,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
 				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Role", Resource: roleName},
+				{Verb: "Get", Kind: "RoleBinding", Resource: roleName},
 				{Verb: "Get", Kind: "Service", Resource: vmagentName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
 				{Verb: "Get", Kind: "Secret", Resource: vmagentName},
@@ -173,6 +180,8 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
 				{Verb: "Get", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Role", Resource: roleName},
+				{Verb: "Get", Kind: "RoleBinding", Resource: roleName},
 				{Verb: "Get", Kind: "Service", Resource: vmagentName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmagentName},
 				{Verb: "Get", Kind: "Secret", Resource: vmagentName},
@@ -205,6 +214,10 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Create", Kind: "ClusterRole", Resource: clusterRoleName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
 				{Verb: "Create", Kind: "ClusterRoleBinding", Resource: clusterRoleName},
+				{Verb: "Get", Kind: "Role", Resource: roleName},
+				{Verb: "Create", Kind: "Role", Resource: roleName},
+				{Verb: "Get", Kind: "RoleBinding", Resource: roleName},
+				{Verb: "Create", Kind: "RoleBinding", Resource: roleName},
 				{Verb: "Get", Kind: "Service", Resource: vmagentName},
 				{Verb: "Create", Kind: "Service", Resource: vmagentName},
 				{Verb: "Get", Kind: "VMPodScrape", Resource: vmagentName},

@@ -13,96 +13,100 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-func getSingleNamespaceRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
-	var rules []rbacv1.PolicyRule
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		rules = append(rules, rbacv1.PolicyRule{
+func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"discovery.k8s.io"},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"endpointslices"},
+		},
+		{
 			APIGroups: []string{""},
 			Verbs:     []string{"get", "list", "watch"},
-			Resources: []string{"configmaps", "secrets"},
-		})
+			Resources: []string{"services", "endpoints", "pods"},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io", "extensions"},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"ingresses"},
+		},
 	}
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		rules = append(rules, []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{"discovery.k8s.io"},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"endpointslices"},
-			},
-			{
-				APIGroups: []string{""},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"services", "endpoints", "pods"},
-			},
-			{
-				APIGroups: []string{"networking.k8s.io", "extensions"},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"ingresses"},
-			},
-		}...)
+}
+
+func getSingleNamespaceRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
+	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
+		return nil
 	}
-	return rules
+	secretsRule := rbacv1.PolicyRule{
+		APIGroups:     []string{""},
+		Verbs:         []string{"get", "watch"},
+		Resources:     []string{"secrets"},
+		ResourceNames: []string{cr.PrefixedName()},
+	}
+	return append([]rbacv1.PolicyRule{secretsRule}, getScrapeDiscoveryRules()...)
 }
 
 func getClusterWideRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
-	var rules []rbacv1.PolicyRule
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		rules = append(rules, rbacv1.PolicyRule{
+	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
+		return nil
+	}
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"discovery.k8s.io"},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"endpointslices"},
+		},
+		{
 			APIGroups: []string{""},
 			Verbs:     []string{"get", "list", "watch"},
-			Resources: []string{"configmaps", "secrets"},
-		})
+			Resources: []string{"nodes", "nodes/metrics", "services", "endpoints", "pods", "namespaces"},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io", "extensions"},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"ingresses"},
+		},
+		{
+			NonResourceURLs: []string{"/metrics", "/metrics/resources", "/metrics/slis"},
+			Verbs:           []string{"get"},
+		},
+		{
+			APIGroups: []string{"route.openshift.io", "image.openshift.io"},
+			Verbs:     []string{"get"},
+			Resources: []string{"routers/metrics", "registry/metrics"},
+		},
 	}
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		rules = append(rules, []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{"discovery.k8s.io"},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"endpointslices"},
-			},
-			{
-				APIGroups: []string{""},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"nodes", "nodes/metrics", "services", "endpoints", "pods", "namespaces"},
-			},
-			{
-				APIGroups: []string{"networking.k8s.io", "extensions"},
-				Verbs:     []string{"get", "list", "watch"},
-				Resources: []string{"ingresses"},
-			},
-			{
-				NonResourceURLs: []string{"/metrics", "/metrics/resources", "/metrics/slis"},
-				Verbs:           []string{"get", "list", "watch"},
-			},
-			{
-				APIGroups: []string{"route.openshift.io", "image.openshift.io"},
-				Verbs:     []string{"get"},
-				Resources: []string{"routers/metrics", "registry/metrics"},
-			},
-		}...)
-	}
-	return rules
 }
 
-// createK8sAPIAccess - creates RBAC access rules for vmsingle
-func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, clusterWide bool) error {
-	if clusterWide {
+// createK8sAPIAccess creates RBAC access rules for vmsingle.
+// namespaces is the list of watched namespaces; an empty slice means cluster-wide access.
+func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, namespaces []string) error {
+	if len(namespaces) == 0 {
 		if err := ensureCRExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmsingle's cluster role: %w", err)
 		}
 		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot ensure state of vmsingle's cluster role binding: %w", err)
 		}
+
+		// Secrets/config access must be namespace-scoped even in cluster-wide mode.
+		if err := ensureRoleExist(ctx, rclient, cr, prevCR, cr.Namespace); err != nil {
+			return fmt.Errorf("cannot ensure state of vmsingle's role: %w", err)
+		}
+		if err := ensureRBExist(ctx, rclient, cr, prevCR, cr.Namespace); err != nil {
+			return fmt.Errorf("cannot ensure state of vmsingle's role binding: %w", err)
+		}
 		return nil
 	}
 
-	if err := ensureRoleExist(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot ensure state of vmsingle's role: %w", err)
+	for _, ns := range namespaces {
+		if err := ensureRoleExist(ctx, rclient, cr, prevCR, ns); err != nil {
+			return fmt.Errorf("cannot ensure state of vmsingle's role for namespace %s: %w", ns, err)
+		}
+		if err := ensureRBExist(ctx, rclient, cr, prevCR, ns); err != nil {
+			return fmt.Errorf("cannot ensure state of vmsingle's role binding for namespace %s: %w", ns, err)
+		}
 	}
-	if err := ensureRBExist(ctx, rclient, cr, prevCR); err != nil {
-		return fmt.Errorf("cannot ensure state of vmsingle's role binding: %w", err)
-	}
-
 	return nil
 }
 
@@ -157,49 +161,61 @@ func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
 	}
 }
 
-func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
-	nr := buildRole(cr)
+func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ns string) error {
+	nr := buildRole(cr, ns)
 	var prevRole *rbacv1.Role
 	if prevCR != nil {
-		prevRole = buildRole(prevCR)
+		prevRole = buildRole(prevCR, ns)
 	}
-	owner := cr.AsOwner()
-	return reconcile.Role(ctx, rclient, nr, prevRole, &owner)
+	var owner *metav1.OwnerReference
+	if ns == cr.Namespace {
+		o := cr.AsOwner()
+		owner = &o
+	}
+	return reconcile.Role(ctx, rclient, nr, prevRole, owner)
 }
 
-func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
-	rb := buildRB(cr)
+func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ns string) error {
+	rb := buildRB(cr, ns)
 	var prevRB *rbacv1.RoleBinding
 	if prevCR != nil {
-		prevRB = buildRB(prevCR)
+		prevRB = buildRB(prevCR, ns)
 	}
-	owner := cr.AsOwner()
-	return reconcile.RoleBinding(ctx, rclient, rb, prevRB, &owner)
+	var owner *metav1.OwnerReference
+	if ns == cr.Namespace {
+		o := cr.AsOwner()
+		owner = &o
+	}
+	return reconcile.RoleBinding(ctx, rclient, rb, prevRB, owner)
 }
 
-func buildRole(cr *vmv1beta1.VMSingle) *rbacv1.Role {
-	return &rbacv1.Role{
+func buildRole(cr *vmv1beta1.VMSingle, ns string) *rbacv1.Role {
+	r := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetRBACName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.FinalLabels(),
-			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+			Name:        cr.GetRBACName(),
+			Namespace:   ns,
+			Labels:      cr.FinalLabels(),
+			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
-		Rules: getSingleNamespaceRules(cr),
 	}
+	if ns == cr.Namespace {
+		r.OwnerReferences = []metav1.OwnerReference{cr.AsOwner()}
+		r.Rules = getSingleNamespaceRules(cr)
+	} else if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
+		r.Rules = getScrapeDiscoveryRules()
+	}
+	return r
 }
 
-func buildRB(cr *vmv1beta1.VMSingle) *rbacv1.RoleBinding {
-	return &rbacv1.RoleBinding{
+func buildRB(cr *vmv1beta1.VMSingle, ns string) *rbacv1.RoleBinding {
+	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetRBACName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.FinalLabels(),
-			Annotations:     cr.FinalAnnotations(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
-			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+			Name:        cr.GetRBACName(),
+			Namespace:   ns,
+			Labels:      cr.FinalLabels(),
+			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -214,4 +230,8 @@ func buildRB(cr *vmv1beta1.VMSingle) *rbacv1.RoleBinding {
 			Kind:     "Role",
 		},
 	}
+	if ns == cr.Namespace {
+		rb.OwnerReferences = []metav1.OwnerReference{cr.AsOwner()}
+	}
+	return rb
 }

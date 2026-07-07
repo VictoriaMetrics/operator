@@ -17,7 +17,8 @@ import (
 // OnVMSingleDelete deletes all vmsingle related resources
 func OnVMSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) error {
 	ns := cr.GetNamespace()
-	if config.IsClusterWideAccessAllowed() {
+	cfg := config.MustGetBaseConfig()
+	if len(cfg.WatchNamespaces) == 0 {
 		objMeta := metav1.ObjectMeta{
 			Name: cr.GetRBACName(),
 		}
@@ -53,14 +54,16 @@ func OnVMSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.
 			Name:      build.ResourceName(build.StreamAggrConfigResourceKind, cr),
 			Namespace: ns,
 		}},
-		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetRBACName(),
-			Namespace: ns,
-		}},
-		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetRBACName(),
-			Namespace: ns,
-		}},
+	}
+	namespaces := cfg.WatchNamespaces
+	if len(namespaces) == 0 {
+		namespaces = []string{cr.Namespace}
+	}
+	for _, watchedNS := range namespaces {
+		objsToRemove = append(objsToRemove,
+			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
+			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
+		)
 	}
 	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{

@@ -1021,19 +1021,17 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 	}
 }
 
-// MarshalJSON implements json.Marshaller interface
-func (m *StringOrArray) MarshalJSON() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	ms := *m
+// MarshalJSON implements json.Marshaller interface.
+// Use a value receiver so nested struct fields of type StringOrArray
+// are serialized as strings when they contain a single element.
+func (m StringOrArray) MarshalJSON() ([]byte, error) {
 	switch {
-	case len(ms) == 0:
+	case len(m) == 0:
 		return json.Marshal("")
-	case len(ms) == 1:
-		return json.Marshal(ms[0])
+	case len(m) == 1:
+		return json.Marshal(m[0])
 	default:
-		return json.Marshal([]string(ms))
+		return json.Marshal([]string(m))
 	}
 }
 

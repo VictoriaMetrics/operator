@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
@@ -52,6 +53,7 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1bet
 		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
+	warnings = append(warnings, build.WarnOpenShiftSecurityContext(obj.Spec.SecurityContext)...)
 	return
 }
 
@@ -68,6 +70,7 @@ func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *v
 		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
+	warnings = append(warnings, build.WarnOpenShiftSecurityContext(newObj.Spec.SecurityContext)...)
 	return
 }
 

@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 // SetupVLogsWebhookWithManager will setup the manager to manage the webhooks
@@ -50,7 +51,7 @@ func (*VLogsCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VL
 	if err := obj.Validate(); err != nil {
 		return nil, err
 	}
-	return vlogsWarning, nil
+	return append(vlogsWarning, build.WarnOpenShiftSecurityContext(obj.Spec.SecurityContext)...), nil
 }
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
@@ -61,7 +62,7 @@ func (*VLogsCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1be
 	if err := newObj.Validate(); err != nil {
 		return nil, err
 	}
-	return vlogsWarning, nil
+	return append(vlogsWarning, build.WarnOpenShiftSecurityContext(newObj.Spec.SecurityContext)...), nil
 }
 
 // ValidateDelete implements admission.Validator so a webhook will be registered for the type

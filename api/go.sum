@@ -4,8 +4,8 @@ github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/VictoriaMetrics/VictoriaLogs v1.121.1-0.20260616132739-c901a1e31cb3 h1:3eP8RRZitbga5EYiQ3IANrMPxpBwMAX4VA6akDaXwpU=
 github.com/VictoriaMetrics/VictoriaLogs v1.121.1-0.20260616132739-c901a1e31cb3/go.mod h1:H4sDxcvk6OmC6zOt++IlDyrwfbn4F1eSLwMpR+kpRt8=
-github.com/VictoriaMetrics/VictoriaMetrics v1.146.0 h1:MOZZcCGyDF7PNUU7PDSphhNGug33XHYUagQB+QK1tC8=
-github.com/VictoriaMetrics/VictoriaMetrics v1.146.0/go.mod h1:8/4XU7HTMbvloT+bNxq7AvkPh5UXWafTXsU62ALY8lU=
+github.com/VictoriaMetrics/VictoriaMetrics v1.147.0 h1:ccHYSK8SELQhjme0VGEL6C0BcSyjgifKw3Ea2sTwlZc=
+github.com/VictoriaMetrics/VictoriaMetrics v1.147.0/go.mod h1:FWe3dbLkCbDB5kVBm4xJKHYZnKHFNPGGBrzIuuf7eE8=
 github.com/VictoriaMetrics/easyproto v1.2.0 h1:FJT9uNXA2isppFuJErbLqD306KoFlehl7Wn2dg/6oIE=
 github.com/VictoriaMetrics/easyproto v1.2.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/VictoriaMetrics/metrics v1.44.0 h1:Fr8yqQSV+ZfYaDD/anqk1E8e9YPgfleSleJmAI0M0Tw=

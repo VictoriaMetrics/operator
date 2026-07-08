@@ -158,6 +158,15 @@ func ClusterSelectorLabels(kind ClusterComponent, name, prefix string) map[strin
 	return ls
 }
 
+// PodDNSAddress formats pod dns address with optional domain name
+func PodDNSAddress(baseName string, podIndex int32, namespace string, portName string, domain string) string {
+	// The default DNS search path is .svc.<cluster domain>
+	if domain == "" {
+		return fmt.Sprintf("%s-%d.%s.%s:%s", baseName, podIndex, baseName, namespace, portName)
+	}
+	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s", baseName, podIndex, baseName, namespace, domain, portName)
+}
+
 // ClusterPrefixedName defines prefixed name for given cluster component kind
 func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bool) string {
 	var suffix string

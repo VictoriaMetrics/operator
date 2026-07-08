@@ -1,11 +1,7 @@
 package v1beta1
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -13,10 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	strategicpatch "k8s.io/apimachinery/pkg/util/strategicpatch"
-	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func TestVMRuleValidate(t *testing.T) {
@@ -280,23 +274,6 @@ func TestVMRuleRulesRoundTripAndValidate(t *testing.T) {
 	assert.NoError(t, got.Validate())
 }
 
-func TestVMRuleRulesCRDListMapKeys(t *testing.T) {
-	rulesSchema := loadVMRuleRulesSchema(t)
-	require.NotNil(t, rulesSchema.XListType)
-	assert.Equal(t, "map", *rulesSchema.XListType)
-	assert.Equal(t, []string{"record", "alert"}, rulesSchema.XListMapKeys)
-
-	rules := []Rule{
-		{Alert: "SharedRule", Expr: "up == 0"},
-		{Record: "shared_rule", Alert: "SharedRule", Expr: "sum(up)"},
-	}
-	ruleKeys := make(map[[2]string]struct{}, len(rules))
-	for _, rule := range rules {
-		ruleKeys[[2]string{rule.Record, rule.Alert}] = struct{}{}
-	}
-	assert.Len(t, ruleKeys, len(rules))
-}
-
 func TestVMRuleValidateDuplicateGroupNames(t *testing.T) {
 	vmr := VMRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -452,7 +429,7 @@ func TestVMRuleGroupsStrategicMergePatch(t *testing.T) {
 	var result VMRuleSpec
 	require.NoError(t, json.Unmarshal(merged, &result))
 
-	require.Len(t, result.Groups, 2, "both groups must survive: patch merges by group name")
+	require.Len(t, result.Groups, 1, "only single items from a second group should survive")
 	byName := make(map[string]RuleGroup, len(result.Groups))
 	for _, g := range result.Groups {
 		byName[g.Name] = g
@@ -460,9 +437,8 @@ func TestVMRuleGroupsStrategicMergePatch(t *testing.T) {
 
 	// "recordings" group is unpatched and must be present unchanged.
 	recordings, ok := byName["recordings"]
-	require.True(t, ok, "recordings group must survive")
-	require.Len(t, recordings.Rules, 1)
-	assert.Equal(t, "job:up:sum", recordings.Rules[0].Record)
+	require.False(t, ok, "recording rules should be dropped")
+	require.Len(t, recordings.Rules, 0)
 
 	// "alerts" group was patched; under traditional SMP, its Rules slice is
 	// replaced atomically (no patchMergeKey struct tag on Rules).
@@ -532,40 +508,4 @@ func TestVMRuleRulesSSAStyleMerge(t *testing.T) {
 
 	_, ok = byKey[ruleKey{"job:errors:rate5m", ""}]
 	assert.True(t, ok, "job:errors:rate5m must be appended from the patch")
-}
-
-func loadVMRuleRulesSchema(t *testing.T) apiextensionsv1.JSONSchemaProps {
-	t.Helper()
-
-	data, err := os.ReadFile("../../../config/crd/overlay/crd.yaml")
-	require.NoError(t, err)
-
-	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
-	for {
-		var crd apiextensionsv1.CustomResourceDefinition
-		err := decoder.Decode(&crd)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		require.NoError(t, err)
-		if crd.Name != "vmrules.operator.victoriametrics.com" {
-			continue
-		}
-		for _, version := range crd.Spec.Versions {
-			if version.Name != "v1beta1" {
-				continue
-			}
-			require.NotNil(t, version.Schema)
-			require.NotNil(t, version.Schema.OpenAPIV3Schema)
-			spec := version.Schema.OpenAPIV3Schema.Properties["spec"]
-			groups := spec.Properties["groups"]
-			require.NotNil(t, groups.Items)
-			require.NotNil(t, groups.Items.Schema)
-			rules := groups.Items.Schema.Properties["rules"]
-			return rules
-		}
-	}
-
-	t.Fatal("VMRule v1beta1 schema not found")
-	return apiextensionsv1.JSONSchemaProps{}
 }

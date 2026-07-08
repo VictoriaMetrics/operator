@@ -533,6 +533,14 @@ func addRemoteWriteAssetsToVolumes(dstVolumes []corev1.Volume, dstMounts []corev
 			addSecretVolumeMount(rw.TLSConfig.KeySecret)
 		}
 		addSecretVolumeMount(rw.BearerTokenSecret)
+		if rw.BasicAuth != nil {
+			if len(rw.BasicAuth.Username.Name) > 0 {
+				addSecretVolumeMount(&rw.BasicAuth.Username)
+			}
+			if len(rw.BasicAuth.Password.Name) > 0 {
+				addSecretVolumeMount(&rw.BasicAuth.Password)
+			}
+		}
 		if rw.OAuth2 != nil {
 			addSecretVolumeMount(rw.OAuth2.ClientIDSecret)
 			addSecretVolumeMount(rw.OAuth2.ClientSecret)
@@ -566,7 +574,7 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 	if len(cr.Spec.RemoteWrite) > 0 {
 		remoteTargets := cr.Spec.RemoteWrite
 		url := build.NewEmptyFlag("-remoteWrite.url")
-		authUser := build.NewEmptyFlag("-remoteWrite.basicAuth.username")
+		authUserFile := build.NewEmptyFlag("-remoteWrite.basicAuth.usernameFile")
 		authPasswordFile := build.NewEmptyFlag("-remoteWrite.basicAuth.passwordFile")
 		bearerTokenFile := build.NewEmptyFlag("-remoteWrite.bearerTokenFile")
 		sendTimeout := build.NewEmptyFlag("-remoteWrite.sendTimeout")
@@ -614,6 +622,16 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 				bearerTokenFile.Add(rw.BearerTokenPath, i)
 			} else {
 				bearerTokenFile.Add(formatSecretSelectorKeyPath(rw.BearerTokenSecret), i)
+			}
+			if rw.BasicAuth != nil {
+				if len(rw.BasicAuth.Username.Name) > 0 {
+					authUserFile.Add(formatSecretSelectorKeyPath(&rw.BasicAuth.Username), i)
+				}
+				if len(rw.BasicAuth.PasswordFile) > 0 {
+					authPasswordFile.Add(rw.BasicAuth.PasswordFile, i)
+				} else if len(rw.BasicAuth.Password.Name) > 0 {
+					authPasswordFile.Add(formatSecretSelectorKeyPath(&rw.BasicAuth.Password), i)
+				}
 			}
 			if rw.SendTimeout != nil {
 				sendTimeout.Add(*rw.SendTimeout, i)
@@ -669,7 +687,7 @@ func buildRemoteWriteArgs(cr *vmv1.VLAgent) ([]string, error) {
 		}
 
 		totalCount := len(remoteTargets)
-		args = build.AppendFlagsToArgs(args, totalCount, url, authUser, bearerTokenFile, tlsInsecure, sendTimeout, proxyURL)
+		args = build.AppendFlagsToArgs(args, totalCount, url, authUserFile, bearerTokenFile, tlsInsecure, sendTimeout, proxyURL)
 		args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 		args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL, oauth2EndpointParams)
 		args = build.AppendFlagsToArgs(args, totalCount, headers, authPasswordFile, maxDiskUsagePerURL)

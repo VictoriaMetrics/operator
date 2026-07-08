@@ -35468,10 +35468,6 @@ spec:
                             type: integer
                         type: object
                       type: array
-                      x-kubernetes-list-map-keys:
-                      - record
-                      - alert
-                      x-kubernetes-list-type: map
                     tenant:
                       type: string
                     type:

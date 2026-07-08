@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -15,6 +16,15 @@ import (
 type testScrapeObject struct {
 	serviceScrapeSpecTemplate *vmv1beta1.VMServiceScrapeSpec
 	extraArgs                 map[string]string
+	listeners                 []vmv1beta1.HTTPListener
+	primaryPortName           string
+}
+
+func (tb *testScrapeObject) PrimaryPortName() string {
+	if tb.primaryPortName != "" {
+		return tb.primaryPortName
+	}
+	return "http"
 }
 
 func (tb *testScrapeObject) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
@@ -25,12 +35,17 @@ func (tb *testScrapeObject) GetMetricsPath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(tb.extraArgs, "/metrics")
 }
 
-func (tb *testScrapeObject) UseTLS() bool {
-	return vmv1beta1.UseTLS(tb.extraArgs)
-}
-
-func (tb *testScrapeObject) GetExtraArgs() map[string]string {
-	return tb.extraArgs
+func (tb *testScrapeObject) Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	listeners := tb.listeners
+	if listeners == nil {
+		listeners = []vmv1beta1.HTTPListener{{Name: tb.PrimaryPortName()}}
+	}
+	return &vmv1beta1.StandardAppsParams{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{
+			ExtraArgs: tb.extraArgs,
+		},
+		HTTPListeners: listeners,
+	}
 }
 
 func (tb *testScrapeObject) GetNamespace() string {
@@ -53,20 +68,23 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 	vmAppRelabel := []*vmv1beta1.RelabelConfig{victoriaMetricsAppRelabelConfig()}
 	type opts struct {
 		spec                  testScrapeObject
+		sidecars              []testScrapeObject
 		service               *corev1.Service
-		filterPortNames       []string
 		wantServiceScrapeSpec vmv1beta1.VMServiceScrapeSpec
 	}
 
 	f := func(o opts) {
 		t.Helper()
-		gotServiceScrape := VMServiceScrape(o.service, &o.spec, o.filterPortNames...)
+		sidecars := make([]ScrapeBuilder, len(o.sidecars))
+		for i := range o.sidecars {
+			sidecars[i] = &o.sidecars[i]
+		}
+		gotServiceScrape := VMServiceScrape(o.service, &o.spec, sidecars...)
 		assert.Equal(t, o.wantServiceScrapeSpec, gotServiceScrape.Spec)
 	}
 
 	// custom selector
 	f(opts{
-		filterPortNames: []string{"http-2"},
 		service: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   "vmagent-svc",
@@ -101,9 +119,8 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		},
 	})
 
-	// multiple ports with filter
+	// multiple ports, only the primary's own listener name matches
 	f(opts{
-		filterPortNames: []string{"http-5"},
 		service: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "vmagent-svc",
@@ -139,9 +156,12 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		},
 	})
 
-	// multiple ports with vmbackup filter
+	// a sidecar (vmbackupmanager-style) contributes its own TargetPort-addressed endpoint,
+	// regardless of whether the Service happens to declare a matching named port
 	f(opts{
-		filterPortNames: []string{"vmbackup"},
+		sidecars: []testScrapeObject{{
+			listeners: []vmv1beta1.HTTPListener{{Name: "vmbackup", Addr: ":9000"}},
+		}},
 		service: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "vmagent-svc",
@@ -150,9 +170,6 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 				Ports: []corev1.ServicePort{
 					{
 						Name: "http",
-					},
-					{
-						Name: "vmbackup",
 					},
 				},
 			},
@@ -170,10 +187,10 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 					Port: "http",
 				},
 				{
+					TargetPort: ptr.To(intstr.Parse("9000")),
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						Path: "/metrics",
 					},
-					Port: "vmbackup",
 					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
 						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
 							SourceLabels: []string{"job"},
@@ -308,11 +325,13 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		},
 	})
 
-	// with a custom http.pathPrefix: the primary port uses it, but an additional (sidecar)
-	// port always scrapes the literal /metrics path, since sidecars like config-reloader
-	// are unaffected by the app's own path prefix
+	// with a custom http.pathPrefix: the primary port uses it, but a sidecar (config-reloader
+	// style) always scrapes its own literal /metrics path via TargetPort, unaffected by the
+	// app's own path prefix and needing no matching named Service port
 	f(opts{
-		filterPortNames: []string{"reloader-http"},
+		sidecars: []testScrapeObject{{
+			listeners: []vmv1beta1.HTTPListener{{Name: "reloader-http", Addr: ":8435"}},
+		}},
 		service: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "vmagent-svc",
@@ -320,7 +339,6 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
 					{Name: "http"},
-					{Name: "reloader-http"},
 				},
 			},
 		},
@@ -339,10 +357,10 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 					Port: "http",
 				},
 				{
+					TargetPort: ptr.To(intstr.Parse("8435")),
 					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 						Path: "/metrics",
 					},
-					Port: "reloader-http",
 					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
 						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
 							SourceLabels: []string{"job"},
@@ -409,6 +427,62 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			},
 		},
 	})
+
+	// multiple HTTPListeners: every plain-HTTP one gets its own endpoint, a
+	// PROXY-protocol one is skipped, and a sidecar still contributes its own endpoint
+	f(opts{
+		sidecars: []testScrapeObject{{
+			listeners: []vmv1beta1.HTTPListener{{Name: "vmbackup", Addr: ":9000"}},
+		}},
+		service: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "vmagent-svc"},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Name: "public"},
+					{Name: "internal"},
+				},
+			},
+		},
+		spec: testScrapeObject{
+			listeners: []vmv1beta1.HTTPListener{
+				{Name: "public", Addr: ":8427", Primary: true, UseProxyProtocol: ptr.To(true)},
+				{Name: "internal", Addr: ":8428"},
+			},
+		},
+		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
+			Endpoints: []vmv1beta1.Endpoint{
+				{
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: vmAppRelabel,
+					},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metrics",
+					},
+					Port: "internal",
+				},
+				{
+					TargetPort: ptr.To(intstr.Parse("9000")),
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metrics",
+					},
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
+							SourceLabels: []string{"job"},
+							TargetLabel:  "job",
+							Regex:        vmv1beta1.StringOrArray{"(.+)"},
+							Replacement:  ptr.To("${1}-vmbackup"),
+						}, victoriaMetricsAppRelabelConfig()},
+					},
+				},
+			},
+			Selector: metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			},
+		},
+	})
 }
 
 func TestVMServiceScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
@@ -416,7 +490,6 @@ func TestVMServiceScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{
 			{Name: "http"},
-			{Name: "extra"},
 		}},
 	}
 	spec := testScrapeObject{serviceScrapeSpecTemplate: &vmv1beta1.VMServiceScrapeSpec{
@@ -425,8 +498,9 @@ func TestVMServiceScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
 			{Port: "custom"},
 		},
 	}}
+	sidecar := testScrapeObject{listeners: []vmv1beta1.HTTPListener{{Name: "extra", Addr: ":1234"}}}
 
-	scrape := VMServiceScrape(service, &spec, "extra")
+	scrape := VMServiceScrape(service, &spec, &sidecar)
 
 	assert.Len(t, scrape.Spec.Endpoints, 3)
 	for i := range scrape.Spec.Endpoints {
@@ -448,7 +522,7 @@ func TestVMPodScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
 		},
 	}}
 
-	podScrape := VMPodScrape(&spec, "http")
+	podScrape := VMPodScrape(&spec)
 
 	assert.Len(t, podScrape.Spec.PodMetricsEndpoints, 2)
 	assert.Equal(t, "/custom", podScrape.Spec.PodMetricsEndpoints[0].Path)
@@ -457,32 +531,11 @@ func TestVMPodScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
 	}
 }
 
-func TestVMPodScrapeAdditionalPorts(t *testing.T) {
-	spec := testScrapeObject{extraArgs: map[string]string{"http.pathPrefix": "/prefix"}}
-
-	scrape := VMPodScrape(&spec, "http", "reloader-http")
-
-	assert.Len(t, scrape.Spec.PodMetricsEndpoints, 2)
-	primary := scrape.Spec.PodMetricsEndpoints[0]
-	assert.Equal(t, "http", *primary.Port)
-	assert.Equal(t, "/prefix/metrics", primary.Path)
-
-	extra := scrape.Spec.PodMetricsEndpoints[1]
-	assert.Equal(t, "reloader-http", *extra.Port)
-	// sidecar ports always scrape the literal /metrics path, unaffected by http.pathPrefix
-	assert.Equal(t, "/metrics", extra.Path)
-	assert.Contains(t, extra.RelabelConfigs, &vmv1beta1.RelabelConfig{
-		SourceLabels: []string{"job"},
-		TargetLabel:  "job",
-		Regex:        vmv1beta1.StringOrArray{"(.+)"},
-		Replacement:  ptr.To("${1}-reloader-http"),
-	})
-}
-
 func TestVMServiceScrapeObjectsAddVictoriaMetricsAppLabel(t *testing.T) {
 	objectMeta := metav1.ObjectMeta{Name: "test", Namespace: "default"}
+	sap := vmv1beta1.StandardAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{Name: "http"}}}
 
-	f := func(name string, builder scrapeBuilder) {
+	f := func(name string, builder ScrapeBuilder) {
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{Name: name},
 			Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{
@@ -495,32 +548,33 @@ func TestVMServiceScrapeObjectsAddVictoriaMetricsAppLabel(t *testing.T) {
 		assert.Len(t, scrape.Spec.Endpoints, 1)
 		assert.Contains(t, scrape.Spec.Endpoints[0].RelabelConfigs, victoriaMetricsAppRelabelConfig())
 	}
-	f("VMSingle", &vmv1beta1.VMSingle{ObjectMeta: objectMeta})
-	f("VMAlert", &vmv1beta1.VMAlert{ObjectMeta: objectMeta})
-	f("VMAuth", &vmv1beta1.VMAuth{ObjectMeta: objectMeta})
-	f("VMSelect", &vmv1beta1.VMSelect{})
-	f("VMInsert", &vmv1beta1.VMInsert{})
-	f("VMStorage", &vmv1beta1.VMStorage{})
-	f("VLSingle", &vmv1.VLSingle{ObjectMeta: objectMeta})
-	f("VLSelect", &vmv1.VLSelect{})
-	f("VLInsert", &vmv1.VLInsert{})
-	f("VLStorage", &vmv1.VLStorage{})
-	f("VTSingle", &vmv1.VTSingle{ObjectMeta: objectMeta})
-	f("VTSelect", &vmv1.VTSelect{})
-	f("VTInsert", &vmv1.VTInsert{})
-	f("VTStorage", &vmv1.VTStorage{})
+	f("VMSingle", &vmv1beta1.VMSingle{ObjectMeta: objectMeta, Spec: vmv1beta1.VMSingleSpec{StandardAppsParams: sap}})
+	f("VMAlert", &vmv1beta1.VMAlert{ObjectMeta: objectMeta, Spec: vmv1beta1.VMAlertSpec{StandardAppsParams: sap}})
+	f("VMAuth", &vmv1beta1.VMAuth{ObjectMeta: objectMeta, Spec: vmv1beta1.VMAuthSpec{StandardAppsParams: sap}})
+	f("VMSelect", &vmv1beta1.VMSelect{StandardAppsParams: sap})
+	f("VMInsert", &vmv1beta1.VMInsert{StandardAppsParams: sap})
+	f("VMStorage", &vmv1beta1.VMStorage{StandardAppsParams: sap})
+	f("VLSingle", &vmv1.VLSingle{ObjectMeta: objectMeta, Spec: vmv1.VLSingleSpec{StandardAppsParams: sap}})
+	f("VLSelect", &vmv1.VLSelect{StandardAppsParams: sap})
+	f("VLInsert", &vmv1.VLInsert{StandardAppsParams: sap})
+	f("VLStorage", &vmv1.VLStorage{StandardAppsParams: sap})
+	f("VTSingle", &vmv1.VTSingle{ObjectMeta: objectMeta, Spec: vmv1.VTSingleSpec{StandardAppsParams: sap}})
+	f("VTSelect", &vmv1.VTSelect{StandardAppsParams: sap})
+	f("VTInsert", &vmv1.VTInsert{StandardAppsParams: sap})
+	f("VTStorage", &vmv1.VTStorage{StandardAppsParams: sap})
 }
 
 func TestVMPodScrapeObjectsAddVictoriaMetricsAppLabel(t *testing.T) {
 	objectMeta := metav1.ObjectMeta{Name: "test", Namespace: "default"}
+	sap := vmv1beta1.StandardAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{Name: "http"}}}
 
-	f := func(builder podScrapeBuilder, port string) {
-		scrape := VMPodScrape(builder, port)
+	f := func(builder podScrapeBuilder) {
+		scrape := VMPodScrape(builder)
 
 		assert.Len(t, scrape.Spec.PodMetricsEndpoints, 1)
 		assert.Contains(t, scrape.Spec.PodMetricsEndpoints[0].RelabelConfigs, victoriaMetricsAppRelabelConfig())
 	}
-	f(&vmv1beta1.VMAgent{ObjectMeta: objectMeta}, "http")
-	f(&vmv1.VLAgent{ObjectMeta: objectMeta}, "http")
-	f(&vmv1.VMAnomaly{ObjectMeta: objectMeta}, "monitoring-http")
+	f(&vmv1beta1.VMAgent{ObjectMeta: objectMeta, Spec: vmv1beta1.VMAgentSpec{StandardAppsParams: sap}})
+	f(&vmv1.VLAgent{ObjectMeta: objectMeta, Spec: vmv1.VLAgentSpec{StandardAppsParams: sap}})
+	f(&vmv1.VMAnomaly{ObjectMeta: objectMeta})
 }

@@ -48,8 +48,10 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAlertSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 					Datasource: vmv1beta1.VMAlertDatasourceSpec{
 						URL: "http://some-datasource-url:8428",
@@ -106,12 +108,14 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							ExtraEnvs: []corev1.EnvVar{
-								{
-									Name:  "external_url",
-									Value: "http://external-url.com",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraEnvs: []corev1.EnvVar{
+									{
+										Name:  "external_url",
+										Value: "http://external-url.com",
+									},
 								},
 							},
 						},
@@ -141,9 +145,11 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Secrets:      []string{tlsSecretName},
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Secrets:      []string{tlsSecretName},
+							},
 						},
 						Notifiers: []vmv1beta1.VMAlertNotifierSpec{
 							{
@@ -280,10 +286,12 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Namespace: nsn.Namespace,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							UseStrictSecurity:                   ptr.To(true),
-							ReplicaCount:                        ptr.To[int32](1),
-							DisableAutomountServiceAccountToken: true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								UseStrictSecurity:                   ptr.To(true),
+								ReplicaCount:                        ptr.To[int32](1),
+								DisableAutomountServiceAccountToken: true,
+							},
 						},
 						SelectAllByDefault: true,
 						Notifier:           &vmv1beta1.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
@@ -330,14 +338,50 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Expect(hasVolume(dep.Spec.Template.Spec.Volumes, "kube-api-access")).To(HaveOccurred())
 				},
 			),
+			Entry("with httpListeners", "http-listeners",
+				&vmv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: nsn.Namespace,
+					},
+					Spec: vmv1beta1.VMAlertSpec{
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							HTTPListeners: []vmv1beta1.HTTPListener{
+								{Name: "web", Addr: ":8880", Primary: true},
+								{Name: "web2", Addr: ":8881"},
+							},
+						},
+						Notifier: &vmv1beta1.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+						Datasource: vmv1beta1.VMAlertDatasourceSpec{
+							URL: "http://some-datasource-url:8428",
+						},
+					},
+				},
+				nil,
+				func(cr *vmv1beta1.VMAlert) {
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
+					checkContainerPort(dep.Spec.Template.Spec.Containers[0].Ports, "web", 8880)
+					checkContainerPort(dep.Spec.Template.Spec.Containers[0].Ports, "web2", 8881)
+
+					var svc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
+					checkServicePort(svc.Spec.Ports, "web", 8880)
+					checkServicePort(svc.Spec.Ports, "web2", 8881)
+				},
+			),
 		)
 		existObject := &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: nsn.Namespace,
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 				},
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{
 					URL: "http://localhost:8428",
@@ -414,8 +458,10 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAlertSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: &initialReplicas,
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: &initialReplicas,
+						},
 					},
 					Datasource: vmv1beta1.VMAlertDatasourceSpec{
 						URL: "http://localhost:8428",
@@ -483,8 +529,10 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						Datasource: vmv1beta1.VMAlertDatasourceSpec{
 							URL: "http://localhost:8428",
@@ -507,8 +555,10 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						Datasource: vmv1beta1.VMAlertDatasourceSpec{
 							URL: "http://localhost:8428",
@@ -542,8 +592,10 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						Datasource: vmv1beta1.VMAlertDatasourceSpec{
 							URL: "http://localhost:8428",
@@ -577,9 +629,11 @@ var _ = Describe("test vmalert Controller", Label("vm", "alert"), func() {
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Paused:       true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Paused:       true,
+							},
 						},
 						Datasource: vmv1beta1.VMAlertDatasourceSpec{
 							URL: "http://localhost:8428",

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/), [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): fix `useLegacyNaming` not applying to storage/cache PVC volume names. See [#2385](https://github.com/VictoriaMetrics/operator/issues/2385).
+
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026
 

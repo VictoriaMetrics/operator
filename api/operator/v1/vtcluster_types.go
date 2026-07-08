@@ -506,9 +506,12 @@ type VTStorage struct {
 }
 
 // GetStorageVolumeName returns formatted name for vtstorage volume
-func (cr *VTStorage) GetStorageVolumeName() string {
-	if cr.Storage != nil && cr.Storage.VolumeClaimTemplate.Name != "" {
-		return cr.Storage.VolumeClaimTemplate.Name
+func (cr *VTCluster) GetStorageVolumeName() string {
+	if cr != nil && cr.Spec.Storage != nil && cr.Spec.Storage.Storage != nil && len(cr.Spec.Storage.Storage.VolumeClaimTemplate.Name) > 0 {
+		return cr.Spec.Storage.Storage.VolumeClaimTemplate.Name
+	}
+	if cr != nil && cr.Spec.UseLegacyNaming {
+		return "vtstorage-volume"
 	}
 	return "vtstorage-db"
 }

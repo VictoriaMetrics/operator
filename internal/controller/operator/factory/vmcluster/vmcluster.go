@@ -547,7 +547,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMSelect.CommonAppsParams)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
-		if err := cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec); err != nil {
+		if err := cr.Spec.VMSelect.StorageSpec.IntoSTSVolume(cr.GetCacheMountVolumeName(), &stsSpec.Spec); err != nil {
 			return nil, err
 		}
 	}
@@ -655,7 +655,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      cr.Spec.VMSelect.GetCacheMountVolumeName(),
+			Name:      cr.GetCacheMountVolumeName(),
 			MountPath: cr.Spec.VMSelect.CacheMountPath,
 		})
 		args = append(args, fmt.Sprintf("-cacheDataPath=%s", cr.Spec.VMSelect.CacheMountPath))
@@ -1006,7 +1006,7 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VMStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VMStorage.Storage
-	if err := storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
+	if err := storageSpec.IntoSTSVolume(cr.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
 		return nil, err
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1111,7 +1111,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	vmMounts := make([]corev1.VolumeMount, 0)
 
 	vmMounts = append(vmMounts, corev1.VolumeMount{
-		Name:      cr.Spec.VMStorage.GetStorageVolumeName(),
+		Name:      cr.GetStorageVolumeName(),
 		MountPath: cr.Spec.VMStorage.StorageDataPath,
 	})
 	args = append(args, fmt.Sprintf("-storageDataPath=%s", cr.Spec.VMStorage.StorageDataPath))

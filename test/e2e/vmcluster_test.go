@@ -1474,7 +1474,7 @@ up{baz="bar"} 123
 						var pvc corev1.PersistentVolumeClaim
 						nsn := types.NamespacedName{
 							Namespace: namespace,
-							Name:      fmt.Sprintf("%s-%s-0", cr.Spec.VMStorage.GetStorageVolumeName(), cr.PrefixedName(vmv1beta1.ClusterComponentStorage)),
+							Name:      fmt.Sprintf("%s-%s-0", cr.GetStorageVolumeName(), cr.PrefixedName(vmv1beta1.ClusterComponentStorage)),
 						}
 						Expect(k8sClient.Get(ctx, nsn, &pvc)).ToNot(HaveOccurred())
 					},

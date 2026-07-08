@@ -51,7 +51,7 @@ jobs:
 
       - name: Download OLM bundle
         run: |
-          gh release download "$RELEASE_TAG" --pattern olm-bundle.tar.gz --dir .
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern olm-bundle.tar.gz --dir .
           mkdir -p bundle
           tar -xzf olm-bundle.tar.gz -C bundle
         env:

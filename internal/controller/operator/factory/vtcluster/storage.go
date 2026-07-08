@@ -13,7 +13,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,11 +31,11 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 	}
 
 	if cr.Spec.Storage.PodDisruptionBudget != nil {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 		pdb := build.PodDisruptionBudget(b, cr.Spec.Storage.PodDisruptionBudget)
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prevCR != nil && prevCR.Spec.Storage.PodDisruptionBudget != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.Storage.PodDisruptionBudget)
 		}
 		owner := cr.AsOwner()
@@ -46,11 +45,11 @@ func createOrUpdateVTStorage(ctx context.Context, rclient client.Client, cr, pre
 		}
 	}
 	if cr.Spec.Storage.NetworkPolicy != nil {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 		np := build.NetworkPolicy(b, cr.Spec.Storage.NetworkPolicy)
 		var prevNP *networkingv1.NetworkPolicy
 		if prevCR != nil && prevCR.Spec.Storage != nil && prevCR.Spec.Storage.NetworkPolicy != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 			prevNP = build.NetworkPolicy(b, prevCR.Spec.Storage.NetworkPolicy)
 		}
 		owner := cr.AsOwner()
@@ -78,15 +77,17 @@ func buildVTStorageScrape(cr *vmv1.VTCluster, svc *corev1.Service) *vmv1beta1.VM
 }
 
 func createOrUpdateVTStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	svc := build.Service(b, cr.Spec.Storage.Port, func(svc *corev1.Service) {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	svc := build.Service(b, cr.Spec.Storage.PrimaryPort(cr.Spec.Storage.Port), func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.Storage.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 	})
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.Storage != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevSvc = build.Service(b, prevCR.Spec.Storage.Port, func(svc *corev1.Service) {
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		prevSvc = build.Service(b, prevCR.Spec.Storage.PrimaryPort(prevCR.Spec.Storage.Port), func(svc *corev1.Service) {
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.Storage.HTTPListeners)
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.PublishNotReadyAddresses = true
 		})
@@ -125,7 +126,7 @@ func createOrUpdateVTStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	if hpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -134,7 +135,7 @@ func createOrUpdateVTStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	defaultHPA := build.HPA(b, targetRef, hpa)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.Storage.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.Storage.HPA)
 	}
 	owner := cr.AsOwner()
@@ -146,7 +147,7 @@ func createOrUpdateVTStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	if vpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -155,7 +156,7 @@ func createOrUpdateVTStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	newVPA := build.VPA(b, targetRef, vpa)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.Storage != nil && prevCR.Spec.Storage.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.Storage.VPA)
 	}
 	owner := cr.AsOwner()
@@ -233,7 +234,6 @@ func buildVTStorageSTSSpec(cr *vmv1.VTCluster) (*appsv1.StatefulSet, error) {
 func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	cfg := config.MustGetBaseConfig()
 	args := []string{
-		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Storage.Port),
 		fmt.Sprintf("-storageDataPath=%s", cr.Spec.Storage.StorageDataPath),
 	}
 	if cfg.EnableTCP6 {
@@ -270,13 +270,6 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 
 	envs = append(envs, cr.Spec.Storage.ExtraEnvs...)
 
-	ports := []corev1.ContainerPort{
-		{
-			Name:          "http",
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.Storage.Port).IntVal,
-		},
-	}
 	volumes := make([]corev1.Volume, 0)
 	vmMounts := make([]corev1.VolumeMount, 0)
 
@@ -287,6 +280,11 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 	})
 
 	vmMounts = append(vmMounts, cr.Spec.Storage.VolumeMounts...)
+
+	var ports []corev1.ContainerPort
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.Storage.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.Storage.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.Storage.HTTPListeners)
 
 	for _, s := range cr.Spec.Storage.Secrets {
 		volumes = append(volumes, corev1.Volume{

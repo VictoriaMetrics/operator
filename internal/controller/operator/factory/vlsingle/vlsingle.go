@@ -12,7 +12,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
@@ -212,7 +211,6 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 		args = append(args, "-logIngestedRows")
 	}
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", r.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -224,7 +222,6 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 	envs = append(envs, r.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if !isStorageEmpty(r.Spec.Storage) {
@@ -270,6 +267,9 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
 		})
 	}
+	args = build.AddHTTPListenerArgsTo(args, r.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, r.Spec.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, r.Spec.HTTPListeners)
 	if r.Spec.SyslogSpec != nil {
 		args = build.AddSyslogArgsTo(args, r.Spec.SyslogSpec, tlsServerConfigMountPath)
 		volumes, vmMounts = build.AddSyslogTLSConfigToVolumes(volumes, vmMounts, r.Spec.SyslogSpec, tlsServerConfigMountPath)
@@ -334,12 +334,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
 			build.AddSyslogPortsToService(svc, prevCR.Spec.SyslogSpec)
 		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 		build.AddSyslogPortsToService(svc, cr.Spec.SyslogSpec)
 	})
 	owner := cr.AsOwner()

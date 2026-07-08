@@ -59,9 +59,11 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount:      ptr.To[int32](1),
-								UseStrictSecurity: ptr.To(true),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount:      ptr.To[int32](1),
+									UseStrictSecurity: ptr.To(true),
+								},
 							},
 							RetentionPeriod: "1",
 							Storage: &corev1.PersistentVolumeClaimSpec{
@@ -89,9 +91,11 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount:      ptr.To[int32](1),
-								UseStrictSecurity: ptr.To(false),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount:      ptr.To[int32](1),
+									UseStrictSecurity: ptr.To(false),
+								},
 							},
 							RetentionPeriod: "1",
 						},
@@ -111,29 +115,31 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								Volumes: []corev1.Volume{
-									{
-										Name: "data",
-										VolumeSource: corev1.VolumeSource{
-											EmptyDir: &corev1.EmptyDirVolumeSource{},
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+									Volumes: []corev1.Volume{
+										{
+											Name: "data",
+											VolumeSource: corev1.VolumeSource{
+												EmptyDir: &corev1.EmptyDirVolumeSource{},
+											},
+										},
+										{
+											Name: "unused",
+											VolumeSource: corev1.VolumeSource{
+												EmptyDir: &corev1.EmptyDirVolumeSource{},
+											},
 										},
 									},
-									{
-										Name: "unused",
-										VolumeSource: corev1.VolumeSource{
-											EmptyDir: &corev1.EmptyDirVolumeSource{},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "unused",
+											MountPath: "/opt/unused/mountpoint",
 										},
 									},
+									UseStrictSecurity: ptr.To(false),
 								},
-								VolumeMounts: []corev1.VolumeMount{
-									{
-										Name:      "unused",
-										MountPath: "/opt/unused/mountpoint",
-									},
-								},
-								UseStrictSecurity: ptr.To(false),
 							},
 							RetentionPeriod: "1",
 							StorageDataPath: "/custom-path/internal/dir",
@@ -157,10 +163,12 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 							Namespace: namespace,
 						},
 						Spec: vmv1.VTSingleSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraArgs: map[string]string{
-									"httpListenAddr.useProxyProtocol": "true",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+									ExtraArgs: map[string]string{
+										"httpListenAddr.useProxyProtocol": "true",
+									},
 								},
 							},
 							RetentionPeriod: "1",
@@ -168,6 +176,36 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 					},
 					func(cr *vmv1.VTSingle) {},
 				),
+				Entry("with httpListeners", "http-listeners",
+					&vmv1.VTSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1.VTSingleSpec{
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									UseStrictSecurity: ptr.To(false),
+								},
+								HTTPListeners: []vmv1beta1.HTTPListener{
+									{Name: "web", Addr: ":10420", Primary: true},
+									{Name: "web2", Addr: ":10422"},
+								},
+							},
+							RetentionPeriod: "1",
+						},
+					},
+					func(cr *vmv1.VTSingle) {
+						createdChildObjects := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}
+						var createdDeploy appsv1.Deployment
+						Expect(k8sClient.Get(ctx, createdChildObjects, &createdDeploy)).ToNot(HaveOccurred())
+						checkContainerPort(createdDeploy.Spec.Template.Spec.Containers[0].Ports, "web", 10420)
+						checkContainerPort(createdDeploy.Spec.Template.Spec.Containers[0].Ports, "web2", 10422)
+
+						var svc corev1.Service
+						Expect(k8sClient.Get(ctx, createdChildObjects, &svc)).ToNot(HaveOccurred())
+						checkServicePort(svc.Spec.Ports, "web", 10420)
+						checkServicePort(svc.Spec.Ports, "web2", 10422)
+					}),
 			)
 
 			baseVTSingle := &vmv1.VTSingle{
@@ -176,8 +214,10 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 				},
 				Spec: vmv1.VTSingleSpec{
 					RetentionPeriod: "10",
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 				},
 			}
@@ -264,8 +304,10 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTSingleSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RetentionPeriod: "1",
 					},
@@ -283,8 +325,10 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTSingleSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RetentionPeriod: "1",
 					},
@@ -313,8 +357,10 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTSingleSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RetentionPeriod: "1",
 					},
@@ -343,9 +389,11 @@ var _ = Describe("test vtsingle Controller", Label("vt", "single", "vtsingle"), 
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTSingleSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Paused:       true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Paused:       true,
+							},
 						},
 						RetentionPeriod: "1",
 					},

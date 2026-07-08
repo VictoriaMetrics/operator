@@ -17,7 +17,9 @@ func TestBuildVTInsertPodSpec_GRPC(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "traces-1", Namespace: "default"},
 		Spec: vmv1.VTClusterSpec{
 			Insert: &vmv1.VTInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+				},
 				GRPCSpec: &vmv1.OTLPGRPCSpec{
 					ListenPort: 4317,
 					TLSConfig: &vmv1.TLSServerConfig{
@@ -51,7 +53,7 @@ func TestBuildVTInsertPodSpec_GRPC(t *testing.T) {
 			assert.Equal(t, "/etc/vt/tls-server-secrets/tls", m.MountPath)
 		}
 	}
-	assert.True(t, found, "expected secret-tls-tls volume mount")
+	assert.True(t, found, "expected tls-tls volume mount")
 }
 
 func TestBuildVTInsertService_GRPC(t *testing.T) {
@@ -59,8 +61,10 @@ func TestBuildVTInsertService_GRPC(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "traces-1", Namespace: "default"},
 		Spec: vmv1.VTClusterSpec{
 			Insert: &vmv1.VTInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
-				GRPCSpec:         &vmv1.OTLPGRPCSpec{ListenPort: 4317},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+				},
+				GRPCSpec: &vmv1.OTLPGRPCSpec{ListenPort: 4317},
 			},
 		},
 	}

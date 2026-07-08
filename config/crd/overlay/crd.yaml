@@ -2718,11 +2718,6 @@ spec:
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
                 type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -3343,12 +3338,6 @@ spec:
                   ServiceAccountName is the name of the ServiceAccount to use to run the
                   VLSelect, VLInsert and VLStorage Pods.
                 type: string
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming switches component resource naming from the default prefix convention
-                  (<component>-<name>, e.g. "vlselect-myapp") to a suffix convention (<name>-<component>,
-                  e.g. "myapp-vlselect"). Useful when migrating from standalone Helm charts.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -11900,11 +11889,6 @@ spec:
                           UseDefaultResources controls resource settings
                           By default, operator sets built-in resource requirements
                         type: boolean
-                      useLegacyNaming:
-                        description: |-
-                          UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                          the CR name is used directly instead of the default "<type>-<name>" convention.
-                        type: boolean
                       useProxyProtocol:
                         description: |-
                           UseProxyProtocol enables proxy protocol for vmauth
@@ -18389,11 +18373,6 @@ spec:
                 description: |-
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
-                type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
                 type: boolean
               useStrictSecurity:
                 description: |-
@@ -25413,11 +25392,6 @@ spec:
                 description: |-
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
-                type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
                 type: boolean
               useStrictSecurity:
                 description: |-
@@ -33848,11 +33822,6 @@ spec:
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
                 type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -36670,11 +36639,6 @@ spec:
                 description: |-
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
-                type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
                 type: boolean
               useStrictSecurity:
                 description: |-
@@ -39994,11 +39958,6 @@ spec:
                 description: |-
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
-                type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
                 type: boolean
               useStrictSecurity:
                 description: |-
@@ -44157,11 +44116,6 @@ spec:
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
                 type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
-                type: boolean
               useProxyProtocol:
                 description: |-
                   UseProxyProtocol enables proxy protocol for vmauth
@@ -44990,12 +44944,6 @@ spec:
                   ServiceAccountName is the name of the ServiceAccount to use to run the
                   VMSelect, VMStorage and VMInsert Pods.
                 type: string
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming switches component resource naming from the default prefix convention
-                  (<component>-<name>, e.g. "vmselect-myapp") to a suffix convention (<name>-<component>,
-                  e.g. "myapp-vmselect"). Useful when migrating from standalone Helm charts.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -54498,11 +54446,6 @@ spec:
                         description: |-
                           UseDefaultResources controls resource settings
                           By default, operator sets built-in resource requirements
-                        type: boolean
-                      useLegacyNaming:
-                        description: |-
-                          UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                          the CR name is used directly instead of the default "<type>-<name>" convention.
                         type: boolean
                       useProxyProtocol:
                         description: |-
@@ -82245,11 +82188,6 @@ spec:
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
                 type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -85004,11 +84942,6 @@ spec:
                 - key
                 type: object
                 x-kubernetes-map-type: atomic
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
-                type: boolean
               username:
                 description: |-
                   Username basic auth user name for accessing protected endpoint,
@@ -94282,12 +94215,6 @@ spec:
                         type: object
                     type: object
                 type: object
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming switches component resource naming from the default prefix convention
-                  (<component>-<name>, e.g. "vtselect-myapp") to a suffix convention (<name>-<component>,
-                  e.g. "myapp-vtselect"). Useful when migrating from standalone Helm charts.
-                type: boolean
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component
@@ -95776,11 +95703,6 @@ spec:
                 description: |-
                   UseDefaultResources controls resource settings
                   By default, operator sets built-in resource requirements
-                type: boolean
-              useLegacyNaming:
-                description: |-
-                  UseLegacyNaming uses standalone Helm chart naming for managed resources:
-                  the CR name is used directly instead of the default "<type>-<name>" convention.
                 type: boolean
               useStrictSecurity:
                 description: |-

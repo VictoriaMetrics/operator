@@ -283,7 +283,7 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 }
 
 func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {
@@ -574,6 +574,12 @@ func (cr *VMDistributed) Validate() error {
 				}
 			}
 		}
+		if err := zone.VMAgent.Spec.Validate(); err != nil {
+			return fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
+		}
+	}
+	if err := cr.Spec.ZoneCommon.VMAgent.Spec.Validate(); err != nil {
+		return fmt.Errorf("spec.zoneCommon.vmagent.spec: %w", err)
 	}
 	return nil
 }

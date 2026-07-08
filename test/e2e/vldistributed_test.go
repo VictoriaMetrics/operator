@@ -32,13 +32,19 @@ func genVLClusterSpec(opts ...func(*vmv1.VLClusterSpec)) vmv1.VLClusterSpec {
 
 	s := vmv1.VLClusterSpec{
 		VLSelect: &vmv1.VLSelect{
-			CommonAppsParams: commonAppsParams,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: commonAppsParams,
+			},
 		},
 		VLInsert: &vmv1.VLInsert{
-			CommonAppsParams: noReplicas,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: noReplicas,
+			},
 		},
 		VLStorage: &vmv1.VLStorage{
-			CommonAppsParams: commonAppsParams,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: commonAppsParams,
+			},
 		},
 	}
 	for _, opt := range opts {
@@ -66,8 +72,10 @@ func createVLClusters(ctx context.Context, wg *sync.WaitGroup, k8sClient client.
 
 func genVLAgentSpec() vmv1.VLAgentSpec {
 	return vmv1.VLAgentSpec{
-		CommonAppsParams: vmv1beta1.CommonAppsParams{
-			ReplicaCount: ptr.To[int32](1),
+		StandardAppsParams: vmv1beta1.StandardAppsParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+			},
 		},
 		RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
 			{URL: "http://localhost"},
@@ -155,8 +163,10 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
 						VLAgent: vmv1alpha1.VLDistributedZoneAgent{
 							Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To[int32](2),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To[int32](2),
+									},
 								},
 							},
 						},
@@ -332,8 +342,10 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 					VMAuth: vmv1alpha1.VLDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},
@@ -679,8 +691,10 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 					VLInsert: cr.Spec.Zones[0].VLCluster.Spec.VLInsert,
 					VLSelect: cr.Spec.Zones[0].VLCluster.Spec.VLSelect,
 					VLStorage: &vmv1.VLStorage{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](initialReplicas + 1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](initialReplicas + 1),
+							},
 						},
 					},
 				}
@@ -885,9 +899,21 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 
 			zonesCount := 2
 			clusterSpec := vmv1.VLClusterSpec{
-				VLSelect:  &vmv1.VLSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VLInsert:  &vmv1.VLInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VLStorage: &vmv1.VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				VLSelect: &vmv1.VLSelect{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+				VLInsert: &vmv1.VLInsert{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+				VLStorage: &vmv1.VLStorage{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
 			}
 
 			zs := make([]vmv1alpha1.VLDistributedZone, zonesCount)
@@ -1068,8 +1094,10 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 					VMAuth: vmv1alpha1.VLDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},

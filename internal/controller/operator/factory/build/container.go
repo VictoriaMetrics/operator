@@ -2,14 +2,15 @@ package build
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -22,17 +23,25 @@ const DataVolumeName = "data"
 
 type probeCRD interface {
 	ProbePath() string
-	ProbeScheme() string
-	ProbePort() string
 	ProbeNeedLiveness() bool
-	UseProxyProtocol() bool
+	Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams
+}
+
+// probeCRDWithNamedPort is implemented by CRs whose probe addresses the port by name.
+type probeCRDWithNamedPort interface {
+	ProbePort() intstr.IntOrString
 }
 
 // Probe adds probe for container
 func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonAppsParams) {
-	port := intstr.Parse(cr.ProbePort())
-	scheme := cr.ProbeScheme()
+	appsParams := cr.Params(vmv1beta1.ScrapeParamsKind)
+	port := appsParams.ProbePort()
+	if override, ok := cr.(probeCRDWithNamedPort); ok {
+		port = override.ProbePort()
+	}
+	scheme := appsParams.ProbeScheme()
 	path := cr.ProbePath()
+	needsTCPFallback := appsParams.ProbeListener() == nil
 	getProbe := func(probe *corev1.Probe, createIfNil bool, forceTCP bool) *corev1.Probe {
 		if probe == nil {
 			if createIfNil {
@@ -42,7 +51,7 @@ func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonApp
 			}
 		}
 		if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
-			if forceTCP || cr.UseProxyProtocol() {
+			if forceTCP || needsTCPFallback {
 				probe.TCPSocket = new(corev1.TCPSocketAction)
 			} else {
 				probe.HTTPGet = new(corev1.HTTPGetAction)
@@ -341,43 +350,30 @@ var configReloaderContainerProbe = corev1.ProbeHandler{
 	},
 }
 
-func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
-	return vmv1beta1.EndpointRelabelings{
-		RelabelConfigs: []*vmv1beta1.RelabelConfig{
-			{
-				SourceLabels: []string{"job"},
-				TargetLabel:  "job",
-				Regex:        vmv1beta1.StringOrArray{"(.+)"},
-				Replacement:  ptr.To("${1}-" + ConfigReloaderPortName),
-			},
-		},
+type configReloaderScrapeBuilder struct{}
+
+// GetServiceScrape implements ScrapeBuilder interface
+func (configReloaderScrapeBuilder) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
+	return nil
+}
+
+// GetMetricsPath implements ScrapeBuilder interface
+func (configReloaderScrapeBuilder) GetMetricsPath() string {
+	return "/metrics"
+}
+
+// Params implements ScrapeBuilder interface
+func (configReloaderScrapeBuilder) Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	return &vmv1beta1.StandardAppsParams{
+		HTTPListeners: []vmv1beta1.HTTPListener{{
+			Name: ConfigReloaderPortName,
+			Addr: fmt.Sprintf(":%d", ConfigReloaderDefaultPort),
+		}},
 	}
 }
 
-// ConfigReloaderVMServiceScrapeEndpoint returns a VMServiceScrape endpoint that scrapes the
-// config-reloader sidecar directly by its container port (via TargetPort, resolved from the
-// pod's actual EndpointSlice ports), without requiring a matching named ServicePort.
-func ConfigReloaderVMServiceScrapeEndpoint() vmv1beta1.Endpoint {
-	return vmv1beta1.Endpoint{
-		TargetPort:          ptr.To(intstr.FromInt32(ConfigReloaderDefaultPort)),
-		EndpointRelabelings: configReloaderJobRelabeling(),
-		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-			Path: "/metrics",
-		},
-	}
-}
-
-// ConfigReloaderPodScrapeEndpoint returns a VMPodScrape endpoint that scrapes the
-// config-reloader sidecar directly by its container port number.
-func ConfigReloaderPodScrapeEndpoint() vmv1beta1.PodMetricsEndpoint {
-	return vmv1beta1.PodMetricsEndpoint{
-		PortNumber:          ptr.To(int32(ConfigReloaderDefaultPort)),
-		EndpointRelabelings: configReloaderJobRelabeling(),
-		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-			Path: "/metrics",
-		},
-	}
-}
+// ConfigReloaderScrapeBuilder is the ScrapeBuilder for the config-reloader sidecar.
+var ConfigReloaderScrapeBuilder ScrapeBuilder = configReloaderScrapeBuilder{}
 
 type reloadable interface {
 	GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams
@@ -572,7 +568,7 @@ func AddSyslogPortsTo(dst []corev1.ContainerPort, syslogSpec *vmv1.SyslogServerS
 }
 
 // AddSyslogArgsTo adds syslog flag args into provided dst
-func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerConfigMountPath string) []string {
+func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsMountPath string) []string {
 	if syslogSpec == nil {
 		return dst
 	}
@@ -606,7 +602,7 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 			case tlsC.CertFile != "":
 				value = tlsC.CertFile
 			case tlsC.CertSecret != nil:
-				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key)
+				value = fmt.Sprintf("%s/%s/%s", tlsMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key)
 			}
 			tlsCertFile.Add(value, idx)
 			value = ""
@@ -614,7 +610,7 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 			case tlsC.KeyFile != "":
 				value = tlsC.KeyFile
 			case tlsC.KeySecret != nil:
-				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
+				value = fmt.Sprintf("%s/%s/%s", tlsMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
 			}
 			tlsKeyFile.Add(value, idx)
 			if len(tlsC.CipherSuites) > 0 {
@@ -655,39 +651,35 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 	return dst
 }
 
+// addTLSSecretVolume adds a secret volume+mount for sr, deduped by secret name across callers.
+func addTLSSecretVolume(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, sr *corev1.SecretKeySelector, tlsMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+	name := k8stools.SanitizeVolumeName(vmv1beta1.TLSSecretVolumeNamePrefix + sr.Name)
+	for _, dst := range dstVolumes {
+		if dst.Name == name && dst.Secret != nil && dst.Secret.SecretName == sr.Name {
+			return dstVolumes, dstMounts
+		}
+	}
+	dstVolumes = append(dstVolumes, corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{SecretName: sr.Name},
+		},
+	})
+	dstMounts = append(dstMounts, corev1.VolumeMount{
+		Name:      name,
+		MountPath: fmt.Sprintf("%s/%s", tlsMountPath, sr.Name),
+	})
+	return dstVolumes, dstMounts
+}
+
 // AddSyslogTLSConfigToVolumes adds syslog tlsConfig volumes and mounts to the provided dsts
-func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, syslogSpec *vmv1.SyslogServerSpec, tlsServerConfigMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, syslogSpec *vmv1.SyslogServerSpec, tlsMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
 	if syslogSpec == nil || len(syslogSpec.TCPListeners) == 0 {
 		return dstVolumes, dstMounts
 	}
 
-	addSecretVolume := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dstVolumes {
-			if dst.Name == name {
-				return
-			}
-		}
-		dstVolumes = append(dstVolumes, corev1.Volume{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: sr.Name,
-				},
-			},
-		})
-	}
-	addSecretMount := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dstMounts {
-			if dst.Name == name {
-				return
-			}
-		}
-		dstMounts = append(dstMounts, corev1.VolumeMount{
-			Name:      name,
-			MountPath: fmt.Sprintf("%s/%s", tlsServerConfigMountPath, sr.Name),
-		})
+	addSecret := func(sr *corev1.SecretKeySelector) {
+		dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, sr, tlsMountPath)
 	}
 	for _, tc := range syslogSpec.TCPListeners {
 		if tc.TLSConfig == nil {
@@ -697,15 +689,13 @@ func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.
 		switch {
 		case tlsC.CertFile != "":
 		case tlsC.CertSecret != nil:
-			addSecretVolume(tlsC.CertSecret)
-			addSecretMount(tlsC.CertSecret)
+			addSecret(tlsC.CertSecret)
 		}
 
 		switch {
 		case tlsC.KeyFile != "":
 		case tlsC.KeySecret != nil:
-			addSecretVolume(tlsC.KeySecret)
-			addSecretMount(tlsC.KeySecret)
+			addSecret(tlsC.KeySecret)
 		}
 
 	}
@@ -718,14 +708,14 @@ func AddOTLPGRPCPortTo(dst []corev1.ContainerPort, grpcSpec *vmv1.OTLPGRPCSpec) 
 		return dst
 	}
 	return append(dst, corev1.ContainerPort{
-		Name:          "otlp-grpc",
+		Name:          vmv1.OTLPGRPCPortName,
 		Protocol:      corev1.ProtocolTCP,
 		ContainerPort: grpcSpec.ListenPort,
 	})
 }
 
 // AddOTLPGRPCArgsTo adds otlpGRPC flag args into provided dst
-func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfigMountPath string) []string {
+func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsMountPath string) []string {
 	if grpcSpec == nil {
 		return dst
 	}
@@ -740,13 +730,13 @@ func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfi
 	case tlsC.CertFile != "":
 		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCertFile=%s", tlsC.CertFile))
 	case tlsC.CertSecret != nil:
-		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCertFile=%s/%s/%s", tlsServerConfigMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key))
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCertFile=%s/%s/%s", tlsMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key))
 	}
 	switch {
 	case tlsC.KeyFile != "":
 		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsKeyFile=%s", tlsC.KeyFile))
 	case tlsC.KeySecret != nil:
-		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsKeyFile=%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key))
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsKeyFile=%s/%s/%s", tlsMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key))
 	}
 	if tlsC.MinVersion != "" {
 		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsMinVersion=%s", tlsC.MinVersion))
@@ -757,49 +747,108 @@ func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfi
 	return dst
 }
 
+// AddHTTPListenerArgsTo adds httpListenAddr and related positional flags from HTTPListeners into dst.
+// It should only be called when ExtraArgs["httpListenAddr"] is not set.
+func AddHTTPListenerArgsTo(dst []string, listeners []vmv1beta1.HTTPListener, tlsMountPath string) []string {
+	if len(listeners) == 0 {
+		return dst
+	}
+	listenAddr := NewEmptyFlag("-httpListenAddr")
+	tls := NewEmptyFlag("-tls")
+	tlsCertFile := NewEmptyFlag("-tlsCertFile")
+	tlsKeyFile := NewEmptyFlag("-tlsKeyFile")
+	tlsMinVersion := NewEmptyFlag("-tlsMinVersion")
+	autocertHosts := NewEmptyFlag("-tlsAutocertHosts")
+	autocertEmail := NewEmptyFlag("-tlsAutocertEmail")
+	autocertDir := NewEmptyFlag("-tlsAutocertCacheDir")
+	mtls := NewEmptyFlag("-mtls")
+	mtlsCAFile := NewEmptyFlag("-mtlsCAFile")
+	proxyProto := NewEmptyFlag("-httpListenAddr.useProxyProtocol")
+
+	for idx, hl := range listeners {
+		listenAddr.Add(hl.Addr, idx)
+		if hl.TLS != nil {
+			tls.Add(strconv.FormatBool(*hl.TLS), idx)
+		}
+		cert := hl.TLSCertFile
+		if cert == "" && hl.TLSCertSecret != nil {
+			cert = fmt.Sprintf("%s/%s/%s", tlsMountPath, hl.TLSCertSecret.Name, hl.TLSCertSecret.Key)
+		}
+		tlsCertFile.Add(cert, idx)
+		key := hl.TLSKeyFile
+		if key == "" && hl.TLSKeySecret != nil {
+			key = fmt.Sprintf("%s/%s/%s", tlsMountPath, hl.TLSKeySecret.Name, hl.TLSKeySecret.Key)
+		}
+		tlsKeyFile.Add(key, idx)
+		tlsMinVersion.Add(hl.TLSMinVersion, idx)
+		autocertHosts.Add(hl.TLSAutocertHosts, idx)
+		autocertEmail.Add(hl.TLSAutocertEmail, idx)
+		autocertDir.Add(hl.TLSAutocertCacheDir, idx)
+		if hl.MTLS != nil {
+			mtls.Add(strconv.FormatBool(*hl.MTLS), idx)
+		}
+		ca := hl.MTLSCAFile
+		if ca == "" && hl.MTLSCASecret != nil {
+			ca = fmt.Sprintf("%s/%s/%s", tlsMountPath, hl.MTLSCASecret.Name, hl.MTLSCASecret.Key)
+		}
+		mtlsCAFile.Add(ca, idx)
+		if hl.UseProxyProtocol != nil {
+			proxyProto.Add(strconv.FormatBool(*hl.UseProxyProtocol), idx)
+		}
+	}
+	return AppendFlagsToArgs(dst, len(listeners),
+		listenAddr, tls, tlsCertFile, tlsKeyFile, tlsMinVersion,
+		autocertHosts, autocertEmail, autocertDir, mtls, mtlsCAFile, proxyProto)
+}
+
+// AddHTTPListenerPortsTo appends container ports derived from HTTPListeners into dst.
+func AddHTTPListenerPortsTo(dst []corev1.ContainerPort, listeners []vmv1beta1.HTTPListener) []corev1.ContainerPort {
+	for _, hl := range listeners {
+		_, portStr, err := net.SplitHostPort(hl.Addr)
+		if err != nil {
+			continue
+		}
+		portInt, err := strconv.ParseInt(portStr, 10, 32)
+		if err != nil {
+			continue
+		}
+		dst = append(dst, corev1.ContainerPort{
+			Name:          hl.Name,
+			Protocol:      corev1.ProtocolTCP,
+			ContainerPort: int32(portInt),
+		})
+	}
+	return dst
+}
+
 // AddOTLPGRPCTLSConfigToVolumes adds OTLP gRPC tlsConfig volumes and mounts to the provided dsts
-func AddOTLPGRPCTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfigMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+func AddOTLPGRPCTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, grpcSpec *vmv1.OTLPGRPCSpec, tlsMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
 	if grpcSpec == nil || grpcSpec.TLSConfig == nil {
 		return dstVolumes, dstMounts
 	}
 
-	addSecretVolume := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dstVolumes {
-			if dst.Name == name {
-				return
-			}
-		}
-		dstVolumes = append(dstVolumes, corev1.Volume{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: sr.Name,
-				},
-			},
-		})
-	}
-	addSecretMount := func(sr *corev1.SecretKeySelector) {
-		name := fmt.Sprintf("secret-tls-%s", sr.Name)
-		for _, dst := range dstMounts {
-			if dst.Name == name {
-				return
-			}
-		}
-		dstMounts = append(dstMounts, corev1.VolumeMount{
-			Name:      name,
-			MountPath: fmt.Sprintf("%s/%s", tlsServerConfigMountPath, sr.Name),
-		})
-	}
-
 	tlsC := grpcSpec.TLSConfig
 	if tlsC.CertSecret != nil {
-		addSecretVolume(tlsC.CertSecret)
-		addSecretMount(tlsC.CertSecret)
+		dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, tlsC.CertSecret, tlsMountPath)
 	}
 	if tlsC.KeySecret != nil {
-		addSecretVolume(tlsC.KeySecret)
-		addSecretMount(tlsC.KeySecret)
+		dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, tlsC.KeySecret, tlsMountPath)
+	}
+	return dstVolumes, dstMounts
+}
+
+// AddHTTPListenerTLSToVolumes mounts secret volumes for any TLS secrets referenced by HTTPListeners.
+func AddHTTPListenerTLSToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, listeners []vmv1beta1.HTTPListener, tlsMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+	for _, hl := range listeners {
+		if hl.TLSCertSecret != nil {
+			dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, hl.TLSCertSecret, tlsMountPath)
+		}
+		if hl.TLSKeySecret != nil {
+			dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, hl.TLSKeySecret, tlsMountPath)
+		}
+		if hl.MTLSCASecret != nil {
+			dstVolumes, dstMounts = addTLSSecretVolume(dstVolumes, dstMounts, hl.MTLSCASecret, tlsMountPath)
+		}
 	}
 	return dstVolumes, dstMounts
 }

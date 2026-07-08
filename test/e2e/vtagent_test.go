@@ -62,8 +62,10 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 					Name:      nsn.Name,
 				},
 				Spec: vmv1.VTAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 						{URL: "http://localhost:10428/insert/native"},
@@ -100,8 +102,10 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						Storage: &vmv1beta1.StorageSpec{
 							VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
@@ -190,8 +194,10 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1.VTAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 							{
@@ -294,6 +300,36 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 					))
 					Expect(cnt.Args).To(ContainElements("-remoteWrite.bearerTokenFile=/etc/vt/remote-write-assets/bearer-vtagent/token,"))
 				}),
+			Entry("with httpListeners", "http-listeners", &vmv1.VTAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1.VTAgentSpec{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						HTTPListeners: []vmv1beta1.HTTPListener{
+							{Name: "web", Addr: ":10440", Primary: true},
+							{Name: "web2", Addr: ":10441"},
+						},
+					},
+					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+						{URL: "http://localhost:10428/insert/native"},
+					},
+				},
+			}, nil, func(cr *vmv1.VTAgent) {
+				var sts appsv1.StatefulSet
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &sts)).ToNot(HaveOccurred())
+				checkContainerPort(sts.Spec.Template.Spec.Containers[0].Ports, "web", 10440)
+				checkContainerPort(sts.Spec.Template.Spec.Containers[0].Ports, "web2", 10441)
+
+				var svc corev1.Service
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName()}, &svc)).ToNot(HaveOccurred())
+				checkServicePort(svc.Spec.Ports, "web", 10440)
+				checkServicePort(svc.Spec.Ports, "web2", 10441)
+			}),
 		)
 	})
 })

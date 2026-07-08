@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -41,7 +40,7 @@ type VLogsSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	CommonAppsParams `json:",inline,omitempty"`
+	CommonAppsParams `json:",inline"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -199,14 +198,6 @@ func (cr *VLogs) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VLogs) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
-}
-
-func (cr *VLogs) ProbePort() string {
-	return cr.Spec.Port
-}
-
 func (cr *VLogs) ProbeNeedLiveness() bool {
 	return false
 }
@@ -299,13 +290,15 @@ func (cr *VLogs) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLogs) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "9428"
+// Params implements urlBuilder interface
+func (cr *VLogs) Params(ParamsKind) *StandardAppsParams {
+	return &StandardAppsParams{
+		CommonAppsParams: CommonAppsParams{Port: cr.Spec.Port, ExtraArgs: cr.Spec.ExtraArgs},
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+}
+
+func (cr *VLogs) AsURL(nsn NamespacedName) (string, error) {
+	return BuildServiceURL(cr, nsn)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

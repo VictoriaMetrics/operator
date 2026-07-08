@@ -1027,14 +1027,16 @@ func TestConvertVLAgent(t *testing.T) {
 					Namespace: "test-ns",
 				},
 				Spec: vmv1.VLAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						Image: vmv1beta1.Image{
-							Repository: "victoriametrics/victoria-logs",
-							Tag:        "v0.3.2",
-						},
-						ReplicaCount: ptr.To(int32(1)),
-						ExtraArgs: map[string]string{
-							"remoteWrite.maxDiskUsagePerURL": "1GiB",
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/victoria-logs",
+								Tag:        "v0.3.2",
+							},
+							ReplicaCount: ptr.To(int32(1)),
+							ExtraArgs: map[string]string{
+								"remoteWrite.maxDiskUsagePerURL": "1GiB",
+							},
 						},
 					},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -1093,30 +1095,36 @@ func TestConvertVLCluster(t *testing.T) {
 				},
 				Spec: vmv1.VLClusterSpec{
 					VLSelect: &vmv1.VLSelect{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-logs",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-logs",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 					VLInsert: &vmv1.VLInsert{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-logs",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-logs",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 					VLStorage: &vmv1.VLStorage{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-logs",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-logs",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 				},
@@ -1173,21 +1181,27 @@ func TestConvertVLCluster(t *testing.T) {
 				},
 				Spec: vmv1.VLClusterSpec{
 					VLSelect: &vmv1.VLSelect{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Volumes:      extraVolumes,
-							VolumeMounts: extraVolumeMounts,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Volumes:      extraVolumes,
+								VolumeMounts: extraVolumeMounts,
+							},
 						},
 					},
 					VLInsert: &vmv1.VLInsert{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Volumes:      extraVolumes,
-							VolumeMounts: extraVolumeMounts,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Volumes:      extraVolumes,
+								VolumeMounts: extraVolumeMounts,
+							},
 						},
 					},
 					VLStorage: &vmv1.VLStorage{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Volumes:      extraVolumes,
-							VolumeMounts: extraVolumeMounts,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Volumes:      extraVolumes,
+								VolumeMounts: extraVolumeMounts,
+							},
 						},
 					},
 				},
@@ -1230,10 +1244,12 @@ func TestConvertVLCollector(t *testing.T) {
 					Namespace: "test-ns",
 				},
 				Spec: vmv1.VLAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						Image: vmv1beta1.Image{
-							Repository: "victoriametrics/vlagent",
-							Tag:        "v0.3.2",
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/vlagent",
+								Tag:        "v0.3.2",
+							},
 						},
 					},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
@@ -1325,12 +1341,14 @@ func TestConvertVTSingle(t *testing.T) {
 					Namespace: "test-ns",
 				},
 				Spec: vmv1.VTSingleSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						Image: vmv1beta1.Image{
-							Repository: "victoriametrics/victoria-traces",
-							Tag:        "v0.3.2",
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/victoria-traces",
+								Tag:        "v0.3.2",
+							},
+							ReplicaCount: ptr.To(int32(1)),
 						},
-						ReplicaCount: ptr.To(int32(1)),
 					},
 					RetentionPeriod: "14d",
 				},
@@ -1386,30 +1404,36 @@ func TestConvertVTCluster(t *testing.T) {
 				},
 				Spec: vmv1.VTClusterSpec{
 					Select: &vmv1.VTSelect{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-traces",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-traces",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 					Insert: &vmv1.VTInsert{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-traces",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-traces",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 					Storage: &vmv1.VTStorage{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Repository: "victoriametrics/victoria-traces",
-								Tag:        "v0.3.2",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Repository: "victoriametrics/victoria-traces",
+									Tag:        "v0.3.2",
+								},
+								ReplicaCount: ptr.To(int32(2)),
 							},
-							ReplicaCount: ptr.To(int32(2)),
 						},
 					},
 				},
@@ -1447,12 +1471,14 @@ func TestConvertVMAuth(t *testing.T) {
 					Namespace: "test-ns",
 				},
 				Spec: vmv1beta1.VMAuthSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						Image: vmv1beta1.Image{
-							Repository: "victoriametrics/vmauth",
-							Tag:        "v1.100.0",
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Image: vmv1beta1.Image{
+								Repository: "victoriametrics/vmauth",
+								Tag:        "v1.100.0",
+							},
+							ReplicaCount: ptr.To(int32(1)),
 						},
-						ReplicaCount: ptr.To(int32(1)),
 					},
 				},
 			}

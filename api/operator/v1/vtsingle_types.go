@@ -19,7 +19,6 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -41,7 +40,7 @@ type VTSingleSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaTraces to be configured with.
 	// +optional
@@ -226,16 +225,6 @@ func (cr *VTSingle) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-// ProbeScheme implements build.probeCRD interface
-func (cr *VTSingle) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
-}
-
-// ProbePort implements build.probeCRD interface
-func (cr *VTSingle) ProbePort() string {
-	return cr.Spec.Port
-}
-
 // ProbeNeedLiveness implements build.probeCRD interface
 func (cr *VTSingle) ProbeNeedLiveness() bool {
 	return false
@@ -299,7 +288,12 @@ func (cr *VTSingle) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VTSingle) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
+	return cr.Spec.UseTLS()
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VTSingle) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
 }
 
 // Validate checks if spec is correct
@@ -319,7 +313,7 @@ func (cr *VTSingle) Validate() error {
 	if specPort == "" {
 		specPort = "10428"
 	}
-	if err := cr.Spec.GRPCSpec.Validate(specPort); err != nil {
+	if err := cr.Spec.GRPCSpec.Validate(specPort, cr.Spec.HTTPListeners); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {
@@ -351,14 +345,17 @@ func (cr *VTSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces
+func (cr *VTSingle) Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	return &cr.Spec.StandardAppsParams
+}
+
 // AsURL returns URL for components access
-func (cr *VTSingle) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "10428"
+func (cr *VTSingle) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	if nsn.ListenerName != "" && cr.Spec.ByName(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VTSingle=%q httpListeners", nsn.ListenerName, cr.Name)
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -370,7 +367,7 @@ func (cr *VTSingle) LastSpecUpdated() bool {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VTSingle) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
+	return cr.Spec.UseProxyProtocol()
 }
 
 func (cr *VTSingle) Paused() bool {

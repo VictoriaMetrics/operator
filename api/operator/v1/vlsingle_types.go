@@ -19,7 +19,6 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -41,7 +40,7 @@ type VLSingleSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -172,7 +171,7 @@ func (cr *VLSingle) GetStatus() *VLSingleStatus {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VLSingle) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
+	return cr.Spec.UseProxyProtocol()
 }
 
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
@@ -230,14 +229,6 @@ func (r *VLSingle) AsOwner() metav1.OwnerReference {
 
 func (cr *VLSingle) ProbePath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
-}
-
-func (cr *VLSingle) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
-}
-
-func (cr *VLSingle) ProbePort() string {
-	return cr.Spec.Port
 }
 
 func (cr *VLSingle) ProbeNeedLiveness() bool {
@@ -301,7 +292,12 @@ func (cr *VLSingle) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VLSingle) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
+	return cr.Spec.UseTLS()
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VLSingle) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
 }
 
 // Validate checks if spec is correct
@@ -311,6 +307,9 @@ func (cr *VLSingle) Validate() error {
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if err := cr.Spec.SyslogSpec.ValidateNoListenerNameCollision(cr.Spec.HTTPListeners); err != nil {
+		return err
 	}
 	if cr.Spec.VPA != nil {
 		if err := cr.Spec.VPA.Validate(); err != nil {
@@ -345,13 +344,16 @@ func (cr *VLSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLSingle) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "9428"
+// Params implements build.scrapeBuilder and urlBuilder interfaces
+func (cr *VLSingle) Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	return &cr.Spec.StandardAppsParams
+}
+
+func (cr *VLSingle) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	if nsn.ListenerName != "" && cr.Spec.ByName(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VLSingle=%q httpListeners", nsn.ListenerName, cr.Name)
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -372,5 +374,6 @@ func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 
 // GetRemoteWriteURL returns the native insert URL for VLSingle (used by VLDistributed)
 func (cr *VLSingle) GetRemoteWriteURL() string {
-	return cr.AsURL(false) + "/insert/native"
+	url, _ := cr.AsURL(vmv1beta1.NamespacedName{})
+	return url + "/insert/native"
 }

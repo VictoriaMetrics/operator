@@ -12,7 +12,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
@@ -212,7 +211,6 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 		args = append(args, "-logIngestedRows")
 	}
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", r.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -224,8 +222,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	var envs []corev1.EnvVar
 	envs = append(envs, r.Spec.ExtraEnvs...)
 
-	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
+	ports := build.AddHTTPListenerPortsTo(nil, r.Spec.HTTPListeners)
 	ports = build.AddOTLPGRPCPortTo(ports, r.Spec.GRPCSpec)
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if !isStorageEmpty(r.Spec.Storage) {
@@ -273,6 +270,8 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 		})
 	}
 
+	args = build.AddHTTPListenerArgsTo(args, r.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, r.Spec.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vtsingleContainer := corev1.Container{
@@ -330,11 +329,13 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			build.AddOTLPGRPCPortToService(svc, prevCR.Spec.GRPCSpec)
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
 		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		build.AddOTLPGRPCPortToService(svc, cr.Spec.GRPCSpec)
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 	})
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(svc, s)

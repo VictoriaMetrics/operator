@@ -16,6 +16,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -76,8 +77,8 @@ func Test_genUserCfg(t *testing.T) {
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -155,8 +156,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -203,8 +204,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -287,8 +288,8 @@ password: pass
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_map:
 - url_prefix:
@@ -360,9 +361,9 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-			"VLogs/monitoring/db":     "http://vlogs-b.monitoring.svc:8482",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
+			"VLogs/monitoring/db/":     "http://vlogs-b.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -409,8 +410,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -442,8 +443,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -740,11 +741,11 @@ password: pass
 			},
 		},
 		objURLs: map[string]string{
-			"VLAgent/monitoring/collector":                "http://vlagent-base.monitoring.svc:9429",
-			"VLSingle/monitoring/db":                      "http://vlsingle-db.monitoring.svc:9428",
-			"VLCluster/vlinsert/monitoring/main-cluster":  "http://vlinsert-main-cluster.monitoring.svc:9401",
-			"VLCluster/vlselect/monitoring/main-cluster":  "http://vlselect-main-cluster.monitoring.svc:9401",
-			"VLCluster/vlstorage/monitoring/main-cluster": "http://vlstorage-main-cluster.monitoring.svc:9401",
+			"VLAgent/monitoring/collector/":                "http://vlagent-base.monitoring.svc:9429",
+			"VLSingle/monitoring/db/":                      "http://vlsingle-db.monitoring.svc:9428",
+			"VLCluster/vlinsert/monitoring/main-cluster/":  "http://vlinsert-main-cluster.monitoring.svc:9401",
+			"VLCluster/vlselect/monitoring/main-cluster/":  "http://vlselect-main-cluster.monitoring.svc:9401",
+			"VLCluster/vlstorage/monitoring/main-cluster/": "http://vlstorage-main-cluster.monitoring.svc:9401",
 		},
 		want: `url_map:
 - url_prefix:
@@ -1088,9 +1089,14 @@ func Test_buildConfig(t *testing.T) {
 		want              string
 		predefinedObjects []runtime.Object
 	}
+	scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
+	build.AddDefaults(scheme)
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.TODO()
+		for _, obj := range o.predefinedObjects {
+			scheme.Default(obj)
+		}
 		rand.Shuffle(len(o.predefinedObjects), func(i, j int) {
 			o.predefinedObjects[i], o.predefinedObjects[j] = o.predefinedObjects[j], o.predefinedObjects[i]
 		})
@@ -2470,13 +2476,17 @@ unauthorized_user:
 				},
 				Spec: vmv1beta1.VMClusterSpec{
 					VMSelect: &vmv1beta1.VMSelect{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To(int32(10)),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To(int32(10)),
+							},
 						},
 					},
 					VMInsert: &vmv1beta1.VMInsert{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To(int32(5)),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To(int32(5)),
+							},
 						},
 					},
 				},
@@ -3248,7 +3258,7 @@ unauthorized_user:
 		},
 		want: `users:
 - url_prefix:
-  - http://vmsingle-test-additional-service.default.svc:8428
+  - http://vmsingle-test-additional-service.default.svc:8429
   bearer_token: bearer
 `,
 	})

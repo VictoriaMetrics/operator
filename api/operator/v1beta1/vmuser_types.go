@@ -188,6 +188,16 @@ func (r *TargetRef) Validate(isDefault, isRetryCodesSet bool) error {
 		if len(r.CRD.Objects) == 0 && (r.CRD.Namespace == "" || r.CRD.Name == "") {
 			return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 		}
+		if _, noListeners := crdKindsWithoutListeners[r.CRD.Kind]; noListeners {
+			if r.CRD.ListenerName != "" {
+				return fmt.Errorf("crd.listenerName is not supported for kind=%q", r.CRD.Kind)
+			}
+			for i, crd := range r.CRD.Objects {
+				if crd.ListenerName != "" {
+					return fmt.Errorf("crd.objects[%d].listenerName is not supported for kind=%q", i, r.CRD.Kind)
+				}
+			}
+		}
 		for i, crd := range r.CRD.Objects {
 			if crd.Namespace == "" || crd.Name == "" {
 				return fmt.Errorf("crd.objects[%d].name and crd.objects[%d].namespace cannot be empty", i, i)
@@ -231,6 +241,13 @@ type NamespacedName struct {
 	// (created via spec.serviceSpec) over the default service when building the target URL.
 	// +optional
 	UseExtraService bool `json:"useExtraService,omitempty"`
+	// ListenerName selects a specific HTTPListener by name on the target CRD.
+	// When set, the proxy URL scheme and port are taken from that listener's
+	// TLS and Addr fields. Falls back to the CRD's primary listener when empty.
+	// Not supported when crd.kind is VMAlertmanager (or its VMAlertManager alias),
+	// VMAnomaly, or VLogs, since those specs have no HTTPListeners.
+	// +optional
+	ListenerName string `json:"listenerName,omitempty"`
 }
 
 // CRDRef describe CRD target reference.
@@ -245,9 +262,18 @@ type CRDRef struct {
 	Objects []NamespacedName `json:"objects,omitempty"`
 }
 
+// crdKindsWithoutListeners lists CRDRef.Kind values whose target spec has no
+// HTTPListeners support, so NamespacedName.ListenerName cannot be honored.
+var crdKindsWithoutListeners = map[string]struct{}{
+	"VMAlertmanager": {},
+	"VMAlertManager": {},
+	"VMAnomaly":      {},
+	"VLogs":          {},
+}
+
 // AsKey returns unique key for object
 func (cr *CRDRef) AsKey(nsn NamespacedName) string {
-	return fmt.Sprintf("%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name)
+	return fmt.Sprintf("%s/%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name, nsn.ListenerName)
 }
 
 // StaticRef - user-defined routing host address.

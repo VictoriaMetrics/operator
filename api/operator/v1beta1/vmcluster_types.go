@@ -412,9 +412,13 @@ type VMSelect struct {
 	// to the cluster in a read-only mode.
 	// +optional
 	// +notes={available_from: "v0.74.0"}
-	ExtraStorageNodes []VMStorageNode `json:"extraStorageNodes,omitempty"`
+	ExtraStorageNodes  []VMStorageNode `json:"extraStorageNodes,omitempty"`
+	StandardAppsParams `json:",inline"`
+}
 
-	CommonAppsParams `json:",inline"`
+// Params implements build.scrapeBuilder interface
+func (p *VMSelect) Params() *StandardAppsParams {
+	return &p.StandardAppsParams
 }
 
 // VMStorageNode defines an additional, non-operator-managed vmstorage node
@@ -437,6 +441,36 @@ type InsertPorts struct {
 	// OpenTSDBPort for tcp and udp listen
 	// +optional
 	OpenTSDBPort string `json:"openTSDBPort,omitempty"`
+}
+
+// ValidateNoListenerNameCollision rejects HTTPListener names that collide with the
+// container port names generated for this InsertPorts' configured protocols.
+func (ip *InsertPorts) ValidateNoListenerNameCollision(listeners []HTTPListener) error {
+	if ip == nil {
+		return nil
+	}
+	reserved := make(map[string]struct{}, 7)
+	if ip.GraphitePort != "" {
+		reserved["graphite-tcp"] = struct{}{}
+		reserved["graphite-udp"] = struct{}{}
+	}
+	if ip.InfluxPort != "" {
+		reserved["influx-tcp"] = struct{}{}
+		reserved["influx-udp"] = struct{}{}
+	}
+	if ip.OpenTSDBPort != "" {
+		reserved["opentsdb-tcp"] = struct{}{}
+		reserved["opentsdb-udp"] = struct{}{}
+	}
+	if ip.OpenTSDBHTTPPort != "" {
+		reserved["opentsdb-http"] = struct{}{}
+	}
+	for i := range listeners {
+		if _, ok := reserved[listeners[i].Name]; ok {
+			return fmt.Errorf("httpListeners[%d].name=%q collides with a name generated for spec.insertPorts", i, listeners[i].Name)
+		}
+	}
+	return nil
 }
 
 type VMInsert struct {
@@ -497,7 +531,12 @@ type VMInsert struct {
 	// +optional
 	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
 
-	CommonAppsParams `json:",inline"`
+	StandardAppsParams `json:",inline"`
+}
+
+// Params implements build.scrapeBuilder interface
+func (p *VMInsert) Params() *StandardAppsParams {
+	return &p.StandardAppsParams
 }
 
 func (cr *VMInsert) ProbePath() string {
@@ -506,14 +545,19 @@ func (cr *VMInsert) ProbePath() string {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMInsert) UseProxyProtocol() bool {
-	return UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
 }
 
 func (cr *VMInsert) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 func (cr *VMInsert) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -608,7 +652,12 @@ type VMStorage struct {
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []corev1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 
-	CommonAppsParams `json:",inline"`
+	StandardAppsParams `json:",inline"`
+}
+
+// Params implements build.scrapeBuilder interface
+func (p *VMStorage) Params() *StandardAppsParams {
+	return &p.StandardAppsParams
 }
 
 type VMBackup struct {
@@ -739,7 +788,7 @@ func (cr *VMSelect) GetCacheMountVolumeName() string {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMSelect) UseProxyProtocol() bool {
-	return UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
 }
 
 // GetRemoteWriteURL returns remote write url for VMCluster
@@ -747,7 +796,7 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 	if cr == nil || cr.Spec.VMInsert == nil {
 		return ""
 	}
-	insertURL := cr.AsURL(ClusterComponentInsert, false)
+	insertURL, _ := cr.AsURL(ClusterComponentInsert, NamespacedName{})
 	return fmt.Sprintf("%s%s", insertURL, BuildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/multitenant/prometheus/api/v1/write"))
 }
 
@@ -763,6 +812,11 @@ func (cr *VMCluster) Validate() error {
 		}
 		if err := vms.ServiceSpec.ValidateNoServiceTypeOverrideWithUseAsDefault(); err != nil {
 			return err
+		}
+		if vms.ClusterNativePort != "" {
+			if l := vms.ByName("clusternative"); l != nil {
+				return fmt.Errorf("vmselect: httpListeners name %q collides with the name generated for spec.clusterNativePort", l.Name)
+			}
 		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {
@@ -814,6 +868,14 @@ func (cr *VMCluster) Validate() error {
 		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
+		if err := vmi.InsertPorts.ValidateNoListenerNameCollision(vmi.HTTPListeners); err != nil {
+			return err
+		}
+		if vmi.ClusterNativePort != "" {
+			if l := vmi.ByName("clusternative"); l != nil {
+				return fmt.Errorf("vminsert: httpListeners name %q collides with the name generated for spec.clusterNativePort", l.Name)
+			}
+		}
 		if vmi.HPA != nil {
 			if err := vmi.HPA.Validate(); err != nil {
 				return err
@@ -840,9 +902,18 @@ func (cr *VMCluster) Validate() error {
 		if err := vms.ServiceSpec.ValidateNoServiceTypeOverrideWithUseAsDefault(); err != nil {
 			return err
 		}
+		if l := vms.ByName("vminsert"); l != nil {
+			return fmt.Errorf("vmstorage: httpListeners name %q collides with the generated vminsert port name", l.Name)
+		}
+		if l := vms.ByName("vmselect"); l != nil {
+			return fmt.Errorf("vmstorage: httpListeners name %q collides with the generated vmselect port name", l.Name)
+		}
 		if cr.Spec.VMStorage.VMBackup != nil {
 			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {
 				return err
+			}
+			if l := vms.ByName("vmbackupmanager"); l != nil {
+				return fmt.Errorf("vmstorage: httpListeners name %q collides with the generated vmbackupmanager port name", l.Name)
 			}
 		}
 		if err := vms.RetentionFilters.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
@@ -912,32 +983,11 @@ func (cr *VMCluster) Validate() error {
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
 func (cr *VMCluster) AvailableStorageNodeIDs(kind ClusterComponent) []int32 {
-	var result []int32
-	if cr.Spec.VMStorage == nil || (cr.Spec.VMStorage.ReplicaCount == nil && cr.Spec.VMStorage.HPA == nil) {
-		return result
+	if cr.Spec.VMStorage == nil {
+		return nil
 	}
-	maintenanceNodes := sets.New[int32]()
-	switch kind {
-	case ClusterComponentSelect:
-		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
-	case ClusterComponentInsert:
-		maintenanceNodes.Insert(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
-	default:
-		panic("BUG unsupported kind: " + string(kind))
-	}
-	var replicaCount int32
-	if cr.Spec.VMStorage.ReplicaCount != nil {
-		replicaCount = *cr.Spec.VMStorage.ReplicaCount
-	} else if cr.Spec.VMStorage.HPA != nil {
-		replicaCount = cr.Spec.VMStorage.HPA.GetMinReplicas()
-	}
-	for i := int32(0); i < replicaCount; i++ {
-		if maintenanceNodes.Has(i) {
-			continue
-		}
-		result = append(result, i)
-	}
-	return result
+	return AvailableStorageNodeIDs(kind, cr.Spec.VMStorage.ReplicaCount, cr.Spec.VMStorage.HPA,
+		cr.Spec.VMStorage.MaintenanceSelectNodeIDs, cr.Spec.VMStorage.MaintenanceInsertNodeIDs)
 }
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
@@ -977,11 +1027,6 @@ func (cr *VMSelect) GetMetricsPath() string {
 	return BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
 }
 
-// UseTLS returns true if TLS is enabled
-func (cr *VMSelect) UseTLS() bool {
-	return UseTLS(cr.ExtraArgs)
-}
-
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VMSelect) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
@@ -1005,11 +1050,6 @@ func (cr *VMInsert) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
 }
 
-// UseTLS returns true if TLS is enabled
-func (cr *VMInsert) UseTLS() bool {
-	return UseTLS(cr.ExtraArgs)
-}
-
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VMInsert) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
@@ -1025,7 +1065,7 @@ func (cr *VMStorage) GetMetricsPath() string {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMStorage) UseProxyProtocol() bool {
-	return UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -1033,24 +1073,9 @@ func (cr *VMStorage) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
 }
 
-// UseTLS returns true if TLS is enabled
-func (cr *VMStorage) UseTLS() bool {
-	return UseTLS(cr.ExtraArgs)
-}
-
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
-}
-
-// SnapshotCreatePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotCreatePathWithFlags(host, port string, extraArgs map[string]string) string {
-	return BuildLocalURL(snapshotAuthKeyFlag, host, port, snapshotCreate, extraArgs)
-}
-
-// SnapshotDeletePathWithFlags returns url for accessing vmbackupmanager component
-func (*VMBackup) SnapshotDeletePathWithFlags(host, port string, extraArgs map[string]string) string {
-	return BuildLocalURL(snapshotAuthKeyFlag, host, port, snapshotDelete, extraArgs)
 }
 
 // GetServiceAccountName returns service account name for all vmcluster components
@@ -1066,47 +1091,65 @@ func (cr *VMCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// AsURL implements stub for interface.
-func (cr *VMCluster) AsURL(kind ClusterComponent, isExtra bool) string {
-	var defaultPort string
-	var svcSpec *AdditionalServiceSpec
-	var extraArgs map[string]string
+// SnapshotCreatePath returns url for accessing vmbackupmanager's snapshot create endpoint
+func (cr *VMCluster) SnapshotCreatePath(host string) string {
+	if cr.Spec.VMStorage == nil {
+		return ""
+	}
+	return cr.Spec.VMStorage.BuildLocalURL(snapshotAuthKeyFlag, host, snapshotCreate)
+}
+
+// SnapshotDeletePath returns url for accessing vmbackupmanager's snapshot delete endpoint
+func (cr *VMCluster) SnapshotDeletePath(host string) string {
+	if cr.Spec.VMStorage == nil {
+		return ""
+	}
+	return cr.Spec.VMStorage.BuildLocalURL(snapshotAuthKeyFlag, host, snapshotDelete)
+}
+
+// Backup implements build.backupCRD interface
+func (cr *VMCluster) Backup() *VMBackup {
+	if cr.Spec.VMStorage == nil {
+		return nil
+	}
+	return cr.Spec.VMStorage.VMBackup
+}
+
+// Params implements ParentOpts interface: the StandardAppsParams for kind, or nil when that
+// component isn't configured.
+func (cr *VMCluster) Params(kind ClusterComponent) *StandardAppsParams {
 	switch kind {
 	case ClusterComponentSelect:
 		if cr.Spec.VMSelect == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "8481"
-		if cr.Spec.VMSelect.Port != "" {
-			defaultPort = cr.Spec.VMSelect.Port
-		}
-		svcSpec = cr.Spec.VMSelect.ServiceSpec
-		extraArgs = cr.Spec.VMSelect.ExtraArgs
+		return &cr.Spec.VMSelect.StandardAppsParams
 	case ClusterComponentInsert:
 		if cr.Spec.VMInsert == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "8480"
-		if cr.Spec.VMInsert.Port != "" {
-			defaultPort = cr.Spec.VMInsert.Port
-		}
-		svcSpec = cr.Spec.VMInsert.ServiceSpec
-		extraArgs = cr.Spec.VMInsert.ExtraArgs
+		return &cr.Spec.VMInsert.StandardAppsParams
 	case ClusterComponentStorage:
 		if cr.Spec.VMStorage == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "8482"
-		if cr.Spec.VMStorage.Port != "" {
-			defaultPort = cr.Spec.VMStorage.Port
-		}
-		svcSpec = cr.Spec.VMStorage.ServiceSpec
-		extraArgs = cr.Spec.VMStorage.ExtraArgs
+		return &cr.Spec.VMStorage.StandardAppsParams
 	default:
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
+}
+
+// AsURL returns the service URL for kind, or an empty string when that component isn't
+// configured. Returns an error when nsn.ListenerName doesn't match a configured listener.
+func (cr *VMCluster) AsURL(kind ClusterComponent, nsn NamespacedName) (string, error) {
+	params := cr.Params(kind)
+	if params == nil {
+		return "", nil
+	}
+	if nsn.ListenerName != "" && params.GetListener(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VMCluster=%q %s httpListeners", nsn.ListenerName, cr.Name, kind)
+	}
+	return BuildServiceURL(NewChildBuilder(cr, kind), nsn)
 }
 
 func (cr *VMSelect) ProbePath() string {
@@ -1114,10 +1157,15 @@ func (cr *VMSelect) ProbePath() string {
 }
 
 func (cr *VMSelect) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 func (cr *VMSelect) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -1130,10 +1178,15 @@ func (cr *VMStorage) ProbePath() string {
 }
 
 func (cr *VMStorage) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 func (cr *VMStorage) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -1222,17 +1275,22 @@ func (cr *VMAuthLoadBalancerSpec) ProbePath() string {
 
 // ProbeScheme returns scheme for probe requests
 func (cr *VMAuthLoadBalancerSpec) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.ExtraArgs))
+	return ProbeSchemeFromTLS(cr.ExtraArgs)
 }
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAuthLoadBalancerSpec) UseProxyProtocol() bool {
-	return UseProxyProtocol(cr.ExtraArgs)
+	return getFirstValue(cr.ExtraArgs, httpUseProxyProtocolFlag) == "true"
 }
 
 // GetServiceScrape implements build.serviceScrapeBuilder interface
 func (cr *VMAuthLoadBalancerSpec) GetServiceScrape() *VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
+}
+
+// Params implements build.scrapeBuilder interface
+func (cr *VMAuthLoadBalancerSpec) Params() *StandardAppsParams {
+	return &StandardAppsParams{CommonAppsParams: cr.CommonAppsParams}
 }
 
 // GetExtraArgs implements build.serviceScrapeBuilder interface

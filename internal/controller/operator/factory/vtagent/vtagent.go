@@ -16,7 +16,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -46,12 +45,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			build.AddOTLPGRPCPortToService(svc, prevCR.Spec.GRPCSpec)
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		build.AddOTLPGRPCPortToService(svc, cr.Spec.GRPCSpec)
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 	})
 
 	owner := cr.AsOwner()
@@ -78,7 +79,7 @@ func buildScrape(cr *vmv1.VTAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr, "http")
+	return build.VMPodScrape(cr, cr.Spec.PrimaryPortName())
 }
 
 // CreateOrUpdate creates statefulset for vtagent and configures it
@@ -225,7 +226,6 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 	}
 
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -239,6 +239,7 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 		args = append(args, "-envflag.enable=true")
 	}
 	args = build.AddOTLPGRPCArgsTo(args, cr.Spec.GRPCSpec, tlsServerConfigMountPath)
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
 
 	var vtMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
@@ -259,12 +260,13 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.HTTPListeners)
 	ports = build.AddOTLPGRPCPortTo(ports, cr.Spec.GRPCSpec)
 
 	vtMounts = append(vtMounts, cr.Spec.VolumeMounts...)
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumes, vtMounts = build.AddOTLPGRPCTLSConfigToVolumes(volumes, vtMounts, cr.Spec.GRPCSpec, tlsServerConfigMountPath)
+	volumes, vtMounts = build.AddHTTPListenerTLSToVolumes(volumes, vtMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

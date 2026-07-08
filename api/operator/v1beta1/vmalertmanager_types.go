@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"path"
 	"strings"
@@ -231,7 +232,7 @@ type VMAlertmanagerSpec struct {
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // GetReloadURL implements reloadable interface
@@ -405,15 +406,25 @@ func (cr *VMAlertmanager) Port() string {
 	return port
 }
 
-// AsURL returns url for accessing alertmanager
-// via corresponding service
-func (cr *VMAlertmanager) AsURL(isExtra bool) string {
-	portName := cr.Spec.PortName
-	if portName == "" {
-		portName = "web"
+// Params implements build.scrapeBuilder and urlBuilder interfaces. WebConfig's TLS state is
+// mirrored into ExtraArgs[tlsFlag] since VMAlertmanager has no HTTPListeners of its own.
+func (cr *VMAlertmanager) Params() *StandardAppsParams {
+	extraArgs := cr.Spec.ExtraArgs
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		extraArgs = maps.Clone(extraArgs)
+		if extraArgs == nil {
+			extraArgs = map[string]string{}
+		}
+		extraArgs[tlsFlag] = "true"
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(), cr.Port(), portName, cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), svcName, cr.Namespace, port)
+	return &StandardAppsParams{
+		CommonAppsParams: CommonAppsParams{Port: cr.Port(), ExtraArgs: extraArgs},
+	}
+}
+
+// AsURL returns url for accessing alertmanager via corresponding service
+func (cr *VMAlertmanager) AsURL(nsn NamespacedName) (string, error) {
+	return BuildServiceURL(cr, nsn)
 }
 
 // returns fqdn for direct pod access

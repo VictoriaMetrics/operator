@@ -91,9 +91,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ExtraArgs: map[string]string{
-									"notifier.url": "http://test",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ExtraArgs: map[string]string{
+										"notifier.url": "http://test",
+									},
 								},
 							},
 						},
@@ -148,9 +150,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ExtraArgs: map[string]string{
-									"notifier.url": "http://test",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ExtraArgs: map[string]string{
+										"notifier.url": "http://test",
+									},
 								},
 							},
 						},
@@ -252,9 +256,11 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 							Datasource: vmv1beta1.VMAlertDatasourceSpec{
 								URL: "http://localhost:8428",
 							},
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ExtraArgs: map[string]string{
-									"notifier.url": "http://test",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ExtraArgs: map[string]string{
+										"notifier.url": "http://test",
+									},
 								},
 							},
 						},

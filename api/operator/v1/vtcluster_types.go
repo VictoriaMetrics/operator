@@ -266,12 +266,17 @@ type VTInsert struct {
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline"`
+	vmv1beta1.StandardAppsParams `json:",inline"`
+}
+
+// Params implements build.scrapeBuilder interface
+func (p *VTInsert) Params() *vmv1beta1.StandardAppsParams {
+	return &p.StandardAppsParams
 }
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VTInsert) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
 }
 
 // ProbePath implements build.probeCRD interface
@@ -281,11 +286,16 @@ func (cr *VTInsert) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VTInsert) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 // ProbePort implements build.probeCRD interface
 func (cr *VTInsert) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -305,11 +315,6 @@ func (cr *VTInsert) GetMetricsPath() string {
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VTInsert) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
-}
-
-// UseTLS returns true if TLS is enabled
-func (cr *VTInsert) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
@@ -374,7 +379,12 @@ type VTSelect struct {
 	// ExtraStorageNodes - defines additional storage nodes to VTSelect
 	ExtraStorageNodes []VTStorageNode `json:"extraStorageNodes,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline"`
+	vmv1beta1.StandardAppsParams `json:",inline"`
+}
+
+// Params implements build.scrapeBuilder interface
+func (p *VTSelect) Params() *vmv1beta1.StandardAppsParams {
+	return &p.StandardAppsParams
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -387,17 +397,12 @@ func (cr *VTSelect) GetMetricsPath() string {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VTSelect) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
 }
 
 // ExtraArgs returns additionally configured command-line arguments
 func (cr *VTSelect) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
-}
-
-// UseTLS returns true if TLS is enabled
-func (cr *VTSelect) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.ExtraArgs)
 }
 
 // ServiceScrape returns overrides for serviceScrape builder
@@ -412,11 +417,16 @@ func (cr *VTSelect) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VTSelect) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 // ProbePort implements build.probeCRD interface
 func (cr *VTSelect) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -518,7 +528,7 @@ type VTStorage struct {
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline"`
+	vmv1beta1.StandardAppsParams `json:",inline"`
 
 	// RollingUpdateStrategyBehavior defines customized behavior for rolling updates.
 	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
@@ -536,7 +546,12 @@ func (cr *VTStorage) GetStorageVolumeName() string {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VTStorage) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
+	return cr.StandardAppsParams.UseProxyProtocol()
+}
+
+// Params implements build.scrapeBuilder interface
+func (cr *VTStorage) Params() *vmv1beta1.StandardAppsParams {
+	return &cr.StandardAppsParams
 }
 
 // GetMetricsPath returns prefixed path for metric requests
@@ -552,11 +567,6 @@ func (cr *VTStorage) GetExtraArgs() map[string]string {
 	return cr.ExtraArgs
 }
 
-// UseTLS returns true if TLS is enabled
-func (cr *VTStorage) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.ExtraArgs)
-}
-
 // ServiceScrape returns overrides for serviceScrape builder
 func (cr *VTStorage) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
 	return cr.ServiceScrapeSpec
@@ -569,11 +579,16 @@ func (cr *VTStorage) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VTStorage) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.ExtraArgs))
+	return strings.ToUpper(cr.Proto())
 }
 
 // ProbePort implements build.probeCRD interface
 func (cr *VTStorage) ProbePort() string {
+	if l := cr.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
 	return cr.Port
 }
 
@@ -665,7 +680,7 @@ func (cr *VTCluster) Validate() error {
 		if vti.Port != "" {
 			insertPort = vti.Port
 		}
-		if err := vti.GRPCSpec.Validate(insertPort); err != nil {
+		if err := vti.GRPCSpec.Validate(insertPort, vti.HTTPListeners); err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
 		if err := vti.Validate(); err != nil {
@@ -674,7 +689,11 @@ func (cr *VTCluster) Validate() error {
 	}
 	storageNodes := sets.New[string]()
 	if cr.Spec.Storage != nil {
-		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage, false))
+		storageURL, err := cr.AsURL(vmv1beta1.ClusterComponentStorage, vmv1beta1.NamespacedName{})
+		if err != nil {
+			return fmt.Errorf("storage: %w", err)
+		}
+		storageNodes.Insert(storageURL)
 		vts := cr.Spec.Storage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
@@ -742,32 +761,11 @@ func (cr *VTCluster) Validate() error {
 
 // AvailableStorageNodeIDs returns ids of the storage nodes for the provided component
 func (cr *VTCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []int32 {
-	var result []int32
-	if cr.Spec.Storage == nil || (cr.Spec.Storage.ReplicaCount == nil && cr.Spec.Storage.HPA == nil) {
-		return result
+	if cr.Spec.Storage == nil {
+		return nil
 	}
-	maintenanceNodes := sets.New[int32]()
-	switch kind {
-	case vmv1beta1.ClusterComponentSelect:
-		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceSelectNodeIDs...)
-	case vmv1beta1.ClusterComponentInsert:
-		maintenanceNodes.Insert(cr.Spec.Storage.MaintenanceInsertNodeIDs...)
-	default:
-		panic("BUG unsupported kind: " + string(kind))
-	}
-	var replicaCount int32
-	if cr.Spec.Storage.ReplicaCount != nil {
-		replicaCount = *cr.Spec.Storage.ReplicaCount
-	} else if cr.Spec.Storage.HPA != nil {
-		replicaCount = cr.Spec.Storage.HPA.GetMinReplicas()
-	}
-	for i := int32(0); i < replicaCount; i++ {
-		if maintenanceNodes.Has(i) {
-			continue
-		}
-		result = append(result, i)
-	}
-	return result
+	return vmv1beta1.AvailableStorageNodeIDs(kind, cr.Spec.Storage.ReplicaCount, cr.Spec.Storage.HPA,
+		cr.Spec.Storage.MaintenanceSelectNodeIDs, cr.Spec.Storage.MaintenanceInsertNodeIDs)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -794,48 +792,42 @@ func (cr *VTCluster) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// AsURL implements stub for interface.
 // nolint:dupl,lll
-func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string {
-	var defaultPort string
-	var svcSpec *vmv1beta1.AdditionalServiceSpec
-	var extraArgs map[string]string
+// Params implements vmv1beta1.ParentOpts interface: the AppsParams for kind, or nil when
+// that component isn't configured.
+func (cr *VTCluster) Params(kind vmv1beta1.ClusterComponent) *vmv1beta1.StandardAppsParams {
 	switch kind {
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.Select == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "10471"
-		if cr.Spec.Select.Port != "" {
-			defaultPort = cr.Spec.Select.Port
-		}
-		svcSpec = cr.Spec.Select.ServiceSpec
-		extraArgs = cr.Spec.Select.ExtraArgs
+		return &cr.Spec.Select.StandardAppsParams
 	case vmv1beta1.ClusterComponentInsert:
 		if cr.Spec.Insert == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "10481"
-		if cr.Spec.Insert.Port != "" {
-			defaultPort = cr.Spec.Insert.Port
-		}
-		svcSpec = cr.Spec.Insert.ServiceSpec
-		extraArgs = cr.Spec.Insert.ExtraArgs
+		return &cr.Spec.Insert.StandardAppsParams
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
-			return ""
+			return nil
 		}
-		defaultPort = "10491"
-		if cr.Spec.Storage.Port != "" {
-			defaultPort = cr.Spec.Storage.Port
-		}
-		svcSpec = cr.Spec.Storage.ServiceSpec
-		extraArgs = cr.Spec.Storage.ExtraArgs
+		return &cr.Spec.Storage.StandardAppsParams
 	default:
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
+}
+
+// AsURL returns the service URL for kind, or an empty string when that component isn't
+// configured. Returns an error when nsn.ListenerName doesn't match a configured listener.
+func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, nsn vmv1beta1.NamespacedName) (string, error) {
+	params := cr.Params(kind)
+	if params == nil {
+		return "", nil
+	}
+	if nsn.ListenerName != "" && params.GetListener(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VTCluster=%q %s httpListeners", nsn.ListenerName, cr.Name, kind)
+	}
+	return vmv1beta1.BuildServiceURL(vmv1beta1.NewChildBuilder(cr, kind), nsn)
 }
 
 // +kubebuilder:object:root=true

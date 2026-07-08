@@ -18,6 +18,7 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
@@ -31,8 +32,10 @@ func newVLAgent(name, namespace string, owner metav1.OwnerReference) *vmv1.VLAge
 			OwnerReferences:   []metav1.OwnerReference{owner},
 		},
 		Spec: vmv1.VLAgentSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				ReplicaCount: ptr.To[int32](1),
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+				},
 			},
 		},
 	}
@@ -50,18 +53,24 @@ func newVLCluster(name, namespace, version string, owner metav1.OwnerReference) 
 		Spec: vmv1.VLClusterSpec{
 			ClusterVersion: version,
 			VLSelect: &vmv1.VLSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 				},
 			},
 			VLInsert: &vmv1.VLInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 				},
 			},
 			VLStorage: &vmv1.VLStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 				},
 			},
 		},
@@ -117,13 +126,19 @@ func beforeEach(o opts) *testData {
 			},
 		},
 	}
+	// mirror the defaulting reconcile always applies before GetRemoteWriteURL is used
+	scheme := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{}).Scheme()
+	build.AddDefaults(scheme)
+
 	var predefinedObjects []runtime.Object
 	var vlclusters []*vmv1.VLCluster
 	owner := cr.AsOwner()
 	for i := range cr.Spec.Zones {
 		name := fmt.Sprintf("vlcluster-%d", i+1)
 		vlCluster := newVLCluster(name, namespace, "v1.51.0", owner)
+		scheme.Default(vlCluster)
 		vlAgent := newVLAgent(name, namespace, owner)
+		scheme.Default(vlAgent)
 		zs.backends = append(zs.backends, vlBackend{obj: vlCluster})
 		zs.vlagents = append(zs.vlagents, vlAgent)
 		vlclusters = append(vlclusters, vlCluster)

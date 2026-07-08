@@ -14,7 +14,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
@@ -30,14 +29,15 @@ import (
 
 const (
 	// vmAlertRulesOutDir is where the config-reloader writes decompressed rule files.
-	vmAlertRulesOutDir      = "/etc/vmalert/rules-out"
-	vmAlertConfigDir        = "/etc/vmalert/config"
-	datasourceKey           = "datasource"
-	remoteReadKey           = "remoteRead"
-	remoteWriteKey          = "remoteWrite"
-	notifierConfigMountPath = `/etc/vm/notifier_config`
-	vmalertConfigSecretsDir = "/etc/vmalert/remote_secrets"
-	tlsAssetsDir            = "/etc/vmalert-tls/certs"
+	vmAlertRulesOutDir       = "/etc/vmalert/rules-out"
+	vmAlertConfigDir         = "/etc/vmalert/config"
+	datasourceKey            = "datasource"
+	remoteReadKey            = "remoteRead"
+	remoteWriteKey           = "remoteWrite"
+	notifierConfigMountPath  = `/etc/vm/notifier_config`
+	vmalertConfigSecretsDir  = "/etc/vmalert/remote_secrets"
+	tlsAssetsDir             = "/etc/vmalert-tls/certs"
+	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
 
 func buildScrape(cr *vmv1beta1.VMAlert, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
@@ -55,11 +55,15 @@ func buildScrape(cr *vmv1beta1.VMAlert, svc *corev1.Service) *vmv1beta1.VMServic
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
+		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 
-	svc := build.Service(cr, cr.Spec.Port, nil)
+	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
+	})
 	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
@@ -304,7 +308,8 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 		ReadOnly:  true,
 	})
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	volumes, volumeMounts = build.AddHTTPListenerTLSToVolumes(volumes, volumeMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.HTTPListeners)
 
 	// sort for consistency
 	sort.Strings(args)
@@ -577,7 +582,6 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	}
 
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -590,6 +594,7 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	}
 
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 
 	sort.Strings(args)

@@ -83,8 +83,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Port: "8427",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Port: "8427",
+					},
 				},
 				HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
 					ParentRefs: []gwapiv1.ParentReference{
@@ -136,14 +138,18 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Port: "8427",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Port: "8427",
+					},
 				},
 			},
 			Status: vmv1beta1.VMAuthStatus{
 				LastAppliedSpec: &vmv1beta1.VMAuthSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						Port: "8427",
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Port: "8427",
+						},
 					},
 					HTTPRoute: &vmv1beta1.EmbeddedHTTPRoute{
 						ParentRefs: []gwapiv1.ParentReference{
@@ -517,8 +523,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Port: "8427",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Port: "8427",
+					},
 				},
 				Ingress: &vmv1beta1.EmbeddedIngress{
 					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
@@ -626,13 +634,15 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				UseDefaultResources: ptr.To(false),
-				Image: vmv1beta1.Image{
-					Repository: "vm-repo",
-					Tag:        "v1.97.1",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
 				},
-				Port: "8429",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
@@ -744,13 +754,15 @@ serviceaccountname: vmauth-auth
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				UseDefaultResources: ptr.To(false),
-				Image: vmv1beta1.Image{
-					Repository: "vm-repo",
-					Tag:        "v1.97.1",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
 				},
-				Port: "8429",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				ConfigReloaderImage: "victoriametrics/operator:config-reloader-v0.68.3",
@@ -862,15 +874,17 @@ serviceaccountname: vmauth-auth
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth-tls", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				UseDefaultResources: ptr.To(false),
-				Image: vmv1beta1.Image{
-					Repository: "vm-repo",
-					Tag:        "v1.97.1",
-				},
-				Port: "8429",
-				ExtraArgs: map[string]string{
-					"tls": "true",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
+					ExtraArgs: map[string]string{
+						"tls": "true",
+					},
 				},
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
@@ -989,13 +1003,15 @@ func TestBuildIngressForAuthOk(t *testing.T) {
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				UseDefaultResources: ptr.To(false),
-				Image: vmv1beta1.Image{
-					Repository: "vm-repo",
-					Tag:        "v1.97.1",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
 				},
-				Port: "8429",
 			},
 			Ingress: &vmv1beta1.EmbeddedIngress{
 				Host: "example.com",
@@ -1020,13 +1036,15 @@ rules:
 	f(&vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				UseDefaultResources: ptr.To(false),
-				Image: vmv1beta1.Image{
-					Repository: "vm-repo",
-					Tag:        "v1.97.1",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
 				},
-				Port: "8429",
 			},
 			Ingress: &vmv1beta1.EmbeddedIngress{
 				Host: "example.com",

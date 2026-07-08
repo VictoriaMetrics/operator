@@ -80,18 +80,24 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		Spec: vmv1beta1.VMClusterSpec{
 			RetentionPeriod: "1",
 			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 			VMSelect: &vmv1beta1.VMSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 			VMInsert: &vmv1beta1.VMInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -268,8 +274,10 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1beta1.VMClusterSpec{
 			RetentionPeriod: "1",
 			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 			Paused: true,
@@ -326,13 +334,25 @@ func TestCreateOrUpdate_LBDeploymentWithHPA(t *testing.T) {
 				},
 			},
 			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+				},
 			},
 			VMSelect: &vmv1beta1.VMSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+				},
 			},
 			VMInsert: &vmv1beta1.VMInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
+				},
 			},
 		},
 	}

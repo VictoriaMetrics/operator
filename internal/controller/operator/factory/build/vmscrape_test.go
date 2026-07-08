@@ -25,12 +25,12 @@ func (tb *testScrapeObject) GetMetricsPath() string {
 	return vmv1beta1.BuildPathWithPrefixFlag(tb.extraArgs, "/metrics")
 }
 
-func (tb *testScrapeObject) UseTLS() bool {
-	return vmv1beta1.UseTLS(tb.extraArgs)
-}
-
-func (tb *testScrapeObject) GetExtraArgs() map[string]string {
-	return tb.extraArgs
+func (tb *testScrapeObject) Params() *vmv1beta1.StandardAppsParams {
+	return &vmv1beta1.StandardAppsParams{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{
+			ExtraArgs: tb.extraArgs,
+		},
+	}
 }
 
 func (tb *testScrapeObject) GetNamespace() string {

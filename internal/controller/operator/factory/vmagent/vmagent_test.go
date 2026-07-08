@@ -74,8 +74,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 				StatefulMode: true,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
@@ -141,18 +143,20 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					Affinity: &corev1.Affinity{
-						PodAntiAffinity: &corev1.PodAntiAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-								LabelSelector: &metav1.LabelSelector{
-									MatchLabels: map[string]string{
-										"shard-num": "%SHARD_NUM%",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						Affinity: &corev1.Affinity{
+							PodAntiAffinity: &corev1.PodAntiAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+									LabelSelector: &metav1.LabelSelector{
+										MatchLabels: map[string]string{
+											"shard-num": "%SHARD_NUM%",
+										},
 									},
-								},
-								TopologyKey: "kubernetes.io/hostname",
-							}},
+									TopologyKey: "kubernetes.io/hostname",
+								}},
+							},
 						},
 					},
 				},
@@ -446,8 +450,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 				StatefulMode: true,
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -481,15 +487,17 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Volumes: []corev1.Volume{{
-						Name: "persistent-queue-data",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/host/path/cache",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Volumes: []corev1.Volume{{
+							Name: "persistent-queue-data",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/host/path/cache",
+								},
 							},
-						},
-					}},
+						}},
+					},
 				},
 				DaemonSetMode: true,
 			},
@@ -552,8 +560,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](2),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](2),
+					},
 				},
 				ShardCount: ptr.To[int32](3),
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
@@ -622,8 +632,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 				StatefulMode: true,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
@@ -686,8 +698,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				StatefulMode: true,
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -2518,22 +2532,24 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Repository: "vm-repo",
-						Tag:        "v1.97.1",
-					},
-					Resources: corev1.ResourceRequirements{
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "vm-repo",
+							Tag:        "v1.97.1",
 						},
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						Resources: corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
 						},
+						Port: "8425",
 					},
-					Port: "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
@@ -2610,22 +2626,24 @@ serviceaccountname: vmagent-agent`,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Repository: "vm-repo",
-						Tag:        "v1.97.1",
-					},
-					Resources: corev1.ResourceRequirements{
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "vm-repo",
+							Tag:        "v1.97.1",
 						},
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("10m"),
-							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						Resources: corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("10Mi"),
+							},
 						},
+						Port: "8425",
 					},
-					Port: "8425",
 				},
 				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 					{
@@ -2767,12 +2785,14 @@ serviceaccountname: vmagent-agent`,
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(false),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8429",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustomer:v1",
@@ -2912,12 +2932,14 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
@@ -2999,12 +3021,14 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustom:config-reloader-v0.35.0",
@@ -3089,15 +3113,17 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(true),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
-					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8425",
-					ExtraArgs: map[string]string{
-						"remoteWrite.maxDiskUsagePerURL": "35GiB",
-						"remoteWrite.forceVMProto":       "false",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8425",
+						ExtraArgs: map[string]string{
+							"remoteWrite.maxDiskUsagePerURL": "35GiB",
+							"remoteWrite.forceVMProto":       "false",
+						},
 					},
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
@@ -3185,12 +3211,14 @@ serviceaccountname: vmagent-agent
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(false),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8429",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustomer:v1",

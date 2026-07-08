@@ -16,7 +16,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
@@ -45,6 +44,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
 			svc.Spec.ClusterIP = "None"
 			syslogSpec := prevCR.Spec.SyslogSpec
 			build.AddSyslogPortsToService(svc, syslogSpec)
@@ -52,6 +52,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		syslogSpec := cr.Spec.SyslogSpec
 		build.AddSyslogPortsToService(svc, syslogSpec)
@@ -81,7 +82,7 @@ func buildScrape(cr *vmv1.VLAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr, "http")
+	return build.VMPodScrape(cr, cr.Spec.PrimaryPortName())
 }
 
 // CreateOrUpdate creates deployment for vlagent and configures it
@@ -278,7 +279,6 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -397,8 +397,13 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
+	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
+	volumes = append(volumes, cr.Spec.Volumes...)
+
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.HTTPListeners)
 	if cr.Spec.SyslogSpec != nil {
 		args = build.AddSyslogArgsTo(args, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
 		volumes, vmMounts = build.AddSyslogTLSConfigToVolumes(volumes, vmMounts, cr.Spec.SyslogSpec, tlsServerConfigMountPath)
@@ -407,9 +412,6 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
-	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
-	volumes = append(volumes, cr.Spec.Volumes...)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"path"
 	"reflect"
@@ -22,7 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -58,6 +62,37 @@ const (
 	ClusterComponentStorage  ClusterComponent = "storage"
 )
 
+// AvailableStorageNodeIDs returns storage node ids not excluded via maintenance node ids,
+// for the given kind (select or insert). Shared by VMCluster/VLCluster/VTCluster.
+func AvailableStorageNodeIDs(kind ClusterComponent, replicaCount *int32, hpa *EmbeddedHPA, maintenanceSelectNodeIDs, maintenanceInsertNodeIDs []int32) []int32 {
+	var result []int32
+	if replicaCount == nil && hpa == nil {
+		return result
+	}
+	maintenanceNodes := sets.New[int32]()
+	switch kind {
+	case ClusterComponentSelect:
+		maintenanceNodes.Insert(maintenanceSelectNodeIDs...)
+	case ClusterComponentInsert:
+		maintenanceNodes.Insert(maintenanceInsertNodeIDs...)
+	default:
+		panic("BUG unsupported kind: " + string(kind))
+	}
+	var count int32
+	if replicaCount != nil {
+		count = *replicaCount
+	} else if hpa != nil {
+		count = hpa.GetMinReplicas()
+	}
+	for i := int32(0); i < count; i++ {
+		if maintenanceNodes.Has(i) {
+			continue
+		}
+		result = append(result, i)
+	}
+	return result
+}
+
 type MetadataStrategy string
 
 const (
@@ -73,8 +108,12 @@ const (
 	MetadataStrategyMergePromPriority MetadataStrategy = "merge-prometheus-priority"
 )
 
+// MetricsAuthKeyFlag is the ExtraArgs key for a component's own /metrics auth key.
+const MetricsAuthKeyFlag = "metricsAuthKey"
+
 const (
 	httpPathPrefixFlag       = "http.pathPrefix"
+	httpListenAddrFlag       = "httpListenAddr"
 	httpUseProxyProtocolFlag = "httpListenAddr.useProxyProtocol"
 	reloadAuthKeyFlag        = "reloadAuthKey"
 	tlsFlag                  = "tls"
@@ -187,6 +226,76 @@ func ClusterSuffixedName(kind ClusterComponent, name, prefix string, internal bo
 	return fmt.Sprintf("%s-%s%s", name, prefix, string(kind))
 }
 
+// ParentOpts is implemented by cluster CRs (VMCluster, VLCluster, VTCluster) to provide
+// per-component values for their generated child objects, addressed via ClusterComponent.
+// +kubebuilder:object:generate=false
+type ParentOpts interface {
+	client.Object
+	PrefixedInternalName(ClusterComponent) string
+	PrefixedName(ClusterComponent) string
+	SelectorLabels(ClusterComponent) map[string]string
+	GetServiceAccountName() string
+	GetAdditionalService(ClusterComponent) *AdditionalServiceSpec
+	IsOwnsServiceAccount() bool
+	FinalAnnotations() map[string]string
+	FinalLabels(ClusterComponent) map[string]string
+	AsOwner() metav1.OwnerReference
+	// Params returns the StandardAppsParams for kind, or nil when that component isn't configured.
+	Params(kind ClusterComponent) *StandardAppsParams
+}
+
+// ChildBuilder adapts a ParentOpts CR and a ClusterComponent kind to the no-arg shape
+// needed by builders like Service, NetworkPolicy, PodDisruptionBudget, and BuildServiceURL.
+// +kubebuilder:object:generate=false
+type ChildBuilder struct {
+	ParentOpts
+	kind           ClusterComponent
+	finalLabels    map[string]string
+	selectorLabels map[string]string
+}
+
+// PrefixedName implements build.builderOpts interface
+func (b *ChildBuilder) PrefixedName() string {
+	return b.ParentOpts.PrefixedName(b.kind)
+}
+
+// FinalLabels implements build.builderOpts interface
+func (b *ChildBuilder) FinalLabels() map[string]string {
+	return b.finalLabels
+}
+
+// SelectorLabels implements build.builderOpts interface
+func (b *ChildBuilder) SelectorLabels() map[string]string {
+	return b.selectorLabels
+}
+
+// GetAdditionalService implements build.builderOpts interface
+func (b *ChildBuilder) GetAdditionalService() *AdditionalServiceSpec {
+	return b.ParentOpts.GetAdditionalService(b.kind)
+}
+
+func (b *ChildBuilder) SetFinalLabels(ls map[string]string) {
+	b.finalLabels = ls
+}
+
+func (b *ChildBuilder) SetSelectorLabels(ls map[string]string) {
+	b.selectorLabels = ls
+}
+
+// Params implements urlBuilder interface
+func (b *ChildBuilder) Params() *StandardAppsParams {
+	return b.ParentOpts.Params(b.kind)
+}
+
+func NewChildBuilder(cr ParentOpts, kind ClusterComponent) *ChildBuilder {
+	return &ChildBuilder{
+		ParentOpts:     cr,
+		kind:           kind,
+		finalLabels:    cr.FinalLabels(kind),
+		selectorLabels: cr.SelectorLabels(kind),
+	}
+}
+
 func getFirstValue(args map[string]string, name string) string {
 	if v, ok := args[name]; ok {
 		if idx := strings.Index(v, ","); idx != -1 {
@@ -195,11 +304,6 @@ func getFirstValue(args map[string]string, name string) string {
 		return strings.ToLower(strings.TrimSpace(v))
 	}
 	return ""
-}
-
-// UseProxyProtocol is a helper for build.probeCRD interface implementations
-func UseProxyProtocol(extraArgs map[string]string) bool {
-	return getFirstValue(extraArgs, httpUseProxyProtocolFlag) == "true"
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
@@ -424,34 +528,91 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	return defaultName + "-additional-service"
 }
 
-// ResolveServiceURL returns the service name and port for building a CR's URL.
-// When isExtra is true it targets the additional service (spec.serviceSpec).
-// portName is the named port to look up in the service spec (typically "http").
-func ResolveServiceURL(prefixedName, defaultPort, portName string, svcSpec *AdditionalServiceSpec, isExtra bool) (svcName, port string) {
-	port = defaultPort
-	svcName = prefixedName
-	if isExtra {
+// urlBuilder supplies everything BuildServiceURL needs to build a CR's service URL.
+type urlBuilder interface {
+	Params() *StandardAppsParams
+	PrefixedName() string
+	GetNamespace() string
+	GetAdditionalService() *AdditionalServiceSpec
+}
+
+// BuildServiceURL resolves the service name and port for b.PrefixedName() - targeting the
+// additional service (spec.serviceSpec) when nsn.UseExtraService is true - and builds a
+// "scheme://svcName.namespace.svc:port" URL for it. Returns an error when the extra service
+// defines explicit ports but none match the resolved port name.
+func BuildServiceURL(b urlBuilder, nsn NamespacedName) (string, error) {
+	params := b.Params()
+	svcSpec := b.GetAdditionalService()
+	prefixedName := b.PrefixedName()
+
+	l := params.GetListener(nsn.ListenerName)
+	if nsn.ListenerName != "" && l == nil {
+		return "", fmt.Errorf("listenerName=%q not found in httpListeners", nsn.ListenerName)
+	}
+
+	portName := nsn.ListenerName
+	if portName == "" {
+		if l != nil {
+			portName = l.Name
+		} else {
+			portName = params.DefaultPortName()
+		}
+	}
+	port := params.DefaultPort()
+	if l != nil {
+		if rawPort := l.AddrPort(); rawPort != "" {
+			port = rawPort
+		}
+	}
+	tls := UseTLS(params.ExtraArgs)
+	if l != nil && l.TLS != nil {
+		tls = *l.TLS
+	}
+	scheme := "http"
+	if tls {
+		scheme = "https"
+	}
+
+	svcName := prefixedName
+	if nsn.UseExtraService {
 		svcName = svcSpec.NameOrDefault(prefixedName)
 	}
-	if svcSpec != nil && (isExtra || svcSpec.UseAsDefault) {
+	trustResolvedPort := nsn.UseExtraService || (svcSpec != nil && svcSpec.UseAsDefault)
+	if trustResolvedPort && svcSpec != nil {
+		var found bool
 		for _, svcPort := range svcSpec.Spec.Ports {
 			if svcPort.Name == portName {
 				port = fmt.Sprintf("%d", svcPort.Port)
+				found = true
 				break
 			}
 		}
+		if !found && len(svcSpec.Spec.Ports) == 1 {
+			port = fmt.Sprintf("%d", svcSpec.Spec.Ports[0].Port)
+			found = true
+		}
+		if !found && nsn.UseExtraService && len(svcSpec.Spec.Ports) > 0 {
+			return "", fmt.Errorf("service %q does not expose a port named %q", svcName, portName)
+		}
 	}
-	return svcName, port
+	return fmt.Sprintf("%s://%s.%s.svc:%s", scheme, svcName, b.GetNamespace(), port), nil
 }
 
-// BuildLocalURL builds API path for given args
-func BuildLocalURL(key, host, port, path string, extraArgs map[string]string) string {
-	localURL := &url.URL{
-		Scheme: HTTPProtoFromFlags(extraArgs),
-		Host:   fmt.Sprintf("%s:%s", host, port),
-		Path:   BuildPathWithPrefixFlag(extraArgs, path),
+// BuildLocalURL builds a local API URL using the params' scheme, port, and ExtraArgs.
+// The primary listener's port overrides Port when HTTPListeners are configured.
+func (p *StandardAppsParams) BuildLocalURL(key, host, path string) string {
+	port := p.Port
+	if l := p.Primary(); l != nil {
+		if lport := l.AddrPort(); lport != "" {
+			port = lport
+		}
 	}
-	if authKey, ok := extraArgs[key]; ok {
+	localURL := &url.URL{
+		Scheme: p.Proto(),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   BuildPathWithPrefixFlag(p.ExtraArgs, path),
+	}
+	if authKey, ok := p.ExtraArgs[key]; ok {
 		q := url.Values{}
 		q.Add("authKey", authKey)
 		localURL.RawQuery = q.Encode()
@@ -464,6 +625,37 @@ func UseTLS(extraArgs map[string]string) bool {
 	return getFirstValue(extraArgs, tlsFlag) == "true"
 }
 
+// UseProxyProtocol returns true if PROXY protocol is enabled
+func UseProxyProtocol(extraArgs map[string]string) bool {
+	return getFirstValue(extraArgs, httpUseProxyProtocolFlag) == "true"
+}
+
+// FirstHTTPListenAddrOverride returns the first comma-separated -httpListenAddr value
+// from extraArgs, and whether the flag was set at all.
+func FirstHTTPListenAddrOverride(extraArgs map[string]string) (string, bool) {
+	addr, ok := extraArgs[httpListenAddrFlag]
+	if !ok {
+		return "", false
+	}
+	if idx := strings.Index(addr, ","); idx != -1 {
+		addr = addr[:idx]
+	}
+	return strings.TrimSpace(addr), true
+}
+
+// Scheme returns "https" if TLS is enabled per extraArgs, "http" otherwise.
+func Scheme(extraArgs map[string]string) string {
+	if UseTLS(extraArgs) {
+		return "https"
+	}
+	return "http"
+}
+
+// ProbeSchemeFromTLS returns the upper-cased Scheme, as required by corev1.URIScheme.
+func ProbeSchemeFromTLS(extraArgs map[string]string) string {
+	return strings.ToUpper(Scheme(extraArgs))
+}
+
 // BuildPathWithPrefixFlag returns provided path with possible prefix from flags
 func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[httpPathPrefixFlag]; ok {
@@ -472,12 +664,103 @@ func BuildPathWithPrefixFlag(flags map[string]string, defaultPath string) string
 	return defaultPath
 }
 
-// HTTPProtoFromFlags returns HTTP protocol prefix from provided flags
-func HTTPProtoFromFlags(flags map[string]string) string {
-	if UseTLS(flags) {
+// AddrPort returns the port portion of the listener Addr (e.g. "8428" for ":8428").
+func (l *HTTPListener) AddrPort() string {
+	_, port, _ := net.SplitHostPort(l.Addr)
+	return port
+}
+
+// Proto returns "https" if TLS is explicitly enabled on this listener, "http" otherwise.
+// Unlike StandardAppsParams.Proto it does not fall back to ExtraArgs.
+func (l *HTTPListener) Proto() string {
+	if l.TLS != nil && *l.TLS {
 		return "https"
 	}
 	return "http"
+}
+
+// Validate checks the HTTPListener for well-formed configuration.
+func (l *HTTPListener) Validate() error {
+	_, portStr, err := net.SplitHostPort(l.Addr)
+	if err != nil {
+		return fmt.Errorf("addr=%q must be a valid host:port address: %w", l.Addr, err)
+	}
+	if port, err := strconv.Atoi(portStr); err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("addr=%q: port must be a number between 1 and 65535", l.Addr)
+	}
+	if l.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if errs := validation.IsValidPortName(l.Name); len(errs) > 0 {
+		return fmt.Errorf("name=%q is not a valid port name: %s", l.Name, strings.Join(errs, "; "))
+	}
+	if l.TLSCertFile != "" && l.TLSCertSecret != nil {
+		return fmt.Errorf("tlsCertFile and tlsCertSecret are mutually exclusive")
+	}
+	if l.TLSKeyFile != "" && l.TLSKeySecret != nil {
+		return fmt.Errorf("tlsKeyFile and tlsKeySecret are mutually exclusive")
+	}
+	if l.MTLSCAFile != "" && l.MTLSCASecret != nil {
+		return fmt.Errorf("mtlsCAFile and mtlsCASecret are mutually exclusive")
+	}
+	return nil
+}
+
+// Validate checks StandardAppsParams for semantic errors, including HTTPListeners.
+func (p *StandardAppsParams) Validate() error {
+	if err := p.CommonAppsParams.Validate(); err != nil {
+		return err
+	}
+	if addr, ok := p.ExtraArgs[httpListenAddrFlag]; ok && strings.Contains(addr, ",") {
+		return fmt.Errorf("extraArgs[%q]=%q binds multiple addresses; configure httpListeners instead so each gets its own Service port", httpListenAddrFlag, addr)
+	}
+	if len(p.HTTPListeners) > 0 {
+		if addr, ok := FirstHTTPListenAddrOverride(p.ExtraArgs); ok {
+			synthesized := len(p.HTTPListeners) == 1 && p.HTTPListeners[0].Name == "http" && p.HTTPListeners[0].Addr == addr
+			if !synthesized {
+				return fmt.Errorf("httpListeners and extraArgs[%q] are mutually exclusive", httpListenAddrFlag)
+			}
+		}
+		if _, ok := p.ExtraArgs[httpUseProxyProtocolFlag]; ok {
+			for i := range p.HTTPListeners {
+				if p.HTTPListeners[i].UseProxyProtocol != nil {
+					return fmt.Errorf("httpListeners[%d].useProxyProtocol and extraArgs[%q] are mutually exclusive", i, httpUseProxyProtocolFlag)
+				}
+			}
+		}
+		if _, ok := p.ExtraArgs[tlsFlag]; ok {
+			for i := range p.HTTPListeners {
+				if p.HTTPListeners[i].TLS != nil {
+					return fmt.Errorf("httpListeners[%d].tls and extraArgs[%q] are mutually exclusive", i, tlsFlag)
+				}
+			}
+		}
+	}
+	return p.ValidateHTTPListeners()
+}
+
+// ValidateHTTPListeners validates each configured HTTPListener, rejects duplicate names,
+// and rejects more than one listener marked Primary.
+func (p *StandardAppsParams) ValidateHTTPListeners() error {
+	seen := make(map[string]struct{}, len(p.HTTPListeners))
+	hasPrimary := false
+	for i := range p.HTTPListeners {
+		l := &p.HTTPListeners[i]
+		if err := l.Validate(); err != nil {
+			return fmt.Errorf("httpListeners[%d]: %w", i, err)
+		}
+		if _, ok := seen[l.Name]; ok {
+			return fmt.Errorf("httpListeners[%d]: duplicate name=%q", i, l.Name)
+		}
+		seen[l.Name] = struct{}{}
+		if l.Primary {
+			if hasPrimary {
+				return fmt.Errorf("httpListeners[%d]: found more than one listener marked primary, which is not allowed", i)
+			}
+			hasPrimary = true
+		}
+	}
+	return nil
 }
 
 type EmbeddedPodDisruptionBudgetSpec struct {
@@ -1180,7 +1463,8 @@ func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
 // UnmarshalSpecStrict decodes spec JSON into v and rejects unknown fields.
 // A lenient pass runs first so real parse errors (type mismatches, syntax)
 // are returned before unknown-field errors can hide them.
-func UnmarshalSpecStrict(data []byte, v any) error {
+func UnmarshalSpecStrict[T any](data []byte, v *T) error {
+	*v = *new(T)
 	if err := json.Unmarshal(data, v); err != nil {
 		return err
 	}
@@ -1662,6 +1946,200 @@ func (p *CommonAppsParams) Validate() error {
 		}
 	}
 	return nil
+}
+
+// StandardAppsParams extends CommonAppsParams for standard Go-binary applications
+// that expose one or more HTTP listeners via -httpListenAddr flags.
+type StandardAppsParams struct {
+	CommonAppsParams `json:",inline"`
+	// HTTPListeners configures HTTP listen addresses with optional per-listener
+	// TLS and proxy protocol settings. When set, takes precedence over Port for
+	// service port and argument generation.
+	// +optional
+	HTTPListeners []HTTPListener `json:"httpListeners,omitempty"`
+}
+
+// Proto returns "https" or "http" for the primary listener, falling back to ExtraArgs.
+func (p *StandardAppsParams) Proto() string {
+	if l := p.Primary(); l != nil && l.TLS != nil {
+		if *l.TLS {
+			return "https"
+		}
+		return "http"
+	}
+	if UseTLS(p.ExtraArgs) {
+		return "https"
+	}
+	return "http"
+}
+
+// UseTLS returns true if TLS is enabled
+func (p *StandardAppsParams) UseTLS() bool {
+	return p.Proto() == "https"
+}
+
+// UseProxyProtocol checks the primary listener first, then falls back to ExtraArgs.
+func (p *StandardAppsParams) UseProxyProtocol() bool {
+	if l := p.Primary(); l != nil && l.UseProxyProtocol != nil {
+		return *l.UseProxyProtocol
+	}
+	return getFirstValue(p.ExtraArgs, httpUseProxyProtocolFlag) == "true"
+}
+
+// Primary returns the listener marked Primary, the first listener, or nil when empty.
+func (p *StandardAppsParams) Primary() *HTTPListener {
+	for i := range p.HTTPListeners {
+		if p.HTTPListeners[i].Primary {
+			return &p.HTTPListeners[i]
+		}
+	}
+	if len(p.HTTPListeners) > 0 {
+		return &p.HTTPListeners[0]
+	}
+	return nil
+}
+
+// ByName returns the listener with the given name, or nil if not found.
+// Returns nil immediately when name is empty.
+func (p *StandardAppsParams) ByName(name string) *HTTPListener {
+	if name == "" {
+		return nil
+	}
+	for i := range p.HTTPListeners {
+		if p.HTTPListeners[i].Name == name {
+			return &p.HTTPListeners[i]
+		}
+	}
+	return nil
+}
+
+// DefaultPort implements urlBuilder: the components Port field.
+func (p *StandardAppsParams) DefaultPort() string { return p.Port }
+
+// DefaultPortName implements urlBuilder: a fixed "http" port name.
+func (p *StandardAppsParams) DefaultPortName() string { return "http" }
+
+// DefaultScheme implements urlBuilder, derived from ExtraArgs["tls"].
+func (p *StandardAppsParams) DefaultScheme() string { return Scheme(p.ExtraArgs) }
+
+// GetListener implements urlBuilder: the named listener, the primary listener when name
+// is empty, or nil when there's no match.
+func (p *StandardAppsParams) GetListener(name string) *HTTPListener {
+	if name == "" {
+		return p.Primary()
+	}
+	return p.ByName(name)
+}
+
+// GetListeners returns every configured HTTPListener.
+func (p *StandardAppsParams) GetListeners() []HTTPListener {
+	return p.HTTPListeners
+}
+
+// GetScrapeListener returns the listener to self-scrape p's own /metrics handler on: the
+// first configured listener that doesn't use PROXY protocol (a plain HTTP scrape can't speak
+// it), with TLS resolved against ExtraArgs; or a synthesized listener named defaultPort when
+// none are configured. Returns nil only when listeners are configured but every one of them
+// uses PROXY protocol, meaning nothing is scrapable.
+func (p *StandardAppsParams) GetScrapeListener(defaultPort string) *HTTPListener {
+	useTLS := UseTLS(p.ExtraArgs)
+	if len(p.HTTPListeners) == 0 {
+		return &HTTPListener{Name: defaultPort, TLS: ptr.To(useTLS)}
+	}
+	useProxyProtocol := UseProxyProtocol(p.ExtraArgs)
+	for _, l := range p.HTTPListeners {
+		if ptr.Deref(l.UseProxyProtocol, useProxyProtocol) {
+			continue
+		}
+		l.TLS = ptr.To(ptr.Deref(l.TLS, useTLS))
+		return &l
+	}
+	return nil
+}
+
+// PrimaryPort returns the primary listener's port, else legacyPort.
+func (p *StandardAppsParams) PrimaryPort(legacyPort string) string {
+	if l := p.Primary(); l != nil {
+		if port := l.AddrPort(); port != "" {
+			return port
+		}
+	}
+	return legacyPort
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener, defaulting to "http".
+func (p *StandardAppsParams) PrimaryPortName() string {
+	if l := p.Primary(); l != nil {
+		return l.Name
+	}
+	return "http"
+}
+
+// PortNameFor returns listenerName when set, otherwise the primary listener's Service port name.
+func (p *StandardAppsParams) PortNameFor(listenerName string) string {
+	if listenerName != "" {
+		return listenerName
+	}
+	return p.PrimaryPortName()
+}
+
+// HTTPListener defines configuration for an HTTP listen address
+// +k8s:openapi-gen=true
+type HTTPListener struct {
+	// Name is the listener name, used for Kubernetes Service port naming.
+	Name string `json:"name"`
+	// Addr is the TCP address to listen for incoming HTTP requests, e.g. :8428
+	Addr string `json:"addr"`
+	// Primary marks this listener as the probe target when multiple listeners
+	// are configured. If no listener is marked primary, the first listener is used.
+	// +optional
+	Primary bool `json:"primary,omitempty"`
+	// TLS enables TLS for the listener
+	// +optional
+	TLS *bool `json:"tls,omitempty"`
+	// TLSCertFile path to the pre-mounted server TLS certificate file.
+	// Mutually exclusive with TLSCertSecret.
+	// +optional
+	TLSCertFile string `json:"tlsCertFile,omitempty"`
+	// TLSCertSecret reference to a Kubernetes Secret containing the server TLS certificate under the specified key.
+	// Mutually exclusive with TLSCertFile.
+	// +optional
+	TLSCertSecret *corev1.SecretKeySelector `json:"tlsCertSecret,omitempty"`
+	// TLSKeyFile path to the pre-mounted server TLS private key file.
+	// Mutually exclusive with TLSKeySecret.
+	// +optional
+	TLSKeyFile string `json:"tlsKeyFile,omitempty"`
+	// TLSKeySecret reference to a Kubernetes Secret containing the server TLS private key under the specified key.
+	// Mutually exclusive with TLSKeyFile.
+	// +optional
+	TLSKeySecret *corev1.SecretKeySelector `json:"tlsKeySecret,omitempty"`
+	// TLSMinVersion minimum supported TLS version
+	// +optional
+	TLSMinVersion string `json:"tlsMinVersion,omitempty"`
+	// TLSAutocertHosts enables automatic TLS certificate issuance for the listed hosts
+	// +optional
+	TLSAutocertHosts string `json:"tlsAutocertHosts,omitempty"`
+	// TLSAutocertEmail contact email for automatic TLS certificate issuance
+	// +optional
+	TLSAutocertEmail string `json:"tlsAutocertEmail,omitempty"`
+	// TLSAutocertCacheDir directory for caching automatically issued TLS certificates
+	// +optional
+	TLSAutocertCacheDir string `json:"tlsAutocertCacheDir,omitempty"`
+	// MTLS enables mutual TLS authentication
+	// +optional
+	MTLS *bool `json:"mtls,omitempty"`
+	// MTLSCAFile path to the pre-mounted CA certificate file for mTLS.
+	// Mutually exclusive with MTLSCASecret.
+	// +optional
+	MTLSCAFile string `json:"mtlsCAFile,omitempty"`
+	// MTLSCASecret reference to a Kubernetes Secret containing the CA certificate for mTLS under the specified key.
+	// Mutually exclusive with MTLSCAFile.
+	// +optional
+	MTLSCASecret *corev1.SecretKeySelector `json:"mtlsCASecret,omitempty"`
+	// UseProxyProtocol enables proxy protocol for connections accepted at this listener
+	// see https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+	// +optional
+	UseProxyProtocol *bool `json:"useProxyProtocol,omitempty"`
 }
 
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext

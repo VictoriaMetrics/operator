@@ -33,13 +33,14 @@ import (
 )
 
 const (
-	vmAuthConfigMountGz   = "/opt/vmauth-config-gz"
-	vmAuthConfigFolder    = "/opt/vmauth"
-	vmAuthConfigRawFolder = "/opt/vmauth/config"
-	vmAuthConfigName      = "config.yaml"
-	vmAuthConfigNameGz    = "config.yaml.gz"
-	vmAuthVolumeName      = "config"
-	internalPortName      = "internal"
+	vmAuthConfigMountGz      = "/opt/vmauth-config-gz"
+	vmAuthConfigFolder       = "/opt/vmauth"
+	vmAuthConfigRawFolder    = "/opt/vmauth/config"
+	vmAuthConfigName         = "config.yaml"
+	vmAuthConfigNameGz       = "config.yaml.gz"
+	vmAuthVolumeName         = "config"
+	internalPortName         = "internal"
+	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
 )
 
 // CreateOrUpdate - handles VMAuth deployment reconciliation.
@@ -147,14 +148,14 @@ func createOrUpdateHTTPRoute(ctx context.Context, rclient client.Client, cr, pre
 		return nil
 	}
 
-	newHTTPRoute, err := build.HTTPRoute(cr, cr.Spec.Port, cr.Spec.HTTPRoute)
+	newHTTPRoute, err := build.HTTPRoute(cr, cr.Spec.PrimaryPort(cr.Spec.Port), cr.Spec.HTTPRoute)
 	if err != nil {
 		return err
 	}
 
 	var prevHTTPRoute *gwapiv1.HTTPRoute
 	if prevCr != nil && prevCr.Spec.HTTPRoute != nil {
-		prevHTTPRoute, err = build.HTTPRoute(cr, cr.Spec.Port, prevCr.Spec.HTTPRoute)
+		prevHTTPRoute, err = build.HTTPRoute(cr, prevCr.Spec.PrimaryPort(prevCr.Spec.Port), prevCr.Spec.HTTPRoute)
 		if err != nil {
 			return err
 		}
@@ -207,9 +208,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	args = append(args, fmt.Sprintf("-auth.config=%s", configPath))
 
 	cfg := config.MustGetBaseConfig()
-	if cr.Spec.UseProxyProtocol {
-		args = append(args, "-httpListenAddr.useProxyProtocol=true")
-	}
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -220,7 +218,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if len(cr.Spec.InternalListenPort) > 0 {
 		args = append(args, fmt.Sprintf("-httpInternalListenAddr=:%s", cr.Spec.InternalListenPort))
 	}
@@ -232,16 +229,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
-
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-
-	if len(cr.Spec.InternalListenPort) > 0 {
-		ports = append(ports, corev1.ContainerPort{
-			Name:          internalPortName,
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.InternalListenPort).IntVal,
-		})
-	}
 
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -345,6 +332,16 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 	}
 
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, volumeMounts = build.AddHTTPListenerTLSToVolumes(volumes, volumeMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.HTTPListeners)
+	if len(cr.Spec.InternalListenPort) > 0 {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          internalPortName,
+			Protocol:      "TCP",
+			ContainerPort: intstr.Parse(cr.Spec.InternalListenPort).IntVal,
+		})
+	}
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -513,7 +510,7 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	defaultBackend := networkingv1.IngressBackend{
 		Service: &networkingv1.IngressServiceBackend{
 			Name: cr.PrefixedName(),
-			Port: networkingv1.ServiceBackendPort{Name: "http"},
+			Port: networkingv1.ServiceBackendPort{Name: cr.Spec.PrimaryPortName()},
 		},
 	}
 	if len(cr.Spec.Ingress.Paths) == 0 {
@@ -577,6 +574,7 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 
 func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 	return func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 		if len(cr.Spec.InternalListenPort) > 0 {
 			p := intstr.Parse(cr.Spec.InternalListenPort)
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
@@ -613,8 +611,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		return fmt.Errorf("cannot reconcile service for vmauth: %w", err)
 	}
 
-	// it's not possible to scrape metrics from vmauth if proxyProtocol is configured
-	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) && !cr.UseProxyProtocol() {
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		svs := buildScrape(cr, svc)
 		prevSvs := buildScrape(prevCR, prevSvc)
 		if err := reconcile.VMServiceScrape(ctx, rclient, svs, prevSvs, &owner, false); err != nil {
@@ -706,17 +703,36 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 }
 
 func buildScrape(cr *vmv1beta1.VMAuth, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
-	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) || cr.UseProxyProtocol() {
+	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
 	b := build.VMServiceScrape(svc, cr)
 	if len(cr.Spec.InternalListenPort) > 0 {
+		primaryPortName := cr.Spec.PrimaryPortName()
+		var found bool
 		for idx := range b.Spec.Endpoints {
 			ep := &b.Spec.Endpoints[idx]
-			if ep.Port == "http" {
+			if ep.Port == primaryPortName {
 				ep.Port = internalPortName
+				ep.Scheme = ""
+				ep.TLSConfig = nil
+				found = true
 				break
 			}
+		}
+		// the primary listener's own endpoint is absent when it uses proxy protocol (build.VMServiceScrape
+		// excludes it); -httpInternalListenAddr is always plain HTTP, so build its endpoint directly.
+		if !found {
+			ep := vmv1beta1.Endpoint{
+				Port: internalPortName,
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path: cr.GetMetricsPath(),
+				},
+			}
+			if authKey := cr.Spec.ExtraArgs[vmv1beta1.MetricsAuthKeyFlag]; authKey != "" {
+				ep.Params = map[string][]string{"authKey": {authKey}}
+			}
+			b.Spec.Endpoints = append(b.Spec.Endpoints, ep)
 		}
 	}
 	if cr.HasConfigReloader() {

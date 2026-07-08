@@ -353,3 +353,75 @@ func TestVMCluster_PrefixedName(t *testing.T) {
 	f("myapp", true, ClusterComponentInsert, "myapp-vminsert")
 	f("myapp", true, ClusterComponentStorage, "myapp-vmstorage")
 }
+
+func TestVMCluster_GetStorageVolumeName(t *testing.T) {
+	f := func(cr *VMCluster, want string) {
+		t.Helper()
+		assert.Equal(t, want, cr.GetStorageVolumeName())
+	}
+
+	// nil cluster — default name
+	f(nil, "vmstorage-db")
+
+	// no VMStorage — default name
+	f(&VMCluster{}, "vmstorage-db")
+
+	// VMStorage without storage spec — default name
+	f(&VMCluster{Spec: VMClusterSpec{VMStorage: &VMStorage{}}}, "vmstorage-db")
+
+	// VMStorage with storage spec but empty volume name — default name
+	f(&VMCluster{Spec: VMClusterSpec{VMStorage: &VMStorage{Storage: &StorageSpec{}}}}, "vmstorage-db")
+
+	// useLegacyNaming without explicit volume name — legacy name
+	f(&VMCluster{Spec: VMClusterSpec{UseLegacyNaming: true, VMStorage: &VMStorage{}}}, "vmstorage-volume")
+
+	// nil cluster with implicit useLegacyNaming — still safe, default name
+	f((*VMCluster)(nil), "vmstorage-db")
+
+	// explicit volume claim template name wins regardless of useLegacyNaming
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			UseLegacyNaming: true,
+			VMStorage: &VMStorage{
+				Storage: &StorageSpec{
+					VolumeClaimTemplate: EmbeddedPersistentVolumeClaim{
+						EmbeddedObjectMetadata: EmbeddedObjectMetadata{Name: "custom-storage"},
+					},
+				},
+			},
+		},
+	}, "custom-storage")
+}
+
+func TestVMCluster_GetCacheMountVolumeName(t *testing.T) {
+	f := func(cr *VMCluster, want string) {
+		t.Helper()
+		assert.Equal(t, want, cr.GetCacheMountVolumeName())
+	}
+
+	// nil cluster — default name
+	f(nil, "vmselect-cachedir")
+
+	// no VMSelect — default name
+	f(&VMCluster{}, "vmselect-cachedir")
+
+	// VMSelect without storage spec — default name
+	f(&VMCluster{Spec: VMClusterSpec{VMSelect: &VMSelect{}}}, "vmselect-cachedir")
+
+	// useLegacyNaming without explicit volume name — legacy name
+	f(&VMCluster{Spec: VMClusterSpec{UseLegacyNaming: true, VMSelect: &VMSelect{}}}, "cache-volume")
+
+	// explicit volume claim template name wins regardless of useLegacyNaming
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			UseLegacyNaming: true,
+			VMSelect: &VMSelect{
+				StorageSpec: &StorageSpec{
+					VolumeClaimTemplate: EmbeddedPersistentVolumeClaim{
+						EmbeddedObjectMetadata: EmbeddedObjectMetadata{Name: "custom-cache"},
+					},
+				},
+			},
+		},
+	}, "custom-cache")
+}

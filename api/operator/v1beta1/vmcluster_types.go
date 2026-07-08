@@ -689,18 +689,23 @@ type VMRestoreOnStartConfig struct {
 }
 
 // GetStorageVolumeName returns formatted name for vmstorage volume
-func (cr *VMStorage) GetStorageVolumeName() string {
-	if cr.Storage != nil && cr.Storage.VolumeClaimTemplate.Name != "" {
-		return cr.Storage.VolumeClaimTemplate.Name
+func (cr *VMCluster) GetStorageVolumeName() string {
+	if cr != nil && cr.Spec.VMStorage != nil && cr.Spec.VMStorage.Storage != nil && len(cr.Spec.VMStorage.Storage.VolumeClaimTemplate.Name) > 0 {
+		return cr.Spec.VMStorage.Storage.VolumeClaimTemplate.Name
+	}
+	if cr != nil && cr.Spec.UseLegacyNaming {
+		return "vmstorage-volume"
 	}
 	return "vmstorage-db"
 }
 
 // GetCacheMountVolumeName returns formatted name for vmselect volume
-func (cr *VMSelect) GetCacheMountVolumeName() string {
-	storageSpec := cr.StorageSpec
-	if storageSpec != nil && storageSpec.VolumeClaimTemplate.Name != "" {
-		return storageSpec.VolumeClaimTemplate.Name
+func (cr *VMCluster) GetCacheMountVolumeName() string {
+	if cr != nil && cr.Spec.VMSelect != nil && cr.Spec.VMSelect.StorageSpec != nil && len(cr.Spec.VMSelect.StorageSpec.VolumeClaimTemplate.Name) > 0 {
+		return cr.Spec.VMSelect.StorageSpec.VolumeClaimTemplate.Name
+	}
+	if cr != nil && cr.Spec.UseLegacyNaming {
+		return "cache-volume"
 	}
 	return "vmselect-cachedir"
 }

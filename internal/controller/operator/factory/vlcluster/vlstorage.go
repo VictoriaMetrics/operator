@@ -211,7 +211,7 @@ func buildVLStorageSTSSpec(cr *vmv1.VLCluster) (*appsv1.StatefulSet, error) {
 	}
 	build.StatefulSetAddCommonParams(stsSpec, &cr.Spec.VLStorage.CommonAppsParams)
 	storageSpec := cr.Spec.VLStorage.Storage
-	if err := storageSpec.IntoSTSVolume(cr.Spec.VLStorage.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
+	if err := storageSpec.IntoSTSVolume(cr.GetStorageVolumeName(), &stsSpec.Spec); err != nil {
 		return nil, err
 	}
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VLStorage.ClaimTemplates...)
@@ -271,7 +271,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 
 	volumes = append(volumes, cr.Spec.VLStorage.Volumes...)
 	vmMounts = append(vmMounts, corev1.VolumeMount{
-		Name:      cr.Spec.VLStorage.GetStorageVolumeName(),
+		Name:      cr.GetStorageVolumeName(),
 		MountPath: cr.Spec.VLStorage.StorageDataPath,
 	})
 

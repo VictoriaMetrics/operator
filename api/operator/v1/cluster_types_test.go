@@ -164,3 +164,77 @@ func TestVTCluster_PrefixedName(t *testing.T) {
 	f("myapp", true, vmv1beta1.ClusterComponentInsert, "myapp-vtinsert")
 	f("myapp", true, vmv1beta1.ClusterComponentStorage, "myapp-vtstorage")
 }
+
+//nolint:dupl
+func TestVLCluster_GetStorageVolumeName(t *testing.T) {
+	f := func(cr *VLCluster, want string) {
+		t.Helper()
+		assert.Equal(t, want, cr.GetStorageVolumeName())
+	}
+
+	// nil cluster — default name, no panic
+	f(nil, "vlstorage-db")
+
+	// no VLStorage — default name
+	f(&VLCluster{}, "vlstorage-db")
+
+	// VLStorage without storage spec — default name
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{}}}, "vlstorage-db")
+
+	// VLStorage with storage spec but empty volume name — default name
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{Storage: &vmv1beta1.StorageSpec{}}}}, "vlstorage-db")
+
+	// useLegacyNaming without explicit volume name — legacy name
+	f(&VLCluster{Spec: VLClusterSpec{UseLegacyNaming: true, VLStorage: &VLStorage{}}}, "vlstorage-volume")
+
+	// explicit volume claim template name wins regardless of useLegacyNaming
+	f(&VLCluster{
+		Spec: VLClusterSpec{
+			UseLegacyNaming: true,
+			VLStorage: &VLStorage{
+				Storage: &vmv1beta1.StorageSpec{
+					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "custom-storage"},
+					},
+				},
+			},
+		},
+	}, "custom-storage")
+}
+
+//nolint:dupl
+func TestVTCluster_GetStorageVolumeName(t *testing.T) {
+	f := func(cr *VTCluster, want string) {
+		t.Helper()
+		assert.Equal(t, want, cr.GetStorageVolumeName())
+	}
+
+	// nil cluster — default name, no panic
+	f(nil, "vtstorage-db")
+
+	// no Storage — default name
+	f(&VTCluster{}, "vtstorage-db")
+
+	// Storage without storage spec — default name
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{}}}, "vtstorage-db")
+
+	// Storage with storage spec but empty volume name — default name
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{Storage: &vmv1beta1.StorageSpec{}}}}, "vtstorage-db")
+
+	// useLegacyNaming without explicit volume name — legacy name
+	f(&VTCluster{Spec: VTClusterSpec{UseLegacyNaming: true, Storage: &VTStorage{}}}, "vtstorage-volume")
+
+	// explicit volume claim template name wins regardless of useLegacyNaming
+	f(&VTCluster{
+		Spec: VTClusterSpec{
+			UseLegacyNaming: true,
+			Storage: &VTStorage{
+				Storage: &vmv1beta1.StorageSpec{
+					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "custom-storage"},
+					},
+				},
+			},
+		},
+	}, "custom-storage")
+}

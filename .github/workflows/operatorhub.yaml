@@ -6,6 +6,12 @@ on:
       - Release
     types:
       - completed
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to publish to OperatorHub (e.g. v1.148.0)'
+        required: true
+        type: string
 
 permissions: {}
 
@@ -13,7 +19,7 @@ jobs:
   update:
     name: Publish new OperatorHub release
     runs-on:  vm-runner
-    if: ${{ (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) || github.event_name == 'workflow_dispatch' && github.event.workflow_run.release != 'prereleased' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) }}
     strategy:
       matrix:
         repo:
@@ -55,7 +61,7 @@ jobs:
           mkdir -p bundle
           tar -xzf olm-bundle.tar.gz -C bundle
         env:
-          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.workflow_run.head_branch }}
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Set channel

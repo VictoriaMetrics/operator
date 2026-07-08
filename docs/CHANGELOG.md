@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
+**Release date:** 08 July 2026
+
 * BUGFIX: [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): removed strategic-merge list semantics from rules as it breaks many rules, where it's a common practice to use a same rule name with different thresholds and severities.
 
 ## [v0.73.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.0)

@@ -388,9 +388,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VMSelect: &vmv1beta1.VMSelect{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -405,9 +407,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					Select: &vmv1.VTSelect{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -422,9 +426,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VLSelect: &vmv1.VLSelect{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -439,9 +445,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VMInsert: &vmv1beta1.VMInsert{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -456,9 +464,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VMStorage: &vmv1beta1.VMStorage{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -473,9 +483,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					Insert: &vmv1.VTInsert{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -490,9 +502,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					Storage: &vmv1.VTStorage{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -507,9 +521,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VLInsert: &vmv1.VLInsert{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},
@@ -524,9 +540,11 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 					ClusterVersion: o.clusterVersion,
 					VLStorage: &vmv1.VLStorage{
 						ComponentVersion: o.componentVersion,
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							Image: vmv1beta1.Image{
-								Tag: o.imageTag,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								Image: vmv1beta1.Image{
+									Tag: o.imageTag,
+								},
 							},
 						},
 					},

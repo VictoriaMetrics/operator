@@ -20,6 +20,9 @@ func VMServiceScrape(ctx context.Context, rclient client.Client, newObj, prevObj
 	if build.IsControllerDisabled("VMServiceScrape") {
 		return nil
 	}
+	if newObj == nil {
+		return nil
+	}
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {

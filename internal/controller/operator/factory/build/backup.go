@@ -17,36 +17,45 @@ import (
 
 const vmBackuperCreds = "/etc/vm/creds"
 
+// backupCRD is implemented by applications that support a vmbackupmanager sidecar.
+type backupCRD interface {
+	Backup() *vmv1beta1.VMBackup
+	SnapshotCreatePath(host string) string
+	SnapshotDeletePath(host string) string
+}
+
 // VMBackupManager conditionally creates vmbackupmanager container
 func VMBackupManager(
 	ctx context.Context,
-	cr *vmv1beta1.VMBackup,
-	port string,
+	cr backupCRD,
 	storagePath string,
 	mounts []corev1.VolumeMount,
-	extraArgs map[string]string,
 	isCluster bool,
 	license *vmv1beta1.License,
 ) (*corev1.Container, error) {
-	if !cr.AcceptEULA && !license.IsProvided() {
+	vmBackup := cr.Backup()
+	if vmBackup == nil {
+		return nil, nil
+	}
+	if !vmBackup.AcceptEULA && !license.IsProvided() {
 		logger.WithContext(ctx).Info("EULA or license wasn't defined, update your backup settings." +
 			" Follow https://docs.victoriametrics.com/victoriametrics/enterprise for further instructions.")
 		return nil, nil
 	}
-	snapshotCreateURL := cr.SnapshotCreateURL
-	snapshotDeleteURL := cr.SnapshotDeleteURL
+	snapshotCreateURL := vmBackup.SnapshotCreateURL
+	snapshotDeleteURL := vmBackup.SnapshotDeleteURL
 	if snapshotCreateURL == "" {
 		// http://localhost:port/snapshot/create
-		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(config.GetLocalhost(), port, extraArgs)
+		snapshotCreateURL = cr.SnapshotCreatePath(config.GetLocalhost())
 	}
 	if snapshotDeleteURL == "" {
 		// http://localhost:port/snapshot/delete
-		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(config.GetLocalhost(), port, extraArgs)
+		snapshotDeleteURL = cr.SnapshotDeletePath(config.GetLocalhost())
 	}
-	backupDst := cr.Destination
+	backupDst := vmBackup.Destination
 	// add suffix with pod name for cluster backupmanager
 	// it's needed to create consistent backup across cluster nodes
-	if isCluster && !cr.DestinationDisableSuffixAdd {
+	if isCluster && !vmBackup.DestinationDisableSuffixAdd {
 		backupDst = strings.TrimSuffix(backupDst, "/") + "/$(POD_NAME)/"
 	}
 	args := []string{
@@ -55,38 +64,38 @@ func VMBackupManager(
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 	}
-	if cr.AcceptEULA {
+	if vmBackup.AcceptEULA {
 		args = append(args, "-eula")
 	}
-	if cr.LogLevel != nil {
-		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
+	if vmBackup.LogLevel != nil {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", *vmBackup.LogLevel))
 	}
-	if cr.LogFormat != nil {
-		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
+	if vmBackup.LogFormat != nil {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", *vmBackup.LogFormat))
 	}
-	for key, value := range cr.ExtraArgs {
+	for key, value := range vmBackup.ExtraArgs {
 		arg := fmt.Sprintf("-%s", key)
 		if len(value) != 0 {
 			arg = fmt.Sprintf("%s=%s", arg, value)
 		}
 		args = append(args, arg)
 	}
-	if cr.Concurrency != nil {
-		args = append(args, fmt.Sprintf("-concurrency=%d", *cr.Concurrency))
+	if vmBackup.Concurrency != nil {
+		args = append(args, fmt.Sprintf("-concurrency=%d", *vmBackup.Concurrency))
 	}
-	if cr.CustomS3Endpoint != nil {
-		args = append(args, fmt.Sprintf("-customS3Endpoint=%s", *cr.CustomS3Endpoint))
+	if vmBackup.CustomS3Endpoint != nil {
+		args = append(args, fmt.Sprintf("-customS3Endpoint=%s", *vmBackup.CustomS3Endpoint))
 	}
-	if cr.DisableHourly != nil && *cr.DisableHourly {
+	if vmBackup.DisableHourly != nil && *vmBackup.DisableHourly {
 		args = append(args, "-disableHourly")
 	}
-	if cr.DisableDaily != nil && *cr.DisableDaily {
+	if vmBackup.DisableDaily != nil && *vmBackup.DisableDaily {
 		args = append(args, "-disableDaily")
 	}
-	if cr.DisableMonthly != nil && *cr.DisableMonthly {
+	if vmBackup.DisableMonthly != nil && *vmBackup.DisableMonthly {
 		args = append(args, "-disableMonthly")
 	}
-	if cr.DisableWeekly != nil && *cr.DisableWeekly {
+	if vmBackup.DisableWeekly != nil && *vmBackup.DisableWeekly {
 		args = append(args, "-disableWeekly")
 	}
 
@@ -95,22 +104,22 @@ func VMBackupManager(
 	if config.UseOldBackupRestorePortNames() {
 		portName = "http"
 	}
-	ports = append(ports, corev1.ContainerPort{Name: portName, Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
-	mounts = append(mounts, cr.VolumeMounts...)
-	if cr.CredentialsSecret != nil {
+	ports = append(ports, corev1.ContainerPort{Name: portName, Protocol: "TCP", ContainerPort: intstr.Parse(vmBackup.Port).IntVal})
+	mounts = append(mounts, vmBackup.VolumeMounts...)
+	if vmBackup.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
+			Name:      k8stools.SanitizeVolumeName("secret-" + vmBackup.CredentialsSecret.Name),
 			MountPath: vmBackuperCreds,
 			ReadOnly:  true,
 		})
-		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
+		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, vmBackup.CredentialsSecret.Key))
 	}
 
 	_, mounts = LicenseVolumeTo(nil, mounts, license, vmv1beta1.SecretsDir)
 	args = LicenseArgsTo(args, license, vmv1beta1.SecretsDir)
 
-	extraEnvs := cr.ExtraEnvs
-	if len(cr.ExtraEnvs) > 0 || len(cr.ExtraEnvsFrom) > 0 {
+	extraEnvs := vmBackup.ExtraEnvs
+	if len(vmBackup.ExtraEnvs) > 0 || len(vmBackup.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
 	// expose POD_NAME information by default
@@ -126,14 +135,14 @@ func VMBackupManager(
 
 	livenessProbeHandler := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Port),
+			Port:   intstr.Parse(vmBackup.Port),
 			Scheme: "HTTP",
 			Path:   "/health",
 		},
 	}
 	readinessProbeHandler := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Port),
+			Port:   intstr.Parse(vmBackup.Port),
 			Scheme: "HTTP",
 			Path:   "/health",
 		},
@@ -157,14 +166,14 @@ func VMBackupManager(
 	sort.Strings(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
-		Image:                    cr.Image.Reference(),
+		Image:                    vmBackup.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,
 		VolumeMounts:             mounts,
 		LivenessProbe:            livenessProbe,
 		ReadinessProbe:           readinessProbe,
-		Resources:                cr.Resources,
+		Resources:                vmBackup.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmBackuper, nil

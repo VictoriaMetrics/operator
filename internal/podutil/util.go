@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -26,7 +27,7 @@ type AgentMetrics interface {
 	client.Object
 	PrefixedName() string
 	GetMetricsPath() string
-	ProbeScheme() string
+	Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams
 }
 
 // GetMetricsAddrs discovers the agent's active endpoints from EndpointSlices and
@@ -43,12 +44,18 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 	if len(esl.Items) == 0 {
 		return nil
 	}
+	params := agent.Params(vmv1beta1.ScrapeParamsKind)
+	scheme := strings.ToLower(params.ProbeScheme())
+	portName := "http"
+	if l := params.ProbeListener(); l != nil {
+		portName = params.PortNameFor(l.Name)
+	}
 	addrs := sets.New[string]()
 	for i := range esl.Items {
 		es := &esl.Items[i]
 		var port int32
 		for _, p := range es.Ports {
-			if p.Name != nil && *p.Name == "http" && p.Port != nil {
+			if p.Name != nil && *p.Name == portName && p.Port != nil {
 				port = *p.Port
 			}
 		}
@@ -69,7 +76,7 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 				}
 				u := &url.URL{
 					Host:   host,
-					Scheme: strings.ToLower(agent.ProbeScheme()),
+					Scheme: scheme,
 					Path:   agent.GetMetricsPath(),
 				}
 				addrs.Insert(u.String())

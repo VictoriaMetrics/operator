@@ -225,15 +225,19 @@ func TestDeepMerge(t *testing.T) {
 			ServiceAccountName: "base",
 			RetentionPeriod:    "30d",
 			VMSelect: &vmv1beta1.VMSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					ExtraArgs:    map[string]string{"keep": "x", "override": "old"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						ExtraArgs:    map[string]string{"keep": "x", "override": "old"},
+					},
 				},
 			},
 			VMInsert: &vmv1beta1.VMInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					ExtraArgs:    map[string]string{"insert-arg": "1"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						ExtraArgs:    map[string]string{"insert-arg": "1"},
+					},
 				},
 			},
 		}
@@ -248,9 +252,11 @@ func TestDeepMerge(t *testing.T) {
 		override: &vmv1beta1.VMClusterSpec{
 			ClusterVersion: "v1.2.3",
 			VMSelect: &vmv1beta1.VMSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(3)),
-					ExtraArgs:    map[string]string{"override": "new", "add": "y"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(3)),
+						ExtraArgs:    map[string]string{"override": "new", "add": "y"},
+					},
 				},
 			},
 			ServiceAccountName: "zone-sa",

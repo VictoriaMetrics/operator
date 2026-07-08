@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/), [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/), [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtagent](https://docs.victoriametrics.com/operator/resources/vtagent/), [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): add `spec.httpListeners` field (array of `HTTPListener`) to configure one or more HTTP listen addresses per component, each with independent TLS, mTLS and proxy-protocol settings. When no listeners are specified the operator synthesizes a default listener from `spec.port`, preserving backward compatibility. The `spec.useProxyProtocol` field on `VMAuth` is deprecated in favour of `spec.httpListeners[].useProxyProtocol`. See [#2346](https://github.com/VictoriaMetrics/operator/issues/2346).
+
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)
 **Release date:** 28 October 2026
 

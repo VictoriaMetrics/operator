@@ -28,6 +28,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+const tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
+
 // CreateOrUpdate reconciled cluster object with order
 // first we check status of vmStorage and waiting for its readiness
 // then vmSelect and wait for it readiness as well
@@ -63,11 +65,11 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client
 	}
 	owner := cr.AsOwner()
 	if cr.IsOwnsServiceAccount() {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		sa := build.ServiceAccount(b)
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
 			prevSA = build.ServiceAccount(b)
 		}
 		if err := reconcile.ServiceAccount(ctx, rclient, sa, prevSA, &owner); err != nil {
@@ -198,11 +200,9 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 }
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
-	// vmselect nodes address each other by per-pod DNS records,
-	// so the default Service is allowed to be replaced by a non-headless one.
-	// see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
-	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	svc := build.Service(b, cr.Spec.VMSelect.PrimaryPort(cr.Spec.VMSelect.Port), func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.VMSelect.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 		if cr.Spec.VMSelect.ClusterNativePort != "" {
@@ -230,6 +230,9 @@ func buildVMSelectScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta
 		return nil
 	}
 	svs := build.VMServiceScrape(svc, cr.Spec.VMSelect)
+	if svs == nil {
+		return nil
+	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
 	}
@@ -266,10 +269,10 @@ func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, c
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		var prevPort string
 		if prevCR != nil && prevCR.Spec.VMSelect != nil {
-			prevPort = prevCR.Spec.VMSelect.Port
+			prevPort = prevCR.Spec.VMSelect.PrimaryPort(prevCR.Spec.VMSelect.Port)
 		}
 		kind := vmv1beta1.ClusterComponentSelect
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VMSelect.Port, prevPort); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VMSelect.PrimaryPort(cr.Spec.VMSelect.Port), prevPort); err != nil {
 			return fmt.Errorf("cannot create lb svc for vmselect: %w", err)
 		}
 	}
@@ -288,6 +291,9 @@ func buildVMAuthScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta1.
 		return nil
 	}
 	svs := build.VMServiceScrape(svc, &cr.Spec.RequestsLoadBalancer.Spec)
+	if svs == nil {
+		return nil
+	}
 	if svs.Spec.Selector.MatchLabels == nil {
 		svs.Spec.Selector.MatchLabels = make(map[string]string)
 	}
@@ -297,8 +303,8 @@ func buildVMAuthScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta1.
 
 // createOrUpdateLBProxyService builds vminsert and vmselect external services to expose vmcluster components for access by vmauth
 func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster, kind vmv1beta1.ClusterComponent, port, prevPort string) error {
-	builder := func(r *vmv1beta1.VMCluster) *build.ChildBuilder {
-		b := build.NewChildBuilder(r, kind)
+	builder := func(r *vmv1beta1.VMCluster) *vmv1beta1.ChildBuilder {
+		b := vmv1beta1.NewChildBuilder(r, kind)
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))
@@ -351,8 +357,9 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 }
 
 func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
-	svc := build.Service(b, cr.Spec.VMInsert.Port, func(svc *corev1.Service) {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	svc := build.Service(b, cr.Spec.VMInsert.PrimaryPort(cr.Spec.VMInsert.Port), func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.VMInsert.HTTPListeners)
 		build.AppendInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
 		if cr.Spec.VMInsert.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports,
@@ -378,6 +385,9 @@ func buildVMInsertScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta
 		return nil
 	}
 	svs := build.VMServiceScrape(svc, cr.Spec.VMInsert)
+	if svs == nil {
+		return nil
+	}
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		svs.Spec.JobLabel = vmv1beta1.VMAuthLBServiceProxyJobNameLabel
 	}
@@ -417,10 +427,10 @@ func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, c
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		var prevPort string
 		if prevCR != nil && prevCR.Spec.VMInsert != nil {
-			prevPort = prevCR.Spec.VMInsert.Port
+			prevPort = prevCR.Spec.VMInsert.PrimaryPort(prevCR.Spec.VMInsert.Port)
 		}
 		kind := vmv1beta1.ClusterComponentInsert
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VMInsert.Port, prevPort); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VMInsert.PrimaryPort(cr.Spec.VMInsert.Port), prevPort); err != nil {
 			return fmt.Errorf("cannot create lb svc for vminsert: %w", err)
 		}
 	}
@@ -465,8 +475,9 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 }
 
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	return build.Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	return build.Service(b, cr.Spec.VMStorage.PrimaryPort(cr.Spec.VMStorage.Port), func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.VMStorage.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
@@ -499,7 +510,11 @@ func buildVMStorageScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1bet
 	if cr == nil || svc == nil || cr.Spec.VMStorage == nil || ptr.Deref(cr.Spec.VMStorage.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMServiceScrape(svc, cr.Spec.VMStorage, "vmbackupmanager")
+	var sidecars []build.ScrapeBuilder
+	if cr.Spec.VMStorage.VMBackup != nil {
+		sidecars = append(sidecars, cr.Spec.VMStorage.VMBackup)
+	}
+	return build.VMServiceScrape(svc, cr.Spec.VMStorage, sidecars...)
 }
 
 func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
@@ -578,9 +593,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster) (*appsv1.StatefulSet, error) {
 func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
 	commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
 	cfg := config.MustGetBaseConfig()
-	args := []string{
-		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMSelect.Port),
-	}
+	var args []string
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -656,8 +669,9 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	if cr.Spec.VMSelect.HPA == nil && cr.Spec.VMSelect.ReplicaCount != nil {
 		selectNodeFlag := build.NewFlag("-selectNode", "")
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
+		selectPort := cr.Spec.VMSelect.PrimaryPort(cr.Spec.VMSelect.Port)
 		for idx := int32(0); idx < vmselectCount; idx++ {
-			selectNodeFlag.Add(vmv1beta1.PodDNSAddress(commonName, idx, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName), int(idx))
+			selectNodeFlag.Add(vmv1beta1.PodDNSAddress(commonName, idx, cr.Namespace, selectPort, cr.Spec.ClusterDomainName), int(idx))
 		}
 		args = build.AppendFlagsToArgs(args, int(vmselectCount), selectNodeFlag)
 	}
@@ -669,8 +683,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.VMSelect.ExtraEnvs...)
 
-	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.Port).IntVal})
+	ports := build.AddHTTPListenerPortsTo(nil, cr.Spec.VMSelect.HTTPListeners)
 	if cr.Spec.VMSelect.ClusterNativePort != "" {
 		ports = append(ports, corev1.ContainerPort{Name: "clusternative", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal})
 	}
@@ -726,7 +739,8 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.VMSelect.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.VMSelect.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
@@ -779,11 +793,11 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMSelect.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMSelect.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -791,11 +805,11 @@ func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient c
 }
 
 func createOrUpdateNetworkPolicyForVMSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	np := build.NetworkPolicy(b, cr.Spec.VMSelect.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMSelect.NetworkPolicy)
 	}
 	owner := cr.AsOwner()
@@ -842,9 +856,7 @@ func genVMInsertSpec(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error) {
 
 func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
 	cfg := config.MustGetBaseConfig()
-	args := []string{
-		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMInsert.Port),
-	}
+	var args []string
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -889,13 +901,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	envs = append(envs, cr.Spec.VMInsert.ExtraEnvs...)
 
-	ports := []corev1.ContainerPort{
-		{
-			Name:          "http",
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
-		},
-	}
+	ports := build.AddHTTPListenerPortsTo(nil, cr.Spec.VMInsert.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.VMInsert.InsertPorts)
 	if cr.Spec.VMInsert.ClusterNativePort != "" {
 		ports = append(ports,
@@ -950,7 +956,8 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	}
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.VMInsert.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.VMInsert.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -1002,11 +1009,11 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 }
 
 func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -1014,11 +1021,11 @@ func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient c
 }
 
 func createOrUpdateNetworkPolicyForVMInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	np := build.NetworkPolicy(b, cr.Spec.VMInsert.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMInsert.NetworkPolicy)
 	}
 	owner := cr.AsOwner()
@@ -1070,7 +1077,6 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
-		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMStorage.Port),
 	}
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
@@ -1127,23 +1133,19 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 
 	envs = append(envs, cr.Spec.VMStorage.ExtraEnvs...)
 
-	ports := []corev1.ContainerPort{
-		{
-			Name:          "http",
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
-		},
-		{
+	ports := build.AddHTTPListenerPortsTo(nil, cr.Spec.VMStorage.HTTPListeners)
+	ports = append(ports,
+		corev1.ContainerPort{
 			Name:          "vminsert",
 			Protocol:      "TCP",
 			ContainerPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
 		},
-		{
+		corev1.ContainerPort{
 			Name:          "vmselect",
 			Protocol:      "TCP",
 			ContainerPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
 		},
-	}
+	)
 	volumes := make([]corev1.Volume, 0)
 
 	volumes = append(volumes, cr.Spec.VMStorage.Volumes...)
@@ -1206,7 +1208,8 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
-
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.VMStorage.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.VMStorage.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
@@ -1228,7 +1231,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	var initContainers []corev1.Container
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMStorage.VMBackup, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, commonMounts, cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr, cr.Spec.VMStorage.StorageDataPath, commonMounts, true, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -1284,11 +1287,11 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 }
 
 func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMStorage.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -1296,11 +1299,11 @@ func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient 
 }
 
 func createOrUpdateNetworkPolicyForVMStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	np := build.NetworkPolicy(b, cr.Spec.VMStorage.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.VMStorage.NetworkPolicy)
 	}
 	owner := cr.AsOwner()
@@ -1311,7 +1314,7 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMInsert.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -1320,7 +1323,7 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	newHPA := build.HPA(b, targetRef, cr.Spec.VMInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMInsert.HPA)
 	}
 	owner := cr.AsOwner()
@@ -1331,7 +1334,7 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMSelect.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1340,7 +1343,7 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
 	}
 	owner := cr.AsOwner()
@@ -1352,7 +1355,7 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	if hpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1361,7 +1364,7 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	defaultHPA := build.HPA(b, targetRef, hpa)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMStorage.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMStorage.HPA)
 	}
 	owner := cr.AsOwner()
@@ -1372,7 +1375,7 @@ func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMInsert.VPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -1381,7 +1384,7 @@ func createOrUpdateVMInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	newVPA := build.VPA(b, targetRef, cr.Spec.VMInsert.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMInsert.VPA)
 	}
 	owner := cr.AsOwner()
@@ -1392,7 +1395,7 @@ func createOrUpdateVMSelectVPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VMSelect.VPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1401,7 +1404,7 @@ func createOrUpdateVMSelectVPA(ctx context.Context, rclient client.Client, cr, p
 	newVPA := build.VPA(b, targetRef, cr.Spec.VMSelect.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMSelect.VPA)
 	}
 	owner := cr.AsOwner()
@@ -1413,7 +1416,7 @@ func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	if vpa == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "StatefulSet",
@@ -1422,7 +1425,7 @@ func createOrUpdateVMStorageVPA(ctx context.Context, rclient client.Client, cr, 
 	newVPA := build.VPA(b, targetRef, vpa)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VMStorage.VPA)
 	}
 	owner := cr.AsOwner()
@@ -1550,7 +1553,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		}
 	}
 	if !cr.IsOwnsServiceAccount() {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
 		objsToRemove := []client.Object{&corev1.ServiceAccount{ObjectMeta: objMeta}}
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b); err != nil {
@@ -1580,13 +1583,13 @@ func buildVMAuthLBSecret(cr *vmv1beta1.VMCluster) *corev1.Secret {
 	insertProto := "http"
 	selectProto := "http"
 	if cr.Spec.VMSelect != nil {
-		selectPort = cr.Spec.VMSelect.Port
+		selectPort = cr.Spec.VMSelect.PrimaryPort(cr.Spec.VMSelect.Port)
 		if cr.Spec.VMSelect.UseTLS() {
 			selectProto = "https"
 		}
 	}
 	if cr.Spec.VMInsert != nil {
-		insertPort = cr.Spec.VMInsert.Port
+		insertPort = cr.Spec.VMInsert.PrimaryPort(cr.Spec.VMInsert.Port)
 		if cr.Spec.VMInsert.UseTLS() {
 			insertProto = "https"
 		}
@@ -1730,8 +1733,8 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	builder := func(r *vmv1beta1.VMCluster) *build.ChildBuilder {
-		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
+	builder := func(r *vmv1beta1.VMCluster) *vmv1beta1.ChildBuilder {
+		b := vmv1beta1.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
 		}))
@@ -1812,7 +1815,7 @@ func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.RequestsLoadBalancer.Spec.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -1821,7 +1824,7 @@ func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, p
 	newHPA := build.HPA(b, targetRef, cr.Spec.RequestsLoadBalancer.Spec.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.RequestsLoadBalancer.Spec.HPA)
 	}
 	owner := cr.AsOwner()
@@ -1838,11 +1841,11 @@ func storageNodeSRVAddr(svcName, namespace, port, clusterDomain string) string {
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -1850,11 +1853,11 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 }
 
 func createOrUpdateNetworkPolicyForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	np := build.NetworkPolicy(b, cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
 	var prevNP *networkingv1.NetworkPolicy
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevNP = build.NetworkPolicy(b, prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
 	}
 	owner := cr.AsOwner()

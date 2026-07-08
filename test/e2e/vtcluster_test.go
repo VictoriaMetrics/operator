@@ -60,32 +60,104 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					Spec: vmv1.VTClusterSpec{
 						Storage: &vmv1.VTStorage{
 							RetentionPeriod: "1",
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraArgs: map[string]string{
-									"httpListenAddr.useProxyProtocol": "true",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+									ExtraArgs: map[string]string{
+										"httpListenAddr.useProxyProtocol": "true",
+									},
 								},
 							},
 						},
 						Select: &vmv1.VTSelect{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraArgs: map[string]string{
-									"httpListenAddr.useProxyProtocol": "true",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+									ExtraArgs: map[string]string{
+										"httpListenAddr.useProxyProtocol": "true",
+									},
 								},
 							},
 						},
 						Insert: &vmv1.VTInsert{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraArgs: map[string]string{
-									"httpListenAddr.useProxyProtocol": "true",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+									ExtraArgs: map[string]string{
+										"httpListenAddr.useProxyProtocol": "true",
+									},
 								},
 							},
 						},
 					},
 				},
 				func(cr *vmv1.VTCluster) {},
+			),
+			Entry("with httpListeners on all components", "http-listeners",
+				&vmv1.VTCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1.VTClusterSpec{
+						Storage: &vmv1.VTStorage{
+							RetentionPeriod: "1",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+								HTTPListeners: []vmv1beta1.HTTPListener{
+									{Name: "web", Addr: ":10491", Primary: true},
+								},
+							},
+						},
+						Select: &vmv1.VTSelect{
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+								HTTPListeners: []vmv1beta1.HTTPListener{
+									{Name: "web", Addr: ":10471", Primary: true},
+								},
+							},
+						},
+						Insert: &vmv1.VTInsert{
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+								HTTPListeners: []vmv1beta1.HTTPListener{
+									{Name: "web", Addr: ":10481", Primary: true},
+									{Name: "web2", Addr: ":10482"},
+								},
+							},
+						},
+					},
+				},
+				func(cr *vmv1.VTCluster) {
+					var insertDep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &insertDep)).ToNot(HaveOccurred())
+					checkContainerPort(insertDep.Spec.Template.Spec.Containers[0].Ports, "web", 10481)
+					checkContainerPort(insertDep.Spec.Template.Spec.Containers[0].Ports, "web2", 10482)
+					var insertSvc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &insertSvc)).ToNot(HaveOccurred())
+					checkServicePort(insertSvc.Spec.Ports, "web", 10481)
+					checkServicePort(insertSvc.Spec.Ports, "web2", 10482)
+
+					var selectDep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &selectDep)).ToNot(HaveOccurred())
+					checkContainerPort(selectDep.Spec.Template.Spec.Containers[0].Ports, "web", 10471)
+					var selectSvc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &selectSvc)).ToNot(HaveOccurred())
+					checkServicePort(selectSvc.Spec.Ports, "web", 10471)
+
+					var storageSts appsv1.StatefulSet
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &storageSts)).ToNot(HaveOccurred())
+					checkContainerPort(storageSts.Spec.Template.Spec.Containers[0].Ports, "web", 10491)
+					var storageSvc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &storageSvc)).ToNot(HaveOccurred())
+					checkServicePort(storageSvc.Spec.Ports, "web", 10491)
+				},
 			),
 		)
 
@@ -98,8 +170,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 				Select: &vmv1.VTSelect{},
 				Storage: &vmv1.VTStorage{
 					RetentionPeriod: "1",
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 				},
 			},
@@ -282,8 +356,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					modify: func(cr *vmv1.VTCluster) {
 						By("upscaling vtselect, removing vtinsert", func() {
 							cr.Spec.Select = &vmv1.VTSelect{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(2)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(2)),
+									},
 								},
 							}
 							cr.Spec.Insert = nil
@@ -308,13 +384,17 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					modify: func(cr *vmv1.VTCluster) {
 						By("downscaling all components to 0 replicas", func() {
 							cr.Spec.Select = &vmv1.VTSelect{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(0)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(0)),
+									},
 								},
 							}
 							cr.Spec.Insert = &vmv1.VTInsert{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(0)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(0)),
+									},
 								},
 							}
 							cr.Spec.Storage.ReplicaCount = ptr.To(int32(0))
@@ -353,8 +433,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						Select: &vmv1.VTSelect{},
 						Storage: &vmv1.VTStorage{
 							RetentionPeriod: "1",
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},
@@ -373,19 +455,25 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 					},
 					Spec: vmv1.VTClusterSpec{
 						Insert: &vmv1.VTInsert{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 						Select: &vmv1.VTSelect{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 						Storage: &vmv1.VTStorage{
 							RetentionPeriod: "1",
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},
@@ -418,8 +506,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						Select: &vmv1.VTSelect{},
 						Storage: &vmv1.VTStorage{
 							RetentionPeriod: "1",
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},
@@ -453,8 +543,10 @@ var _ = Describe("test vtcluster Controller", Label("vt", "cluster", "vtcluster"
 						Select: &vmv1.VTSelect{},
 						Storage: &vmv1.VTStorage{
 							RetentionPeriod: "1",
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},

@@ -3,9 +3,9 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"path"
-	"strings"
 
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 )
 
@@ -231,7 +232,7 @@ type VMAlertmanagerSpec struct {
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // GetReloadURL implements reloadable interface
@@ -405,15 +406,25 @@ func (cr *VMAlertmanager) Port() string {
 	return port
 }
 
-// AsURL returns url for accessing alertmanager
-// via corresponding service
-func (cr *VMAlertmanager) AsURL(isExtra bool) string {
-	portName := cr.Spec.PortName
-	if portName == "" {
-		portName = "web"
+// Params implements build.scrapeBuilder and urlBuilder interfaces.
+func (cr *VMAlertmanager) Params(ParamsKind) *StandardAppsParams {
+	extraArgs := cr.Spec.ExtraArgs
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		extraArgs = maps.Clone(extraArgs)
+		if extraArgs == nil {
+			extraArgs = map[string]string{}
+		}
+		extraArgs[tlsFlag] = "true"
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(), cr.Port(), portName, cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), svcName, cr.Namespace, port)
+	return &StandardAppsParams{
+		CommonAppsParams: CommonAppsParams{Port: cr.Port(), ExtraArgs: extraArgs},
+		HTTPListeners:    []HTTPListener{{Name: cr.Spec.PortName, Addr: ":" + cr.Port()}},
+	}
+}
+
+// AsURL returns url for accessing alertmanager via corresponding service
+func (cr *VMAlertmanager) AsURL(nsn NamespacedName) (string, error) {
+	return BuildServiceURL(cr, nsn)
 }
 
 // returns fqdn for direct pod access
@@ -475,13 +486,13 @@ func (cr *VMAlertmanager) ProbePath() string {
 	return path.Clean(webRoutePrefix + "/-/healthy")
 }
 
-func (cr *VMAlertmanager) ProbePort() string {
-	return cr.Spec.PortName
+func (*VMAlertmanager) ProbeNeedLiveness() bool {
+	return true
 }
 
-// ProbeScheme returns scheme for probe
-func (cr *VMAlertmanager) ProbeScheme() string {
-	return strings.ToUpper(cr.accessScheme())
+// ProbePort implements build.probeCRDWithNamedPort interface
+func (cr *VMAlertmanager) ProbePort() intstr.IntOrString {
+	return intstr.FromString(cr.Spec.PortName)
 }
 
 func (cr *VMAlertmanager) accessScheme() string {
@@ -489,10 +500,6 @@ func (cr *VMAlertmanager) accessScheme() string {
 		return "https"
 	}
 	return "http"
-}
-
-func (*VMAlertmanager) ProbeNeedLiveness() bool {
-	return true
 }
 
 // IsUnmanaged checks if alertmanager should managed any alertmanager config objects

@@ -67,8 +67,10 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -104,10 +106,11 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLSingleSpec{
-
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					Port:         "8435",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						Port:         "8435",
+					},
 				},
 			},
 		},
@@ -143,9 +146,11 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VLSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					Port:         "8435",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						Port:         "8435",
+					},
 				},
 				SyslogSpec: &vmv1.SyslogServerSpec{
 					TCPListeners: []*vmv1.SyslogTCPListener{
@@ -308,8 +313,10 @@ func TestCreateOrUpdateVLSingle_Paused(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: vmv1.VLSingleSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				Paused: true,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Paused: true,
+				},
 			},
 		},
 	}

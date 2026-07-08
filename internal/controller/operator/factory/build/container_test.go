@@ -30,20 +30,19 @@ func (t testBuildProbeCR) ProbePath() string {
 	return t.probePath
 }
 
-func (t testBuildProbeCR) ProbeScheme() string {
-	return t.scheme
-}
-
-func (t testBuildProbeCR) ProbePort() string {
-	return t.port
-}
-
 func (t testBuildProbeCR) ProbeNeedLiveness() bool {
 	return t.needAddLiveness
 }
 
-func (t testBuildProbeCR) UseProxyProtocol() bool {
-	return t.useProxyProtocol
+func (t testBuildProbeCR) Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	return &vmv1beta1.StandardAppsParams{
+		HTTPListeners: []vmv1beta1.HTTPListener{{
+			Name:             "http",
+			Addr:             ":" + t.port,
+			TLS:              ptr.To(t.scheme == "HTTPS"),
+			UseProxyProtocol: ptr.To(t.useProxyProtocol),
+		}},
+	}
 }
 
 func Test_buildProbe(t *testing.T) {
@@ -541,6 +540,35 @@ func TestAddOTLPGRPCTLSConfigToVolumes(t *testing.T) {
 	assert.Equal(t, "/etc/vt/tls-server-secrets/tls", mounts[0].MountPath)
 }
 
+func TestAddTLSSecretVolume_SharedAcrossListenerKinds(t *testing.T) {
+	const tlsMountPath = "/etc/tls-secrets"
+	secretRef := &corev1.SecretKeySelector{
+		Key:                  "CERT",
+		LocalObjectReference: corev1.LocalObjectReference{Name: "shared"},
+	}
+
+	var volumes []corev1.Volume
+	var mounts []corev1.VolumeMount
+
+	listeners := []vmv1beta1.HTTPListener{{Name: "https", Addr: ":8443", TLSCertSecret: secretRef}}
+	volumes, mounts = AddHTTPListenerTLSToVolumes(volumes, mounts, listeners, tlsMountPath)
+
+	syslogSpec := &vmv1.SyslogServerSpec{
+		TCPListeners: []*vmv1.SyslogTCPListener{
+			{TLSConfig: &vmv1.TLSServerConfig{CertSecret: secretRef}},
+		},
+	}
+	volumes, mounts = AddSyslogTLSConfigToVolumes(volumes, mounts, syslogSpec, tlsMountPath)
+
+	grpcSpec := &vmv1.OTLPGRPCSpec{TLSConfig: &vmv1.TLSServerConfig{CertSecret: secretRef}}
+	volumes, mounts = AddOTLPGRPCTLSConfigToVolumes(volumes, mounts, grpcSpec, tlsMountPath)
+
+	require.Len(t, volumes, 1)
+	require.Len(t, mounts, 1)
+	assert.Equal(t, "shared", volumes[0].Secret.SecretName)
+	assert.Equal(t, tlsMountPath+"/shared", mounts[0].MountPath)
+}
+
 func TestStorageVolumeMountsTo(t *testing.T) {
 	type opts struct {
 		pvcSrc          *corev1.PersistentVolumeClaimVolumeSource
@@ -840,9 +868,11 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ExtraArgs: map[string]string{
-						"reloadAuthKey": "test",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ExtraArgs: map[string]string{
+							"reloadAuthKey": "test",
+						},
 					},
 				},
 			},
@@ -977,8 +1007,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+					},
 				},
 			},
 		},
@@ -1154,6 +1186,7 @@ func TestProbeRendersDeclaredLiveness(t *testing.T) {
 	}
 
 	single := &vmv1beta1.VMSingle{}
+	single.Spec.HTTPListeners = []vmv1beta1.HTTPListener{{Name: "http", Addr: ":8428"}}
 	single.Spec.LivenessProbe = &corev1.Probe{PeriodSeconds: 11}
 
 	c := run(single, &single.Spec.CommonAppsParams)
@@ -1163,16 +1196,19 @@ func TestProbeRendersDeclaredLiveness(t *testing.T) {
 	assert.NotNil(t, c.ReadinessProbe)
 
 	bare := &vmv1beta1.VMSingle{}
+	bare.Spec.HTTPListeners = []vmv1beta1.HTTPListener{{Name: "http", Addr: ":8428"}}
 	c = run(bare, &bare.Spec.CommonAppsParams)
 	assert.Nil(t, c.LivenessProbe, "no default liveness probe appears when nothing is declared")
 
 	agent := &vmv1beta1.VMAgent{}
+	agent.Spec.HTTPListeners = []vmv1beta1.HTTPListener{{Name: "http", Addr: ":8429"}}
 	agent.Spec.LivenessProbe = &corev1.Probe{PeriodSeconds: 13}
 	c = run(agent, &agent.Spec.CommonAppsParams)
 	assert.NotNil(t, c.LivenessProbe)
 	assert.Equal(t, int32(13), c.LivenessProbe.PeriodSeconds)
 
 	bareAgent := &vmv1beta1.VMAgent{}
+	bareAgent.Spec.HTTPListeners = []vmv1beta1.HTTPListener{{Name: "http", Addr: ":8429"}}
 	c = run(bareAgent, &bareAgent.Spec.CommonAppsParams)
 	assert.NotNil(t, c.LivenessProbe, "default liveness probe still added for types that opt in")
 }

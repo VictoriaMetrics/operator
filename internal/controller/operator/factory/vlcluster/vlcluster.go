@@ -45,11 +45,11 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 	}
 	if cr.IsOwnsServiceAccount() {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		sa := build.ServiceAccount(b)
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
 			prevSA = build.ServiceAccount(b)
 		}
 		owner := cr.AsOwner()
@@ -206,7 +206,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		}
 	}
 	if !cr.IsOwnsServiceAccount() {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
 		objsToRemove := []client.Object{&corev1.ServiceAccount{ObjectMeta: objMeta}}
 		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b); err != nil {

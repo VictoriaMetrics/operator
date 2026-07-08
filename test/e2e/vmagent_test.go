@@ -53,8 +53,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://localhost:8429/api/v1/write"},
 					},
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 				},
 			}
@@ -151,8 +153,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					Name:      nsn.Name,
 				},
 				Spec: vmv1beta1.VMAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://localhost:8428"},
@@ -176,10 +180,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							UseDefaultResources:                 ptr.To(false),
-							ReplicaCount:                        ptr.To[int32](1),
-							DisableAutomountServiceAccountToken: true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								UseDefaultResources:                 ptr.To(false),
+								ReplicaCount:                        ptr.To[int32](1),
+								DisableAutomountServiceAccountToken: true,
+							},
 						},
 						StatefulMode: true,
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -204,8 +210,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428"},
@@ -241,8 +249,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428"},
@@ -323,10 +333,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							UseStrictSecurity:                   ptr.To(true),
-							ReplicaCount:                        ptr.To[int32](1),
-							DisableAutomountServiceAccountToken: true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								UseStrictSecurity:                   ptr.To(true),
+								ReplicaCount:                        ptr.To[int32](1),
+								DisableAutomountServiceAccountToken: true,
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428"},
@@ -391,10 +403,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							ExtraArgs: map[string]string{
-								"httpListenAddr.useProxyProtocol": "true",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
 							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
@@ -410,10 +424,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							ExtraArgs: map[string]string{
-								"httpListenAddr.useProxyProtocol": "true",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
 							},
 						},
 						StatefulMode: true,
@@ -430,10 +446,12 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						Name:      nsn.Name,
 					},
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							ExtraArgs: map[string]string{
-								"httpListenAddr.useProxyProtocol": "true",
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								ExtraArgs: map[string]string{
+									"httpListenAddr.useProxyProtocol": "true",
+								},
 							},
 						},
 						DaemonSetMode: true,
@@ -442,6 +460,38 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						},
 					},
 				}, nil, func(cr *vmv1beta1.VMAgent) {},
+			),
+			Entry("with httpListeners", "http-listeners",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							HTTPListeners: []vmv1beta1.HTTPListener{
+								{Name: "web", Addr: ":8430", Primary: true},
+								{Name: "web2", Addr: ":8431"},
+							},
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://localhost:8428"},
+						},
+					},
+				}, nil, func(cr *vmv1beta1.VMAgent) {
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
+					checkContainerPort(dep.Spec.Template.Spec.Containers[0].Ports, "web", 8430)
+					checkContainerPort(dep.Spec.Template.Spec.Containers[0].Ports, "web2", 8431)
+
+					var svc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &svc)).ToNot(HaveOccurred())
+					checkServicePort(svc.Spec.Ports, "web", 8430)
+					checkServicePort(svc.Spec.Ports, "web2", 8431)
+				},
 			),
 		)
 		type testStep struct {
@@ -478,8 +528,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by scaling replicas to 2", "update-replicas-2",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://some-vm-single:8428"},
@@ -503,9 +555,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by changing revisionHistoryLimit to 3", "update-revision",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount:              ptr.To[int32](1),
-							RevisionHistoryLimitCount: ptr.To[int32](11),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:              ptr.To[int32](1),
+								RevisionHistoryLimitCount: ptr.To[int32](11),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://some-vm-single:8428"},
@@ -532,8 +586,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by switching to statefulMode with shard", "stateful-shard",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://some-vm-single:8428"},
@@ -565,8 +621,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Entry("by transition into statefulMode and back", "stateful-transition",
 				&vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://some-vm-single:8428"},
@@ -592,9 +650,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 			Entry("by deleting and restoring PodDisruptionBudget and serviceScrape", "pdb-mutations-scrape",
 				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						UseDefaultResources: ptr.To(false),
-						ReplicaCount:        ptr.To[int32](2),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							UseDefaultResources: ptr.To(false),
+							ReplicaCount:        ptr.To[int32](2),
+						},
 					},
 					CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 						SelectAllByDefault: true,
@@ -637,8 +697,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			),
 			Entry("by transition into daemonSet and back", "daemonset-transition",
 				&vmv1beta1.VMAgent{Spec: vmv1beta1.VMAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: ptr.To[int32](1),
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
 					},
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://some-vm-single:8428"},
@@ -686,8 +748,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 					RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 						{URL: "http://localhost:8428/api/v1/write"},
 					},
-					CommonAppsParams: vmv1beta1.CommonAppsParams{
-						ReplicaCount: &initialReplicas,
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: &initialReplicas,
+						},
 					},
 				},
 			}
@@ -752,8 +816,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				}
@@ -773,8 +839,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				}
@@ -805,8 +873,10 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 						},
 					},
 				}
@@ -837,9 +907,11 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://localhost:8428/api/v1/write"},
 						},
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](1),
-							Paused:       true,
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](1),
+								Paused:       true,
+							},
 						},
 					},
 				}

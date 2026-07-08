@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -33,7 +32,7 @@ func TestOnClusterDelete(t *testing.T) {
 		},
 	}
 
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 	saMeta := metav1.ObjectMeta{
 		Name:            b.GetServiceAccountName(),
 		Namespace:       b.GetNamespace(),
@@ -46,7 +45,7 @@ func TestOnClusterDelete(t *testing.T) {
 		Namespace:       cr.GetNamespace(),
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Labels:          build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert).SelectorLabels(),
+		Labels:          vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert).SelectorLabels(),
 	}
 
 	cl := k8stools.GetTestClientWithObjects([]runtime.Object{
@@ -117,7 +116,7 @@ func TestOnInsertDelete(t *testing.T) {
 		Namespace:       cr.GetNamespace(),
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Labels:          build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert).SelectorLabels(),
+		Labels:          vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert).SelectorLabels(),
 	}
 	predefined := []runtime.Object{
 		cr.DeepCopy(),
@@ -179,7 +178,7 @@ func TestOnSelectDelete(t *testing.T) {
 		Namespace:       cr.GetNamespace(),
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Labels:          build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect).SelectorLabels(),
+		Labels:          vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect).SelectorLabels(),
 	}
 	predefined := []runtime.Object{
 		cr.DeepCopy(),
@@ -243,7 +242,7 @@ func TestOnStorageDelete(t *testing.T) {
 		Namespace:       cr.GetNamespace(),
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Labels:          build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage).SelectorLabels(),
+		Labels:          vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage).SelectorLabels(),
 	}
 	predefined := []runtime.Object{
 		cr.DeepCopy(),
@@ -306,7 +305,7 @@ func TestOnClusterLoadBalancerDelete(t *testing.T) {
 		Namespace:       cr.GetNamespace(),
 		Finalizers:      []string{vmv1beta1.FinalizerName},
 		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-		Labels:          build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer).SelectorLabels(),
+		Labels:          vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer).SelectorLabels(),
 	}
 
 	predefined := []runtime.Object{

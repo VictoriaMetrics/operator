@@ -330,6 +330,7 @@ func addVMAuthDefaults(objI any) {
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 	addDefaultsToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false))
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, cr.Spec.UseProxyProtocol, &cr.Spec.HTTPListeners)
 }
 
 func addVMAlertDefaults(objI any) {
@@ -348,6 +349,7 @@ func addVMAlertDefaults(objI any) {
 	if cr.Spec.ConfigReloaderImage == "" {
 		panic("cannot be empty")
 	}
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVMAgentDefaults(objI any) {
@@ -365,6 +367,7 @@ func addVMAgentDefaults(objI any) {
 	if cr.Spec.IngestOnlyMode == nil {
 		cr.Spec.IngestOnlyMode = ptr.To(false)
 	}
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVLAgentDefaults(objI any) {
@@ -378,6 +381,7 @@ func addVLAgentDefaults(objI any) {
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVTAgentDefaults(objI any) {
@@ -387,6 +391,7 @@ func addVTAgentDefaults(objI any) {
 	cv := config.ApplicationDefaults(c.VTAgent)
 	cp := commonParams{tag: cr.Spec.ComponentVersion}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVMSingleDefaults(objI any) {
@@ -403,6 +408,7 @@ func addVMSingleDefaults(objI any) {
 	if cr.Spec.IngestOnlyMode == nil {
 		cr.Spec.IngestOnlyMode = ptr.To(true)
 	}
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 	bv := config.ApplicationDefaults(c.VMBackup)
 	useBackupDefaultResources := c.VMBackup.UseDefaultResources
 	if cr.Spec.UseDefaultResources != nil {
@@ -474,6 +480,7 @@ func addVLSingleDefaults(objI any) {
 		license: cr.Spec.License,
 	}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVTSingleDefaults(objI any) {
@@ -483,6 +490,7 @@ func addVTSingleDefaults(objI any) {
 	cv := config.ApplicationDefaults(c.VTSingle)
 	cp := commonParams{tag: cr.Spec.ComponentVersion}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
+	addDefaultHTTPListeners(&cr.Spec.CommonAppsParams, false, &cr.Spec.HTTPListeners)
 }
 
 func addVMAlertmanagerDefaults(objI any) {
@@ -552,6 +560,7 @@ func addVMClusterDefaults(objI any) {
 		cpStorage.tag = setTag(cr.Spec.VMStorage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VMStorage.CommonAppsParams, &cpStorage, &cv)
 		cr.Spec.VMStorage.PreStopSleepSeconds = nil
+		addDefaultHTTPListeners(&cr.Spec.VMStorage.CommonAppsParams, false, &cr.Spec.VMStorage.HTTPListeners)
 
 		bv := config.ApplicationDefaults(c.VMBackup)
 		useBackupDefaultResources := c.VMBackup.UseDefaultResources
@@ -565,6 +574,7 @@ func addVMClusterDefaults(objI any) {
 		cpInsert := cp
 		cpInsert.tag = setTag(cr.Spec.VMInsert.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VMInsert.CommonAppsParams, &cpInsert, &cv)
+		addDefaultHTTPListeners(&cr.Spec.VMInsert.CommonAppsParams, false, &cr.Spec.VMInsert.HTTPListeners)
 	}
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.CacheMountPath == "" {
@@ -574,6 +584,7 @@ func addVMClusterDefaults(objI any) {
 		cpSelect := cp
 		cpSelect.tag = setTag(cr.Spec.VMSelect.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VMSelect.CommonAppsParams, &cpSelect, &cv)
+		addDefaultHTTPListeners(&cr.Spec.VMSelect.CommonAppsParams, false, &cr.Spec.VMSelect.HTTPListeners)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		cpLB := cp
@@ -734,6 +745,7 @@ func addVTClusterDefaults(objI any) {
 		cpStorage.tag = setTag(cr.Spec.Storage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cpStorage, &cv)
 		cr.Spec.Storage.PreStopSleepSeconds = nil
+		addDefaultHTTPListeners(&cr.Spec.Storage.CommonAppsParams, false, &cr.Spec.Storage.HTTPListeners)
 	}
 
 	if cr.Spec.Insert != nil {
@@ -741,6 +753,7 @@ func addVTClusterDefaults(objI any) {
 		cpInsert := cp
 		cpInsert.tag = setTag(cr.Spec.Insert.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.Insert.CommonAppsParams, &cpInsert, &cv)
+		addDefaultHTTPListeners(&cr.Spec.Insert.CommonAppsParams, false, &cr.Spec.Insert.HTTPListeners)
 	}
 
 	if cr.Spec.Select != nil {
@@ -748,6 +761,7 @@ func addVTClusterDefaults(objI any) {
 		cpSelect := cp
 		cpSelect.tag = setTag(cr.Spec.Select.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cpSelect, &cv)
+		addDefaultHTTPListeners(&cr.Spec.Select.CommonAppsParams, false, &cr.Spec.Select.HTTPListeners)
 	}
 
 	if cr.Spec.RequestsLoadBalancer.Enabled {
@@ -779,18 +793,21 @@ func addVLClusterDefaults(objI any) {
 		cpStorage.tag = setTag(cr.Spec.VLStorage.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VLStorage.CommonAppsParams, &cpStorage, &cv)
 		cr.Spec.VLStorage.PreStopSleepSeconds = nil
+		addDefaultHTTPListeners(&cr.Spec.VLStorage.CommonAppsParams, false, &cr.Spec.VLStorage.HTTPListeners)
 	}
 	if cr.Spec.VLInsert != nil {
 		cv := config.ApplicationDefaults(c.VLCluster.Insert)
 		cpInsert := cp
 		cpInsert.tag = setTag(cr.Spec.VLInsert.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VLInsert.CommonAppsParams, &cpInsert, &cv)
+		addDefaultHTTPListeners(&cr.Spec.VLInsert.CommonAppsParams, false, &cr.Spec.VLInsert.HTTPListeners)
 	}
 	if cr.Spec.VLSelect != nil {
 		cv := config.ApplicationDefaults(c.VLCluster.Select)
 		cpSelect := cp
 		cpSelect.tag = setTag(cr.Spec.VLSelect.ComponentVersion, cp.tag)
 		addDefaultsToCommonParams(&cr.Spec.VLSelect.CommonAppsParams, &cpSelect, &cv)
+		addDefaultHTTPListeners(&cr.Spec.VLSelect.CommonAppsParams, false, &cr.Spec.VLSelect.HTTPListeners)
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		cpLB := cp
@@ -828,4 +845,27 @@ func setTag(componentVersion, clusterVersion string) string {
 		return componentVersion
 	}
 	return clusterVersion
+}
+
+// addDefaultHTTPListeners populates a single default HTTPListener when the slice is empty,
+// honoring any legacy httpListenAddr override set via ExtraArgs, and migrates the deprecated UseProxyProtocol flag into the default listener.
+func addDefaultHTTPListeners(common *vmv1beta1.CommonAppsParams, useProxyProtocol bool, httpListeners *[]vmv1beta1.HTTPListener) {
+	if len(*httpListeners) > 0 {
+		if useProxyProtocol {
+			for i := range *httpListeners {
+				if (*httpListeners)[i].UseProxyProtocol == nil {
+					(*httpListeners)[i].UseProxyProtocol = ptr.To(true)
+				}
+			}
+		}
+		return
+	}
+	l := vmv1beta1.HTTPListener{Name: "http", Addr: ":" + common.Port}
+	if addr, hasOverride := vmv1beta1.FirstHTTPListenAddrOverride(common.ExtraArgs); hasOverride {
+		l.Addr = addr
+	}
+	if useProxyProtocol {
+		l.UseProxyProtocol = ptr.To(true)
+	}
+	*httpListeners = []vmv1beta1.HTTPListener{l}
 }

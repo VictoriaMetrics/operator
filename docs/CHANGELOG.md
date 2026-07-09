@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): default pod `securityContext.fsGroup` to `65534` when persistent storage is configured and neither `useStrictSecurity` nor a user `securityContext` is set. Without it the alertmanager process cannot write notification log and silences to a freshly provisioned volume, so silences are silently lost on pod restart. User-provided `securityContext` and `useStrictSecurity` keep their previous behaviour.
+
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026
 

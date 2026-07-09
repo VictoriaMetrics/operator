@@ -477,3 +477,80 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		},
 	})
 }
+
+func TestNewStsForAlertManagerStorageFSGroup(t *testing.T) {
+	type opts struct {
+		cr       *vmv1beta1.VMAlertmanager
+		expected *corev1.PodSecurityContext
+	}
+	f := func(o opts) {
+		t.Helper()
+		sts, err := newStsForAlertManager(o.cr)
+		assert.NoError(t, err)
+		assert.Equal(t, o.expected, sts.Spec.Template.Spec.SecurityContext)
+	}
+
+	// default + persistent storage: fsGroup defaulted so silences are writable
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				Storage: &vmv1beta1.StorageSpec{},
+			},
+		},
+		expected: &corev1.PodSecurityContext{
+			FSGroup: ptr.To[int64](65534),
+		},
+	})
+
+	// no persistent storage: no securityContext is added
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec:       vmv1beta1.VMAlertmanagerSpec{},
+		},
+		expected: nil,
+	})
+
+	// user securityContext: left untouched
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				Storage: &vmv1beta1.StorageSpec{},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					SecurityContext: &vmv1beta1.SecurityContext{
+						PodSecurityContext: &corev1.PodSecurityContext{
+							FSGroup: ptr.To[int64](1000),
+						},
+					},
+				},
+			},
+		},
+		expected: &corev1.PodSecurityContext{
+			FSGroup: ptr.To[int64](1000),
+		},
+	})
+
+	// useStrictSecurity: strict pod securityContext preserved, not overwritten
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				Storage: &vmv1beta1.StorageSpec{},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					UseStrictSecurity: ptr.To(true),
+				},
+			},
+		},
+		expected: &corev1.PodSecurityContext{
+			RunAsNonRoot: ptr.To(true),
+			RunAsUser:    ptr.To[int64](65534),
+			RunAsGroup:   ptr.To[int64](65534),
+			FSGroup:      ptr.To[int64](65534),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
+	})
+}

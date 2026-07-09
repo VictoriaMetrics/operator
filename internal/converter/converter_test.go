@@ -64,6 +64,192 @@ image:
 	assert.Equal(t, "bar", got.ExtraEnvs[0].Value)
 }
 
+// TestUnmarshalValuesSupportsStorageClassName reproduces
+// https://github.com/VictoriaMetrics/operator/issues/2389: the helm charts use
+// persistentVolume.storageClassName (not storageClass), and the converted CR must carry it
+// through end-to-end (real YAML -> UnmarshalValues -> Convert), not just via direct struct
+// construction, which would silently pass even with a mismatched yaml/json tag.
+func TestUnmarshalValuesSupportsStorageClassName(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  persistentVolume:
+    enabled: true
+    storageClassName: fast-storage
+    size: 10Gi
+`), "victoria-metrics-single")
+	require.NoError(t, err)
+
+	got := values.(*VMSingleHelmValues)
+	require.NotNil(t, got.Server.PersistentVolume)
+	assert.Equal(t, "fast-storage", got.Server.PersistentVolume.StorageClassName)
+
+	cr, err := Convert("test-name", "test-ns", got)
+	require.NoError(t, err)
+	single := cr.(*vmv1beta1.VMSingle)
+	require.NotNil(t, single.Spec.Storage)
+	require.NotNil(t, single.Spec.Storage.StorageClassName)
+	assert.Equal(t, "fast-storage", *single.Spec.Storage.StorageClassName)
+}
+
+// TestUnmarshalValuesSupportsStorageClassNameForVLCluster covers the exact CR path reported in
+// https://github.com/VictoriaMetrics/operator/issues/2389: spec.vlstorage.storage.volumeClaimTemplate.
+func TestUnmarshalValuesSupportsStorageClassNameForVLCluster(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+vlstorage:
+  persistentVolume:
+    enabled: true
+    storageClassName: fast-storage
+`), "victoria-logs-cluster")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	cluster := cr.(*vmv1.VLCluster)
+	require.NotNil(t, cluster.Spec.VLStorage)
+	require.NotNil(t, cluster.Spec.VLStorage.Storage)
+	require.NotNil(t, cluster.Spec.VLStorage.Storage.VolumeClaimTemplate.Spec.StorageClassName)
+	assert.Equal(t, "fast-storage", *cluster.Spec.VLStorage.Storage.VolumeClaimTemplate.Spec.StorageClassName)
+}
+
+// TestUnmarshalValuesSupportsFullSecurityContext reproduces
+// https://github.com/VictoriaMetrics/operator/issues/2391: the helm charts' securityContext
+// block commonly carries runAsNonRoot/runAsUser/seccompProfile alongside
+// allowPrivilegeEscalation/capabilities/readOnlyRootFilesystem. The operator's CRD only exposes
+// the former group via spec.securityContext.podSecurityContext, so the converter must promote
+// them there instead of silently dropping them.
+func TestUnmarshalValuesSupportsFullSecurityContext(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  securityContext:
+    allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+`), "victoria-metrics-single")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	single := cr.(*vmv1beta1.VMSingle)
+	require.NotNil(t, single.Spec.SecurityContext)
+
+	require.NotNil(t, single.Spec.SecurityContext.ContainerSecurityContext)
+	assert.Equal(t, ptr.To(false), single.Spec.SecurityContext.AllowPrivilegeEscalation)
+	assert.Equal(t, ptr.To(true), single.Spec.SecurityContext.ReadOnlyRootFilesystem)
+	require.NotNil(t, single.Spec.SecurityContext.Capabilities)
+	assert.Equal(t, []corev1.Capability{"ALL"}, single.Spec.SecurityContext.Capabilities.Drop)
+
+	require.NotNil(t, single.Spec.SecurityContext.PodSecurityContext)
+	assert.Equal(t, ptr.To(true), single.Spec.SecurityContext.RunAsNonRoot)
+	assert.Equal(t, ptr.To(int64(1000)), single.Spec.SecurityContext.RunAsUser)
+	require.NotNil(t, single.Spec.SecurityContext.SeccompProfile)
+	assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, single.Spec.SecurityContext.SeccompProfile.Type)
+}
+
+// TestUnmarshalValuesSecurityContextPodLevelTakesPrecedence ensures an explicit
+// podSecurityContext value is not clobbered by the promoted container-level one.
+func TestUnmarshalValuesSecurityContextPodLevelTakesPrecedence(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  podSecurityContext:
+    runAsUser: 2000
+  securityContext:
+    runAsUser: 1000
+`), "victoria-metrics-single")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	single := cr.(*vmv1beta1.VMSingle)
+	require.NotNil(t, single.Spec.SecurityContext)
+	require.NotNil(t, single.Spec.SecurityContext.PodSecurityContext)
+	assert.Equal(t, ptr.To(int64(2000)), single.Spec.SecurityContext.RunAsUser)
+}
+
+// TestUnmarshalValuesSupportsRemoteWriteTLS reproduces
+// https://github.com/VictoriaMetrics/operator/issues/2390: the helm charts expose TLS/mTLS
+// settings for remoteWrite entries as flat tlsCAFile/tlsCertFile/tlsKeyFile/tlsServerName/
+// tlsInsecureSkipVerify keys (matching vmagent's -remoteWrite.tls* flags), not the operator
+// CRD's nested tlsConfig object.
+func TestUnmarshalValuesSupportsRemoteWriteTLS(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+image:
+  repository: victoriametrics/vmagent
+  tag: v1.93.0
+remoteWrite:
+  - url: https://vminsert:8480/insert/0/prometheus
+    tlsCAFile: /etc/vmagent-tls/certs/ca.crt
+    tlsCertFile: /etc/vmagent-tls/certs/cert.pem
+    tlsKeyFile: /etc/vmagent-tls/certs/key.pem
+    tlsServerName: vminsert
+    tlsInsecureSkipVerify: true
+`), "victoria-metrics-agent")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	agent := cr.(*vmv1beta1.VMAgent)
+	require.Len(t, agent.Spec.RemoteWrite, 1)
+	require.NotNil(t, agent.Spec.RemoteWrite[0].TLSConfig)
+	assert.Equal(t, "/etc/vmagent-tls/certs/ca.crt", agent.Spec.RemoteWrite[0].TLSConfig.CAFile)
+	assert.Equal(t, "/etc/vmagent-tls/certs/cert.pem", agent.Spec.RemoteWrite[0].TLSConfig.CertFile)
+	assert.Equal(t, "/etc/vmagent-tls/certs/key.pem", agent.Spec.RemoteWrite[0].TLSConfig.KeyFile)
+	assert.Equal(t, "vminsert", agent.Spec.RemoteWrite[0].TLSConfig.ServerName)
+	assert.True(t, agent.Spec.RemoteWrite[0].TLSConfig.InsecureSkipVerify)
+}
+
+// TestUnmarshalValuesSupportsRemoteWriteTLSForVLAgent covers the vlagent/vlcollector charts,
+// which use the v1 API's own TLSConfig type.
+func TestUnmarshalValuesSupportsRemoteWriteTLSForVLAgent(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+image:
+  repository: victoriametrics/victoria-logs
+  tag: v0.3.2
+remoteWrite:
+  - url: https://victoria-logs:9428
+    tlsCAFile: /etc/tls/ca.crt
+    tlsInsecureSkipVerify: true
+`), "victoria-logs-agent")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	agent := cr.(*vmv1.VLAgent)
+	require.Len(t, agent.Spec.RemoteWrite, 1)
+	require.NotNil(t, agent.Spec.RemoteWrite[0].TLSConfig)
+	assert.Equal(t, "/etc/tls/ca.crt", agent.Spec.RemoteWrite[0].TLSConfig.CAFile)
+	assert.True(t, agent.Spec.RemoteWrite[0].TLSConfig.InsecureSkipVerify)
+}
+
+// TestUnmarshalValuesSupportsRemoteWriteTLSForVMAlert covers vmalert's singular remoteWrite entry.
+func TestUnmarshalValuesSupportsRemoteWriteTLSForVMAlert(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  datasource:
+    url: http://vmselect:8481/select/0/prometheus
+  notifier:
+    url: http://vmalertmanager:9093
+  remoteWrite:
+    url: https://vminsert:8480/insert/0/prometheus
+    tlsCertFile: /etc/vmalert-tls/certs/cert.pem
+    tlsKeyFile: /etc/vmalert-tls/certs/key.pem
+`), "victoria-metrics-alert")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	alert := cr.(*vmv1beta1.VMAlert)
+	require.NotNil(t, alert.Spec.RemoteWrite)
+	require.NotNil(t, alert.Spec.RemoteWrite.TLSConfig)
+	assert.Equal(t, "/etc/vmalert-tls/certs/cert.pem", alert.Spec.RemoteWrite.TLSConfig.CertFile)
+	assert.Equal(t, "/etc/vmalert-tls/certs/key.pem", alert.Spec.RemoteWrite.TLSConfig.KeyFile)
+}
+
 func TestConvertVMSingle(t *testing.T) {
 	f := func(values *VMSingleHelmValues, expected func() *vmv1beta1.VMSingle) {
 		t.Helper()
@@ -125,9 +311,9 @@ func TestConvertVMSingle(t *testing.T) {
 					"loggerFormat":   "json",
 				},
 				PersistentVolume: &PersistentVolumeValues{
-					Enabled:      true,
-					StorageClass: "fast-storage",
-					Size:         "10Gi",
+					Enabled:          true,
+					StorageClassName: "fast-storage",
+					Size:             "10Gi",
 				},
 				PodAnnotations: map[string]string{
 					"prometheus.io/scrape": "true",
@@ -257,9 +443,11 @@ func TestConvertVMAgent(t *testing.T) {
 				Repository: "victoriametrics/vmagent",
 				Tag:        "v1.93.0",
 			},
-			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+			RemoteWrite: []VMAgentRemoteWriteValues{
 				{
-					URL: "http://vminsert:8480/insert/0/prometheus",
+					VMAgentRemoteWriteSpec: vmv1beta1.VMAgentRemoteWriteSpec{
+						URL: "http://vminsert:8480/insert/0/prometheus",
+					},
 				},
 			},
 		},
@@ -394,8 +582,8 @@ func TestConvertVLAgent(t *testing.T) {
 				Tag:        "v0.3.2",
 			},
 			ReplicaCount: ptr.To(int32(1)),
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://victoria-logs:9428"},
+			RemoteWrite: []VLAgentRemoteWriteValues{
+				{VLAgentRemoteWriteSpec: vmv1.VLAgentRemoteWriteSpec{URL: "http://victoria-logs:9428"}},
 			},
 			MaxDiskUsagePerURL: "1GiB",
 		},
@@ -522,8 +710,8 @@ func TestConvertVLCollector(t *testing.T) {
 				Repository: "victoriametrics/vlagent",
 				Tag:        "v0.3.2",
 			},
-			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-				{URL: "http://victoria-logs:9428"},
+			RemoteWrite: []VLAgentRemoteWriteValues{
+				{VLAgentRemoteWriteSpec: vmv1.VLAgentRemoteWriteSpec{URL: "http://victoria-logs:9428"}},
 			},
 			Collector: VLCollectorSettings{
 				TimeField:        []string{"time"},
@@ -820,6 +1008,54 @@ func TestMergeValues(t *testing.T) {
 		"retentionPeriod: 14d\n",
 		map[string]any{"retentionPeriod": "14d"},
 	)
+
+	// a chart-default "headers: {}" map (e.g. vmalert's datasource.headers) is normalized to
+	// the operator's []string "key:value" format, regardless of nesting depth or whether it
+	// sits inside a list — see https://github.com/VictoriaMetrics/operator/issues/2398.
+	f(
+		"datasource:\n  url: \"\"\n  headers: {}\n",
+		"datasource:\n  url: http://vmauth:8427\n",
+		map[string]any{"datasource": map[string]any{
+			"url":     "http://vmauth:8427",
+			"headers": []any{},
+		}},
+	)
+	f(
+		"notifier:\n  headers: {}\nremoteWrite:\n  headers: {}\n",
+		"notifier:\n  headers:\n    X-Scope-OrgID: \"1\"\n    Authorization: \"Bearer xxx\"\n",
+		map[string]any{
+			"notifier":    map[string]any{"headers": []any{"Authorization:Bearer xxx", "X-Scope-OrgID:1"}},
+			"remoteWrite": map[string]any{"headers": []any{}},
+		},
+	)
+	f(
+		"remoteWrite:\n- url: a\n  headers: {}\n- url: b\n  headers:\n    X-Foo: bar\n",
+		"",
+		map[string]any{"remoteWrite": []any{
+			map[string]any{"url": "a", "headers": []any{}},
+			map[string]any{"url": "b", "headers": []any{"X-Foo:bar"}},
+		}},
+	)
+}
+
+// TestMergeValues_VMAlertDatasourceHeaders reproduces
+// https://github.com/VictoriaMetrics/operator/issues/2398: the vmalert chart's default
+// values.yaml ships `server.datasource.headers: {}` (a map), which used to fail to unmarshal
+// into the operator's HTTPAuth.Headers []string field once merged with a user's override.
+func TestMergeValues_VMAlertDatasourceHeaders(t *testing.T) {
+	chartDefaults := "server:\n  datasource:\n    url: \"\"\n    headers: {}\n"
+	userOverride := "server:\n  datasource:\n    url: http://vmauth:8427\n"
+
+	merged, err := MergeValues([]byte(chartDefaults), []byte(userOverride))
+	require.NoError(t, err)
+
+	values, err := UnmarshalValues(merged, "victoria-metrics-alert")
+	require.NoError(t, err)
+
+	vmAlertValues, ok := values.(*VMAlertHelmValues)
+	require.True(t, ok)
+	assert.Equal(t, "http://vmauth:8427", vmAlertValues.Server.Datasource.URL)
+	assert.Empty(t, vmAlertValues.Server.Datasource.Headers)
 }
 
 func TestFetchLatestChartVersion(t *testing.T) {

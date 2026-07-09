@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -67,22 +68,22 @@ type VLClusterHelmValues struct {
 
 // VMAgentHelmValues represents values from VictoriaMetrics agent helm chart
 type VMAgentHelmValues struct {
-	Global             GlobalValues                        `yaml:"global,omitempty" json:"global,omitempty"`
-	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	Image              ImageValues                         `yaml:"image" json:"image"`
-	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
-	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty" json:"env,omitempty"`
-	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	Labels             map[string]string                   `yaml:"labels,omitempty" json:"labels,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	RemoteWrite        []vmv1beta1.VMAgentRemoteWriteSpec  `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
-	ServiceAccount     *ServiceAccount                     `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	Global             GlobalValues                  `yaml:"global,omitempty" json:"global,omitempty"`
+	ReplicaCount       *int32                        `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	Image              ImageValues                   `yaml:"image" json:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar               `yaml:"env,omitempty" json:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity              `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	PodAnnotations     map[string]string             `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	Labels             map[string]string             `yaml:"labels,omitempty" json:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext    `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	RemoteWrite        []VMAgentRemoteWriteValues    `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
+	ServiceAccount     *ServiceAccount               `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
 }
 
 // VMAlertHelmValues represents values from VictoriaMetrics alert helm chart
@@ -103,23 +104,23 @@ type VMAlertHelmValues struct {
 
 // VMAnomalyHelmValues represents values from VictoriaMetrics anomaly helm chart
 type VMAnomalyHelmValues struct {
-	Global             GlobalValues                        `yaml:"global,omitempty" json:"global,omitempty"`
-	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	Image              ImageValues                         `yaml:"image" json:"image"`
-	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
-	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty" json:"env,omitempty"`
-	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	Labels             map[string]string                   `yaml:"labels,omitempty" json:"labels,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	Reader             *VMAnomalyReaderValues              `yaml:"reader,omitempty" json:"reader,omitempty"`
-	Writer             *VMAnomalyWriterValues              `yaml:"writer,omitempty" json:"writer,omitempty"`
-	ServiceAccount     *ServiceAccount                     `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	Global             GlobalValues                  `yaml:"global,omitempty" json:"global,omitempty"`
+	ReplicaCount       *int32                        `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	Image              ImageValues                   `yaml:"image" json:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar               `yaml:"env,omitempty" json:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity              `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	PodAnnotations     map[string]string             `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	Labels             map[string]string             `yaml:"labels,omitempty" json:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext    `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	Reader             *VMAnomalyReaderValues        `yaml:"reader,omitempty" json:"reader,omitempty"`
+	Writer             *VMAnomalyWriterValues        `yaml:"writer,omitempty" json:"writer,omitempty"`
+	ServiceAccount     *ServiceAccount               `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
 }
 
 type VMAnomalyReaderValues struct {
@@ -132,24 +133,24 @@ type VMAnomalyWriterValues struct {
 }
 
 type VMAlertServerValues struct {
-	Image              ImageValues                         `yaml:"image" json:"image"`
-	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
-	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	ExtraEnvs          []corev1.EnvVar                     `yaml:"env,omitempty" json:"env,omitempty"`
-	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	Labels             map[string]string                   `yaml:"labels,omitempty" json:"labels,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	Notifier           *vmv1beta1.VMAlertNotifierSpec      `yaml:"notifier,omitempty" json:"notifier,omitempty"`
-	Notifiers          []vmv1beta1.VMAlertNotifierSpec     `yaml:"notifiers,omitempty" json:"notifiers,omitempty"`
-	RemoteWrite        *vmv1beta1.VMAlertRemoteWriteSpec   `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
-	RemoteRead         *vmv1beta1.VMAlertRemoteReadSpec    `yaml:"remoteRead,omitempty" json:"remoteRead,omitempty"`
-	Datasource         vmv1beta1.VMAlertDatasourceSpec     `yaml:"datasource,omitempty" json:"datasource,omitempty"`
+	Image              ImageValues                      `yaml:"image" json:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference    `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ReplicaCount       *int32                           `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	ExtraArgs          map[string]interface{}           `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar                  `yaml:"env,omitempty" json:"env,omitempty"`
+	Resources          *corev1.ResourceRequirements     `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector       map[string]string                `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration              `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity                 `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	PodAnnotations     map[string]string                `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	Labels             map[string]string                `yaml:"labels,omitempty" json:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext       `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext    *corev1.SecurityContext          `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	Notifier           *vmv1beta1.VMAlertNotifierSpec   `yaml:"notifier,omitempty" json:"notifier,omitempty"`
+	Notifiers          []vmv1beta1.VMAlertNotifierSpec  `yaml:"notifiers,omitempty" json:"notifiers,omitempty"`
+	RemoteWrite        *VMAlertRemoteWriteValues        `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
+	RemoteRead         *vmv1beta1.VMAlertRemoteReadSpec `yaml:"remoteRead,omitempty" json:"remoteRead,omitempty"`
+	Datasource         vmv1beta1.VMAlertDatasourceSpec  `yaml:"datasource,omitempty" json:"datasource,omitempty"`
 }
 
 type GlobalValues struct {
@@ -163,47 +164,47 @@ type ServiceAccount struct {
 
 // VLAgentHelmValues represents values from VictoriaLogs agent helm chart
 type VLAgentHelmValues struct {
-	Image                     ImageValues                         `yaml:"image" json:"image"`
-	ReplicaCount              *int32                              `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	Annotations               map[string]string                   `yaml:"annotations,omitempty" json:"annotations,omitempty"`
-	PodAnnotations            map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	PodLabels                 map[string]string                   `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
-	NodeSelector              map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations               []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity                  *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	TopologySpreadConstraints []corev1.TopologySpreadConstraint   `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
-	SecurityContext           *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	PodSecurityContext        *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	PriorityClassName         string                              `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
-	ExtraArgs                 map[string]string                   `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	Env                       []corev1.EnvVar                     `yaml:"env,omitempty" json:"env,omitempty"`
-	ExtraVolumes              []corev1.Volume                     `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
-	ExtraVolumeMounts         []corev1.VolumeMount                `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
-	Resources                 *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	RemoteWrite               []vmv1.VLAgentRemoteWriteSpec       `yaml:"remoteWrite" json:"remoteWrite"`
-	MaxDiskUsagePerURL        string                              `yaml:"maxDiskUsagePerURL,omitempty" json:"maxDiskUsagePerURL,omitempty"`
-	PersistentVolume          *PersistentVolumeValues             `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
+	Image                     ImageValues                       `yaml:"image" json:"image"`
+	ReplicaCount              *int32                            `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	Annotations               map[string]string                 `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                 `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
+	NodeSelector              map[string]string                 `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration               `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                  `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
+	SecurityContext           *corev1.SecurityContext           `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	PodSecurityContext        *corev1.PodSecurityContext        `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
+	ExtraArgs                 map[string]string                 `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	Env                       []corev1.EnvVar                   `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
+	RemoteWrite               []VLAgentRemoteWriteValues        `yaml:"remoteWrite" json:"remoteWrite"`
+	MaxDiskUsagePerURL        string                            `yaml:"maxDiskUsagePerURL,omitempty" json:"maxDiskUsagePerURL,omitempty"`
+	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
 }
 
 type VLCollectorHelmValues struct {
-	Image                     ImageValues                         `yaml:"image" json:"image"`
-	Annotations               map[string]string                   `yaml:"annotations,omitempty" json:"annotations,omitempty"`
-	PodAnnotations            map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	PodLabels                 map[string]string                   `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
-	NodeSelector              map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations               []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity                  *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	TopologySpreadConstraints []corev1.TopologySpreadConstraint   `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
-	SecurityContext           *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	PodSecurityContext        *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	PriorityClassName         string                              `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
-	ExtraArgs                 map[string]string                   `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	Env                       []corev1.EnvVar                     `yaml:"env,omitempty" json:"env,omitempty"`
-	ExtraVolumes              []corev1.Volume                     `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
-	ExtraVolumeMounts         []corev1.VolumeMount                `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
-	Resources                 *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	RemoteWrite               []vmv1.VLAgentRemoteWriteSpec       `yaml:"remoteWrite" json:"remoteWrite"`
-	Collector                 VLCollectorSettings                 `yaml:"collector" json:"collector"`
+	Image                     ImageValues                       `yaml:"image" json:"image"`
+	Annotations               map[string]string                 `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                 `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
+	NodeSelector              map[string]string                 `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration               `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                  `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
+	SecurityContext           *corev1.SecurityContext           `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	PodSecurityContext        *corev1.PodSecurityContext        `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
+	ExtraArgs                 map[string]string                 `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	Env                       []corev1.EnvVar                   `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
+	RemoteWrite               []VLAgentRemoteWriteValues        `yaml:"remoteWrite" json:"remoteWrite"`
+	Collector                 VLCollectorSettings               `yaml:"collector" json:"collector"`
 }
 
 type VLCollectorSettings struct {
@@ -233,24 +234,24 @@ type ServiceValues struct {
 }
 
 type ServerValues struct {
-	Enabled            *bool                               `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	Name               string                              `yaml:"name,omitempty" json:"name,omitempty"`
-	Image              ImageValues                         `yaml:"image" json:"image"`
-	ImagePullSecrets   []corev1.LocalObjectReference       `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
-	ReplicaCount       *int32                              `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	RetentionPeriod    interface{}                         `yaml:"retentionPeriod,omitempty" json:"retentionPeriod,omitempty"`
-	ExtraArgs          map[string]interface{}              `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	ExtraEnvs          []corev1.EnvVar                     `yaml:"extraEnvs,omitempty" json:"extraEnvs,omitempty"`
-	Resources          *corev1.ResourceRequirements        `yaml:"resources,omitempty" json:"resources,omitempty"`
-	NodeSelector       map[string]string                   `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration                 `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity           *corev1.Affinity                    `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	PodAnnotations     map[string]string                   `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	Labels             map[string]string                   `yaml:"labels,omitempty" json:"labels,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	SecurityContext    *vmv1beta1.ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	PersistentVolume   *PersistentVolumeValues             `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
-	Service            *ServiceValues                      `yaml:"service,omitempty" json:"service,omitempty"`
+	Enabled            *bool                         `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	Name               string                        `yaml:"name,omitempty" json:"name,omitempty"`
+	Image              ImageValues                   `yaml:"image" json:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ReplicaCount       *int32                        `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	RetentionPeriod    interface{}                   `yaml:"retentionPeriod,omitempty" json:"retentionPeriod,omitempty"`
+	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar               `yaml:"extraEnvs,omitempty" json:"extraEnvs,omitempty"`
+	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity              `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	PodAnnotations     map[string]string             `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	Labels             map[string]string             `yaml:"labels,omitempty" json:"labels,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext    `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	PersistentVolume   *PersistentVolumeValues       `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
+	Service            *ServiceValues                `yaml:"service,omitempty" json:"service,omitempty"`
 }
 
 type ImageValues struct {
@@ -262,11 +263,132 @@ type ImageValues struct {
 }
 
 type PersistentVolumeValues struct {
-	Enabled      bool              `yaml:"enabled" json:"enabled"`
-	StorageClass string            `yaml:"storageClass,omitempty" json:"storageClass,omitempty"`
-	Size         string            `yaml:"size,omitempty" json:"size,omitempty"`
-	MountPath    string            `yaml:"mountPath,omitempty" json:"mountPath,omitempty"`
-	Annotations  map[string]string `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	Enabled          bool              `yaml:"enabled" json:"enabled"`
+	StorageClassName string            `yaml:"storageClassName,omitempty" json:"storageClassName,omitempty"`
+	Size             string            `yaml:"size,omitempty" json:"size,omitempty"`
+	MountPath        string            `yaml:"mountPath,omitempty" json:"mountPath,omitempty"`
+	Annotations      map[string]string `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+}
+
+// remoteWriteTLSValues captures the flat tls* keys accepted by VictoriaMetrics apps for
+// remoteWrite entries (-remoteWrite.tlsCAFile, -remoteWrite.tlsCertFile, etc., see
+// https://docs.victoriametrics.com/victoriametrics/vmagent/#relabeling), which the helm charts
+// expose as sibling keys on each remoteWrite item rather than the operator CRD's nested
+// tlsConfig object.
+type remoteWriteTLSValues struct {
+	TLSCAFile             string `yaml:"tlsCAFile,omitempty" json:"tlsCAFile,omitempty"`
+	TLSCertFile           string `yaml:"tlsCertFile,omitempty" json:"tlsCertFile,omitempty"`
+	TLSKeyFile            string `yaml:"tlsKeyFile,omitempty" json:"tlsKeyFile,omitempty"`
+	TLSServerName         string `yaml:"tlsServerName,omitempty" json:"tlsServerName,omitempty"`
+	TLSInsecureSkipVerify bool   `yaml:"tlsInsecureSkipVerify,omitempty" json:"tlsInsecureSkipVerify,omitempty"`
+}
+
+// isSet reports whether any flat tls* key was provided.
+func (v remoteWriteTLSValues) isSet() bool {
+	return v.TLSCAFile != "" || v.TLSCertFile != "" || v.TLSKeyFile != "" || v.TLSServerName != "" || v.TLSInsecureSkipVerify
+}
+
+// asTLSConfig converts the flat tls* keys to the operator's nested TLSConfig, or nil if none were set.
+func (v remoteWriteTLSValues) asTLSConfig() *vmv1beta1.TLSConfig {
+	if !v.isSet() {
+		return nil
+	}
+	return &vmv1beta1.TLSConfig{
+		CAFile:             v.TLSCAFile,
+		CertFile:           v.TLSCertFile,
+		KeyFile:            v.TLSKeyFile,
+		ServerName:         v.TLSServerName,
+		InsecureSkipVerify: v.TLSInsecureSkipVerify,
+	}
+}
+
+// asVLTLSConfig converts the flat tls* keys to the v1 API's nested TLSConfig, or nil if none were set.
+func (v remoteWriteTLSValues) asVLTLSConfig() *vmv1.TLSConfig {
+	if !v.isSet() {
+		return nil
+	}
+	return &vmv1.TLSConfig{
+		CAFile:             v.TLSCAFile,
+		CertFile:           v.TLSCertFile,
+		KeyFile:            v.TLSKeyFile,
+		ServerName:         v.TLSServerName,
+		InsecureSkipVerify: v.TLSInsecureSkipVerify,
+	}
+}
+
+// VMAgentRemoteWriteValues represents a single remoteWrite entry from the vmagent helm chart.
+type VMAgentRemoteWriteValues struct {
+	vmv1beta1.VMAgentRemoteWriteSpec `yaml:",inline" json:",inline"`
+	remoteWriteTLSValues             `yaml:",inline" json:",inline"`
+}
+
+// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
+func (v VMAgentRemoteWriteValues) asSpec() vmv1beta1.VMAgentRemoteWriteSpec {
+	rw := v.VMAgentRemoteWriteSpec
+	if rw.TLSConfig == nil {
+		rw.TLSConfig = v.remoteWriteTLSValues.asTLSConfig()
+	}
+	return rw
+}
+
+// VLAgentRemoteWriteValues represents a single remoteWrite entry from the vlagent/vlcollector helm charts.
+type VLAgentRemoteWriteValues struct {
+	vmv1.VLAgentRemoteWriteSpec `yaml:",inline" json:",inline"`
+	remoteWriteTLSValues        `yaml:",inline" json:",inline"`
+}
+
+// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
+func (v VLAgentRemoteWriteValues) asSpec() vmv1.VLAgentRemoteWriteSpec {
+	rw := v.VLAgentRemoteWriteSpec
+	if rw.TLSConfig == nil {
+		rw.TLSConfig = v.remoteWriteTLSValues.asVLTLSConfig()
+	}
+	return rw
+}
+
+// VMAlertRemoteWriteValues represents the (singular) remoteWrite entry from the vmalert helm chart.
+type VMAlertRemoteWriteValues struct {
+	vmv1beta1.VMAlertRemoteWriteSpec `yaml:",inline" json:",inline"`
+	remoteWriteTLSValues             `yaml:",inline" json:",inline"`
+}
+
+// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
+func (v VMAlertRemoteWriteValues) asSpec() vmv1beta1.VMAlertRemoteWriteSpec {
+	rw := v.VMAlertRemoteWriteSpec
+	if rw.TLSConfig == nil {
+		rw.TLSConfig = v.remoteWriteTLSValues.asTLSConfig()
+	}
+	return rw
+}
+
+func convertVMAgentRemoteWrite(items []VMAgentRemoteWriteValues) []vmv1beta1.VMAgentRemoteWriteSpec {
+	if items == nil {
+		return nil
+	}
+	result := make([]vmv1beta1.VMAgentRemoteWriteSpec, 0, len(items))
+	for _, item := range items {
+		result = append(result, item.asSpec())
+	}
+	return result
+}
+
+func convertVLAgentRemoteWrite(items []VLAgentRemoteWriteValues) []vmv1.VLAgentRemoteWriteSpec {
+	if items == nil {
+		return nil
+	}
+	result := make([]vmv1.VLAgentRemoteWriteSpec, 0, len(items))
+	for _, item := range items {
+		result = append(result, item.asSpec())
+	}
+	return result
+}
+
+func convertVMAlertRemoteWrite(item *VMAlertRemoteWriteValues) *vmv1beta1.VMAlertRemoteWriteSpec {
+	if item == nil {
+		return nil
+	}
+	rw := item.asSpec()
+	return &rw
 }
 
 var (
@@ -355,12 +477,53 @@ func MergeValues(base, override []byte) ([]byte, error) {
 	}
 
 	if baseMap == nil {
+		normalizeHeaderMaps(overrideMap)
 		return k8syaml.Marshal(overrideMap)
 	}
 	if err := build.MergeDeep(&baseMap, &overrideMap, false); err != nil {
 		return nil, fmt.Errorf("cannot merge values: %w", err)
 	}
+	normalizeHeaderMaps(baseMap)
 	return k8syaml.Marshal(baseMap)
+}
+
+// normalizeHeaderMaps recursively rewrites any "headers" key whose value is a map — the shape
+// several Helm charts' default values.yaml use, e.g. vmalert's `datasource.headers: {}` — into
+// the []string "key:value" format the operator's HTTPAuth.Headers field expects (see
+// api/operator/v1beta1/vmextra_types.go). Without this, merged values with a chart-default
+// `headers: {}` fail to unmarshal directly into the operator's typed CR structs.
+func normalizeHeaderMaps(v any) {
+	switch val := v.(type) {
+	case map[string]any:
+		for k, sub := range val {
+			if k == "headers" {
+				if m, ok := sub.(map[string]any); ok {
+					val[k] = headersMapToSlice(m)
+					continue
+				}
+			}
+			normalizeHeaderMaps(sub)
+		}
+	case []any:
+		for _, item := range val {
+			normalizeHeaderMaps(item)
+		}
+	}
+}
+
+// headersMapToSlice converts a {headerName: headerValue} map into the sorted
+// "headerName:headerValue" string slice HTTPAuth.Headers expects.
+func headersMapToSlice(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	result := make([]string, 0, len(m))
+	for _, k := range keys {
+		result = append(result, fmt.Sprintf("%s:%v", k, m[k]))
+	}
+	return result
 }
 
 func UnmarshalValues(data []byte, chart string) (any, error) {
@@ -721,8 +884,8 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 	// Security context
 	if values.PodSecurityContext != nil || values.SecurityContext != nil {
 		cfg.SecurityContext = &vmv1beta1.SecurityContext{
-			PodSecurityContext:       values.PodSecurityContext,
-			ContainerSecurityContext: values.SecurityContext,
+			PodSecurityContext:       mergePodSecurityContext(values.PodSecurityContext, values.SecurityContext),
+			ContainerSecurityContext: convertContainerSecurityContext(values.SecurityContext),
 		}
 	}
 
@@ -744,6 +907,57 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 	cfg.ServiceSpec = convertService(values.Service)
 
 	return cfg, nil
+}
+
+// convertContainerSecurityContext maps the subset of corev1.SecurityContext fields that the
+// operator's CRD can represent at the container level.
+func convertContainerSecurityContext(sc *corev1.SecurityContext) *vmv1beta1.ContainerSecurityContext {
+	if sc == nil {
+		return nil
+	}
+	return &vmv1beta1.ContainerSecurityContext{
+		Privileged:               sc.Privileged,
+		Capabilities:             sc.Capabilities,
+		ReadOnlyRootFilesystem:   sc.ReadOnlyRootFilesystem,
+		AllowPrivilegeEscalation: sc.AllowPrivilegeEscalation,
+		ProcMount:                sc.ProcMount,
+	}
+}
+
+// mergePodSecurityContext promotes RunAsUser/RunAsGroup/RunAsNonRoot/SeccompProfile/AppArmorProfile
+// from the chart's container-level securityContext into the pod-level one when not already set
+// there. The operator's CRD only exposes these fields via spec.securityContext.podSecurityContext
+// and cascades them down to containers at build time (see build.containerSecurityContext), so
+// without this promotion values set under a chart's container-level securityContext block would be
+// silently dropped.
+func mergePodSecurityContext(pod *corev1.PodSecurityContext, container *corev1.SecurityContext) *corev1.PodSecurityContext {
+	if container == nil {
+		return pod
+	}
+	if container.RunAsUser == nil && container.RunAsGroup == nil && container.RunAsNonRoot == nil &&
+		container.SeccompProfile == nil && container.AppArmorProfile == nil {
+		return pod
+	}
+	merged := &corev1.PodSecurityContext{}
+	if pod != nil {
+		merged = pod.DeepCopy()
+	}
+	if merged.RunAsUser == nil {
+		merged.RunAsUser = container.RunAsUser
+	}
+	if merged.RunAsGroup == nil {
+		merged.RunAsGroup = container.RunAsGroup
+	}
+	if merged.RunAsNonRoot == nil {
+		merged.RunAsNonRoot = container.RunAsNonRoot
+	}
+	if merged.SeccompProfile == nil {
+		merged.SeccompProfile = container.SeccompProfile
+	}
+	if merged.AppArmorProfile == nil {
+		merged.AppArmorProfile = container.AppArmorProfile
+	}
+	return merged
 }
 
 func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
@@ -814,12 +1028,12 @@ func convertPersistentVolume(pv *PersistentVolumeValues) (*corev1.PersistentVolu
 	storage := &corev1.PersistentVolumeClaimSpec{
 		AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 	}
-	if pv.StorageClass != "" {
-		if pv.StorageClass == "-" {
+	if pv.StorageClassName != "" {
+		if pv.StorageClassName == "-" {
 			storageClass := ""
 			storage.StorageClassName = &storageClass
 		} else {
-			storage.StorageClassName = &pv.StorageClass
+			storage.StorageClassName = &pv.StorageClassName
 		}
 	}
 	if pv.Size != "" {
@@ -956,7 +1170,7 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 	spec.ServiceSpec = cfg.ServiceSpec
 	spec.Notifier = values.Server.Notifier
 	spec.Notifiers = values.Server.Notifiers
-	spec.RemoteWrite = values.Server.RemoteWrite
+	spec.RemoteWrite = convertVMAlertRemoteWrite(values.Server.RemoteWrite)
 	spec.RemoteRead = values.Server.RemoteRead
 	spec.Datasource = values.Server.Datasource
 
@@ -1001,7 +1215,7 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 	spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
-	spec.RemoteWrite = values.RemoteWrite
+	spec.RemoteWrite = convertVMAgentRemoteWrite(values.RemoteWrite)
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name
@@ -1098,7 +1312,7 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 	spec.Affinity = cfg.Affinity
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
-	spec.RemoteWrite = values.RemoteWrite
+	spec.RemoteWrite = convertVLAgentRemoteWrite(values.RemoteWrite)
 	spec.SecurityContext = cfg.SecurityContext
 	if cfg.Storage != nil {
 		spec.Storage = &vmv1beta1.StorageSpec{
@@ -1202,7 +1416,7 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 	spec.Affinity = cfg.Affinity
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
-	spec.RemoteWrite = values.RemoteWrite
+	spec.RemoteWrite = convertVLAgentRemoteWrite(values.RemoteWrite)
 	spec.SecurityContext = cfg.SecurityContext
 
 	spec.TopologySpreadConstraints = values.TopologySpreadConstraints

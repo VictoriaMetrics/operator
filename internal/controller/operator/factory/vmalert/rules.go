@@ -21,18 +21,15 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps
-func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
+// CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps.
+// Alerting rules are dropped when hasNotifiers is false, since vmalert would have nowhere to
+// send them; recording rules are unaffected.
+func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule, hasNotifiers bool) ([]string, error) {
 	// fast path
 	if cr.IsUnmanaged() {
 		return nil, nil
 	}
-	newRules, err := reconcileVMAlertConfig(ctx, rclient, cr, childCR)
-	if err != nil {
-		return nil, err
-	}
-
-	return newRules, nil
+	return reconcileVMAlertConfig(ctx, rclient, cr, childCR, hasNotifiers)
 }
 
 func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([]string, error) {
@@ -65,8 +62,8 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 	return newConfigMapNames, nil
 }
 
-func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule) ([]string, error) {
-	pos, data, err := selectRules(ctx, rclient, cr)
+func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule, hasNotifiers bool) ([]string, error) {
+	pos, data, err := selectRules(ctx, rclient, cr, hasNotifiers)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +93,10 @@ type parsedObjects struct {
 	rules *build.ChildObjects[*vmv1beta1.VMRule]
 }
 
-func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (*parsedObjects, []vmv1beta1.RuleGroup, error) {
+// selectRules selects rule groups for cr. When hasNotifiers is false, alerting rules are
+// dropped from each group (vmalert has nowhere to send them); groups left with no rules are
+// skipped entirely. Recording rules are always kept.
+func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, hasNotifiers bool) (*parsedObjects, []vmv1beta1.RuleGroup, error) {
 	var rules []*vmv1beta1.VMRule
 	var nsn []string
 	if !build.IsControllerDisabled("VMRule") {
@@ -139,12 +139,35 @@ func selectRules(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAle
 					group.Rules[j].Labels[cr.Spec.EnforcedNamespaceLabel] = rule.Namespace
 				}
 			}
+			if !hasNotifiers {
+				before := len(group.Rules)
+				group.Rules = dropAlertingRules(group.Rules)
+				if len(group.Rules) != before {
+					logger.WithContext(ctx).Info("ignoring alerting rules: vmalert has no notifiers configured",
+						"vmrule", rule.Name, "group", group.Name)
+				}
+				if len(group.Rules) == 0 {
+					continue
+				}
+			}
 			groups = append(groups, group)
 		}
 		return nil
 	})
 	pos.rules.UpdateMetrics(ctx)
 	return pos, groups, nil
+}
+
+// dropAlertingRules returns rules with alerting rules removed, keeping recording rules.
+func dropAlertingRules(rules []vmv1beta1.Rule) []vmv1beta1.Rule {
+	filtered := make([]vmv1beta1.Rule, 0, len(rules))
+	for _, r := range rules {
+		if r.Alert != "" {
+			continue
+		}
+		filtered = append(filtered, r)
+	}
+	return filtered
 }
 
 // rulesFilename is the single BinaryData key in each rule ConfigMap bucket.

@@ -484,6 +484,23 @@ func (cr *VMAlert) NeedDedupRules() bool {
 	return cr.Annotations[MetaVMAlertDeduplicateRulesKey] != ""
 }
 
+// HasNotifiersConfigured reports whether the spec declares any notifier target: static
+// entries, a selector-based entry (resolved at runtime), a notifier config reference, the
+// blackhole notifier, or notifier.url/notifier.config passed via extraArgs.
+func (cr *VMAlert) HasNotifiersConfigured() bool {
+	if cr.Spec.Notifier != nil || len(cr.Spec.Notifiers) > 0 || cr.Spec.NotifierConfigRef != nil {
+		return true
+	}
+	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; ok {
+		return true
+	}
+	if _, ok := cr.Spec.ExtraArgs["notifier.url"]; ok {
+		return true
+	}
+	_, ok := cr.Spec.ExtraArgs["notifier.config"]
+	return ok
+}
+
 func (cr *VMAlert) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()

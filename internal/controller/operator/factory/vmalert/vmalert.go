@@ -725,6 +725,12 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ac *build.AssetsCache) ([]string,
 		if _, ok := cr.Spec.ExtraArgs["notifier.config"]; ok {
 			return args, nil
 		}
+		if len(cr.Spec.RulePath) == 0 {
+			// alerting VMRules are already filtered out upstream when no notifiers are
+			// configured; spec.rulePath files are opaque to the operator, so those still
+			// require notifiers since we can't tell whether they contain alerting rules.
+			return args, nil
+		}
 		return nil, fmt.Errorf("no notifiers found, properly configure selectors or static notifiers using spec.notifiers or spec.notifier")
 	}
 	totalCount := len(notifierTargets)

@@ -983,8 +983,11 @@ func (labels *Labels) Set(value string) error {
 	if value != "" {
 		split := strings.Split(value, ",")
 		for _, pair := range split {
-			sp := strings.Split(pair, "=")
-			m[sp[0]] = sp[1]
+			key, val, found := strings.Cut(pair, "=")
+			if !found {
+				return fmt.Errorf("invalid label %q: expected key=value format", pair)
+			}
+			m[key] = val
 		}
 	}
 	labels.LabelsMap = m

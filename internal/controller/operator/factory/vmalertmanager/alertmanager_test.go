@@ -532,6 +532,19 @@ func TestNewStsForAlertManagerStorageFSGroup(t *testing.T) {
 		},
 	})
 
+	// emptyDir storage: no fsGroup added (no PVC, no persistent-volume ownership fix needed)
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				Storage: &vmv1beta1.StorageSpec{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		},
+		expected: nil,
+	})
+
 	// useStrictSecurity: strict pod securityContext preserved, not overwritten
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{

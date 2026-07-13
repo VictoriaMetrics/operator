@@ -19,14 +19,14 @@ jobs:
       url: https://docs.victoriametrics.com/operator
     steps:
       - name: Checkout operator repo
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator
           persist-credentials: false
 
       - name: Checkout docs repo
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: VictoriaMetrics/vmdocs
           ref: main

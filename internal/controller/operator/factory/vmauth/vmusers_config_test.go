@@ -825,6 +825,71 @@ username: basic
 password: pass
 `,
 	})
+
+	// jwt with empty defaultVMAccessClaim opts in tokens without a vm_access claim
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+				JWT: &vmv1beta1.VMUserJWT{
+					OIDC: &vmv1beta1.VMUserOIDC{
+						Issuer: "https://idp.example.com",
+					},
+					MatchClaims: map[string]string{
+						"sub": "admin",
+					},
+					DefaultVMAccessClaim: &vmv1beta1.VMAccessClaim{},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+jwt:
+  match_claims:
+    sub: admin
+  oidc:
+    issuer: https://idp.example.com
+  default_vm_access_claim: {}
+`,
+	})
+
+	// jwt with populated defaultVMAccessClaim
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+				JWT: &vmv1beta1.VMUserJWT{
+					DefaultVMAccessClaim: &vmv1beta1.VMAccessClaim{
+						MetricsAccountID:    10,
+						MetricsProjectID:    20,
+						MetricsExtraFilters: []string{`{instance="sandbox"}`},
+						MetricsExtraLabels:  []string{"team=dev"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+jwt:
+  default_vm_access_claim:
+    metrics_account_id: 10
+    metrics_project_id: 20
+    metrics_extra_filters:
+    - '{instance="sandbox"}'
+    metrics_extra_labels:
+    - team=dev
+`,
+	})
 }
 
 func Test_genPassword(t *testing.T) {

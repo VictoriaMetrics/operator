@@ -18,6 +18,34 @@ type VMUserOIDC struct {
 	Issuer string `json:"issuer"`
 }
 
+// VMAccessClaim defines vm_access claim parameters used for request templating
+type VMAccessClaim struct {
+	// MetricsAccountID defines accountID to use for metrics requests templating
+	// +optional
+	MetricsAccountID uint32 `json:"metricsAccountID,omitempty"`
+	// MetricsProjectID defines projectID to use for metrics requests templating
+	// +optional
+	MetricsProjectID uint32 `json:"metricsProjectID,omitempty"`
+	// MetricsExtraFilters defines a list of promql filters to apply for metrics requests templating
+	// +optional
+	MetricsExtraFilters []string `json:"metricsExtraFilters,omitempty"`
+	// MetricsExtraLabels defines a list of extra labels to apply for metrics requests templating
+	// +optional
+	MetricsExtraLabels []string `json:"metricsExtraLabels,omitempty"`
+	// LogsAccountID defines accountID to use for logs requests templating
+	// +optional
+	LogsAccountID uint32 `json:"logsAccountID,omitempty"`
+	// LogsProjectID defines projectID to use for logs requests templating
+	// +optional
+	LogsProjectID uint32 `json:"logsProjectID,omitempty"`
+	// LogsExtraFilters defines a list of logsql filters to apply for logs requests templating
+	// +optional
+	LogsExtraFilters []string `json:"logsExtraFilters,omitempty"`
+	// LogsExtraStreamFilters defines a list of logsql stream filters to apply for logs requests templating
+	// +optional
+	LogsExtraStreamFilters []string `json:"logsExtraStreamFilters,omitempty"`
+}
+
 // VMUserJWT defines configuration for JWT
 type VMUserJWT struct {
 	// SkipVerify skips signature verification for testing purposes
@@ -30,6 +58,12 @@ type VMUserJWT struct {
 	MatchClaims map[string]string `json:"matchClaims,omitempty"`
 	// OIDC defines OIDC configuration section
 	OIDC *VMUserOIDC `json:"oidc,omitempty"`
+	// DefaultVMAccessClaim defines vm_access claim parameters to use when a JWT
+	// doesn't carry a vm_access claim of its own. Set to an empty object to opt in
+	// a token that only needs to pass matchClaims/oidc verification without vm_access.
+	// +optional
+	// +notes={available_from: "v0.74.0"}
+	DefaultVMAccessClaim *VMAccessClaim `json:"defaultVMAccessClaim,omitempty"`
 }
 
 // VMUserSpec defines the desired state of VMUser

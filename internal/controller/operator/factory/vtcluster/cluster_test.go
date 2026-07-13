@@ -3,6 +3,7 @@ package vtcluster
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -46,15 +47,17 @@ func TestCreateOrUpdate(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		ctx := context.TODO()
-		err := CreateOrUpdate(ctx, fclient, o.cr)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, fclient, o.cr)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// base cluster

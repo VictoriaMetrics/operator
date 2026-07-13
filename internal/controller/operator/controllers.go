@@ -41,6 +41,9 @@ var (
 	maxConcurrency   = ptr.To(15)
 )
 
+// childReconcileConcurrencyLimit bounds concurrent errgroup fan-out over sibling CRs within a single parent reconcile.
+const childReconcileConcurrencyLimit = 5
+
 var (
 	optionsInit    sync.Once
 	defaultOptions *controller.Options

@@ -3,6 +3,7 @@ package vlcluster
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -46,15 +47,17 @@ func TestCreateOrUpdate(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		ctx := context.Background()
 		fclient.Scheme().Default(o.cr)
-		err := CreateOrUpdate(ctx, fclient, o.cr.DeepCopy())
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, fclient, o.cr.DeepCopy())
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// base cluster
@@ -925,22 +928,24 @@ func TestCreateOrUpdate_LBDeploymentWithHPA(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	// initial - 1 replica
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+	synctest.Test(t, func(t *testing.T) {
+		// initial - 1 replica
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	var dep appsv1.Deployment
-	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
-	assert.Equal(t, int32(1), *dep.Spec.Replicas)
+		var dep appsv1.Deployment
+		assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+		assert.Equal(t, int32(1), *dep.Spec.Replicas)
 
-	// simulate HPA scaling the Deployment to 3 replicas
-	dep.Spec.Replicas = ptr.To(int32(3))
-	assert.NoError(t, fclient.Update(ctx, &dep))
+		// simulate HPA scaling the Deployment to 3 replicas
+		dep.Spec.Replicas = ptr.To(int32(3))
+		assert.NoError(t, fclient.Update(ctx, &dep))
 
-	// set desired replica count to 2 via HPA
-	cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+		// set desired replica count to 2 via HPA
+		cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	// HPA-managed replica count must not be overwritten
-	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
-	assert.Equal(t, int32(3), *dep.Spec.Replicas)
+		// HPA-managed replica count must not be overwritten
+		assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+		assert.Equal(t, int32(3), *dep.Spec.Replicas)
+	})
 }

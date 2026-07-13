@@ -53,7 +53,6 @@ func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1be
 		newConfigMapNames = append(newConfigMapNames, cm.Name)
 	}
 	if needReload {
-		// trigger sync for configmap
 		logger.WithContext(ctx).Info("triggering pod config reload by changing annotation")
 		if err := k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace); err != nil {
 			logger.WithContext(ctx).Error(err, "failed to update vmalert pod cm-sync annotation")

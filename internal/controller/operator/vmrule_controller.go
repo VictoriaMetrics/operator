@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -95,13 +96,15 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return
 	}
 
+	var g errgroup.Group
+	g.SetLimit(childReconcileConcurrencyLimit)
 	for i := range objects.Items {
 		item := &objects.Items[i]
 		if item.DeletionTimestamp != nil || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) {
 			continue
 		}
-		l := l.WithValues("vmalert", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
+		itemLog := l.WithValues("vmalert", item.Name, "parent_namespace", item.Namespace)
+		itemCtx := logger.AddToContext(ctx, itemLog)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
@@ -112,9 +115,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				ObjectSelector:    item.Spec.RuleSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match vmalert and vmrule")
+				itemLog.Error(err, "cannot match vmalert and vmrule")
 				continue
 			}
 			if !match {
@@ -122,11 +125,15 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			}
 		}
 
-		if _, configErr := vmalert.CreateOrUpdateRuleConfigMaps(ctx, r, item, &instance, item.HasNotifiersConfigured()); configErr != nil {
-			l.Error(configErr, "cannot update rules configmaps")
-			err = configErr
-		}
+		g.Go(func() error {
+			if _, configErr := vmalert.CreateOrUpdateRuleConfigMaps(itemCtx, r, item, &instance, item.HasNotifiersConfigured()); configErr != nil {
+				itemLog.Error(configErr, "cannot update rules configmaps")
+				return configErr
+			}
+			return nil
+		})
 	}
+	err = g.Wait()
 	return
 }
 

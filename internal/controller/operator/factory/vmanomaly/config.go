@@ -51,7 +51,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
 		secret.ObjectMeta = build.ResourceMeta(kind, cr)
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+		if _, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return err
 		}
 	}
@@ -61,7 +61,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 		prevSecretMeta = ptr.To(build.ResourceMeta(build.SecretConfigResourceKind, prevCR))
 	}
 
-	if err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta, &owner); err != nil {
+	if _, err := reconcile.Secret(ctx, rclient, newSecretConfig, prevSecretMeta, &owner); err != nil {
 		return err
 	}
 

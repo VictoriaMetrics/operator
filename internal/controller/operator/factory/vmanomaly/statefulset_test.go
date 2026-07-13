@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -45,27 +46,29 @@ func TestCreateOrUpdate(t *testing.T) {
 				*config.MustGetBaseConfig() = defaultCfg
 			}()
 		}
-		err := CreateOrUpdate(ctx, o.cr, fclient)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			shardCount := ptr.Deref(o.cr.Spec.ShardCount, 0)
-			if shardCount > 0 {
-				for i := range shardCount {
-					var got appsv1.StatefulSet
-					name := fmt.Sprintf("%s-%d", o.cr.PrefixedName(), i)
-					assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: name}, &got))
-					o.validate(&got, int(i))
-				}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, o.cr, fclient)
+			if o.wantErr {
+				assert.Error(t, err)
 			} else {
-				var got appsv1.StatefulSet
-				assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
-				o.validate(&got, 0)
+				assert.NoError(t, err)
 			}
-		}
+			if o.validate != nil {
+				shardCount := ptr.Deref(o.cr.Spec.ShardCount, 0)
+				if shardCount > 0 {
+					for i := range shardCount {
+						var got appsv1.StatefulSet
+						name := fmt.Sprintf("%s-%d", o.cr.PrefixedName(), i)
+						assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: name}, &got))
+						o.validate(&got, int(i))
+					}
+				} else {
+					var got appsv1.StatefulSet
+					assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+					o.validate(&got, 0)
+				}
+			}
+		})
 	}
 
 	// simple vmanomaly

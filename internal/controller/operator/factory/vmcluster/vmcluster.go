@@ -1760,7 +1760,7 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		prevSecretMeta = ptr.To(buildLBConfigSecretMeta(prevCR))
 	}
 	owner := cr.AsOwner()
-	if err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr), prevSecretMeta, &owner); err != nil {
+	if _, err := reconcile.Secret(ctx, rclient, buildVMAuthLBSecret(cr), prevSecretMeta, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauth lb secret: %w", err)
 	}
 	lbDep, err := buildVMAuthLBDeployment(cr)

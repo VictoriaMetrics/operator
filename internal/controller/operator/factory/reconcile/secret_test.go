@@ -20,6 +20,7 @@ func TestSecretReconcile(t *testing.T) {
 		prevMeta          *metav1.ObjectMeta
 		predefinedObjects []runtime.Object
 		actions           []k8stools.ClientAction
+		wantChanged       bool
 	}
 	getSecret := func(fns ...func(s *corev1.Secret)) *corev1.Secret {
 		s := &corev1.Secret{
@@ -42,7 +43,9 @@ func TestSecretReconcile(t *testing.T) {
 		ctx := context.Background()
 		cl := k8stools.GetTestClientWithActions(o.predefinedObjects)
 		synctest.Test(t, func(t *testing.T) {
-			assert.NoError(t, Secret(ctx, cl, o.new, o.prevMeta, nil))
+			changed, err := Secret(ctx, cl, o.new, o.prevMeta, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, o.wantChanged, changed)
 			assert.Equal(t, o.actions, cl.Actions)
 		})
 	}
@@ -56,6 +59,7 @@ func TestSecretReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "Secret", Resource: nn},
 			{Verb: "Create", Kind: "Secret", Resource: nn},
 		},
+		wantChanged: true,
 	})
 
 	// no updates
@@ -82,6 +86,7 @@ func TestSecretReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "Secret", Resource: nn},
 			{Verb: "Update", Kind: "Secret", Resource: nn},
 		},
+		wantChanged: true,
 	})
 
 	// data key added
@@ -97,6 +102,7 @@ func TestSecretReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "Secret", Resource: nn},
 			{Verb: "Update", Kind: "Secret", Resource: nn},
 		},
+		wantChanged: true,
 	})
 
 	// data key removed
@@ -112,5 +118,6 @@ func TestSecretReconcile(t *testing.T) {
 			{Verb: "Get", Kind: "Secret", Resource: nn},
 			{Verb: "Update", Kind: "Secret", Resource: nn},
 		},
+		wantChanged: true,
 	})
 }

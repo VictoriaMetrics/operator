@@ -3,6 +3,7 @@ package vmanomaly
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,27 +45,29 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			args.preRun(ctx, fclient, args.cr)
 		}
 
-		err := CreateOrUpdate(ctx, args.cr, fclient)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
-			for i, action := range fclient.Actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, args.cr, fclient)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(fclient.Actions) {
-				break
+			if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+				for i, action := range fclient.Actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
 			}
-			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
-		}
+
+			for i, action := range want.actions {
+				if i >= len(fclient.Actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	name := "vmanomaly"
@@ -308,28 +311,30 @@ schedulers:
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	var sts appsv1.StatefulSet
-	err := fclient.Get(ctx, nsn, &sts)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		var sts appsv1.StatefulSet
+		err := fclient.Get(ctx, nsn, &sts)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
 
-	// unpause and verify reconciliation
-	cr.Spec.Paused = false
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	err = fclient.Get(ctx, nsn, &sts)
-	assert.NoError(t, err)
+		// unpause and verify reconciliation
+		cr.Spec.Paused = false
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err = fclient.Get(ctx, nsn, &sts)
+		assert.NoError(t, err)
 
-	// pause and update replica count
-	cr.Spec.Paused = true
-	cr.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		// pause and update replica count
+		cr.Spec.Paused = true
+		cr.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	// check that replicas count is not updated
-	err = fclient.Get(ctx, nsn, &sts)
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), *sts.Spec.Replicas)
+		// check that replicas count is not updated
+		err = fclient.Get(ctx, nsn, &sts)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), *sts.Spec.Replicas)
+	})
 }
 
 func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
@@ -345,15 +350,17 @@ func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
 
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-		var vpa vpav1.VerticalPodAutoscaler
-		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
-		assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
-			Name:       cr.Name,
-			Kind:       "VMAnomaly",
-			APIVersion: "operator.victoriametrics.com/v1",
-		}, vpa.Spec.TargetRef)
+			var vpa vpav1.VerticalPodAutoscaler
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
+			assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
+				Name:       cr.Name,
+				Kind:       "VMAnomaly",
+				APIVersion: "operator.victoriametrics.com/v1",
+			}, vpa.Spec.TargetRef)
+		})
 	}
 
 	baseSpec := func() vmv1.VMAnomalySpec {
@@ -448,15 +455,17 @@ schedulers:
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
-	var vpa vpav1.VerticalPodAutoscaler
-	assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
 
-	// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
-	cr.Spec.VPA = nil
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	err := fclient.Get(ctx, vpaNSN, &vpa)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
+		cr.Spec.VPA = nil
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err := fclient.Get(ctx, vpaNSN, &vpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
 }

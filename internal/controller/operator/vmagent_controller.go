@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -163,13 +164,15 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 		err = fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
 		return
 	}
+	var g errgroup.Group
+	g.SetLimit(childReconcileConcurrencyLimit)
 	for i := range objects.Items {
 		item := &objects.Items[i]
 		if item.IsUnmanaged(instance) {
 			continue
 		}
-		l := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
+		itemLog := l.WithValues("vmagent", item.Name, "parent_namespace", item.Namespace)
+		itemCtx := logger.AddToContext(ctx, itemLog)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
@@ -181,20 +184,23 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.GetNamespace(),
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, rclient, instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts)
 			if err != nil {
-				l.Error(err, fmt.Sprintf("cannot match VMAgent and %T", instance))
+				itemLog.Error(err, fmt.Sprintf("cannot match VMAgent and %T", instance))
 				continue
 			}
 			if !match {
 				continue
 			}
 		}
-
-		if configErr := vmagent.CreateOrUpdateScrapeConfig(ctx, rclient, item, instance); configErr != nil {
-			l.Error(configErr, "cannot update VMAgent scrape configuration")
-			err = configErr
-		}
+		g.Go(func() error {
+			if configErr := vmagent.CreateOrUpdateScrapeConfig(itemCtx, rclient, item, instance); configErr != nil {
+				itemLog.Error(configErr, "cannot update VMAgent scrape configuration")
+				return configErr
+			}
+			return nil
+		})
 	}
+	err = g.Wait()
 	return
 }

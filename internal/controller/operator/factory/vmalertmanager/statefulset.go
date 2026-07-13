@@ -116,7 +116,10 @@ func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.V
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMServiceScrape(svc, cr)
+	scrape := build.VMServiceScrape(svc, cr)
+	// vmalertmanager always runs with a config-reloader sidecar
+	scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
+	return scrape
 }
 
 func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {
@@ -544,7 +547,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 
 	owner := cr.AsOwner()
-	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta, &owner); err != nil {
+	if _, err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta, &owner); err != nil {
 		return err
 	}
 

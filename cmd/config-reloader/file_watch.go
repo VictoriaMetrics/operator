@@ -64,6 +64,7 @@ func (fw *fileWatcher) start(ctx context.Context, updates chan struct{}) {
 			return fmt.Errorf("cannot write content to file: %s, err: %w", *configFileDst, err)
 		}
 		prevContent = newData
+		contentHashes.observe("main", hashBytes(newData))
 		select {
 		case updates <- struct{}{}:
 		default:
@@ -180,8 +181,8 @@ type dirWatcher struct {
 }
 
 // newDirWatchers watches dirs; targetDirs is paired by index with dirs (dirs[i] → targetDirs[i]).
-// If targetDirs is non-empty it must have the same length as dirs.
-// A watched dir with no corresponding target only triggers a reload on change.
+// If non-empty, targetDirs must have the same length as dirs. A watched dir with no
+// corresponding target only triggers a reload on change.
 func newDirWatchers(dirs []string, targetDirs []string) (*dirWatcher, error) {
 	if err := validateTargetDirCount(len(targetDirs), len(dirs)); err != nil {
 		return nil, err
@@ -254,7 +255,6 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 
 			prevFileHash := filesContentHashPath[path]
 			if bytes.Equal(prevFileHash, newFileHash) {
-				// todo metric.
 				return nil
 			}
 			filesContentHashPath[path] = newFileHash

@@ -129,6 +129,11 @@ func (cr *VMSingle) HasAnyRelabellingConfigs() bool {
 	return cr.Spec.HasAnyRelabellingConfigs()
 }
 
+// HasConfigReloader reports whether vmsingle's pod spec includes a config-reloader sidecar.
+func (cr *VMSingle) HasConfigReloader() bool {
+	return !ptr.Deref(cr.Spec.IngestOnlyMode, true) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule()
+}
+
 // ScrapeSelectors gets object and namespace sepectors
 func (cr *VMSingle) ScrapeSelectors(scrape client.Object) (*metav1.LabelSelector, *metav1.LabelSelector) {
 	return cr.Spec.ScrapeSelectors(scrape)

@@ -240,6 +240,12 @@ type VLAgentRemoteWriteSettings struct {
 type VLAgentRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication.
+	// Available starting vlagent v1.52.0.
+	//
+	// +optional
+	// +notes={available_from: "v0.74.0"}
+	BasicAuth *vmv1beta1.BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	BearerTokenSecret *corev1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`

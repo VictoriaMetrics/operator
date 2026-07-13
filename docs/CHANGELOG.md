@@ -13,7 +13,10 @@ aliases:
 
 ## tip
 
+* FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): add `basicAuth` field support to `remoteWrite` entries. See [#2371](https://github.com/VictoriaMetrics/operator/issues/2371).
+
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add missing `list` verb to config-reloader's secrets RBAC rule. See [#2384](https://github.com/VictoriaMetrics/operator/issues/2384).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): return an error instead of panicking when a `Labels` map value is malformed (missing the `=` separator) during config parsing.
 
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026

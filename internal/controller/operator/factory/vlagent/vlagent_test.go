@@ -306,6 +306,64 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// with basicAuth rw
+	f(opts{
+		cr: &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "basic-auth",
+				Namespace: "default",
+			},
+			Spec: vmv1.VLAgentSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+					{
+						URL: "http://some-url",
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "basic-auth-access",
+								},
+							},
+							Password: corev1.SecretKeySelector{
+								Key: "password",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "basic-auth-access",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
+			cnt := set.Spec.Template.Spec.Containers[0]
+			assert.Equal(t, cnt.Name, "vlagent")
+			assert.Contains(t, cnt.Args, "-remoteWrite.basicAuth.usernameFile=/etc/vl/remote-write-assets/basic-auth-access/username")
+			assert.Contains(t, cnt.Args, "-remoteWrite.basicAuth.passwordFile=/etc/vl/remote-write-assets/basic-auth-access/password")
+			var volumeNames []string
+			for _, v := range set.Spec.Template.Spec.Volumes {
+				volumeNames = append(volumeNames, v.Name)
+			}
+			assert.Contains(t, volumeNames, "basic-auth-access")
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-auth-access",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"username": []byte(`some-username`),
+					"password": []byte(`some-password`),
+				},
+			},
+		},
+	})
+
 	// managed metadata
 	f(opts{
 		cr: &vmv1.VLAgent{
@@ -520,6 +578,49 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 	}, []string{
 		`-remoteWrite.url=localhost:9429`,
 		`-remoteWrite.tlsInsecureSkipVerify=true`,
+	})
+
+	// test basicAuth
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vlagent",
+			Namespace: "default",
+		},
+		Spec: vmv1.VLAgentSpec{RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+			{
+				URL: "localhost:9429",
+				BasicAuth: &vmv1beta1.BasicAuth{
+					Username: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "basic-auth-secret",
+						},
+						Key: "username",
+					},
+					Password: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "basic-auth-secret",
+						},
+						Key: "password",
+					},
+				},
+			},
+			{
+				URL: "localhost:9431",
+				BasicAuth: &vmv1beta1.BasicAuth{
+					Username: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "basic-auth-secret-2",
+						},
+						Key: "username",
+					},
+					PasswordFile: "/path/to_password",
+				},
+			},
+		}},
+	}, []string{
+		`-remoteWrite.url=localhost:9429,localhost:9431`,
+		`-remoteWrite.basicAuth.usernameFile=/etc/vl/remote-write-assets/basic-auth-secret/username,/etc/vl/remote-write-assets/basic-auth-secret-2/username`,
+		`-remoteWrite.basicAuth.passwordFile=/etc/vl/remote-write-assets/basic-auth-secret/password,/path/to_password`,
 	})
 
 	// test sendTimeout

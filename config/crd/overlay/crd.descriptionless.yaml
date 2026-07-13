@@ -514,6 +514,37 @@ spec:
               remoteWrite:
                 items:
                   properties:
+                    basicAuth:
+                      properties:
+                        password:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        password_file:
+                          type: string
+                        username:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
                     bearerTokenPath:
                       type: string
                     bearerTokenSecret:

@@ -46141,6 +46141,37 @@ spec:
                 type: object
               jwt:
                 properties:
+                  defaultVMAccessClaim:
+                    properties:
+                      logsAccountID:
+                        format: int32
+                        type: integer
+                      logsExtraFilters:
+                        items:
+                          type: string
+                        type: array
+                      logsExtraStreamFilters:
+                        items:
+                          type: string
+                        type: array
+                      logsProjectID:
+                        format: int32
+                        type: integer
+                      metricsAccountID:
+                        format: int32
+                        type: integer
+                      metricsExtraFilters:
+                        items:
+                          type: string
+                        type: array
+                      metricsExtraLabels:
+                        items:
+                          type: string
+                        type: array
+                      metricsProjectID:
+                        format: int32
+                        type: integer
+                    type: object
                   matchClaims:
                     additionalProperties:
                       type: string

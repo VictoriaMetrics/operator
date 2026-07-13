@@ -3,6 +3,7 @@ package vmagent
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -83,27 +84,29 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			args.preRun(ctx, fclient, args.cr)
 		}
 
-		err := CreateOrUpdate(ctx, args.cr, fclient)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
-			for i, action := range fclient.Actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, args.cr, fclient)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(fclient.Actions) {
-				break
+			if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+				for i, action := range fclient.Actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
 			}
-			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
-		}
+
+			for i, action := range want.actions {
+				if i >= len(fclient.Actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	// create vmagent with default config (Deployment mode)
@@ -264,20 +267,22 @@ func TestCreateOrUpdate_StatefulSetWithHPA(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	// initial creation: StatefulSet created with 1 replica
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	synctest.Test(t, func(t *testing.T) {
+		// initial creation: StatefulSet created with 1 replica
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	var sts appsv1.StatefulSet
-	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
-	assert.Equal(t, int32(1), *sts.Spec.Replicas)
+		var sts appsv1.StatefulSet
+		assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
+		assert.Equal(t, int32(1), *sts.Spec.Replicas)
 
-	// HPA now targets the VMAgent CR scale subresource (spec.shardCount), not the StatefulSet
-	// directly. The operator must always reconcile pod replicas from spec.replicaCount.
-	cr.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		// HPA now targets the VMAgent CR scale subresource (spec.shardCount), not the StatefulSet
+		// directly. The operator must always reconcile pod replicas from spec.replicaCount.
+		cr.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
-	assert.Equal(t, int32(2), *sts.Spec.Replicas)
+		assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
+		assert.Equal(t, int32(2), *sts.Spec.Replicas)
+	})
 }
 
 func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
@@ -293,15 +298,17 @@ func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
 
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-		var vpa vpav1.VerticalPodAutoscaler
-		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
-		assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
-			Name:       cr.Name,
-			Kind:       "VMAgent",
-			APIVersion: "operator.victoriametrics.com/v1beta1",
-		}, vpa.Spec.TargetRef)
+			var vpa vpav1.VerticalPodAutoscaler
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
+			assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
+				Name:       cr.Name,
+				Kind:       "VMAgent",
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+			}, vpa.Spec.TargetRef)
+		})
 	}
 
 	// non-sharded
@@ -342,17 +349,19 @@ func TestCreateOrUpdateVPA_RemovedOnDisable(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
-	var vpa vpav1.VerticalPodAutoscaler
-	assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
 
-	// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
-	cr.Spec.VPA = nil
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	err := fclient.Get(ctx, vpaNSN, &vpa)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
+		cr.Spec.VPA = nil
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err := fclient.Get(ctx, vpaNSN, &vpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
 }
 
 func TestCreateOrUpdate_StatusShards(t *testing.T) {
@@ -363,12 +372,14 @@ func TestCreateOrUpdate_StatusShards(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(cr)
 
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		assert.NoError(t, reconcile.UpdateObjectStatus(ctx, fclient, cr, vmv1beta1.UpdateStatusOperational, nil))
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+			assert.NoError(t, reconcile.UpdateObjectStatus(ctx, fclient, cr, vmv1beta1.UpdateStatusOperational, nil))
 
-		var updated vmv1beta1.VMAgent
-		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &updated))
-		assert.Equal(t, wantShards, updated.Status.Shards)
+			var updated vmv1beta1.VMAgent
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &updated))
+			assert.Equal(t, wantShards, updated.Status.Shards)
+		})
 	}
 
 	// non-sharded: status.shards must be 1 so VPA/HPA scale subresource is non-zero
@@ -411,26 +422,28 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	var dep appsv1.Deployment
-	err := fclient.Get(ctx, nsn, &dep)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		var dep appsv1.Deployment
+		err := fclient.Get(ctx, nsn, &dep)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
 
-	// unpause and verify reconciliation
-	cr.Spec.Paused = false
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	err = fclient.Get(ctx, nsn, &dep)
-	assert.NoError(t, err)
+		// unpause and verify reconciliation
+		cr.Spec.Paused = false
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err = fclient.Get(ctx, nsn, &dep)
+		assert.NoError(t, err)
 
-	// pause and update replica count
-	cr.Spec.Paused = true
-	cr.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		// pause and update replica count
+		cr.Spec.Paused = true
+		cr.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	// check that replicas count is not updated
-	err = fclient.Get(ctx, nsn, &dep)
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), *dep.Spec.Replicas)
+		// check that replicas count is not updated
+		err = fclient.Get(ctx, nsn, &dep)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), *dep.Spec.Replicas)
+	})
 }

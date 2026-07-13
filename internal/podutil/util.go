@@ -3,7 +3,6 @@ package podutil
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -57,7 +56,7 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 			continue
 		}
 		for _, ep := range es.Endpoints {
-			if ep.Conditions.Ready == nil || !*ep.Conditions.Ready {
+			if ep.Conditions.Ready != nil && !*ep.Conditions.Ready {
 				continue
 			}
 			for _, a := range ep.Addresses {
@@ -194,12 +193,17 @@ func WaitForEmptyPQ[Agent AgentMetrics](
 ) {
 	pollMetrics := func(pctx context.Context, agentName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, opts.CheckInterval, true, func(ctx context.Context) (bool, error) {
-			metricValues, err := FetchMetricValues(ctx, opts.HTTPClient, addr, opts.MetricName, opts.Dimension)
+			queries := []MetricQuery{{Name: opts.MetricName, Dimension: opts.Dimension}}
+			metricValues, err := FetchMetricsValues(ctx, opts.HTTPClient, addr, queries)
 			if err != nil {
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "agent", agentName)
 				return false, nil
 			}
-			for labelVal, v := range metricValues {
+			vs, ok := metricValues[opts.MetricName]
+			if !ok {
+				return false, nil
+			}
+			for labelVal, v := range vs {
 				if !opts.MatchesBackend(labelVal, backendURL) {
 					continue
 				}
@@ -247,33 +251,6 @@ func WaitForEmptyPQ[Agent AgentMetrics](
 		})
 	}
 	wg.Wait()
-}
-
-// FetchMetricValues fetches Prometheus-format metrics from addr, parses them,
-// and returns a map of dimension value → float64 for the given metricName.
-func FetchMetricValues(ctx context.Context, httpClient *http.Client, addr, metricName, dimension string) (map[string]float64, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request at %s: %w", addr, err)
-	}
-	resp, err := httpClient.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metrics at %s: %w", addr, err)
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read metrics at %s: %w", addr, err)
-	}
-	s := string(data)
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status=%d body=%q at %s", resp.StatusCode, s, addr)
-	}
-	values := make(map[string]float64)
-	if err := unmarshalMetric(values, s, metricName, dimension); err != nil {
-		return nil, fmt.Errorf("failed to parse metric=%s at %s: %w", metricName, addr, err)
-	}
-	return values, nil
 }
 
 // MergeSpecs substitutes ZonePlaceholder in a with name, then deep-merges b on top.

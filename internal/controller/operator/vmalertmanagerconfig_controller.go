@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -92,14 +93,16 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		return
 	}
 
+	var g errgroup.Group
+	g.SetLimit(childReconcileConcurrencyLimit)
 	for i := range objects.Items {
 		item := &objects.Items[i]
 		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) || item.IsUnmanaged() {
 			continue
 		}
 
-		l := l.WithValues("vmalertmanager", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
+		itemLog := l.WithValues("vmalertmanager", item.Name, "parent_namespace", item.Namespace)
+		itemCtx := logger.AddToContext(ctx, itemLog)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
@@ -110,20 +113,27 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				ObjectSelector:    item.Spec.ConfigSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match alertmanager against selector, probably bug")
+				itemLog.Error(err, "cannot match alertmanager against selector, probably bug")
 				continue
 			}
 			if !match {
 				continue
 			}
 		}
-		if configErr := vmalertmanager.CreateOrUpdateConfig(ctx, r.Client, item, &instance); configErr != nil {
-			l.Error(configErr, "cannot update alertmanager config")
-			err = configErr
-		}
+		// each VMAlertmanager's config reconcile is independent of the others - run them
+		// concurrently so a slow one (e.g. waiting for its own config reload to be confirmed)
+		// doesn't serialize the whole reconcile behind every other selected VMAlertmanager.
+		g.Go(func() error {
+			if configErr := vmalertmanager.CreateOrUpdateConfig(itemCtx, r.Client, item, &instance); configErr != nil {
+				itemLog.Error(configErr, "cannot update alertmanager config")
+				return configErr
+			}
+			return nil
+		})
 	}
+	err = g.Wait()
 	return
 }
 

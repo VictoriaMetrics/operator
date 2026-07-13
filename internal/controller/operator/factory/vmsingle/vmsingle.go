@@ -415,7 +415,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	containers := []corev1.Container{vmsingleContainer}
 	var ic []corev1.Container
 
-	if !ptr.Deref(cr.Spec.IngestOnlyMode, true) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
+	if cr.HasConfigReloader() {
 		var ss *corev1.SecretKeySelector
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 			ss = &corev1.SecretKeySelector{
@@ -512,7 +512,11 @@ func buildScrape(cr *vmv1beta1.VMSingle, svc *corev1.Service) *vmv1beta1.VMServi
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMServiceScrape(svc, cr, "vmbackupmanager")
+	scrape := build.VMServiceScrape(svc, cr, "vmbackupmanager")
+	if cr.HasConfigReloader() {
+		scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
+	}
+	return scrape
 }
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
@@ -606,7 +610,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*cor
 	return cm, nil
 }
 
-// createOrUpdateRelabelConfigsAssets builds relabeling configs for vmsingle at separate configmap, serialized as yaml
+// createOrUpdateRelabelConfigsAssets builds relabeling configs for vmsingle at separate configmap, serialized as yaml.
 func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
@@ -651,7 +655,7 @@ func buildStreamAggrConfig(cr *vmv1beta1.VMSingle, ac *build.AssetsCache) (*core
 	return cfgCM, nil
 }
 
-// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
+// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml.
 func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ac *build.AssetsCache) error {
 	if !cr.HasAnyStreamAggrRule() {
 		return nil
@@ -768,12 +772,11 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	if _, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
-		return err
-	}
-	return nil
+	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac)
+	return err
 }
 
+// createOrUpdateScrapeConfig reconciles the main scrape config.
 func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 		return 0, nil
@@ -847,7 +850,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		secret.Annotations = map[string]string{
 			"generated": "true",
 		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+		if _, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return 0, err
 		}
 	}
@@ -863,7 +866,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			return 0, fmt.Errorf("gzipping extra scrape config bucket %d for vmsingle: %w", idx, err)
 		}
 		s := vmscrapes.BuildExtraConfigSecret(cr, idx, compressed)
-		if err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
+		if _, err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
 			return 0, err
 		}
 	}

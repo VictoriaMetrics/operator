@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -34,20 +35,22 @@ func TestRateLimiter_Throttle(t *testing.T) {
 }
 
 func TestRateLimiter_ThrottleResetsAfterDeadline(t *testing.T) {
-	rl := NewRateLimiter(2, 10*time.Millisecond)
+	synctest.Test(t, func(t *testing.T) {
+		rl := NewRateLimiter(2, 10*time.Millisecond)
 
-	// exhaust the budget
-	assert.False(t, rl.Throttle())
-	assert.False(t, rl.Throttle())
-	// throttling begins
-	assert.True(t, rl.Throttle())
+		// exhaust the budget
+		assert.False(t, rl.Throttle())
+		assert.False(t, rl.Throttle())
+		// throttling begins
+		assert.True(t, rl.Throttle())
 
-	// budget resets after deadline
-	time.Sleep(20 * time.Millisecond)
-	assert.False(t, rl.Throttle())
-	assert.False(t, rl.Throttle())
-	// throttling begins
-	assert.True(t, rl.Throttle())
+		// budget resets after deadline
+		time.Sleep(20 * time.Millisecond)
+		assert.False(t, rl.Throttle())
+		assert.False(t, rl.Throttle())
+		// throttling begins
+		assert.True(t, rl.Throttle())
+	})
 }
 
 func TestReconcileRateLimiter_Throttle(t *testing.T) {

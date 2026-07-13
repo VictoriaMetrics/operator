@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -566,5 +567,7 @@ func TestCreateOrUpdate_RecordingRulesOnlyNoNotifier(t *testing.T) {
 	cmNames, err := CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil, hasNotifiers)
 	assert.NoError(t, err)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient, cmNames))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient, cmNames))
+	})
 }

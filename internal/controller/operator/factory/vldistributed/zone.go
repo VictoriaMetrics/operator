@@ -374,6 +374,10 @@ func isVMAuthEnabled(cr *vmv1alpha1.VLDistributed) bool {
 	return *cr.Spec.VMAuth.Enabled
 }
 
+var vlAgentQueueMetricQueries = []podutil.MetricQuery{
+	{Name: vlAgentQueueMetricName, Dimension: "url"},
+}
+
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
 
@@ -383,12 +387,12 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
-			var metricValues map[string]float64
-			if metricValues, err = podutil.FetchMetricValues(ctx, zs.httpClient, addr, vlAgentQueueMetricName, "url"); err != nil {
+			var metricValues map[string]map[string]float64
+			if metricValues, err = podutil.FetchMetricsValues(ctx, zs.httpClient, addr, vlAgentQueueMetricQueries); err != nil {
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "name", nsn.String())
 				return false, nil
 			}
-			for u, v := range metricValues {
+			for u, v := range metricValues[vlAgentQueueMetricName] {
 				if u != backendURL {
 					continue
 				}

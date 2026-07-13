@@ -20,6 +20,7 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 )
 
@@ -438,9 +439,9 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(svc.Spec.Ports).To(HaveLen(2))
 							var vmss vmv1beta1.VMServiceScrape
 							Expect(k8sClient.Get(ctx, nsn, &vmss)).ToNot(HaveOccurred())
-							Expect(vmss.Spec.Endpoints).To(HaveLen(1))
-							ep := vmss.Spec.Endpoints[0]
-							Expect(ep.Port).To(Equal("internal"))
+							Expect(vmss.Spec.Endpoints).To(HaveLen(2))
+							Expect(vmss.Spec.Endpoints[0].Port).To(Equal("internal"))
+							Expect(vmss.Spec.Endpoints[1].TargetPort).To(Equal(ptr.To(intstr.FromInt32(int32(build.ConfigReloaderDefaultPort)))))
 						},
 					},
 				),

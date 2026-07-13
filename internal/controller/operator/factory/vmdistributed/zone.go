@@ -12,7 +12,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -370,8 +369,8 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 	return reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner)
 }
 
-func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1beta1.VMAgent) sets.Set[string] {
-	return podutil.GetMetricsAddrs(ctx, rclient, vmAgent)
+var vmAgentQueueMetricQueries = []podutil.MetricQuery{
+	{Name: vmAgentQueueMetricName, Dimension: "url"},
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
@@ -384,13 +383,13 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
-			var metricValues map[string]float64
-			if metricValues, err = podutil.FetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "url"); err != nil {
+			var metrics map[string]map[string]float64
+			if metrics, err = podutil.FetchMetricsValues(ctx, zs.httpClient, addr, vmAgentQueueMetricQueries); err != nil {
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "name", nsn.String())
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil
 			}
-			for u, v := range metricValues {
+			for u, v := range metrics[vmAgentQueueMetricName] {
 				if u != backendURL {
 					continue
 				}
@@ -417,7 +416,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		m := podutil.NewManager(ctx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
-				addrs := getMetricsAddrs(ctx, rclient, vmAgent)
+				addrs := podutil.GetMetricsAddrs(ctx, rclient, vmAgent)
 				for addr := range addrs {
 					if m.Has(addr) {
 						continue

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add missing `list` verb to config-reloader's secrets RBAC rule. See [#2384](https://github.com/VictoriaMetrics/operator/issues/2384).
+
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026
 

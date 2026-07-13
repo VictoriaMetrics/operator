@@ -73,6 +73,16 @@ func TestCreateVMSingleRBAC(t *testing.T) {
 			var got rbacv1.Role
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: cr.Namespace}, &got))
 			assert.Len(t, got.Rules, 4)
+			var secretsRule *rbacv1.PolicyRule
+			for i, rule := range got.Rules {
+				if len(rule.Resources) == 1 && rule.Resources[0] == "secrets" {
+					secretsRule = &got.Rules[i]
+				}
+			}
+			if assert.NotNil(t, secretsRule, "expected a secrets rule in the namespaced Role") {
+				assert.Equal(t, []string{"get", "watch", "list"}, secretsRule.Verbs)
+				assert.Equal(t, []string{cr.PrefixedName()}, secretsRule.ResourceNames)
+			}
 		},
 	})
 

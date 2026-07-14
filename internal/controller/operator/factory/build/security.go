@@ -236,6 +236,34 @@ func addStrictSecuritySettingsWithRootToPod(params *vmv1beta1.CommonAppsParams) 
 	return securityContext
 }
 
+// AddDefaultStorageFSGroupToPod ensures a pod that mounts a PersistentVolume can write to it.
+// When neither useStrictSecurity nor a user securityContext is set, the pod gets no securityContext
+// and the container process (uid 65534 in the default images) cannot write to the volume.
+// It defaults fsGroup to 65534 in that case and leaves any operator- or user-provided pod
+// securityContext untouched. It is a no-op under OpenShift, where the assigned SCC manages fsGroup.
+func AddDefaultStorageFSGroupToPod(dst *corev1.PodTemplateSpec, params *vmv1beta1.CommonAppsParams) {
+	if dst.Spec.SecurityContext != nil {
+		return
+	}
+	if params != nil && params.SecurityContext != nil {
+		return
+	}
+	if ptr.Deref(params.UseStrictSecurity, false) {
+		return
+	}
+	if IsOpenShiftCompatibilityActive() {
+		return
+	}
+	securityContext := &corev1.PodSecurityContext{
+		FSGroup: &containerUserGroup,
+	}
+	if k8stools.IsFSGroupChangePolicySupported() {
+		onRootMismatch := corev1.FSGroupChangeOnRootMismatch
+		securityContext.FSGroupChangePolicy = &onRootMismatch
+	}
+	dst.Spec.SecurityContext = securityContext
+}
+
 // Kubernetes acts tricky with AppArmorProfile
 // it doesn't assign it into the Statefulset if it has default values
 func compareAppAromr(left, right *corev1.AppArmorProfile) bool {

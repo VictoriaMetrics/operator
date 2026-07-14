@@ -52,6 +52,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VLDistributed{}, addVLDistributedDefaults)
 
 	scheme.AddTypeDefaultingFunc(&appsv1.DaemonSet{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.ConfigMap{}, addDefaultMetadata)
@@ -98,6 +99,43 @@ func addVMDistributedDefaults(objI any) {
 		}
 		if !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VMSingle.Spec.License = cr.Spec.License.DeepCopy()
+		}
+	}
+}
+
+func addVLDistributedDefaults(objI any) {
+	cr := objI.(*vmv1alpha1.VLDistributed)
+
+	addDefaultMetadata(cr)
+
+	if cr.Spec.ZoneCommon.ReadyTimeout == nil {
+		cr.Spec.ZoneCommon.ReadyTimeout = &metav1.Duration{
+			Duration: 5 * time.Minute,
+		}
+	}
+	if cr.Spec.ZoneCommon.UpdatePause == nil {
+		cr.Spec.ZoneCommon.UpdatePause = &metav1.Duration{
+			Duration: 1 * time.Minute,
+		}
+	}
+	if len(cr.Spec.BackendType) == 0 {
+		cr.Spec.BackendType = vmv1alpha1.VLDistributedBackendTypeVLCluster
+	}
+	for i := range cr.Spec.Zones {
+		z := &cr.Spec.Zones[i]
+		if len(z.TrafficMode) == 0 {
+			z.TrafficMode = vmv1alpha1.VLDistributedTrafficModeReadWrite
+		}
+	}
+	if cr.Spec.License.IsProvided() {
+		if !cr.Spec.VMAuth.Spec.License.IsProvided() {
+			cr.Spec.VMAuth.Spec.License = cr.Spec.License.DeepCopy()
+		}
+		if !cr.Spec.ZoneCommon.VLAgent.Spec.License.IsProvided() {
+			cr.Spec.ZoneCommon.VLAgent.Spec.License = cr.Spec.License.DeepCopy()
+		}
+		if !cr.Spec.ZoneCommon.VLCluster.Spec.License.IsProvided() {
+			cr.Spec.ZoneCommon.VLCluster.Spec.License = cr.Spec.License.DeepCopy()
 		}
 	}
 }

@@ -1,0 +1,120 @@
+/*
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package operator
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vldistributed"
+)
+
+// VLDistributedReconciler reconciles a VLDistributed object
+type VLDistributedReconciler struct {
+	client.Client
+	BaseConf     *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	name         string
+}
+
+// Init implements crdController interface
+func (r *VLDistributedReconciler) Init(name string, rclient client.Client, l logr.Logger, sc *runtime.Scheme, cf *config.BaseOperatorConf) {
+	r.name = strings.ToLower(name)
+	r.Client = rclient
+	r.Log = l.WithName("controller." + name)
+	r.OriginScheme = sc
+	r.BaseConf = cf
+}
+
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed/finalizers,verbs=update
+func (r *VLDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
+	ctx = logger.AddToContext(ctx, l)
+	var instance vmv1alpha1.VLDistributed
+
+	// Handle reconcile errors
+	defer func() {
+		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
+	}()
+
+	// Fetch VLDistributed instance
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		err = &getError{err, r.name, req}
+		return
+	}
+
+	// Register metrics
+	RegisterObjectStat(&instance, r.name)
+
+	// Check if the instance is being deleted
+	if !instance.DeletionTimestamp.IsZero() {
+		if err = finalize.OnVLDistributedDelete(ctx, r, &instance); err != nil {
+			err = fmt.Errorf("cannot remove finalizer from VLDistributed: %w", err)
+		}
+		return
+	}
+	// Check parsing error
+	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
+		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		return
+	}
+
+	// Add finalizer if necessary
+	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return
+	}
+	r.Client.Scheme().Default(&instance)
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
+		if err := vldistributed.CreateOrUpdate(ctx, &instance, r); err != nil {
+			return result, fmt.Errorf("VLDistributed %s update failed: %w", instance.Name, err)
+		}
+
+		return result, nil
+	})
+	if err == nil {
+		result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+	}
+	return
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *VLDistributedReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&vmv1alpha1.VLDistributed{}).
+		WithOptions(getDefaultOptions()).
+		Complete(r)
+}
+
+// IsDisabled returns true if controller should be disabled
+func (*VLDistributedReconciler) IsDisabled(_ *config.BaseOperatorConf, disabledControllers sets.Set[string]) bool {
+	return disabledControllers.HasAny("VLAgent", "VLCluster")
+}

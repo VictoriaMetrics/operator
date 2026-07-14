@@ -41,6 +41,9 @@ type objectCollector struct {
 func (oc *objectCollector) register(name, ns, controller string) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
+	if oc.objectsByController[controller] == nil {
+		oc.objectsByController[controller] = sets.New[string]()
+	}
 	oc.objectsByController[controller].Insert(ns + "/" + name)
 }
 
@@ -100,7 +103,7 @@ func newCollector() *objectCollector {
 		"vlcluster", "vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape",
 		"vmnodescrape", "vmpodscrape", "vmprobe", "vmscrapeconfig", "vmanomaly", "vlagent",
 		"vtsingle", "vtcluster", "vmdistributed", "podmonitor", "prometheusrule", "servicemonitor",
-		"alertmanagerconfig", "probe", "scrapeconfig", "vmanomalyconfig",
+		"alertmanagerconfig", "probe", "scrapeconfig", "vmanomalyconfig", "vldistributed",
 	}
 	for _, controller := range registeredObjects {
 		oc.objectsByController[controller] = sets.New[string]()

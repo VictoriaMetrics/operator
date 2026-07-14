@@ -253,6 +253,7 @@ func TestCreateVMAgentRBAC(t *testing.T) {
 			assert.Len(t, role.Rules, 1, "Role must have secrets rule only")
 			assert.Equal(t, []string{"secrets"}, role.Rules[0].Resources)
 			assert.Equal(t, []string{cr.PrefixedName()}, role.Rules[0].ResourceNames)
+			assert.Equal(t, []string{"get", "watch", "list"}, role.Rules[0].Verbs)
 		},
 	})
 

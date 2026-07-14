@@ -189,6 +189,7 @@ Appears in: [VLAgentSpec](#vlagentspec)
 
 | Field | Description |
 | --- | --- |
+| basicAuth<a href="#vlagentremotewritespec-basicauth" id="vlagentremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication.<br />Available starting vlagent v1.52.0.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0740">v0.74.0</a> |
 | bearerTokenPath<a href="#vlagentremotewritespec-bearertokenpath" id="vlagentremotewritespec-bearertokenpath">#</a><br/>_string_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 | bearerTokenSecret<a href="#vlagentremotewritespec-bearertokensecret" id="vlagentremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
 | headers<a href="#vlagentremotewritespec-headers" id="vlagentremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue |
@@ -1481,7 +1482,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulAgentSDConfig](#consulagentsdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [DockerSDConfig](#dockersdconfig), [DockerSwarmSDConfig](#dockerswarmsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [MarathonSDConfig](#marathonsdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
+Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulAgentSDConfig](#consulagentsdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [DockerSDConfig](#dockersdconfig), [DockerSwarmSDConfig](#dockerswarmsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [MarathonSDConfig](#marathonsdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3631,6 +3632,23 @@ Appears in: [VLogs](#vlogs)
 | volumeMounts<a href="#vlogsspec-volumemounts" id="vlogsspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vlogsspec-volumes" id="vlogsspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Optional)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated. |
 
+#### VMAccessClaim
+
+VMAccessClaim defines vm_access claim parameters used for request templating
+
+Appears in: [VMUserJWT](#vmuserjwt)
+
+| Field | Description |
+| --- | --- |
+| logsAccountID<a href="#vmaccessclaim-logsaccountid" id="vmaccessclaim-logsaccountid">#</a><br/>_integer_ | _(Optional)_<br/>LogsAccountID defines accountID to use for logs requests templating |
+| logsExtraFilters<a href="#vmaccessclaim-logsextrafilters" id="vmaccessclaim-logsextrafilters">#</a><br/>_string array_ | _(Optional)_<br/>LogsExtraFilters defines a list of logsql filters to apply for logs requests templating |
+| logsExtraStreamFilters<a href="#vmaccessclaim-logsextrastreamfilters" id="vmaccessclaim-logsextrastreamfilters">#</a><br/>_string array_ | _(Optional)_<br/>LogsExtraStreamFilters defines a list of logsql stream filters to apply for logs requests templating |
+| logsProjectID<a href="#vmaccessclaim-logsprojectid" id="vmaccessclaim-logsprojectid">#</a><br/>_integer_ | _(Optional)_<br/>LogsProjectID defines projectID to use for logs requests templating |
+| metricsAccountID<a href="#vmaccessclaim-metricsaccountid" id="vmaccessclaim-metricsaccountid">#</a><br/>_integer_ | _(Optional)_<br/>MetricsAccountID defines accountID to use for metrics requests templating |
+| metricsExtraFilters<a href="#vmaccessclaim-metricsextrafilters" id="vmaccessclaim-metricsextrafilters">#</a><br/>_string array_ | _(Optional)_<br/>MetricsExtraFilters defines a list of promql filters to apply for metrics requests templating |
+| metricsExtraLabels<a href="#vmaccessclaim-metricsextralabels" id="vmaccessclaim-metricsextralabels">#</a><br/>_string array_ | _(Optional)_<br/>MetricsExtraLabels defines a list of extra labels to apply for metrics requests templating |
+| metricsProjectID<a href="#vmaccessclaim-metricsprojectid" id="vmaccessclaim-metricsprojectid">#</a><br/>_integer_ | _(Optional)_<br/>MetricsProjectID defines projectID to use for metrics requests templating |
+
 #### VMAgent
 
 VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
@@ -5198,6 +5216,7 @@ Appears in: [VMUserSpec](#vmuserspec)
 
 | Field | Description |
 | --- | --- |
+| defaultVMAccessClaim<a href="#vmuserjwt-defaultvmaccessclaim" id="vmuserjwt-defaultvmaccessclaim">#</a><br/>_[VMAccessClaim](#vmaccessclaim)_ | _(Optional)_<br/>DefaultVMAccessClaim defines vm_access claim parameters to use when a JWT<br />doesn't carry a vm_access claim of its own. Set to an empty object to opt in<br />a token that only needs to pass matchClaims/oidc verification without vm_access.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0740">v0.74.0</a> |
 | matchClaims<a href="#vmuserjwt-matchclaims" id="vmuserjwt-matchclaims">#</a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>MatchClaims enables claim based routing |
 | oidc<a href="#vmuserjwt-oidc" id="vmuserjwt-oidc">#</a><br/>_[VMUserOIDC](#vmuseroidc)_ | _(Required)_<br/>OIDC defines OIDC configuration section |
 | publicKeyRefs<a href="#vmuserjwt-publickeyrefs" id="vmuserjwt-publickeyrefs">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core) array_ | _(Required)_<br/>PublicKeyRefs defines a list of Secret selectors that reference public keys |

@@ -43,7 +43,7 @@ func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 	}
 	secretsRule := rbacv1.PolicyRule{
 		APIGroups:     []string{""},
-		Verbs:         []string{"get", "watch"},
+		Verbs:         []string{"get", "watch", "list"},
 		Resources:     []string{"secrets"},
 		ResourceNames: []string{cr.PrefixedName()},
 	}

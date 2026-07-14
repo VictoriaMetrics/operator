@@ -487,6 +487,7 @@ func TestBuildNotifiers(t *testing.T) {
 		cr                *vmv1beta1.VMAlert
 		predefinedObjects []runtime.Object
 		want              []string
+		wantErr           bool
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -494,6 +495,11 @@ func TestBuildNotifiers(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		got, err := buildNotifiersArgs(o.cr, ac)
+		if o.wantErr {
+			assert.ErrorContains(t, err, "no notifiers found")
+			assert.Empty(t, got)
+			return
+		}
 		assert.NoError(t, err)
 		assert.Equal(t, o.want, got)
 	}
@@ -628,6 +634,31 @@ func TestBuildNotifiers(t *testing.T) {
 			},
 		},
 		want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/default_bearer_bearer", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/default_oauth2_client-secret,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
+	})
+
+	// no notifier configured and no rulePath: not an error, see #2388
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "recording-only",
+				Namespace: "default",
+			},
+		},
+		want: nil,
+	})
+
+	// no notifier configured but spec.rulePath is set: must still fail
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "with-rule-path",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				RulePath: []string{"/etc/vmalert/rules/*.yaml"},
+			},
+		},
+		wantErr: true,
 	})
 }
 
@@ -826,6 +857,27 @@ func Test_buildVMAlertArgs(t *testing.T) {
 			"-notifier.tlsInsecureSkipVerify=false,true,false,false,false",
 			"-notifier.tlsKeyFile=,/tmp/key.pem,,,",
 			"-notifier.url=http://am-1,http://am-2,http://am-3,http://vmalertmanager-test-system-0.vmalertmanager-test-system.monitoring.svc:9093,http://vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring.svc:9093",
+		},
+	})
+
+	// no notifier and no rulePath: builds fine without notifier args, see #2388
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "recording-only",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://vmsingle-url",
+				},
+			},
+		},
+		ruleConfigMapNames: []string{"vm-recording-only-rulefiles-0"},
+		want: []string{
+			"-datasource.url=http://vmsingle-url",
+			"-httpListenAddr=:8080",
+			"-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\"",
 		},
 	})
 }

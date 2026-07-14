@@ -388,7 +388,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    cr.Spec.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,

@@ -27,7 +27,7 @@ const (
 )
 
 func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, error) {
-	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
+	image := cr.Spec.Image.Reference()
 
 	var args []string
 	port, err := strconv.ParseInt(cr.Port(), 10, 32)

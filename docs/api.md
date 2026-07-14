@@ -2302,7 +2302,7 @@ Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), 
 | --- | --- |
 | pullPolicy<a href="#image-pullpolicy" id="image-pullpolicy">#</a><br/>_[PullPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#pullpolicy-v1-core)_ | _(Required)_<br/>PullPolicy describes how to pull docker image |
 | repository<a href="#image-repository" id="image-repository">#</a><br/>_string_ | _(Required)_<br/>Repository contains name of docker image + it's repository if needed |
-| tag<a href="#image-tag" id="image-tag">#</a><br/>_string_ | _(Required)_<br/>Tag contains desired docker image version |
+| tag<a href="#image-tag" id="image-tag">#</a><br/>_string_ | _(Required)_<br/>Tag contains desired docker image version.<br />It may be a regular tag (e.g. "v1.96.0") or a digest<br />(e.g. "sha256:<hex>"); a digest is joined to the repository with "@"<br />instead of ":", allowing images to be pinned by digest. |
 
 #### ImageConfig
 

@@ -306,7 +306,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	vmalertContainer := corev1.Container{
 		Args:                     args,
 		Name:                     "vmalert",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    cr.Spec.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		VolumeMounts:             volumeMounts,

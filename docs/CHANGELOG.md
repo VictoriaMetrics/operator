@@ -20,6 +20,8 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): return an error instead of panicking when a `Labels` map value is malformed (missing the `=` separator) during config parsing.
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): when no notifiers are configured, ignore alerting rules from selected VMRules instead of failing reconciliation; recording rules in the same group are kept and still reconciled. See [#2388](https://github.com/VictoriaMetrics/operator/issues/2388).
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): allow pinning images by digest via the `image.tag` field of all operator CRs. When `tag` is a digest (e.g. `sha256:<hex>`) it is now joined to the repository with `@` instead of `:`, producing a valid `repository@sha256:<digest>` reference. Regular tags are unaffected.
+
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026
 

@@ -1708,7 +1708,7 @@ type Image struct {
 
 // imageDigestTagRegexp matches an image digest reference of the form
 // "algorithm:hex", e.g. "sha256:abc123...", per the OCI/docker reference grammar.
-var imageDigestTagRegexp = regexp.MustCompile(`^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[0-9a-fA-F]{32,}$`)
+var imageDigestTagRegexp = regexp.MustCompile(`^[a-zA-Z0-9-_+.]+:[a-fA-F0-9]{32,}$`)
 
 // Reference returns the fully qualified container image reference.
 // When Tag is a digest ("algorithm:hex") it is joined to Repository with "@";

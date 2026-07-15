@@ -318,7 +318,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vlstorage",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VLStorage.Image.Repository, cr.Spec.VLStorage.Image.Tag),
+		Image:                    cr.Spec.VLStorage.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.VLStorage.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

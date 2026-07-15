@@ -318,7 +318,7 @@ func buildVTSelectPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	sort.Strings(args)
 	selectContainers := corev1.Container{
 		Name:                     "vtselect",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Select.Image.Repository, cr.Spec.Select.Image.Tag),
+		Image:                    cr.Spec.Select.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.Select.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

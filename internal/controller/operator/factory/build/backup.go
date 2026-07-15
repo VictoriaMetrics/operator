@@ -157,7 +157,7 @@ func VMBackupManager(
 	sort.Strings(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
-		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
+		Image:                    cr.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,
@@ -228,7 +228,7 @@ func VMRestore(
 
 	vmRestore := &corev1.Container{
 		Name:                     "vmbackuper-restore",
-		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
+		Image:                    cr.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,

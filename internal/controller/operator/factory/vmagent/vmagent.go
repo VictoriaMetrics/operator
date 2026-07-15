@@ -719,7 +719,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 	vmagentContainer := corev1.Container{
 		Name:                     "vmagent",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    cr.Spec.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

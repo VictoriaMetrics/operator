@@ -441,7 +441,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 
 	vlagentContainer := corev1.Container{
 		Name:                     "vlagent",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    cr.Spec.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

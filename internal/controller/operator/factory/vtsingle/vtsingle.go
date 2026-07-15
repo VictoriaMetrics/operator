@@ -264,7 +264,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	sort.Strings(args)
 	vtsingleContainer := corev1.Container{
 		Name:                     "vtsingle",
-		Image:                    fmt.Sprintf("%s:%s", r.Spec.Image.Repository, r.Spec.Image.Tag),
+		Image:                    r.Spec.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,

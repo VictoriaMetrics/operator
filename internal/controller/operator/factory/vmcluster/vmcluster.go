@@ -704,7 +704,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMSelect.Image.Repository, cr.Spec.VMSelect.Image.Tag),
+		Image:                    cr.Spec.VMSelect.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.VMSelect.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -917,7 +917,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	vminsertContainer := corev1.Container{
 		Name:                     "vminsert",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMInsert.Image.Repository, cr.Spec.VMInsert.Image.Tag),
+		Image:                    cr.Spec.VMInsert.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.VMInsert.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -1160,7 +1160,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMStorage.Image.Repository, cr.Spec.VMStorage.Image.Tag),
+		Image:                    cr.Spec.VMStorage.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.VMStorage.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -1599,7 +1599,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		Env:             spec.ExtraEnvs,
 		EnvFrom:         spec.ExtraEnvsFrom,
 		Resources:       spec.Resources,
-		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
+		Image:           spec.Image.Reference(),
 		ImagePullPolicy: spec.Image.PullPolicy,
 		VolumeMounts:    vmounts,
 	}

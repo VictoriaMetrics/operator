@@ -1697,10 +1697,27 @@ type ManagedObjectsMetadata struct {
 type Image struct {
 	// Repository contains name of docker image + it's repository if needed
 	Repository string `json:"repository,omitempty"`
-	// Tag contains desired docker image version
+	// Tag contains desired docker image version.
+	// It may be a regular tag (e.g. "v1.96.0") or a digest
+	// (e.g. "sha256:<hex>"); a digest is joined to the repository with "@"
+	// instead of ":", allowing images to be pinned by digest.
 	Tag string `json:"tag,omitempty"`
 	// PullPolicy describes how to pull docker image
 	PullPolicy corev1.PullPolicy `json:"pullPolicy,omitempty"`
+}
+
+// imageDigestTagRegexp matches an image digest reference of the form
+// "algorithm:hex", e.g. "sha256:abc123...", per the OCI/docker reference grammar.
+var imageDigestTagRegexp = regexp.MustCompile(`^[a-zA-Z0-9-_+.]+:[a-fA-F0-9]{32,}$`)
+
+// Reference returns the fully qualified container image reference.
+// When Tag is a digest ("algorithm:hex") it is joined to Repository with "@";
+// otherwise the "repository:tag" form is used.
+func (i Image) Reference() string {
+	if imageDigestTagRegexp.MatchString(i.Tag) {
+		return fmt.Sprintf("%s@%s", i.Repository, i.Tag)
+	}
+	return fmt.Sprintf("%s:%s", i.Repository, i.Tag)
 }
 
 // Condition defines status condition of the resource

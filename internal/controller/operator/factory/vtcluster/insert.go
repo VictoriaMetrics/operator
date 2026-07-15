@@ -206,7 +206,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 
 	insertContainers := corev1.Container{
 		Name:                     "vtinsert",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Insert.Image.Repository, cr.Spec.Insert.Image.Tag),
+		Image:                    cr.Spec.Insert.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.Insert.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

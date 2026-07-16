@@ -241,8 +241,6 @@ func formatContainerImage(registry string, containerImage string) string {
 		if idx = strings.LastIndex(containerImage[:idx], "/"); idx != -1 {
 			return containerImage
 		}
-	} else {
-		containerImage = "library/" + containerImage
 	}
 	return registry + containerImage
 }

@@ -336,7 +336,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	// VMAgent metrics return zero
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "%s{url=%q} 0", vmAgentQueueMetricName, backendURL)
+			fmt.Fprintf(w, "%s{url=%q} 0", vmv1beta1.VMAgentQueueMetricName, backendURL)
 		},
 		timeout: time.Second,
 	})
@@ -349,7 +349,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			mu.Lock()
 			defer mu.Unlock()
-			fmt.Fprintf(w, "%s{url=%q} %d", vmAgentQueueMetricName, backendURL, value)
+			fmt.Fprintf(w, "%s{url=%q} %d", vmv1beta1.VMAgentQueueMetricName, backendURL, value)
 			callCount++
 			value = 0
 		},
@@ -365,7 +365,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second) // Simulate a long response
-			fmt.Fprintf(w, "%s{url=%q} 0", vmAgentQueueMetricName, backendURL)
+			fmt.Fprintf(w, "%s{url=%q} 0", vmv1beta1.VMAgentQueueMetricName, backendURL)
 		},
 		timeout: 500 * time.Millisecond,
 		errMsg:  "context deadline exceeded",

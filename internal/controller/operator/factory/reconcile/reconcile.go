@@ -202,6 +202,9 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)
+	_, isVMCluster := any(obj).(*vmv1beta1.VMCluster)
+	_, isVLCluster := any(obj).(*vmv1.VLCluster)
+	isCluster := isVMCluster || isVLCluster
 	err := wait.PollUntilContextCancel(ctx, interval, true, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -223,6 +226,9 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		updateStatus := "unknown"
 		if lastStatus != nil {
 			updateStatus = string(lastStatus.UpdateStatus)
+		}
+		if isCluster && wait.Interrupted(err) {
+			return fmt.Errorf("failed to wait for %T=%s to be ready: %v, current status: %s", obj, nsn.String(), err, updateStatus)
 		}
 		return fmt.Errorf("failed to wait for %T=%s to be ready: %w, current status: %s", obj, nsn.String(), err, updateStatus)
 	}

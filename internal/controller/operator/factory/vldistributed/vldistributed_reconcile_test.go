@@ -49,7 +49,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			mux := http.NewServeMux()
 			handler := func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, `%s{url="http://vl-insert-test-dist-zone-1.default.svc:9481"} 0`, vlAgentQueueMetricName)
+				fmt.Fprintf(w, `%s{url="http://vl-insert-test-dist-zone-1.default.svc:9481"} 0`, vmv1.VLAgentQueueMetricName)
 			}
 			mux.HandleFunc("/metrics", handler)
 			ts := httptest.NewServer(mux)

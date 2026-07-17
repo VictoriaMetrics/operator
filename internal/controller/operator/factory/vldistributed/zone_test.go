@@ -310,7 +310,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	// VLAgent metrics return zero
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, `%s{url="%s"} 0`, vlAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL())
+			fmt.Fprintf(w, `%s{url="%s"} 0`, vmv1.VLAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL())
 		},
 		timeout: time.Second,
 	})
@@ -323,7 +323,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			mu.Lock()
 			defer mu.Unlock()
-			fmt.Fprintf(w, `%s{url="%s"} %d`, vlAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL(), value)
+			fmt.Fprintf(w, `%s{url="%s"} %d`, vmv1.VLAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL(), value)
 			callCount++
 			value = 0
 		},
@@ -339,7 +339,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second)
-			fmt.Fprintf(w, `%s{url="%s"} 0`, vlAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL())
+			fmt.Fprintf(w, `%s{url="%s"} 0`, vmv1.VLAgentQueueMetricName, newVLClusterWithInsert().GetRemoteWriteURL())
 		},
 		timeout: 500 * time.Millisecond,
 		errMsg:  "context deadline exceeded",

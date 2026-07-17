@@ -66,7 +66,7 @@ func TestVMBackendTargetRef(t *testing.T) {
 		assert.Equal(t, o.wantNames, gotNames)
 	}
 
-	// sort by ObservedGeneration (newest first)
+	// sort by ObservedGeneration (oldest first)
 	f(opts{
 		clusters: []*vmv1beta1.VMCluster{
 			makeCluster("zone-gen5", 5),

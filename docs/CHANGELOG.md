@@ -13,12 +13,17 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0).
+
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): add `basicAuth` field support to `remoteWrite` entries. See [#2371](https://github.com/VictoriaMetrics/operator/issues/2371).
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `defaultVMAccessClaim` field to `spec.jwt`, mapped to vmauth's `jwt.default_vm_access_claim`. It lets a `VMUser` accept JWTs that don't carry a `vm_access` claim, matching `vmauth` v1.147.0+ behavior. See [#2375](https://github.com/VictoriaMetrics/operator/issues/2375).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add missing `list` verb to config-reloader's secrets RBAC rule. See [#2384](https://github.com/VictoriaMetrics/operator/issues/2384).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): return an error instead of panicking when a `Labels` map value is malformed (missing the `=` separator) during config parsing.
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): when no notifiers are configured, ignore alerting rules from selected VMRules instead of failing reconciliation; recording rules in the same group are kept and still reconciled. See [#2388](https://github.com/VictoriaMetrics/operator/issues/2388).
+* BUGFIX: [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): default pod `securityContext.fsGroup` to `65534` when persistent storage is configured and neither `useStrictSecurity` nor a user `securityContext` is set. Without it the alertmanager process cannot write notification log and silences to a freshly provisioned volume, so silences are silently lost on pod restart. User-provided `securityContext` and `useStrictSecurity` keep their previous behaviour.
+
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): allow pinning images by digest via the `image.tag` field of all operator CRs. When `tag` is a digest (e.g. `sha256:<hex>`) it is now joined to the repository with `@` instead of `:`, producing a valid `repository@sha256:<digest>` reference. Regular tags are unaffected.
 
 ## [v0.73.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.73.1)
 **Release date:** 08 July 2026

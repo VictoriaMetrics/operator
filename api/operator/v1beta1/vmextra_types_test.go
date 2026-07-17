@@ -358,3 +358,47 @@ func TestVLogs_PrefixedName(t *testing.T) {
 	f("myapp", false, "vlogs-myapp")
 	f("myapp", true, "myapp")
 }
+
+func TestImage_Reference(t *testing.T) {
+	f := func(img Image, want string) {
+		t.Helper()
+		assert.Equal(t, want, img.Reference())
+	}
+
+	// regular tag joined with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "v1.96.0"},
+		"victoriametrics/vmsingle:v1.96.0")
+
+	// sha256 digest tag joined with "@"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "sha256:abc123def4567890abc123def4567890"},
+		"victoriametrics/vmsingle@sha256:abc123def4567890abc123def4567890")
+
+	// non-sha256 algorithm digest also joined with "@"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "sha512:abc123def4567890abc123def4567890"},
+		"victoriametrics/vmsingle@sha512:abc123def4567890abc123def4567890")
+
+	// combined tag + digest pin (Docker "repository:tag@digest" form):
+	// the whole value is appended after ":", yielding a valid reference
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "v1.96.0@sha256:abc123def4567890abc123def4567890"},
+		"victoriametrics/vmsingle:v1.96.0@sha256:abc123def4567890abc123def4567890")
+
+	// regular tag with no colon joined with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "v1.96.0-scratch"},
+		"victoriametrics/vmsingle:v1.96.0-scratch")
+
+	// tag containing a colon whose suffix isn't hex isn't a digest, joins with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "v1.96.0-scratch:amd64"},
+		"victoriametrics/vmsingle:v1.96.0-scratch:amd64")
+
+	// colon-delimited value whose hex suffix is too short (<32) isn't a digest, joins with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "sha256:abc123"},
+		"victoriametrics/vmsingle:sha256:abc123")
+
+	// digest algorithm with no hex after the colon isn't a digest, joins with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: "sha256:"},
+		"victoriametrics/vmsingle:sha256:")
+
+	// empty tag joins with ":"
+	f(Image{Repository: "victoriametrics/vmsingle", Tag: ""},
+		"victoriametrics/vmsingle:")
+}

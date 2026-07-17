@@ -75,6 +75,9 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSet, e
 		statefulset.Spec.PersistentVolumeClaimRetentionPolicy = cr.Spec.PersistentVolumeClaimRetentionPolicy
 	}
 	build.StatefulSetAddCommonParams(statefulset, &cr.Spec.CommonAppsParams)
+	if cr.Spec.Storage != nil && cr.Spec.Storage.EmptyDir == nil {
+		build.AddDefaultStorageFSGroupToPod(&statefulset.Spec.Template, &cr.Spec.CommonAppsParams)
+	}
 	if err := cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec); err != nil {
 		return nil, err
 	}
@@ -157,7 +160,7 @@ func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Clien
 
 func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec, error) {
 
-	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
+	image := cr.Spec.Image.Reference()
 
 	amArgs := []string{
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),

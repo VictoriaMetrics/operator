@@ -322,7 +322,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	sort.Strings(args)
 	selectContainers := corev1.Container{
 		Name:                     "vlselect",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VLSelect.Image.Repository, cr.Spec.VLSelect.Image.Tag),
+		Image:                    cr.Spec.VLSelect.Image.Reference(),
 		ImagePullPolicy:          cr.Spec.VLSelect.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

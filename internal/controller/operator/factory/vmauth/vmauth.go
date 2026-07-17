@@ -339,7 +339,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 
 	vmauthContainer := corev1.Container{
 		Name:                     "vmauth",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    cr.Spec.Image.Reference(),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             volumeMounts,

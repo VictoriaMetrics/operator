@@ -208,7 +208,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		Env:             spec.ExtraEnvs,
 		EnvFrom:         spec.ExtraEnvsFrom,
 		Resources:       spec.Resources,
-		Image:           fmt.Sprintf("%s:%s", spec.Image.Repository, spec.Image.Tag),
+		Image:           spec.Image.Reference(),
 		ImagePullPolicy: spec.Image.PullPolicy,
 		VolumeMounts:    vmMounts,
 	}

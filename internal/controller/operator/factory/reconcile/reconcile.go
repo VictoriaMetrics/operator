@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -213,7 +214,7 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil && !limiter.Throttle() {
 			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
 		}
-		if lastStatus != nil && lastStatus.UpdateStatus == vmv1beta1.UpdateStatusFailed {
+		if lastStatus != nil && lastStatus.UpdateStatus == vmv1beta1.UpdateStatusFailed && isCluster {
 			return false, fmt.Errorf("object %T=%s reached failed status", obj, nsn.String())
 		}
 		return lastStatus != nil && minGeneration <= lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil

@@ -31,6 +31,8 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+const VTAgentQueueMetricName = "vtagent_remotewrite_pending_data_bytes"
+
 // VTAgentSpec defines the desired state of VTAgent
 // +k8s:openapi-gen=true
 type VTAgentSpec struct {

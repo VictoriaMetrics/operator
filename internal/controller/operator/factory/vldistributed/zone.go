@@ -375,7 +375,7 @@ func isVMAuthEnabled(cr *vmv1alpha1.VLDistributed) bool {
 }
 
 var vlAgentQueueMetricQueries = []podutil.MetricQuery{
-	{Name: vlAgentQueueMetricName, Dimension: "url"},
+	{Name: vmv1.VLAgentQueueMetricName, Dimension: "url"},
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
@@ -392,7 +392,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "name", nsn.String())
 				return false, nil
 			}
-			for u, v := range metricValues[vlAgentQueueMetricName] {
+			for u, v := range metricValues[vmv1.VLAgentQueueMetricName] {
 				if u != backendURL {
 					continue
 				}

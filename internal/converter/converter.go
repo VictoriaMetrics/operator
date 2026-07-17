@@ -186,9 +186,6 @@ type VMAlertConfigValues struct {
 	} `yaml:"alerts,omitempty" json:"alerts,omitempty"`
 }
 
-// chartHTTPAuth mirrors the flat, dotted-key HTTP auth convention victoria-metrics-alert's
-// values.yaml uses for datasource/remoteRead/notifier (e.g. `basicAuth.username`,
-// `bearerToken`), unlike the operator's own nested, Secret-reference-only HTTPAuth.
 type chartHTTPAuth struct {
 	BasicAuthUsername string   `yaml:"basicAuth.username,omitempty" json:"basicAuth.username,omitempty"`
 	BasicAuthPassword string   `yaml:"basicAuth.password,omitempty" json:"basicAuth.password,omitempty"`
@@ -210,8 +207,6 @@ type VMAlertNotifierValues struct {
 	chartHTTPAuth `yaml:",inline" json:",inline"`
 }
 
-// chartPodSecurityContext mirrors the chart's `{enabled: bool, ...}` toggle shape for
-// podSecurityContext, distinct from the operator's plain corev1.PodSecurityContext.
 type chartPodSecurityContext struct {
 	Enabled                   bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 	corev1.PodSecurityContext `yaml:",inline" json:",inline"`
@@ -225,8 +220,6 @@ func (c *chartPodSecurityContext) toCoreV1() *corev1.PodSecurityContext {
 	return &psc
 }
 
-// chartSecurityContext mirrors the chart's `{enabled: bool, ...}` toggle shape for
-// securityContext, distinct from the operator's plain corev1.SecurityContext.
 type chartSecurityContext struct {
 	Enabled                bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 	corev1.SecurityContext `yaml:",inline" json:",inline"`
@@ -240,8 +233,6 @@ func (c *chartSecurityContext) toCoreV1() *corev1.SecurityContext {
 	return &sc
 }
 
-// convertHTTPAuth converts a chart-shaped HTTP auth block into the operator's HTTPAuth,
-// returning a Secret for any plaintext credential found (nil if none).
 func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth, *corev1.Secret) {
 	var result vmv1beta1.HTTPAuth
 	result.Headers = auth.Headers
@@ -273,8 +264,6 @@ func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth,
 	}
 }
 
-// dropRuleExtraArg removes "rule" from extraArgs, if present: rule files are handled via a
-// generated VMRule CR and spec.ruleSelector instead of a stringified -rule extraArg.
 func dropRuleExtraArg(extraArgs map[string]interface{}) {
 	delete(extraArgs, "rule")
 }
@@ -397,8 +386,6 @@ type PersistentVolumeValues struct {
 	Annotations      map[string]string `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 }
 
-// remoteWriteTLSValues captures the flat tls* keys the helm charts expose as sibling keys on
-// each remoteWrite item, rather than the operator CRD's nested tlsConfig object.
 type remoteWriteTLSValues struct {
 	TLSCAFile             string `yaml:"tlsCAFile,omitempty" json:"tlsCAFile,omitempty"`
 	TLSCertFile           string `yaml:"tlsCertFile,omitempty" json:"tlsCertFile,omitempty"`
@@ -407,12 +394,10 @@ type remoteWriteTLSValues struct {
 	TLSInsecureSkipVerify bool   `yaml:"tlsInsecureSkipVerify,omitempty" json:"tlsInsecureSkipVerify,omitempty"`
 }
 
-// isSet reports whether any flat tls* key was provided.
 func (v remoteWriteTLSValues) isSet() bool {
 	return v.TLSCAFile != "" || v.TLSCertFile != "" || v.TLSKeyFile != "" || v.TLSServerName != "" || v.TLSInsecureSkipVerify
 }
 
-// asTLSConfig converts the flat tls* keys to the operator's nested TLSConfig, or nil if none were set.
 func (v remoteWriteTLSValues) asTLSConfig() *vmv1beta1.TLSConfig {
 	if !v.isSet() {
 		return nil
@@ -426,7 +411,6 @@ func (v remoteWriteTLSValues) asTLSConfig() *vmv1beta1.TLSConfig {
 	}
 }
 
-// asVLTLSConfig converts the flat tls* keys to the v1 API's nested TLSConfig, or nil if none were set.
 func (v remoteWriteTLSValues) asVLTLSConfig() *vmv1.TLSConfig {
 	if !v.isSet() {
 		return nil
@@ -445,7 +429,6 @@ type VMAgentRemoteWriteValues struct {
 	remoteWriteTLSValues             `yaml:",inline" json:",inline"`
 }
 
-// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
 func (v VMAgentRemoteWriteValues) asSpec() vmv1beta1.VMAgentRemoteWriteSpec {
 	rw := v.VMAgentRemoteWriteSpec
 	if rw.TLSConfig == nil {
@@ -459,7 +442,6 @@ type VLAgentRemoteWriteValues struct {
 	remoteWriteTLSValues        `yaml:",inline" json:",inline"`
 }
 
-// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
 func (v VLAgentRemoteWriteValues) asSpec() vmv1.VLAgentRemoteWriteSpec {
 	rw := v.VLAgentRemoteWriteSpec
 	if rw.TLSConfig == nil {
@@ -474,7 +456,6 @@ type VMAlertRemoteWriteValues struct {
 	remoteWriteTLSValues             `yaml:",inline" json:",inline"`
 }
 
-// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
 func (v VMAlertRemoteWriteValues) asSpec() vmv1beta1.VMAlertRemoteWriteSpec {
 	rw := v.VMAlertRemoteWriteSpec
 	if rw.TLSConfig == nil {
@@ -526,7 +507,6 @@ type helmRepoIndex struct {
 	} `yaml:"entries"`
 }
 
-// fetchLatestChartVersion fetches the latest version of chart from the helm-charts repository.
 func fetchLatestChartVersion(chart string) (string, error) {
 	resp, err := helmHTTPClient.Get(helmChartsIndexURL)
 	if err != nil {
@@ -553,7 +533,6 @@ func fetchLatestChartVersion(chart string) (string, error) {
 		return "", fmt.Errorf("chart %q not found in helm repo index", chart)
 	}
 
-	// Index entries are sorted newest-first.
 	return entries[0].Version, nil
 }
 
@@ -563,7 +542,11 @@ func FetchChartDefaults(chart string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return FetchChartDefaultsAtVersion(chart, version)
+}
 
+// FetchChartDefaultsAtVersion fetches chart's default values.yaml at the given version.
+func FetchChartDefaultsAtVersion(chart, version string) ([]byte, error) {
 	ref := fmt.Sprintf("%s-%s", chart, version)
 	url := fmt.Sprintf("%s/%s/charts/%s/values.yaml", helmChartsRawBaseURL, ref, chart)
 
@@ -607,9 +590,6 @@ func MergeValues(base, override []byte) ([]byte, error) {
 	return k8syaml.Marshal(baseMap)
 }
 
-// normalizeHeaderMaps rewrites any "headers" key whose value is a map (the shape several
-// charts' default values.yaml use, e.g. `datasource.headers: {}`) into the []string
-// "key:value" format the operator's HTTPAuth.Headers field expects.
 func normalizeHeaderMaps(v any) {
 	switch val := v.(type) {
 	case map[string]any:
@@ -629,8 +609,6 @@ func normalizeHeaderMaps(v any) {
 	}
 }
 
-// headersMapToSlice converts a {headerName: headerValue} map into the sorted
-// "headerName:headerValue" string slice HTTPAuth.Headers expects.
 func headersMapToSlice(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -744,8 +722,6 @@ func Convert(name, namespace string, values any) (any, error) {
 		}
 		auth.Spec = *spec
 		if v.Config != nil && len(v.Config.Users) > 0 {
-			// Default userSelector/userNamespaceSelector (both nil) select nothing, so the
-			// generated VMUsers would never actually get loaded without this.
 			auth.Spec.UserSelector = &metav1.LabelSelector{MatchLabels: vmAuthUserSelectorLabels(name)}
 		}
 		cr = auth
@@ -1021,8 +997,6 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 	return cfg, nil
 }
 
-// convertContainerSecurityContext maps the subset of corev1.SecurityContext fields that the
-// operator's CRD can represent at the container level.
 func convertContainerSecurityContext(sc *corev1.SecurityContext) *vmv1beta1.ContainerSecurityContext {
 	if sc == nil {
 		return nil
@@ -1036,12 +1010,6 @@ func convertContainerSecurityContext(sc *corev1.SecurityContext) *vmv1beta1.Cont
 	}
 }
 
-// mergePodSecurityContext promotes RunAsUser/RunAsGroup/RunAsNonRoot/SeccompProfile/
-// AppArmorProfile/SELinuxOptions/WindowsOptions from the chart's container-level
-// securityContext into the pod-level one when not already set there, since the operator's CRD
-// has no container-level equivalents. Note this inverts Kubernetes' own precedence: a pod-level
-// value set here always wins, whereas Kubernetes normally lets a container-level value
-// override its pod-level counterpart at runtime.
 func mergePodSecurityContext(pod *corev1.PodSecurityContext, container *corev1.SecurityContext) *corev1.PodSecurityContext {
 	if container == nil {
 		return pod
@@ -1260,9 +1228,6 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 	return spec, nil
 }
 
-// vmAlertSecretName returns the deterministic name for a generated auth Secret, so
-// ConvertVMAlertSecrets and convertVMAlertSpec always agree on it. Truncated with a content
-// hash suffix when it would otherwise exceed Kubernetes' name length limit.
 func vmAlertSecretName(crName, field string) string {
 	name := fmt.Sprintf("%s-%s-auth", crName, field)
 	if len(name) <= validation.DNS1123SubdomainMaxLength {
@@ -1288,8 +1253,6 @@ func convertVMAlertNotifiers(crName string, items []VMAlertNotifierValues) ([]vm
 	return result, secrets
 }
 
-// convertVMAlertSpec converts Helm values into a VMAlertSpec, returning any Secrets generated
-// for plaintext auth credentials found in datasource/remoteRead/notifier alongside it.
 func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAlertSpec, []*corev1.Secret, error) {
 	spec := &vmv1beta1.VMAlertSpec{}
 	var secrets []*corev1.Secret
@@ -1632,31 +1595,80 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 
 	return spec, nil
 }
-func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
-	spec := &vmv1beta1.VLogsSpec{}
+
+func vlogsDerivedFields(values *VLogsHelmValues, cfg commonConfig) (retentionPeriod, serviceAccountName string, storage *corev1.PersistentVolumeClaimSpec) {
+	if values.Server.RetentionPeriod != nil {
+		retentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+	}
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		serviceAccountName = values.ServiceAccount.Name
+	}
+	return retentionPeriod, serviceAccountName, cfg.Storage
+}
+
+func convertVLogsCommonSpec(values *VLogsHelmValues) (commonConfig, string, string, *corev1.PersistentVolumeClaimSpec, error) {
 	cfg, err := convertCommonConfig(values.Server, values.Global)
+	if err != nil {
+		return commonConfig{}, "", "", nil, err
+	}
+	retentionPeriod, serviceAccountName, storage := vlogsDerivedFields(values, cfg)
+	return cfg, retentionPeriod, serviceAccountName, storage, nil
+}
+
+func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
+	cfg, retentionPeriod, serviceAccountName, storage, err := convertVLogsCommonSpec(values)
 	if err != nil {
 		return nil, err
 	}
 
+	spec := &vmv1beta1.VLogsSpec{}
 	spec.CommonAppsParams = cfg.CommonAppsParams
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
-
-	if values.Server.RetentionPeriod != nil {
-		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
-	}
-
-	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
-		spec.ServiceAccountName = values.ServiceAccount.Name
-	}
-
-	if cfg.Storage != nil {
-		spec.Storage = cfg.Storage
-	}
+	spec.RetentionPeriod, spec.ServiceAccountName, spec.Storage = retentionPeriod, serviceAccountName, storage
 
 	return spec, nil
 }
+
+func convertVLSingleSpec(values *VLogsHelmValues) (*vmv1.VLSingleSpec, error) {
+	cfg, retentionPeriod, serviceAccountName, storage, err := convertVLogsCommonSpec(values)
+	if err != nil {
+		return nil, err
+	}
+
+	spec := &vmv1.VLSingleSpec{}
+	spec.CommonAppsParams = cfg.CommonAppsParams
+	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
+	spec.RetentionPeriod, spec.ServiceAccountName, spec.Storage = retentionPeriod, serviceAccountName, storage
+
+	return spec, nil
+}
+
+// ConvertVLSingle converts victoria-logs-single Helm values (as already unmarshaled by
+// UnmarshalValues) into a *vmv1.VLSingle CR. Unlike Convert, which resolves this chart to the
+// deprecated VLogs kind for backwards compatibility with existing convert-command output,
+// migrate needs the current CRD so it never migrates users onto a kind they'd have to migrate
+// off of again.
+func ConvertVLSingle(name, namespace string, values any) (*vmv1.VLSingle, error) {
+	v, ok := values.(*VLogsHelmValues)
+	if !ok {
+		return nil, fmt.Errorf("expected *VLogsHelmValues, got %T", values)
+	}
+	spec, err := convertVLSingleSpec(v)
+	if err != nil {
+		return nil, err
+	}
+	return &vmv1.VLSingle{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1",
+			Kind:       "VLSingle",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec:       *spec,
+	}, nil
+}
+
 func convertVTSingleSpec(values *VTSingleHelmValues) (*vmv1.VTSingleSpec, error) {
 	spec := &vmv1.VTSingleSpec{}
 	cfg, err := convertCommonConfig(values.Server, values.Global)
@@ -1757,9 +1769,6 @@ func convertVMAuthSpec(values *VMAuthHelmValues) (*vmv1beta1.VMAuthSpec, error) 
 	return spec, nil
 }
 
-// vmAuthUserSelectorLabels returns the labels shared by every VMUser ConvertVMAuthUsers
-// generates for vmauthName and that VMAuth's own userSelector, keyed by vmauthName so
-// multiple converted releases in one namespace don't pick up each other's users.
 func vmAuthUserSelectorLabels(vmauthName string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/managed-by": "helm-converter",
@@ -1795,7 +1804,6 @@ func ConvertVMAuthUsers(vmauthName, namespace string, values *VMAuthHelmValues) 
 			MetricLabels:        u.MetricLabels,
 			VMUserConfigOptions: u.VMUserConfigOptions,
 		}
-		// username and bearerToken can't both be set; keep username as the display Name.
 		displayName := u.Name
 		if u.BearerToken != "" {
 			spec.BearerToken = &u.BearerToken
@@ -1848,8 +1856,6 @@ func ConvertVMAlert(name, namespace string, values *VMAlertHelmValues) (*vmv1bet
 	}
 	alert.Spec = *spec
 	if values.Server.Config != nil && len(values.Server.Config.Alerts.Groups) > 0 {
-		// Default ruleSelector/ruleNamespaceSelector (both nil) select nothing, so the
-		// generated VMRule would never actually get loaded without this.
 		alert.Spec.RuleSelector = &metav1.LabelSelector{MatchLabels: vmAlertRuleSelectorLabels(name)}
 	}
 	for _, s := range secrets {
@@ -1888,8 +1894,6 @@ func ConvertVMAlertRules(vmalertName, namespace string, values *VMAlertHelmValue
 	}, nil
 }
 
-// convertVMAuthConfigUserTargetRefs builds TargetRefs from a config user's url_prefix/
-// url_map, which the operator only exposes via TargetRefs rather than as direct spec fields.
 func convertVMAuthConfigUserTargetRefs(u VMAuthConfigUser) ([]vmv1beta1.TargetRef, error) {
 	if len(u.URLMap) > 0 {
 		refs := make([]vmv1beta1.TargetRef, 0, len(u.URLMap))
@@ -1914,8 +1918,6 @@ func convertVMAuthConfigUserTargetRefs(u VMAuthConfigUser) ([]vmv1beta1.TargetRe
 	return []vmv1beta1.TargetRef{{Static: static}}, nil
 }
 
-// staticRefFromURLPrefix converts url_prefix into a StaticRef. StaticRef.URL/.URLs are
-// mutually exclusive, so a single-entry prefix uses URL and a multi-entry one uses URLs.
 func staticRefFromURLPrefix(prefix vmv1beta1.StringOrArray) (*vmv1beta1.StaticRef, error) {
 	switch len(prefix) {
 	case 0:
@@ -1927,8 +1929,6 @@ func staticRefFromURLPrefix(prefix vmv1beta1.StringOrArray) (*vmv1beta1.StaticRe
 	}
 }
 
-// sanitizeK8sName converts an arbitrary vmauth username into a valid Kubernetes resource name
-// (lowercase alphanumeric and '-', not starting/ending with '-').
 func sanitizeK8sName(s string) string {
 	lowered := strings.ToLower(s)
 	var b strings.Builder
@@ -1948,7 +1948,6 @@ func sanitizeK8sName(s string) string {
 	maxLen := validation.DNS1123SubdomainMaxLength
 	if len(result) > maxLen {
 		result = result[:maxLen]
-		// Re-trim in case truncation split on a hyphen
 		result = strings.TrimSuffix(result, "-")
 	}
 	return result

@@ -371,7 +371,7 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 }
 
 var vmAgentQueueMetricQueries = []podutil.MetricQuery{
-	{Name: vmAgentQueueMetricName, Dimension: "url"},
+	{Name: vmv1beta1.VMAgentQueueMetricName, Dimension: "url"},
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
@@ -390,7 +390,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil
 			}
-			for u, v := range metrics[vmAgentQueueMetricName] {
+			for u, v := range metrics[vmv1beta1.VMAgentQueueMetricName] {
 				if u != backendURL {
 					continue
 				}

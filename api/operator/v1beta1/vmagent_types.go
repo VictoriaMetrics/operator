@@ -16,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const VMAgentQueueMetricName = "vmagent_remotewrite_pending_data_bytes"
+
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
 type VMAgentSpec struct {
@@ -126,12 +128,6 @@ type VMAgentSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
@@ -565,9 +561,6 @@ func (cr *VMAgent) FinalAnnotations() map[string]string {
 }
 
 func (cr *VMAgent) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vmagent-%s", cr.Name)
 }
 

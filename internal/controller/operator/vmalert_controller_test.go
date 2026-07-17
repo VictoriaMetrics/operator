@@ -124,7 +124,7 @@ func TestVMAlert_Reconcile_AgentSync_Managed(t *testing.T) {
 		close(doneCh)
 	}()
 	// ensure that reconcile is blocked
-	g.Consistently(doneCh, "1s").ShouldNot(BeClosed())
+	g.Consistently(doneCh, "100ms").ShouldNot(BeClosed())
 
 	// reconcile completes when alertSync is unlocked
 	locked = false

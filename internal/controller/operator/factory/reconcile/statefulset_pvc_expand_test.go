@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -166,22 +167,24 @@ func Test_updateSTSPVC(t *testing.T) {
 			o.preRun(cl)
 			cl.Actions = nil
 		}
-		err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.actions != nil {
-			assert.Equal(t, o.actions, cl.Actions)
-		}
-		var pvcs corev1.PersistentVolumeClaimList
-		listOpts := &client.ListOptions{
-			Namespace:     o.sts.Namespace,
-			LabelSelector: labels.SelectorFromSet(o.sts.Spec.Selector.MatchLabels),
-		}
-		assert.NoError(t, cl.List(ctx, &pvcs, listOpts))
-		assert.Equal(t, o.expected, pvcs.Items)
+		synctest.Test(t, func(t *testing.T) {
+			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.actions != nil {
+				assert.Equal(t, o.actions, cl.Actions)
+			}
+			var pvcs corev1.PersistentVolumeClaimList
+			listOpts := &client.ListOptions{
+				Namespace:     o.sts.Namespace,
+				LabelSelector: labels.SelectorFromSet(o.sts.Spec.Selector.MatchLabels),
+			}
+			assert.NoError(t, cl.List(ctx, &pvcs, listOpts))
+			assert.Equal(t, o.expected, pvcs.Items)
+		})
 	}
 
 	buildSTS := func(fns ...func(*appsv1.StatefulSet)) *appsv1.StatefulSet {

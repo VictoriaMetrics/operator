@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -21,9 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
 )
@@ -328,4 +331,34 @@ func expectStatusAfterAction(ctx context.Context, list client.ObjectList, nsn ty
 		cancel()
 		Expect(err).ToNot(HaveOccurred())
 	}
+}
+
+func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Client, name, ns string) {
+	By("creating VMAuth")
+	wg.Go(func() {
+		vmAuth := &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      name,
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](1),
+				},
+				UserSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"vmd-users": name,
+					},
+				},
+				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
+					TargetRefs: []vmv1beta1.TargetRef{{Name: "read"}, {Name: "write"}},
+				},
+			},
+		}
+		DeferCleanup(func() {
+			Expect(finalize.SafeDelete(ctx, k8sClient, vmAuth)).ToNot(HaveOccurred())
+			waitResourceDeleted(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: ns}, &vmv1beta1.VMAuthList{})
+		})
+		Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
+	})
 }

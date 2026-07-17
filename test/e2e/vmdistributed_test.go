@@ -90,36 +90,6 @@ func createVMAgents(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Cl
 	}
 }
 
-func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Client, name, ns string) {
-	By("creating VMAuth")
-	wg.Go(func() {
-		vmAuth := &vmv1beta1.VMAuth{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
-				Name:      name,
-			},
-			Spec: vmv1beta1.VMAuthSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
-				},
-				UserSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"vmd-users": name,
-					},
-				},
-				UnauthorizedUserAccessSpec: &vmv1beta1.VMAuthUnauthorizedUserAccessSpec{
-					TargetRefs: []vmv1beta1.TargetRef{{Name: "read"}, {Name: "write"}},
-				},
-			},
-		}
-		DeferCleanup(func() {
-			Expect(finalize.SafeDelete(ctx, k8sClient, vmAuth)).ToNot(HaveOccurred())
-			waitResourceDeleted(ctx, types.NamespacedName{Name: vmAuth.Name, Namespace: ns}, &vmv1beta1.VMAuthList{})
-		})
-		Expect(k8sClient.Create(ctx, vmAuth)).NotTo(HaveOccurred())
-	})
-}
-
 func verifyOwnerReferences(ctx context.Context, cr *vmv1alpha1.VMDistributed, vmClusters []*vmv1beta1.VMCluster, namespace string) {
 	GinkgoHelper()
 	var fetchedVMCluster vmv1beta1.VMCluster

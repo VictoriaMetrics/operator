@@ -283,6 +283,8 @@ func TestFormatContainerImage(t *testing.T) {
 	// replace registry
 	f("private.github.io", "my-private.registry/victoria-metrics/storage", "my-private.registry/victoria-metrics/storage")
 	f("docker.proxy.org/public-repo-proxy-docker-hub", "docker.proxy.org/public-repo-proxy-docker-hub/victoriametrics/vmauth", "docker.proxy.org/public-repo-proxy-docker-hub/victoriametrics/vmauth")
+	// library image
+	f("docker.io/library/", "alpine", "docker.io/library/alpine")
 }
 
 func TestAddSyslogArgsTo(t *testing.T) {

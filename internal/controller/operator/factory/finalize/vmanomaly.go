@@ -7,9 +7,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
@@ -42,8 +44,11 @@ func OnVMAnomalyDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMAn
 			Namespace: ns,
 		}},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
-		cr,
 	}
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: ns}})
+	}
+	objsToRemove = append(objsToRemove, cr)
 	deleteOwnerReferences := make([]bool, len(objsToRemove))
 	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
 }

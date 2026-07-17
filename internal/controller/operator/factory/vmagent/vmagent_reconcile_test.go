@@ -407,45 +407,6 @@ func TestCreateOrUpdateVPA_OldNameCleanedUpOnMigration(t *testing.T) {
 	})
 }
 
-// regression test: with UseLegacyNaming, cr.PrefixedName() == cr.Name, so the migration
-// cleanup for the old cr.Name-named VPA must not delete the current, identically-named one.
-func TestCreateOrUpdateVPA_LegacyNamingNotChurned(t *testing.T) {
-	cfg := config.MustGetBaseConfig()
-	defaultCfg := *cfg
-	cfg.VPAAPIEnabled = true
-	defer func() { *cfg = defaultCfg }()
-
-	cr := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{Name: "vpa-legacy-vmagent", Namespace: "default"},
-		Spec: vmv1beta1.VMAgentSpec{
-			UseLegacyNaming: true,
-			RemoteWrite:     []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
-			VPA:             &vmv1beta1.EmbeddedVPA{},
-		},
-	}
-	fclient := k8stools.GetTestClientWithActionsAndObjects([]runtime.Object{cr})
-	ctx := context.TODO()
-	build.AddDefaults(fclient.Scheme())
-	fclient.Scheme().Default(cr)
-
-	synctest.Test(t, func(t *testing.T) {
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
-		var vpa vpav1.VerticalPodAutoscaler
-		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
-
-		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
-		fclient.Actions = nil
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
-		for _, action := range fclient.Actions {
-			if action.Kind == "VerticalPodAutoscaler" {
-				assert.NotEqual(t, "Delete", action.Verb, "the live VPA must not be deleted when UseLegacyNaming makes cr.PrefixedName() == cr.Name")
-			}
-		}
-	})
-}
-
 func TestCreateOrUpdateHPA_TargetsCR(t *testing.T) {
 	f := func(cr *vmv1beta1.VMAgent) {
 		t.Helper()
@@ -560,43 +521,6 @@ func TestCreateOrUpdateHPA_OldNameCleanedUpOnMigration(t *testing.T) {
 		err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &hpa)
 		assert.Error(t, err)
 		assert.True(t, k8serrors.IsNotFound(err))
-	})
-}
-
-// regression test: with UseLegacyNaming, cr.PrefixedName() == cr.Name, so the migration
-// cleanup for the old cr.Name-named HPA must not delete the current, identically-named one.
-func TestCreateOrUpdateHPA_LegacyNamingNotChurned(t *testing.T) {
-	cr := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{Name: "hpa-legacy-vmagent", Namespace: "default"},
-		Spec: vmv1beta1.VMAgentSpec{
-			UseLegacyNaming: true,
-			RemoteWrite:     []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
-			HPA: &vmv1beta1.EmbeddedHPA{
-				MinReplicas: ptr.To(int32(1)),
-				MaxReplicas: 3,
-			},
-		},
-	}
-	fclient := k8stools.GetTestClientWithActionsAndObjects([]runtime.Object{cr})
-	ctx := context.TODO()
-	build.AddDefaults(fclient.Scheme())
-	fclient.Scheme().Default(cr)
-
-	synctest.Test(t, func(t *testing.T) {
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		hpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
-		var hpa autoscalingv2.HorizontalPodAutoscaler
-		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
-
-		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
-		fclient.Actions = nil
-		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
-		for _, action := range fclient.Actions {
-			if action.Kind == "HorizontalPodAutoscaler" {
-				assert.NotEqual(t, "Delete", action.Verb, "the live HPA must not be deleted when UseLegacyNaming makes cr.PrefixedName() == cr.Name")
-			}
-		}
 	})
 }
 

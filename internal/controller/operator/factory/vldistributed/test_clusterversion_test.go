@@ -59,7 +59,7 @@ func TestClusterVersionChange(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `%s{url="http://vl-insert-test-dist-zone-1.default.svc:9481"} 0`, vlAgentQueueMetricName)
+		fmt.Fprintf(w, `%s{url="http://vl-insert-test-dist-zone-1.default.svc:9481"} 0`, vmv1.VLAgentQueueMetricName)
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()

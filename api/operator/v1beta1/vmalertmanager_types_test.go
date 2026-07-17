@@ -140,15 +140,9 @@ receivers:
 }
 
 func TestVMAlertmanager_PrefixedName(t *testing.T) {
-	f := func(name string, omit bool, want string) {
-		t.Helper()
-		cr := &VMAlertmanager{Spec: VMAlertmanagerSpec{UseLegacyNaming: omit}}
-		cr.Name = name
-		assert.Equal(t, want, cr.PrefixedName())
-	}
-
-	f("myapp", false, "vmalertmanager-myapp")
-	f("myapp", true, "myapp")
+	cr := &VMAlertmanager{}
+	cr.Name = "myapp"
+	assert.Equal(t, "vmalertmanager-myapp", cr.PrefixedName())
 }
 
 // TestVMAlertmanager_IsUnmanaged is the VMAlertmanager counterpart of TestVMAlert_IsUnmanaged.

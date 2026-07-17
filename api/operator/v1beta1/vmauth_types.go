@@ -128,12 +128,6 @@ type VMAuthSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty" yaml:"useLegacyNaming,omitempty"`
-
 	// WaitForConfigReload instructs the operator to verify, via the config-reloader
 	// sidecar's own reload-confirmation metric, that every replica has actually reloaded
 	// before marking dependent objects (e.g. VMUser) as applied.
@@ -731,9 +725,6 @@ func (cr *VMAuth) FinalAnnotations() map[string]string {
 }
 
 func (cr *VMAuth) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vmauth-%s", cr.Name)
 }
 

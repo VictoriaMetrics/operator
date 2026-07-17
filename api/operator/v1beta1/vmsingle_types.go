@@ -96,11 +96,6 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
@@ -330,9 +325,6 @@ func (cr *VMSingle) FinalAnnotations() map[string]string {
 }
 
 func (cr *VMSingle) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
 }
 

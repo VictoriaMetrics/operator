@@ -131,13 +131,7 @@ spec:
 }
 
 func TestVMAuth_PrefixedName(t *testing.T) {
-	f := func(name string, omit bool, want string) {
-		t.Helper()
-		cr := &VMAuth{Spec: VMAuthSpec{UseLegacyNaming: omit}}
-		cr.Name = name
-		assert.Equal(t, want, cr.PrefixedName())
-	}
-
-	f("myapp", false, "vmauth-myapp")
-	f("myapp", true, "myapp")
+	cr := &VMAuth{}
+	cr.Name = "myapp"
+	assert.Equal(t, "vmauth-myapp", cr.PrefixedName())
 }

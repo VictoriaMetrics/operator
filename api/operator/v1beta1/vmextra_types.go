@@ -167,15 +167,6 @@ func ClusterPrefixedName(kind ClusterComponent, name, prefix string, internal bo
 	return fmt.Sprintf("%s%s%s-%s", prefix, string(kind), suffix, name)
 }
 
-// ClusterSuffixedName returns <name>-<prefix><kind> (or <name>-<prefix><kind>-internal),
-// matching the suffix naming convention used by standalone Helm charts.
-func ClusterSuffixedName(kind ClusterComponent, name, prefix string, internal bool) string {
-	if internal {
-		return fmt.Sprintf("%s-%s%s-internal", name, prefix, string(kind))
-	}
-	return fmt.Sprintf("%s-%s%s", name, prefix, string(kind))
-}
-
 func getFirstValue(args map[string]string, name string) string {
 	if v, ok := args[name]; ok {
 		if idx := strings.Index(v, ","); idx != -1 {

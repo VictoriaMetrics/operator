@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,11 +11,9 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -27,6 +24,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 )
 
 // VMBackend is implemented by *vmv1beta1.VMCluster and *vmv1beta1.VMSingle.
@@ -376,50 +374,10 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 }
 
 func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1beta1.VMAgent) sets.Set[string] {
-	var esl discoveryv1.EndpointSliceList
-	o := client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: vmAgent.PrefixedName()}),
-		Namespace:     vmAgent.Namespace,
-	}
-	if err := rclient.List(ctx, &esl, &o); err != nil {
+	addrs, err := podutil.DiscoverEndpointAddrs(ctx, rclient, vmAgent.Namespace, vmAgent.PrefixedName(), "http", vmAgent.ProbeScheme(), vmAgent.GetMetricsPath())
+	if err != nil {
 		logger.WithContext(ctx).Error(err, "failed to load endpointslices", "service", vmAgent.PrefixedName())
 		return nil
-	}
-	if len(esl.Items) == 0 {
-		return nil
-	}
-	addrs := sets.New[string]()
-	for i := range esl.Items {
-		es := &esl.Items[i]
-		var port int32
-		for _, p := range es.Ports {
-			if p.Name != nil && *p.Name == "http" && p.Port != nil {
-				port = *p.Port
-			}
-		}
-		if port == 0 {
-			continue
-		}
-		for _, ep := range es.Endpoints {
-			if ep.Conditions.Ready == nil || !*ep.Conditions.Ready {
-				continue
-			}
-			for _, a := range ep.Addresses {
-				if a == "" {
-					continue
-				}
-				host := fmt.Sprintf("%s:%d", a, port)
-				if es.AddressType == discoveryv1.AddressTypeIPv6 {
-					host = fmt.Sprintf("[%s]:%d", a, port)
-				}
-				u := &url.URL{
-					Host:   host,
-					Scheme: strings.ToLower(vmAgent.ProbeScheme()),
-					Path:   vmAgent.GetMetricsPath(),
-				}
-				addrs.Insert(u.String())
-			}
-		}
 	}
 	return addrs
 }
@@ -436,7 +394,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			var metricValues map[string]float64
-			if metricValues, err = fetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "path"); err != nil {
+			if metricValues, err = podutil.FetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "path"); err != nil {
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "name", nsn.String())
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil

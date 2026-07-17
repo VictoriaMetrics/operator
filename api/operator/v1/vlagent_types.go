@@ -94,11 +94,6 @@ type VLAgentSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
@@ -429,9 +424,6 @@ func (cr *VLAgent) FinalLabels() map[string]string {
 
 // PrefixedName returns name of resource with fixed prefix
 func (cr *VLAgent) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vlagent-%s", cr.Name)
 }
 

@@ -80,6 +80,76 @@ spec:
     replicaCount: 2
 ```
 
+## Migrating a running Helm release
+
+`helm-converter migrate` automates cutting a running standalone Helm release over to an
+operator-managed CR. Unlike the offline `convert` command above, it connects to the cluster
+(via kubeconfig) and mutates it directly.
+
+```bash
+go run ./cmd/helm-converter migrate -chart victoria-metrics-single -namespace monitoring \
+  -release my-release -values values.yaml [-target-name my-release] [-yes] [-dry-run]
+```
+
+It discovers the release's existing workloads, Services, and PersistentVolumeClaims by the
+standard Helm labels, then runs one of two strategies (`-strategy`):
+
+**`WithDowntime`** (default) — a brief window between deleting the old workload(s) and the
+new CR becoming ready:
+
+1. deletes the old Deployment (and any ConfigMap/Secret its pod spec actually referenced),
+2. rebinds the existing PersistentVolume under the operator's own PVC name — no data is
+   copied, the same volume is reused,
+3. creates the target CR and waits for it to become ready,
+4. repoints the release's existing Service at the new pods, preserving the Service's name
+   and DNS entry.
+
+For cluster charts (`victoria-metrics-cluster`, `victoria-logs-cluster`), the same steps run
+once per component (`vmstorage`/`vmselect`/`vminsert`, or `vlstorage`/`vlselect`/`vlinsert`),
+discovered via the chart's own `app.kubernetes.io/component` label: each component's old
+StatefulSet/Deployment is deleted, each StatefulSet component's PVCs are rebound one per
+ordinal (`vmstorage`/`vmselect`, or `vlstorage` — the insert/select-without-cache components
+have no persistent storage), then the single target VMCluster/VLCluster CR is created once
+and every component's Service is repointed after it becomes ready.
+
+**`NoDowntime`** — never touches the old workload(s) or their PVC(s):
+
+1. deploys a buffering VMAgent (VLAgent for VictoriaLogs) pointed at the old storage's write
+   endpoint via an internal alias Service (created solely so the buffer keeps a stable,
+   direct path to the real old backend even after the client-facing Service below gets
+   redirected to it — reusing the client-facing Service's own name here would otherwise make
+   the buffer's outbound writes loop back to itself once its selector changes in step 2),
+2. redirects the release's Service at the buffer agent so incoming writes keep flowing,
+3. best-effort force-merges the old storage, then takes a CSI VolumeSnapshot of it
+   (`-snapshot-class` selects the `VolumeSnapshotClass`; requires the cluster's CSI driver to
+   support snapshots),
+4. provisions a fresh PVC from that snapshot (`-agent-buffer-size` sizes the buffer agent's
+   own persistent queue) and creates the target CR against it,
+5. once ready, repoints the buffer agent's output at the target and waits for its queue to
+   drain,
+6. repoints the release's Service at the target's pods and tears down the buffer agent and
+   alias Service.
+
+   The old workload(s) and PVC(s) are left exactly as they were — decommission them yourself
+   (e.g. `helm uninstall`) whenever you're ready. If any step from 3 onward fails, the
+   Service selector is automatically reverted so traffic keeps flowing through the buffer
+   agent rather than being left pointed at a half-finished setup.
+
+For cluster charts (`victoria-metrics-cluster`, `victoria-logs-cluster`), only the
+insert component (`vminsert`/`vlinsert`, the write path) goes through the buffer-and-cutover
+dance above. The select component (`vmselect`/`vlselect`, reads) has nothing to buffer, so its
+Service is cut over directly once the target is ready. The storage component
+(`vmstorage`/`vlstorage`) has no client-facing Service at all — insert/select address it
+directly — so its per-ordinal PVCs are just force-merged (per pod, since each holds an
+independent shard) and CSI-snapshotted, with no Service involved.
+
+Run with `-dry-run` first to print the plan without changing anything. Without `-yes`, it
+asks for interactive confirmation before the first destructive/traffic-affecting step.
+
+Currently supports `victoria-metrics-single`, `victoria-logs-single`,
+`victoria-metrics-cluster`, and `victoria-logs-cluster` for both `WithDowntime` and
+`NoDowntime`.
+
 ## Notes
 
 The tool maps the majority of critical parameters, including Replicas, Images, Resource Requests/Limits, Affinity, NodeSelectors, Tolerations, ExtraArgs/ExtraEnvs, PersistentVolumes, and specific behavioral flags. 

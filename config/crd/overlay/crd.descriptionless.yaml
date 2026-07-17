@@ -1261,8 +1261,6 @@ spec:
                 type: array
               useDefaultResources:
                 type: boolean
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               volumeMounts:
@@ -1609,8 +1607,6 @@ spec:
                 type: object
               serviceAccountName:
                 type: string
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               vlinsert:
@@ -19001,8 +18997,6 @@ spec:
                 type: array
               useDefaultResources:
                 type: boolean
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               volumeMounts:
@@ -22420,8 +22414,6 @@ spec:
                 - RollingUpdate
                 type: string
               useDefaultResources:
-                type: boolean
-              useLegacyNaming:
                 type: boolean
               useStrictSecurity:
                 type: boolean
@@ -26821,8 +26813,6 @@ spec:
                 type: object
               useDefaultResources:
                 type: boolean
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               useVMConfigReloader:
@@ -28313,8 +28303,6 @@ spec:
                 - RollingUpdate
                 type: string
               useDefaultResources:
-                type: boolean
-              useLegacyNaming:
                 type: boolean
               useStrictSecurity:
                 type: boolean
@@ -29912,8 +29900,6 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
               useDefaultResources:
-                type: boolean
-              useLegacyNaming:
                 type: boolean
               useStrictSecurity:
                 type: boolean
@@ -32091,8 +32077,6 @@ spec:
                 type: string
               useDefaultResources:
                 type: boolean
-              useLegacyNaming:
-                type: boolean
               useProxyProtocol:
                 type: boolean
               useStrictSecurity:
@@ -32535,8 +32519,6 @@ spec:
                 type: string
               serviceAccountName:
                 type: string
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               vminsert:
@@ -40302,8 +40284,6 @@ spec:
                         - RollingUpdate
                         type: string
                       useDefaultResources:
-                        type: boolean
-                      useLegacyNaming:
                         type: boolean
                       useProxyProtocol:
                         type: boolean
@@ -61809,8 +61789,6 @@ spec:
                 type: array
               useDefaultResources:
                 type: boolean
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
               useVMConfigReloader:
@@ -63320,8 +63298,6 @@ spec:
                 - key
                 type: object
                 x-kubernetes-map-type: atomic
-              useLegacyNaming:
-                type: boolean
               username:
                 type: string
             required:
@@ -66010,8 +65986,6 @@ spec:
                         type: object
                     type: object
                 type: object
-              useLegacyNaming:
-                type: boolean
               useStrictSecurity:
                 type: boolean
             type: object
@@ -66733,8 +66707,6 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
               useDefaultResources:
-                type: boolean
-              useLegacyNaming:
                 type: boolean
               useStrictSecurity:
                 type: boolean

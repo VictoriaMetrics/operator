@@ -563,7 +563,11 @@ func FetchChartDefaults(chart string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return FetchChartDefaultsAtVersion(chart, version)
+}
 
+// FetchChartDefaultsAtVersion fetches chart's default values.yaml at the given version.
+func FetchChartDefaultsAtVersion(chart, version string) ([]byte, error) {
 	ref := fmt.Sprintf("%s-%s", chart, version)
 	url := fmt.Sprintf("%s/%s/charts/%s/values.yaml", helmChartsRawBaseURL, ref, chart)
 
@@ -1657,6 +1661,59 @@ func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 
 	return spec, nil
 }
+
+// convertVLSingleSpec mirrors convertVLogsSpec's field mapping, targeting VLSingle - the
+// current, non-deprecated single-node VictoriaLogs CRD - rather than VLogs.
+func convertVLSingleSpec(values *VLogsHelmValues) (*vmv1.VLSingleSpec, error) {
+	spec := &vmv1.VLSingleSpec{}
+	cfg, err := convertCommonConfig(values.Server, values.Global)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.CommonAppsParams = cfg.CommonAppsParams
+	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
+
+	if values.Server.RetentionPeriod != nil {
+		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	if cfg.Storage != nil {
+		spec.Storage = cfg.Storage
+	}
+
+	return spec, nil
+}
+
+// ConvertVLSingle converts victoria-logs-single Helm values (as already unmarshaled by
+// UnmarshalValues) into a *vmv1.VLSingle CR. Unlike Convert, which resolves this chart to the
+// deprecated VLogs kind for backwards compatibility with existing convert-command output,
+// migrate needs the current CRD so it never migrates users onto a kind they'd have to migrate
+// off of again.
+func ConvertVLSingle(name, namespace string, values any) (*vmv1.VLSingle, error) {
+	v, ok := values.(*VLogsHelmValues)
+	if !ok {
+		return nil, fmt.Errorf("expected *VLogsHelmValues, got %T", values)
+	}
+	spec, err := convertVLSingleSpec(v)
+	if err != nil {
+		return nil, err
+	}
+	return &vmv1.VLSingle{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1",
+			Kind:       "VLSingle",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec:       *spec,
+	}, nil
+}
+
 func convertVTSingleSpec(values *VTSingleHelmValues) (*vmv1.VTSingleSpec, error) {
 	spec := &vmv1.VTSingleSpec{}
 	cfg, err := convertCommonConfig(values.Server, values.Global)

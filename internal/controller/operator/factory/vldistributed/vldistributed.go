@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	vlAgentQueueMetricName         = "vlagent_remotewrite_pending_data_bytes"
 	httpTimeout                    = 10 * time.Second
 	defaultEndpointsUpdateInterval = 5 * time.Second
 	defaultMetricsCheckInterval    = 50 * time.Second

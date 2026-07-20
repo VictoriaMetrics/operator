@@ -6,9 +6,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
 // OnVLSingleDelete deletes all vlogs related resources
@@ -32,6 +34,9 @@ func OnVLSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLSin
 			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
 			Namespace: ns,
 		}})
+	}
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	objsToRemove = append(objsToRemove, cr)
 	deleteOwnerReferences := make([]bool, len(objsToRemove))

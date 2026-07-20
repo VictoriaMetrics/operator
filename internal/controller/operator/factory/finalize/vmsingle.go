@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -76,6 +77,9 @@ func OnVMSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.
 			Name:      cr.Spec.AdditionalScrapeConfigs.Name,
 			Namespace: ns,
 		}})
+	}
+	if cfg.VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	deleteOwnerReferences := make([]bool, len(objsToRemove))
 

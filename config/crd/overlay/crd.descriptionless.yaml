@@ -1313,10 +1313,6 @@ spec:
     served: true
     storage: true
     subresources:
-      scale:
-        labelSelectorPath: .status.selector
-        specReplicasPath: .spec.shardCount
-        statusReplicasPath: .status.shards
       status: {}
 ---
 apiVersion: apiextensions.k8s.io/v1

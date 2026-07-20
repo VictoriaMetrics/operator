@@ -6,13 +6,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -274,6 +277,81 @@ func TestCreateOrUpdate_StatefulSetWithHPA(t *testing.T) {
 
 	assert.NoError(t, fclient.Get(ctx, stsNSN, &sts))
 	assert.Equal(t, int32(2), *sts.Spec.Replicas)
+}
+
+func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = true
+	defer func() { *cfg = defaultCfg }()
+
+	f := func(cr *vmv1beta1.VMAgent) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
+		assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
+			Name:       cr.Name,
+			Kind:       "VMAgent",
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+		}, vpa.Spec.TargetRef)
+	}
+
+	// non-sharded
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			VPA:         &vmv1beta1.EmbeddedVPA{},
+		},
+	})
+
+	// sharded
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-vmagent-sharded", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			ShardCount:  ptr.To(int32(3)),
+			VPA:         &vmv1beta1.EmbeddedVPA{},
+		},
+	})
+}
+
+func TestCreateOrUpdateVPA_RemovedOnDisable(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = true
+	defer func() { *cfg = defaultCfg }()
+
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-disable-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			VPA:         &vmv1beta1.EmbeddedVPA{},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
+	var vpa vpav1.VerticalPodAutoscaler
+	assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
+
+	// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
+	cr.Spec.VPA = nil
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	err := fclient.Get(ctx, vpaNSN, &vpa)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err))
 }
 
 func TestCreateOrUpdate_StatusShards(t *testing.T) {

@@ -1,42 +1,10 @@
-package vmdistributed
+package podutil
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
-
-	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
-
-func fetchMetricValues(ctx context.Context, httpClient *http.Client, url, metricName, dimension string) (map[string]float64, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request for VMAgent at %s: %w", url, err)
-	}
-	resp, err := httpClient.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metrics from VMAgent at %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read VMAgent metrics at %s: %w", url, err)
-	}
-	s := string(data)
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected response status=%d, body=%q while requesting VMAgent metrics at %s", resp.StatusCode, s, url)
-	}
-	values := make(map[string]float64)
-	if err := unmarshalMetric(values, s, metricName, dimension); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal metric=%s values at %s: %w", metricName, url, err)
-	}
-	return values, nil
-}
 
 func unmarshalMetric(values map[string]float64, s, name, dimension string) error {
 	for len(s) > 0 {
@@ -51,7 +19,6 @@ func unmarshalMetric(values map[string]float64, s, name, dimension string) error
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
-
 		n := strings.IndexAny(line, "{ \t\r")
 		metricName := line
 		if n >= 0 {
@@ -60,7 +27,6 @@ func unmarshalMetric(values map[string]float64, s, name, dimension string) error
 		if metricName != name {
 			continue
 		}
-
 		line = line[len(metricName):]
 		line = skipLeadingWhitespace(line)
 		var dimValue string
@@ -101,18 +67,15 @@ func unmarshalTags(s string) (string, map[string]string, error) {
 		s = skipLeadingWhitespace(s)
 		n := strings.IndexByte(s, '"')
 		if n < 0 {
-			// end of tags
 			if len(s) > 0 && s[0] == '}' {
 				return s[1:], tags, nil
 			}
 			return s, tags, fmt.Errorf("missing value for tag %q", s)
 		}
-		// Determine if this is a value or quoted label
 		possibleKey := skipTrailingWhitespace(s[:n])
 		possibleKeyLen := len(possibleKey)
 		key := ""
 		if possibleKeyLen == 0 {
-			// Parse quoted label - {"label"="value"} or {"metric"}
 			key, s, err = unmarshalQuotedString(s)
 			if err != nil {
 				return s, tags, err
@@ -125,40 +88,30 @@ func unmarshalTags(s string) (string, map[string]string, error) {
 					}
 					continue
 				} else if s[0] != '=' {
-					// We are a quoted label that isn't preceded by a comma or at the end
-					// of the tags so we must have a value
 					return s, tags, fmt.Errorf("missing value for quoted tag %q", key)
 				}
 				s = skipLeadingWhitespace(s[1:])
 			}
-			// Fall through to parsing value
 		} else {
 			c := possibleKey[len(possibleKey)-1]
-			// unquoted label {label="value"}
 			if c == '=' {
-				// Parse unquoted label
 				key = skipLeadingWhitespace(s[:possibleKeyLen-1])
 				key = skipTrailingWhitespace(key)
 				s = skipLeadingWhitespace(s[possibleKeyLen:])
 			} else {
-				// unquoted tag without a value
 				return s, tags, fmt.Errorf("missing value for unquoted tag %q", s)
 			}
 		}
-		// Parse value
 		var value string
 		value, s, err = unmarshalQuotedString(s)
 		if err != nil {
 			return s, tags, err
 		}
-
 		if len(key) > 0 {
-			// Allow empty values (len(value)==0) - see https://github.com/VictoriaMetrics/VictoriaMetrics/issues/453
 			tags[key] = value
 		}
 		s = skipLeadingWhitespace(s)
 		if len(s) > 0 && s[0] == '}' {
-			// End of tags found.
 			return s[1:], tags, nil
 		}
 		if len(s) == 0 || s[0] != ',' {
@@ -196,7 +149,6 @@ func unmarshalQuotedString(s string) (string, string, error) {
 func unescapeValue(s string) string {
 	n := strings.IndexByte(s, '\\')
 	if n < 0 {
-		// Fast path - nothing to unescape
 		return s
 	}
 	b := make([]byte, 0, len(s))
@@ -207,9 +159,6 @@ func unescapeValue(s string) string {
 			b = append(b, '\\')
 			break
 		}
-		// label_value can be any sequence of UTF-8 characters, but the backslash (\), double-quote ("),
-		// and line feed (\n) characters have to be escaped as \\, \", and \n, respectively.
-		// See https://github.com/prometheus/docs/blob/e39897e4ee6e67d49d47204a34d120e3314e82f9/docs/instrumenting/exposition_formats.md
 		switch s[0] {
 		case '\\':
 			b = append(b, '\\')
@@ -256,19 +205,4 @@ func prevBackslashesCount(s string) int {
 		s = s[:len(s)-1]
 	}
 	return n
-}
-
-func mergeSpecs[T any](a, b *T, name string) (*T, error) {
-	merged, err := k8stools.RenderPlaceholders(a, map[string]string{
-		vmv1alpha1.ZonePlaceholder: name,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to render spec: %w", err)
-	}
-
-	// Apply cluster-specific override if it exist
-	if err := build.MergeDeep(merged, b, false); err != nil {
-		return nil, fmt.Errorf("failed to merge spec: %w", err)
-	}
-	return merged, nil
 }

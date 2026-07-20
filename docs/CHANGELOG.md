@@ -19,6 +19,7 @@ aliases:
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): add `basicAuth` field support to `remoteWrite` entries. See [#2371](https://github.com/VictoriaMetrics/operator/issues/2371).
 * FEATURE: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): support VMCluster extraStorageNodes for vmselect component.
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): add `defaultVMAccessClaim` field to `spec.jwt`, mapped to vmauth's `jwt.default_vm_access_claim`. It lets a `VMUser` accept JWTs that don't carry a `vm_access` claim, matching `vmauth` v1.147.0+ behavior. See [#2375](https://github.com/VictoriaMetrics/operator/issues/2375).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce `VLDistributed` CR, which controls multiple region-distributed VictoriaLogs clusters.
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): removed `library/` component, while building CR images that do not contain `/` in repo name. See [#2409](https://github.com/VictoriaMetrics/operator/issues/2409).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): add missing `list` verb to config-reloader's secrets RBAC rule. See [#2384](https://github.com/VictoriaMetrics/operator/issues/2384).

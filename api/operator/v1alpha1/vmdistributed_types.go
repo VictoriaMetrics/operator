@@ -503,6 +503,8 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 }
 
 // Validate validates the VMDistributed resource
+//
+//nolint:dupl
 func (cr *VMDistributed) Validate() error {
 	zones := sets.New[string]()
 	clusters := sets.New[string]()

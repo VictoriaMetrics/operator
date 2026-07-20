@@ -23,6 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// VLDistributeds returns a VLDistributedInformer.
+	VLDistributeds() VLDistributedInformer
 	// VMDistributed returns a VMDistributedInformer.
 	VMDistributed() VMDistributedInformer
 }
@@ -36,6 +38,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// VLDistributeds returns a VLDistributedInformer.
+func (v *version) VLDistributeds() VLDistributedInformer {
+	return &vLDistributedInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VMDistributed returns a VMDistributedInformer.

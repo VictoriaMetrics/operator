@@ -1,0 +1,29 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VLDistributed
+metadata:
+  name: sample-override
+spec:
+  vmauth:
+    name: global-vmauth
+    spec:
+      replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vlagent:
+      spec:
+        replicaCount: 1
+    vlcluster:
+      name: vlcluster-%ZONE%
+      spec:
+        vlstorage:
+          replicaCount: 1
+        vlselect:
+          replicaCount: 1
+        vlinsert:
+          replicaCount: 1
+  zones:
+    - name: us-east-1
+    - name: us-west-2

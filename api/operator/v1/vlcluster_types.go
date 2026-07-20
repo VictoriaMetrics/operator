@@ -899,6 +899,11 @@ func (cr *VLCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
 }
 
+// GetRemoteWriteURL returns the insert URL for VLCluster (used by VLDistributed)
+func (cr *VLCluster) GetRemoteWriteURL() string {
+	return cr.AsURL(vmv1beta1.ClusterComponentInsert, false) + "/insert/native"
+}
+
 // +kubebuilder:object:root=true
 
 // VLClusterList contains a list of VLCluster

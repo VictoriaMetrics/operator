@@ -27,12 +27,17 @@ import (
 
 type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	VLDistributedsGetter
 	VMDistributedGetter
 }
 
 // OperatorV1alpha1Client is used to interact with features provided by the operator group.
 type OperatorV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *OperatorV1alpha1Client) VLDistributeds(namespace string) VLDistributedInterface {
+	return newVLDistributeds(c, namespace)
 }
 
 func (c *OperatorV1alpha1Client) VMDistributed(namespace string) VMDistributedInterface {

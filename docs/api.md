@@ -48,7 +48,7 @@ Appears in: [SyslogTCPListener](#syslogtcplistener), [SyslogUDPListener](#syslog
 OAuth2 defines OAuth2 configuration parameters
 with optional references to secrets with corresponding sensitive values
 
-Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
+Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec)
 
 | Field | Description |
 | --- | --- |
@@ -107,7 +107,7 @@ Appears in: [SyslogServerSpec](#syslogserverspec)
 TLSConfig specifies TLS configuration parameters
 with optional references to secrets with corresponding sensitive values
 
-Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec)
+Appears in: [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec)
 
 | Field | Description |
 | --- | --- |
@@ -170,7 +170,7 @@ Appears in: [VLAgentSpec](#vlagentspec)
 
 VLAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 
-Appears in: [VLAgentSpec](#vlagentspec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec)
 
 | Field | Description |
 | --- | --- |
@@ -286,7 +286,7 @@ VLCluster is fast, cost-effective and scalable logs database.
 
 VLClusterSpec defines the desired state of VLCluster
 
-Appears in: [VLCluster](#vlcluster)
+Appears in: [VLCluster](#vlcluster), [VLDistributedZoneCluster](#vldistributedzonecluster)
 
 | Field | Description |
 | --- | --- |
@@ -444,7 +444,7 @@ VLSingle is the Schema for the API
 
 VLSingleSpec defines the desired state of VLSingle
 
-Appears in: [VLSingle](#vlsingle)
+Appears in: [VLDistributedZoneSingle](#vldistributedzonesingle), [VLSingle](#vlsingle)
 
 | Field | Description |
 | --- | --- |
@@ -1139,7 +1139,207 @@ Appears in: [VTSelect](#vtselect)
 Package v1alpha1 contains API Schema definitions for the operator v1alpha1 API group.
 
 ### Resource Types
+- [VLDistributed](#vldistributed)
 - [VMDistributed](#vmdistributed)
+
+#### VLDistributed
+
+VLDistributed is progressively rolling out updates to multiple zone components for VictoriaLogs.
+
+| Field | Description |
+| --- | --- |
+| apiVersion<br/>_string_ | (Required)<br/>`operator.victoriametrics.com/v1alpha1` |
+| kind<br/>_string_ | (Required)<br/>`VLDistributed` |
+| metadata<a href="#vldistributed-metadata" id="vldistributed-metadata">#</a><br/>_[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#objectmeta-v1-meta)_ | _(Optional)_<br/>Refer to Kubernetes API documentation for fields of `metadata`. |
+| spec<a href="#vldistributed-spec" id="vldistributed-spec">#</a><br/>_[VLDistributedSpec](#vldistributedspec)_ | _(Required)_<br/>spec defines the desired state of VLDistributed |
+
+#### VLDistributedAuth
+
+VLDistributedAuth defines a VMAuth by name or inline spec
+
+Appears in: [VLDistributedSpec](#vldistributedspec)
+
+| Field | Description |
+| --- | --- |
+| enabled<a href="#vldistributedauth-enabled" id="vldistributedauth-enabled">#</a><br/>_boolean_ | _(Optional)_<br/>Enabled defines if vmauth should be created. |
+| name<a href="#vldistributedauth-name" id="vldistributedauth-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VLDistributedAuth when Spec is provided. |
+| spec<a href="#vldistributedauth-spec" id="vldistributedauth-spec">#</a><br/>_[VMAuthSpec](#vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
+
+#### VLDistributedBackendType
+
+_Underlying type:_ _string_
+
+VLDistributedBackendType defines the storage backend type for all zones.
+
+Appears in: [VLDistributedSpec](#vldistributedspec)
+
+#### VLDistributedSpec
+
+VLDistributedSpec defines configurable parameters for VLDistributed CR
+
+Appears in: [VLDistributed](#vldistributed)
+
+| Field | Description |
+| --- | --- |
+| backendType<a href="#vldistributedspec-backendtype" id="vldistributedspec-backendtype">#</a><br/>_[VLDistributedBackendType](#vldistributedbackendtype)_ | _(Optional)_<br/>BackendType defines the storage backend type used across all zones.<br />VLCluster uses a distributed VLCluster per zone; VLSingle uses a single-node VLSingle per zone.<br />All zones must use the same backend type; mixed configurations are not supported. |
+| license<a href="#vldistributedspec-license" id="vldistributedspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License configures license key for enterprise features. If not nil, it will be passed to VLAgent and VLClusters. |
+| paused<a href="#vldistributedspec-paused" id="vldistributedspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| retain<a href="#vldistributedspec-retain" id="vldistributedspec-retain">#</a><br/>_boolean_ | _(Optional)_<br/>Retain keeps resources in case of VLDistributed removal |
+| vmauth<a href="#vldistributedspec-vmauth" id="vldistributedspec-vmauth">#</a><br/>_[VLDistributedAuth](#vldistributedauth)_ | _(Optional)_<br/>VMAuth is a VMAuth definition (name + optional spec) that acts as a proxy for the VMUsers created by the operator.<br />Use an inline spec to define a VMAuth object in-place or provide a name to reference an existing VMAuth. |
+| zoneCommon<a href="#vldistributedspec-zonecommon" id="vldistributedspec-zonecommon">#</a><br/>_[VLDistributedZoneCommon](#vldistributedzonecommon)_ | _(Optional)_<br/>ZoneCommon defines common properties for all zones |
+| zones<a href="#vldistributedspec-zones" id="vldistributedspec-zones">#</a><br/>_[VLDistributedZone](#vldistributedzone) array_ | _(Required)_<br/>Zones is a list of zones to update. Each item in the list represents a "zone" within the distributed setup. |
+
+#### VLDistributedTrafficMode
+
+_Underlying type:_ _string_
+
+Appears in: [VLDistributedZone](#vldistributedzone)
+
+#### VLDistributedZone
+
+VLDistributedZone defines items within a single zone to update.
+
+Appears in: [VLDistributedSpec](#vldistributedspec)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vldistributedzone-name" id="vldistributedzone-name">#</a><br/>_string_ | _(Required)_<br/>Name defines a name of zone, which can be used in zoneCommon spec as %ZONE% |
+| remoteWrite<a href="#vldistributedzone-remotewrite" id="vldistributedzone-remotewrite">#</a><br/>_[VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VLAgent remote write settings for given zone |
+| trafficMode<a href="#vldistributedzone-trafficmode" id="vldistributedzone-trafficmode">#</a><br/>_[VLDistributedTrafficMode](#vldistributedtrafficmode)_ | _(Required)_<br/>TrafficMode defines allowed traffic mode for a zone: read-only, write-only, read-write, maintenance |
+| vlagent<a href="#vldistributedzone-vlagent" id="vldistributedzone-vlagent">#</a><br/>_[VLDistributedZoneAgent](#vldistributedzoneagent)_ | _(Optional)_<br/>VLAgent defines VLAgent to balance incoming traffic between VLClusters. |
+| vlcluster<a href="#vldistributedzone-vlcluster" id="vldistributedzone-vlcluster">#</a><br/>_[VLDistributedZoneCluster](#vldistributedzonecluster)_ | _(Optional)_<br/>VLCluster defines a new inline or referencing existing one VLCluster.<br />Mutually exclusive with VLSingle in the same zone. |
+| vlsingle<a href="#vldistributedzone-vlsingle" id="vldistributedzone-vlsingle">#</a><br/>_[VLDistributedZoneSingle](#vldistributedzonesingle)_ | _(Optional)_<br/>VLSingle defines a new inline or referencing existing one VLSingle.<br />Mutually exclusive with VLCluster in the same zone. |
+
+#### VLDistributedZoneAgent
+
+VLDistributedZoneAgent is a name and a specification of a new VLAgent.
+
+Appears in: [VLDistributedZone](#vldistributedzone), [VLDistributedZoneCommon](#vldistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vldistributedzoneagent-name" id="vldistributedzoneagent-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VLAgent when Spec is provided. |
+| spec<a href="#vldistributedzoneagent-spec" id="vldistributedzoneagent-spec">#</a><br/>_[VLDistributedZoneAgentSpec](#vldistributedzoneagentspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VLAgent. |
+
+#### VLDistributedZoneAgentSpec
+
+VLDistributedZoneAgentSpec is a customized specification of a new VLAgent.
+It includes selected options from the original VLAgentSpec.
+
+Appears in: [VLDistributedZoneAgent](#vldistributedzoneagent)
+
+| Field | Description |
+| --- | --- |
+| affinity<a href="#vldistributedzoneagentspec-affinity" id="vldistributedzoneagentspec-affinity">#</a><br/>_[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#affinity-v1-core)_ | _(Optional)_<br/>Affinity If specified, the pod's scheduling constraints. |
+| claimTemplates<a href="#vldistributedzoneagentspec-claimtemplates" id="vldistributedzoneagentspec-claimtemplates">#</a><br/>_[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#persistentvolumeclaim-v1-core) array_ | _(Required)_<br/>ClaimTemplates allows adding additional VolumeClaimTemplates for VLAgent in StatefulSet mode |
+| configMaps<a href="#vldistributedzoneagentspec-configmaps" id="vldistributedzoneagentspec-configmaps">#</a><br/>_string array_ | _(Optional)_<br/>ConfigMaps is a list of ConfigMaps in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/configs/CONFIGMAP_NAME folder |
+| containers<a href="#vldistributedzoneagentspec-containers" id="vldistributedzoneagentspec-containers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#container-v1-core) array_ | _(Optional)_<br/>Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. |
+| disableAutomountServiceAccountToken<a href="#vldistributedzoneagentspec-disableautomountserviceaccounttoken" id="vldistributedzoneagentspec-disableautomountserviceaccounttoken">#</a><br/>_boolean_ | _(Optional)_<br/>DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes<br />Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.<br />For example, vmagent and vm-config-reloader requires k8s API access.<br />Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.<br />And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0540">v0.54.0</a> |
+| disableSelfServiceScrape<a href="#vldistributedzoneagentspec-disableselfservicescrape" id="vldistributedzoneagentspec-disableselfservicescrape">#</a><br/>_boolean_ | _(Optional)_<br/>DisableSelfServiceScrape controls creation of VMServiceScrape by operator<br />for the application.<br />Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable |
+| dnsConfig<a href="#vldistributedzoneagentspec-dnsconfig" id="vldistributedzoneagentspec-dnsconfig">#</a><br/>_[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#poddnsconfig-v1-core)_ | _(Optional)_<br/>Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. |
+| dnsPolicy<a href="#vldistributedzoneagentspec-dnspolicy" id="vldistributedzoneagentspec-dnspolicy">#</a><br/>_[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#dnspolicy-v1-core)_ | _(Optional)_<br/>DNSPolicy sets DNS policy for the pod |
+| enableServiceLinks<a href="#vldistributedzoneagentspec-enableservicelinks" id="vldistributedzoneagentspec-enableservicelinks">#</a><br/>_boolean_ | _(Optional)_<br/>EnableServiceLinks indicates whether information about services should be injected into pod's<br />environment variables, matching the syntax of Docker links.<br />Optional: Defaults to true. |
+| extraArgs<a href="#vldistributedzoneagentspec-extraargs" id="vldistributedzoneagentspec-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
+| extraEnvs<a href="#vldistributedzoneagentspec-extraenvs" id="vldistributedzoneagentspec-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
+| extraEnvsFrom<a href="#vldistributedzoneagentspec-extraenvsfrom" id="vldistributedzoneagentspec-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| hostAliases<a href="#vldistributedzoneagentspec-hostaliases" id="vldistributedzoneagentspec-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
+| hostNetwork<a href="#vldistributedzoneagentspec-hostnetwork" id="vldistributedzoneagentspec-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
+| host_aliases<a href="#vldistributedzoneagentspec-host_aliases" id="vldistributedzoneagentspec-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
+| image<a href="#vldistributedzoneagentspec-image" id="vldistributedzoneagentspec-image">#</a><br/>_[Image](#image)_ | _(Optional)_<br/>Image - docker image settings<br />if no specified operator uses default version from operator config |
+| imagePullSecrets<a href="#vldistributedzoneagentspec-imagepullsecrets" id="vldistributedzoneagentspec-imagepullsecrets">#</a><br/>_[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#localobjectreference-v1-core) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod |
+| initContainers<a href="#vldistributedzoneagentspec-initcontainers" id="vldistributedzoneagentspec-initcontainers">#</a><br/>_[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#container-v1-core) array_ | _(Optional)_<br/>InitContainers allows adding initContainers to the pod definition.<br />Any errors during the execution of an initContainer will lead to a restart of the Pod.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
+| license<a href="#vldistributedzoneagentspec-license" id="vldistributedzoneagentspec-license">#</a><br/>_[License](#license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features) |
+| livenessProbe<a href="#vldistributedzoneagentspec-livenessprobe" id="vldistributedzoneagentspec-livenessprobe">#</a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>LivenessProbe that will be added to CR pod |
+| logFormat<a href="#vldistributedzoneagentspec-logformat" id="vldistributedzoneagentspec-logformat">#</a><br/>_string_ | _(Optional)_<br/>LogFormat for VLAgent to be configured with. |
+| logLevel<a href="#vldistributedzoneagentspec-loglevel" id="vldistributedzoneagentspec-loglevel">#</a><br/>_string_ | _(Optional)_<br/>LogLevel for VLAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC |
+| managedMetadata<a href="#vldistributedzoneagentspec-managedmetadata" id="vldistributedzoneagentspec-managedmetadata">#</a><br/>_[ManagedObjectsMetadata](#managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
+| minReadySeconds<a href="#vldistributedzoneagentspec-minreadyseconds" id="vldistributedzoneagentspec-minreadyseconds">#</a><br/>_integer_ | _(Optional)_<br/>MinReadySeconds defines a minimum number of seconds to wait before starting update next pod<br />if previous in healthy state<br />Has no effect for VLogs and VMSingle |
+| nodeSelector<a href="#vldistributedzoneagentspec-nodeselector" id="vldistributedzoneagentspec-nodeselector">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>NodeSelector Define which Nodes the Pods are scheduled on. |
+| paused<a href="#vldistributedzoneagentspec-paused" id="vldistributedzoneagentspec-paused">#</a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| persistentVolumeClaimRetentionPolicy<a href="#vldistributedzoneagentspec-persistentvolumeclaimretentionpolicy" id="vldistributedzoneagentspec-persistentvolumeclaimretentionpolicy">#</a><br/>_[StatefulSetPersistentVolumeClaimRetentionPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#statefulsetpersistentvolumeclaimretentionpolicy-v1-apps)_ | _(Optional)_<br/>PersistentVolumeClaimRetentionPolicy allows configuration of PVC retention policy |
+| podDisruptionBudget<a href="#vldistributedzoneagentspec-poddisruptionbudget" id="vldistributedzoneagentspec-poddisruptionbudget">#</a><br/>_[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)_ | _(Optional)_<br/>PodDisruptionBudget created by operator |
+| podMetadata<a href="#vldistributedzoneagentspec-podmetadata" id="vldistributedzoneagentspec-podmetadata">#</a><br/>_[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | _(Optional)_<br/>PodMetadata configures Labels and Annotations which are propagated to the vlagent pods. |
+| port<a href="#vldistributedzoneagentspec-port" id="vldistributedzoneagentspec-port">#</a><br/>_string_ | _(Optional)_<br/>Port listen address |
+| preStopSleepSeconds<a href="#vldistributedzoneagentspec-prestopsleepseconds" id="vldistributedzoneagentspec-prestopsleepseconds">#</a><br/>_integer_ | _(Optional)_<br/>PreStopSleepSeconds defines the number of seconds to sleep in the preStop lifecycle hook.<br />It gives time for load balancers to remove the pod from rotation before the pod is terminated.<br />Defaults to 15 for applicable components. Set to 0 to disable. |
+| priorityClassName<a href="#vldistributedzoneagentspec-priorityclassname" id="vldistributedzoneagentspec-priorityclassname">#</a><br/>_string_ | _(Optional)_<br/>PriorityClassName class assigned to the Pods |
+| readinessGates<a href="#vldistributedzoneagentspec-readinessgates" id="vldistributedzoneagentspec-readinessgates">#</a><br/>_[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#podreadinessgate-v1-core) array_ | _(Required)_<br/>ReadinessGates defines pod readiness gates |
+| readinessProbe<a href="#vldistributedzoneagentspec-readinessprobe" id="vldistributedzoneagentspec-readinessprobe">#</a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>ReadinessProbe that will be added to CR pod |
+| remoteWriteSettings<a href="#vldistributedzoneagentspec-remotewritesettings" id="vldistributedzoneagentspec-remotewritesettings">#</a><br/>_[VLAgentRemoteWriteSettings](#vlagentremotewritesettings)_ | _(Optional)_<br/>RemoteWriteSettings defines global settings for all remoteWrite urls. |
+| replicaCount<a href="#vldistributedzoneagentspec-replicacount" id="vldistributedzoneagentspec-replicacount">#</a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
+| resources<a href="#vldistributedzoneagentspec-resources" id="vldistributedzoneagentspec-resources">#</a><br/>_[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#resourcerequirements-v1-core)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
+| revisionHistoryLimitCount<a href="#vldistributedzoneagentspec-revisionhistorylimitcount" id="vldistributedzoneagentspec-revisionhistorylimitcount">#</a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
+| rollingUpdateStrategy<a href="#vldistributedzoneagentspec-rollingupdatestrategy" id="vldistributedzoneagentspec-rollingupdatestrategy">#</a><br/>_[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#statefulsetupdatestrategytype-v1-apps)_ | _(Optional)_<br/>RollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate |
+| runtimeClassName<a href="#vldistributedzoneagentspec-runtimeclassname" id="vldistributedzoneagentspec-runtimeclassname">#</a><br/>_string_ | _(Optional)_<br/>RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ |
+| schedulerName<a href="#vldistributedzoneagentspec-schedulername" id="vldistributedzoneagentspec-schedulername">#</a><br/>_string_ | _(Optional)_<br/>SchedulerName - defines kubernetes scheduler name |
+| secrets<a href="#vldistributedzoneagentspec-secrets" id="vldistributedzoneagentspec-secrets">#</a><br/>_string array_ | _(Optional)_<br/>Secrets is a list of Secrets in the same namespace as the Application<br />object, which shall be mounted into the Application container<br />at /etc/vm/secrets/SECRET_NAME folder |
+| securityContext<a href="#vldistributedzoneagentspec-securitycontext" id="vldistributedzoneagentspec-securitycontext">#</a><br/>_[SecurityContext](#securitycontext)_ | _(Optional)_<br/>SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. |
+| serviceAccountName<a href="#vldistributedzoneagentspec-serviceaccountname" id="vldistributedzoneagentspec-serviceaccountname">#</a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
+| startupProbe<a href="#vldistributedzoneagentspec-startupprobe" id="vldistributedzoneagentspec-startupprobe">#</a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>StartupProbe that will be added to CR pod |
+| storage<a href="#vldistributedzoneagentspec-storage" id="vldistributedzoneagentspec-storage">#</a><br/>_[StorageSpec](#storagespec)_ | _(Optional)_<br/>Storage configures storage for StatefulSet |
+| terminationGracePeriodSeconds<a href="#vldistributedzoneagentspec-terminationgraceperiodseconds" id="vldistributedzoneagentspec-terminationgraceperiodseconds">#</a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
+| tolerations<a href="#vldistributedzoneagentspec-tolerations" id="vldistributedzoneagentspec-tolerations">#</a><br/>_[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#toleration-v1-core) array_ | _(Optional)_<br/>Tolerations If specified, the pod's tolerations. |
+| topologySpreadConstraints<a href="#vldistributedzoneagentspec-topologyspreadconstraints" id="vldistributedzoneagentspec-topologyspreadconstraints">#</a><br/>_[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#topologyspreadconstraint-v1-core) array_ | _(Optional)_<br/>TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ |
+| useDefaultResources<a href="#vldistributedzoneagentspec-usedefaultresources" id="vldistributedzoneagentspec-usedefaultresources">#</a><br/>_boolean_ | _(Optional)_<br/>UseDefaultResources controls resource settings<br />By default, operator sets built-in resource requirements |
+| useStrictSecurity<a href="#vldistributedzoneagentspec-usestrictsecurity" id="vldistributedzoneagentspec-usestrictsecurity">#</a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
+| volumeMounts<a href="#vldistributedzoneagentspec-volumemounts" id="vldistributedzoneagentspec-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
+| volumes<a href="#vldistributedzoneagentspec-volumes" id="vldistributedzoneagentspec-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Optional)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated. |
+| vpa<a href="#vldistributedzoneagentspec-vpa" id="vldistributedzoneagentspec-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
+
+#### VLDistributedZoneCluster
+
+VLDistributedZoneCluster defines the name and specification of a VLCluster to be created or updated.
+
+Appears in: [VLDistributedZone](#vldistributedzone), [VLDistributedZoneCommon](#vldistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vldistributedzonecluster-name" id="vldistributedzonecluster-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VLCluster. |
+| spec<a href="#vldistributedzonecluster-spec" id="vldistributedzonecluster-spec">#</a><br/>_[VLClusterSpec](#vlclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VLCluster. |
+
+#### VLDistributedZoneCommon
+
+VLDistributedZoneCommon defines items, that are common for all zones
+
+Appears in: [VLDistributedSpec](#vldistributedspec)
+
+| Field | Description |
+| --- | --- |
+| readyTimeout<a href="#vldistributedzonecommon-readytimeout" id="vldistributedzonecommon-readytimeout">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#duration-v1-meta)_ | _(Optional)_<br/>ReadyTimeout is the readiness timeout for each zone update. |
+| remoteWrite<a href="#vldistributedzonecommon-remotewrite" id="vldistributedzonecommon-remotewrite">#</a><br/>_[VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec)_ | _(Optional)_<br/>RemoteWrite defines VLAgent remote write settings for given zone |
+| updatePause<a href="#vldistributedzonecommon-updatepause" id="vldistributedzonecommon-updatepause">#</a><br/>_[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#duration-v1-meta)_ | _(Optional)_<br/>UpdatePause is the time the operator should wait between zone updates to ensure a smooth transition. |
+| vlagent<a href="#vldistributedzonecommon-vlagent" id="vldistributedzonecommon-vlagent">#</a><br/>_[VLDistributedZoneAgent](#vldistributedzoneagent)_ | _(Optional)_<br/>VLAgent defines VLAgent to balance incoming traffic between VLClusters. |
+| vlcluster<a href="#vldistributedzonecommon-vlcluster" id="vldistributedzonecommon-vlcluster">#</a><br/>_[VLDistributedZoneCluster](#vldistributedzonecluster)_ | _(Optional)_<br/>VLCluster defines VictoriaLogs cluster database |
+| vlsingle<a href="#vldistributedzonecommon-vlsingle" id="vldistributedzonecommon-vlsingle">#</a><br/>_[VLDistributedZoneSingle](#vldistributedzonesingle)_ | _(Optional)_<br/>VLSingle defines VictoriaLogs single-node database. |
+
+#### VLDistributedZoneRemoteWriteSpec
+
+VLDistributedZoneRemoteWriteSpec is a copy of VLAgentRemoteWriteSpec without the URL field.
+The URL will be overwritten by the controller.
+
+Appears in: [VLDistributedZone](#vldistributedzone), [VLDistributedZoneCommon](#vldistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| basicAuth<a href="#vldistributedzoneremotewritespec-basicauth" id="vldistributedzoneremotewritespec-basicauth">#</a><br/>_[BasicAuth](#basicauth)_ | _(Optional)_<br/>BasicAuth allow an endpoint to authenticate over basic authentication |
+| bearerTokenPath<a href="#vldistributedzoneremotewritespec-bearertokenpath" id="vldistributedzoneremotewritespec-bearertokenpath">#</a><br/>_string_ | _(Optional)_<br/>Optional bearer auth token path |
+| bearerTokenSecret<a href="#vldistributedzoneremotewritespec-bearertokensecret" id="vldistributedzoneremotewritespec-bearertokensecret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>Optional bearer auth token to use for -remoteWrite.url |
+| headers<a href="#vldistributedzoneremotewritespec-headers" id="vldistributedzoneremotewritespec-headers">#</a><br/>_string array_ | _(Optional)_<br/>Headers allow configuring custom http headers<br />Must be in form of semicolon separated header with value<br />e.g.<br />headerName: headerValue |
+| maxDiskUsage<a href="#vldistributedzoneremotewritespec-maxdiskusage" id="vldistributedzoneremotewritespec-maxdiskusage">#</a><br/>_[BytesString](#bytesstring)_ | _(Optional)_<br/>MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite<br />It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL |
+| oauth2<a href="#vldistributedzoneremotewritespec-oauth2" id="vldistributedzoneremotewritespec-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 defines auth configuration |
+| proxyURL<a href="#vldistributedzoneremotewritespec-proxyurl" id="vldistributedzoneremotewritespec-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234 |
+| sendTimeout<a href="#vldistributedzoneremotewritespec-sendtimeout" id="vldistributedzoneremotewritespec-sendtimeout">#</a><br/>_string_ | _(Optional)_<br/>Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) |
+| tlsConfig<a href="#vldistributedzoneremotewritespec-tlsconfig" id="vldistributedzoneremotewritespec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLSConfig describes tls configuration for remote write target |
+
+#### VLDistributedZoneSingle
+
+VLDistributedZoneSingle defines the name and specification of a VLSingle to be created or updated.
+
+Appears in: [VLDistributedZone](#vldistributedzone), [VLDistributedZoneCommon](#vldistributedzonecommon)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#vldistributedzonesingle-name" id="vldistributedzonesingle-name">#</a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VLSingle. |
+| spec<a href="#vldistributedzonesingle-spec" id="vldistributedzonesingle-spec">#</a><br/>_[VLSingleSpec](#vlsinglespec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VLSingle. |
 
 #### VMDistributed
 
@@ -1482,7 +1682,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 BasicAuth allow an endpoint to authenticate over basic authentication
 
-Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulAgentSDConfig](#consulagentsdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [DockerSDConfig](#dockersdconfig), [DockerSwarmSDConfig](#dockerswarmsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [MarathonSDConfig](#marathonsdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
+Appears in: [APIServerConfig](#apiserverconfig), [AzureSDConfig](#azuresdconfig), [ConsulAgentSDConfig](#consulagentsdconfig), [ConsulSDConfig](#consulsdconfig), [DigitalOceanSDConfig](#digitaloceansdconfig), [DockerSDConfig](#dockersdconfig), [DockerSwarmSDConfig](#dockerswarmsdconfig), [Endpoint](#endpoint), [EndpointAuth](#endpointauth), [EndpointScrapeParams](#endpointscrapeparams), [EurekaSDConfig](#eurekasdconfig), [HTTPAuth](#httpauth), [HTTPConfig](#httpconfig), [HTTPSDConfig](#httpsdconfig), [HTTPSDOptions](#httpsdoptions), [HetznerSDConfig](#hetznersdconfig), [KubernetesSDConfig](#kubernetessdconfig), [KumaSDConfig](#kumasdconfig), [MarathonSDConfig](#marathonsdconfig), [NomadSDConfig](#nomadsdconfig), [OVHCloudSDConfig](#ovhcloudsdconfig), [PodMetricsEndpoint](#podmetricsendpoint), [ProxyClientConfig](#proxyclientconfig), [PuppetDBSDConfig](#puppetdbsdconfig), [ScrapeClass](#scrapeclass), [TargetEndpoint](#targetendpoint), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMAlertDatasourceSpec](#vmalertdatasourcespec), [VMAlertNotifierSpec](#vmalertnotifierspec), [VMAlertRemoteReadSpec](#vmalertremotereadspec), [VMAlertRemoteWriteSpec](#vmalertremotewritespec), [VMAnomalyHTTPClientSpec](#vmanomalyhttpclientspec), [VMAnomalyMonitoringPushSpec](#vmanomalymonitoringpushspec), [VMAnomalyReadersSpec](#vmanomalyreadersspec), [VMAnomalyWritersSpec](#vmanomalywritersspec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VMNodeScrapeSpec](#vmnodescrapespec), [VMProbeSpec](#vmprobespec), [VMScrapeConfigSpec](#vmscrapeconfigspec), [VultrSDConfig](#vultrsdconfig)
 
 | Field | Description |
 | --- | --- |
@@ -1508,7 +1708,7 @@ _Underlying type:_ _string_
 BytesString represents bytes value defined directly as integer
 or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
 
-Appears in: [VLAgentRemoteWriteSettings](#vlagentremotewritesettings), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentRemoteWriteSettings](#vmagentremotewritesettings), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentRemoteWriteSettings](#vlagentremotewritesettings), [VLAgentRemoteWriteSpec](#vlagentremotewritespec), [VLDistributedZoneRemoteWriteSpec](#vldistributedzoneremotewritespec), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentRemoteWriteSettings](#vmagentremotewritesettings), [VMAgentRemoteWriteSpec](#vmagentremotewritespec), [VMDistributedZoneRemoteWriteSpec](#vmdistributedzoneremotewritespec), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 #### CRDRef
 
@@ -1542,7 +1742,7 @@ Appears in: [TLSClientConfig](#tlsclientconfig), [TLSServerConfig](#tlsservercon
 CommonAppsParams defines common params
 for deployment and statefulset specifications
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2010,7 +2210,7 @@ Appears in: [VMAuthSpec](#vmauthspec)
 EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 Only fields which are relevant to embedded resources are included.
 
-Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedHTTPRoute](#embeddedhttproute), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [AdditionalServiceSpec](#additionalservicespec), [EmbeddedHTTPRoute](#embeddedhttproute), [EmbeddedIngress](#embeddedingress), [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim), [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2032,7 +2232,7 @@ Appears in: [StorageSpec](#storagespec)
 
 #### EmbeddedPodDisruptionBudgetSpec
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2046,7 +2246,7 @@ Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlse
 EmbeddedVPA embeds VerticalPodAutoscaler spec v1.
 https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2296,7 +2496,7 @@ Appears in: [VMScrapeConfigSpec](#vmscrapeconfigspec)
 
 Image defines docker image settings
 
-Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMBackup](#vmbackup), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -2447,7 +2647,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedSpec](#vmdistributedspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSingleSpec](#vmsinglespec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLDistributedSpec](#vldistributedspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLSingleSpec](#vlsinglespec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedSpec](#vmdistributedspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSingleSpec](#vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -2503,7 +2703,7 @@ Appears in: [Receiver](#receiver)
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSingleSpec](#vmsinglespec), [VMUserSpec](#vmuserspec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
+Appears in: [VLAgentSpec](#vlagentspec), [VLClusterSpec](#vlclusterspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLSingleSpec](#vlsinglespec), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthSpec](#vmauthspec), [VMClusterSpec](#vmclusterspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSingleSpec](#vmsinglespec), [VMUserSpec](#vmuserspec), [VTClusterSpec](#vtclusterspec), [VTSingleSpec](#vtsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -3150,7 +3350,7 @@ Appears in: [OAuth2](#oauth2), [TLSConfig](#tlsconfig)
 SecurityContext extends PodSecurityContext with ContainerSecurityContext
 It allows to globally configure security params for pod and all containers
 
-Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
+Appears in: [CommonAppsParams](#commonappsparams), [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLInsert](#vlinsert), [VLSelect](#vlselect), [VLSingleSpec](#vlsinglespec), [VLStorage](#vlstorage), [VLogsSpec](#vlogsspec), [VMAgentSpec](#vmagentspec), [VMAlertSpec](#vmalertspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMAuthLoadBalancerSpec](#vmauthloadbalancerspec), [VMAuthSpec](#vmauthspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMInsert](#vminsert), [VMSelect](#vmselect), [VMSingleSpec](#vmsinglespec), [VMStorage](#vmstorage), [VTInsert](#vtinsert), [VTSelect](#vtselect), [VTSingleSpec](#vtsinglespec), [VTStorage](#vtstorage)
 
 #### Sigv4Config
 
@@ -3285,7 +3485,7 @@ Appears in: [TargetRef](#targetref)
 StorageSpec defines the configured storage for a group VM servers.
 If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
 
-Appears in: [VLAgentSpec](#vlagentspec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTStorage](#vtstorage)
+Appears in: [VLAgentSpec](#vlagentspec), [VLDistributedZoneAgentSpec](#vldistributedzoneagentspec), [VLStorage](#vlstorage), [VMAgentSpec](#vmagentspec), [VMAlertmanagerSpec](#vmalertmanagerspec), [VMAnomalySpec](#vmanomalyspec), [VMDistributedZoneAgentSpec](#vmdistributedzoneagentspec), [VMSelect](#vmselect), [VMStorage](#vmstorage), [VTStorage](#vtstorage)
 
 | Field | Description |
 | --- | --- |
@@ -4257,7 +4457,7 @@ Appears in: [VMAuthLoadBalancer](#vmauthloadbalancer)
 
 VMAuthSpec defines the desired state of VMAuth
 
-Appears in: [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
+Appears in: [VLDistributedAuth](#vldistributedauth), [VMAuth](#vmauth), [VMDistributedAuth](#vmdistributedauth)
 
 | Field | Description |
 | --- | --- |

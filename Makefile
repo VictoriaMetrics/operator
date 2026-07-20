@@ -215,6 +215,10 @@ build-config-reloader: build
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 
+.PHONY: docker-push-config-reloader
+docker-push-config-reloader: ## Push config-reloader docker image with the manager.
+	TAG=config-reloader-$(TAG) $(MAKE) docker-push
+
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx ORG=myregistry REPO=mypoperator TAG=0.0.1). To use this option you need to:
 # - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/

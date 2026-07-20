@@ -62,6 +62,8 @@ func testGetScheme() *runtime.Scheme {
 	s.AddKnownTypes(vmv1alpha1.SchemeGroupVersion,
 		&vmv1alpha1.VMDistributedList{},
 		&vmv1alpha1.VMDistributed{},
+		&vmv1alpha1.VLDistributedList{},
+		&vmv1alpha1.VLDistributed{},
 	)
 	s.AddKnownTypes(vmv1.SchemeGroupVersion,
 		&vmv1.VLSingleList{},
@@ -126,6 +128,7 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 			&vmv1beta1.VMStaticScrape{},
 			&vmv1beta1.VMNodeScrape{},
 			&vmv1alpha1.VMDistributed{},
+			&vmv1alpha1.VLDistributed{},
 			&vmv1.VLSingle{},
 			&vmv1.VLCluster{},
 			&vmv1.VTSingle{},

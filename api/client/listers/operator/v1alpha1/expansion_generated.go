@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1alpha1
 
+// VLDistributedListerExpansion allows custom methods to be added to
+// VLDistributedLister.
+type VLDistributedListerExpansion interface{}
+
+// VLDistributedNamespaceListerExpansion allows custom methods to be added to
+// VLDistributedNamespaceLister.
+type VLDistributedNamespaceListerExpansion interface{}
+
 // VMDistributedListerExpansion allows custom methods to be added to
 // VMDistributedLister.
 type VMDistributedListerExpansion interface{}

@@ -608,7 +608,11 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	storageName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 	if d := cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery); d != nil && d.Enabled {
-		args = append(args, fmt.Sprintf("-storageNode=srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)))
+		storageNode := fmt.Sprintf("srv+%s", storageNodeSRVAddr(storageName, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName))
+		for _, node := range cr.Spec.VMSelect.ExtraStorageNodes {
+			storageNode += "," + node.Addr
+		}
+		args = append(args, fmt.Sprintf("-storageNode=%s", storageNode))
 		if d.Interval != "" {
 			args = append(args, fmt.Sprintf("-storageNode.discoveryInterval=%s", d.Interval))
 		}
@@ -619,9 +623,12 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		storageNodeFlag := build.NewFlag("-storageNode", "")
 		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
 		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
 		}
-		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
+		for i, node := range cr.Spec.VMSelect.ExtraStorageNodes {
+			storageNodeFlag.Add(node.Addr, i+len(storageNodeIds))
+		}
+		args = build.AppendFlagsToArgs(args, len(storageNodeIds)+len(cr.Spec.VMSelect.ExtraStorageNodes), storageNodeFlag)
 	}
 
 	// selectNode arg add for deployments without HPA
@@ -630,7 +637,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		selectNodeFlag := build.NewFlag("-selectNode", "")
 		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
 		for idx := int32(0); idx < vmselectCount; idx++ {
-			selectNodeFlag.Add(build.PodDNSAddress(commonName, idx, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName), int(idx))
+			selectNodeFlag.Add(vmv1beta1.PodDNSAddress(commonName, idx, cr.Namespace, cr.Spec.VMSelect.Port, cr.Spec.ClusterDomainName), int(idx))
 		}
 		args = build.AppendFlagsToArgs(args, int(vmselectCount), selectNodeFlag)
 	}
@@ -834,7 +841,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 		storageNodeFlag := build.NewFlag("-storageNode", "")
 		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
 		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(build.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
 		}
 		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
 	}

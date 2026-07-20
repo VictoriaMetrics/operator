@@ -4843,6 +4843,7 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | extraArgs<a href="#vmselect-extraargs" id="vmselect-extraargs">#</a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#vmselect-extraenvs" id="vmselect-extraenvs">#</a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |
 | extraEnvsFrom<a href="#vmselect-extraenvsfrom" id="vmselect-extraenvsfrom">#</a><br/>_[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envfromsource-v1-core) array_ | _(Optional)_<br/>ExtraEnvsFrom defines source of env variables for the application container<br />could either be secret or configmap |
+| extraStorageNodes<a href="#vmselect-extrastoragenodes" id="vmselect-extrastoragenodes">#</a><br/>_[VMStorageNode](#vmstoragenode) array_ | _(Optional)_<br/>ExtraStorageNodes - defines additional storage nodes to VMSelect,<br />available for select only. Useful for adding an existing vmsingle nodes<br />to the cluster in a read-only mode.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0740">v0.74.0</a> |
 | hostAliases<a href="#vmselect-hostaliases" id="vmselect-hostaliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. |
 | hostNetwork<a href="#vmselect-hostnetwork" id="vmselect-hostnetwork">#</a><br/>_boolean_ | _(Optional)_<br/>HostNetwork controls whether the pod may use the node network namespace |
 | host_aliases<a href="#vmselect-host_aliases" id="vmselect-host_aliases">#</a><br/>_[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#hostalias-v1-core) array_ | _(Optional)_<br/>HostAliasesUnderScore provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork.<br />Has Priority over hostAliases field |
@@ -5143,6 +5144,16 @@ Appears in: [VMClusterSpec](#vmclusterspec)
 | volumeMounts<a href="#vmstorage-volumemounts" id="vmstorage-volumemounts">#</a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#vmstorage-volumes" id="vmstorage-volumes">#</a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Optional)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated. |
 | vpa<a href="#vmstorage-vpa" id="vmstorage-vpa">#</a><br/>_[EmbeddedVPA](#embeddedvpa)_ | _(Optional)_<br/>Configures vertical pod autoscaling. |
+
+#### VMStorageNode
+
+VMStorageNode defines an additional, non-operator-managed vmstorage node
+
+Appears in: [VMSelect](#vmselect)
+
+| Field | Description |
+| --- | --- |
+| addr<a href="#vmstoragenode-addr" id="vmstoragenode-addr">#</a><br/>_string_ | _(Required)_<br/>Addr defines storage node address |
 
 #### VMUser
 

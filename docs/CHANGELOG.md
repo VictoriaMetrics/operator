@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.148.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0).
 
 * FEATURE: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): add `basicAuth` field support to `remoteWrite` entries. See [#2371](https://github.com/VictoriaMetrics/operator/issues/2371).

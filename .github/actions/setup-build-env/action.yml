@@ -24,7 +24,7 @@ runs:
         SAVED=$((AFTER-BEFORE))
         echo "Saved $(formatByteCount $SAVED)"
     - name: Prepare binary cache
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
       with:
         path: ./bin
         key: binary
@@ -36,7 +36,7 @@ runs:
         check-latest: true
         cache: false
     - name: Restore Go cache
-      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
       with:
         path: |
           ~/go/pkg/mod
@@ -59,7 +59,7 @@ runs:
         echo "version=$(grep '^FROM golang:' Dockerfile | cut -d: -f2 | cut -d' ' -f1)" >> $GITHUB_OUTPUT
     - name: Cache Golang Docker image
       id: golang-docker-cache
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
       with:
         path: /tmp/golang-docker.tar
         key: golang-docker-${{ steps.golang-version.outputs.version }}

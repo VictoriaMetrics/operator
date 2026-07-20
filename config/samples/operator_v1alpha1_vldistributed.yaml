@@ -1,0 +1,27 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VLDistributed
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sample-vlsingle
+spec:
+  backendType: VLSingle
+  vmauth:
+    name: vmauth-sample-single
+  zoneCommon:
+    vlsingle:
+      spec:
+        retentionPeriod: "1"
+    readyTimeout: 5m
+    updatePause: 30s
+  zones:
+    - name: us-east-1
+      vlsingle:
+        name: vlsingle-us-east-1
+    - name: us-west-2
+      vlsingle:
+        name: vlsingle-us-west-2
+    - name: eu-west-1
+      vlsingle:
+        name: vlsingle-eu-west-1

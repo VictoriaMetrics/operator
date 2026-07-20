@@ -122,11 +122,6 @@ type VMAuthSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty" yaml:"useLegacyNaming,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
 	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
@@ -718,9 +713,6 @@ func (cr *VMAuth) FinalAnnotations() map[string]string {
 }
 
 func (cr *VMAuth) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vmauth-%s", cr.Name)
 }
 

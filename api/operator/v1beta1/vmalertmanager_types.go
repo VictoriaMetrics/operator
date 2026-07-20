@@ -205,11 +205,6 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// can contain paths to arbitrary files on the file system
 	// e.g bearer token files, basic auth password files, tls certs file paths
@@ -371,9 +366,6 @@ func (cr *VMAlertmanager) ConfigSecretName() string {
 }
 
 func (cr *VMAlertmanager) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
 }
 

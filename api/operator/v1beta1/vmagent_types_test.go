@@ -153,13 +153,7 @@ func TestVMAgent_DefaultStatusFields(t *testing.T) {
 }
 
 func TestVMAgent_PrefixedName(t *testing.T) {
-	f := func(name string, omit bool, want string) {
-		t.Helper()
-		cr := &VMAgent{Spec: VMAgentSpec{UseLegacyNaming: omit}}
-		cr.Name = name
-		assert.Equal(t, want, cr.PrefixedName())
-	}
-
-	f("myapp", false, "vmagent-myapp")
-	f("myapp", true, "myapp")
+	cr := &VMAgent{}
+	cr.Name = "myapp"
+	assert.Equal(t, "vmagent-myapp", cr.PrefixedName())
 }

@@ -336,20 +336,14 @@ func TestVMCluster_Validate(t *testing.T) {
 }
 
 func TestVMCluster_PrefixedName(t *testing.T) {
-	f := func(name string, omit bool, kind ClusterComponent, want string) {
+	f := func(name string, kind ClusterComponent, want string) {
 		t.Helper()
-		cr := &VMCluster{Spec: VMClusterSpec{UseLegacyNaming: omit}}
+		cr := &VMCluster{}
 		cr.Name = name
 		assert.Equal(t, want, cr.PrefixedName(kind))
 	}
 
-	// default — <component>-<name>
-	f("myapp", false, ClusterComponentSelect, "vmselect-myapp")
-	f("myapp", false, ClusterComponentInsert, "vminsert-myapp")
-	f("myapp", false, ClusterComponentStorage, "vmstorage-myapp")
-
-	// useLegacyNaming — <name>-<component>
-	f("myapp", true, ClusterComponentSelect, "myapp-vmselect")
-	f("myapp", true, ClusterComponentInsert, "myapp-vminsert")
-	f("myapp", true, ClusterComponentStorage, "myapp-vmstorage")
+	f("myapp", ClusterComponentSelect, "vmselect-myapp")
+	f("myapp", ClusterComponentInsert, "vminsert-myapp")
+	f("myapp", ClusterComponentStorage, "vmstorage-myapp")
 }

@@ -69,12 +69,6 @@ type VLClusterSpec struct {
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
-	// UseLegacyNaming switches component resource naming from the default prefix convention
-	// (<component>-<name>, e.g. "vlselect-myapp") to a suffix convention (<name>-<component>,
-	// e.g. "myapp-vlselect"). Useful when migrating from standalone Helm charts.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -182,17 +176,11 @@ func (cr *VLCluster) FinalAnnotations() map[string]string {
 
 // PrefixedName returns prefixed name for the given component kind
 func (cr *VLCluster) PrefixedName(kind vmv1beta1.ClusterComponent) string {
-	if cr.Spec.UseLegacyNaming {
-		return vmv1beta1.ClusterSuffixedName(kind, cr.Name, "vl", false)
-	}
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vl", false)
 }
 
 // PrefixedInternalName returns prefixed name for the given component kind
 func (cr *VLCluster) PrefixedInternalName(kind vmv1beta1.ClusterComponent) string {
-	if cr.Spec.UseLegacyNaming {
-		return vmv1beta1.ClusterSuffixedName(kind, cr.Name, "vl", true)
-	}
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, "vl", true)
 }
 

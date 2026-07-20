@@ -4,97 +4,30 @@ import (
 	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 )
 
-const defaultStubAddr = "http://127.0.0.1:9999"
-
-func hasOwnerReference(owners []metav1.OwnerReference, owner *metav1.OwnerReference) bool {
-	for i := range owners {
-		o := &owners[i]
-		if o.APIVersion == owner.APIVersion && o.Kind == owner.Kind && o.Name == owner.Name {
-			return true
-		}
-	}
-	return false
-}
+const defaultStubAddr = podutil.VMAuthDefaultStubAddr
 
 func vlBackendTargetRef(backends []vlBackend, kind string, paths []string, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
-	var nsns []vmv1beta1.NamespacedName
-	// iterate in reverse so that vmauth would be more likely to route requests to older, stable backends
-	for i := len(backends) - 1; i >= 0; i-- {
-		if slices.Contains(excludeIds, i) {
-			continue
-		}
-		b := backends[i].obj
-		if b.GetCreationTimestamp().Time.IsZero() || !hasOwnerReference(b.GetOwnerReferences(), owner) {
-			continue
-		}
-		nsns = append(nsns, vmv1beta1.NamespacedName{
-			Name:      b.GetName(),
-			Namespace: b.GetNamespace(),
-		})
+	objects := make([]metav1.Object, 0, len(backends))
+	for i := range backends {
+		objects = append(objects, backends[i].obj)
 	}
-	ref := vmv1beta1.TargetRef{
-		Name: "read",
-		URLMapCommon: vmv1beta1.URLMapCommon{
-			LoadBalancingPolicy: ptr.To("first_available"),
-			RetryStatusCodes:    []int{500, 502, 503},
-		},
-		Paths: paths,
-	}
-	if len(nsns) > 0 {
-		ref.CRD = &vmv1beta1.CRDRef{
-			Kind:    kind,
-			Objects: nsns,
-		}
-	} else {
-		ref.Static = &vmv1beta1.StaticRef{
-			URL: defaultStubAddr,
-		}
-	}
-	return ref
+	return podutil.VMAuthReadTargetRef(objects, kind, paths, owner, excludeIds...)
 }
 
 func vlAgentWriteTargetRef(vlAgents []*vmv1.VLAgent, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
-	var nsns []vmv1beta1.NamespacedName
+	objects := make([]metav1.Object, 0, len(vlAgents))
 	for i := range vlAgents {
-		if slices.Contains(excludeIds, i) {
-			continue
-		}
-		vlAgent := vlAgents[i]
-		if vlAgent.CreationTimestamp.IsZero() || !hasOwnerReference(vlAgent.OwnerReferences, owner) {
-			continue
-		}
-		nsns = append(nsns, vmv1beta1.NamespacedName{
-			Name:      vlAgent.Name,
-			Namespace: vlAgent.Namespace,
-		})
+		objects = append(objects, vlAgents[i])
 	}
-	ref := vmv1beta1.TargetRef{
-		Name: "write",
-		URLMapCommon: vmv1beta1.URLMapCommon{
-			LoadBalancingPolicy: ptr.To("least_loaded"),
-			RetryStatusCodes:    []int{500, 502, 503},
-		},
-		Paths: []string{"/insert/.+"},
-	}
-	if len(nsns) > 0 {
-		ref.CRD = &vmv1beta1.CRDRef{
-			Kind:    "VLAgent",
-			Objects: nsns,
-		}
-	} else {
-		ref.Static = &vmv1beta1.StaticRef{
-			URL: defaultStubAddr,
-		}
-	}
-	return ref
+	return podutil.VMAuthWriteTargetRef(objects, "VLAgent", []string{"/insert/.+"}, owner, excludeIds...)
 }
 
 func buildVMAuthLB(cr *vmv1alpha1.VLDistributed, zs *zones, excludeIds ...int) *vmv1beta1.VMAuth {

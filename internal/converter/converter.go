@@ -69,6 +69,8 @@ type VMAgentHelmValues struct {
 	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
 	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	ExtraEnvs          []corev1.EnvVar               `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes       []corev1.Volume               `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts  []corev1.VolumeMount          `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
 	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
@@ -124,6 +126,8 @@ type VMAnomalyHelmValues struct {
 	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
 	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	ExtraEnvs          []corev1.EnvVar               `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes       []corev1.Volume               `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts  []corev1.VolumeMount          `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
 	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
@@ -152,6 +156,8 @@ type VMAlertServerValues struct {
 	ReplicaCount       *int32                           `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
 	ExtraArgs          map[string]interface{}           `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	ExtraEnvs          []corev1.EnvVar                  `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes       []corev1.Volume                  `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts  []corev1.VolumeMount             `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources          *corev1.ResourceRequirements     `yaml:"resources,omitempty" json:"resources,omitempty"`
 	NodeSelector       map[string]string                `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 	Tolerations        []corev1.Toleration              `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
@@ -255,6 +261,8 @@ type ServerValues struct {
 	RetentionPeriod    interface{}                   `yaml:"retentionPeriod,omitempty" json:"retentionPeriod,omitempty"`
 	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	ExtraEnvs          []corev1.EnvVar               `yaml:"extraEnvs,omitempty" json:"extraEnvs,omitempty"`
+	ExtraVolumes       []corev1.Volume               `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts  []corev1.VolumeMount          `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
 	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
@@ -866,6 +874,14 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 		cfg.ExtraEnvs = values.ExtraEnvs
 	}
 
+	if len(values.ExtraVolumes) > 0 {
+		cfg.Volumes = values.ExtraVolumes
+	}
+
+	if len(values.ExtraVolumeMounts) > 0 {
+		cfg.VolumeMounts = values.ExtraVolumeMounts
+	}
+
 	storage, err := convertPersistentVolume(values.PersistentVolume)
 	if err != nil {
 		return cfg, err
@@ -1078,6 +1094,8 @@ func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, e
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
 	spec.Storage = cfg.Storage
+	spec.Volumes = cfg.Volumes
+	spec.VolumeMounts = cfg.VolumeMounts
 
 	if values.Server.RetentionPeriod != nil {
 		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
@@ -1099,6 +1117,8 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 		ReplicaCount:       values.ReplicaCount,
 		ExtraArgs:          values.ExtraArgs,
 		ExtraEnvs:          values.ExtraEnvs,
+		ExtraVolumes:       values.ExtraVolumes,
+		ExtraVolumeMounts:  values.ExtraVolumeMounts,
 		Resources:          values.Resources,
 		NodeSelector:       values.NodeSelector,
 		Tolerations:        values.Tolerations,
@@ -1116,6 +1136,8 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 	spec.Image = cfg.Image
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Volumes = cfg.Volumes
+	spec.VolumeMounts = cfg.VolumeMounts
 	spec.Resources = cfg.Resources
 	spec.NodeSelector = cfg.NodeSelector
 	spec.Tolerations = cfg.Tolerations
@@ -1151,6 +1173,8 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 		ReplicaCount:       values.Server.ReplicaCount,
 		ExtraArgs:          values.Server.ExtraArgs,
 		ExtraEnvs:          values.Server.ExtraEnvs,
+		ExtraVolumes:       values.Server.ExtraVolumes,
+		ExtraVolumeMounts:  values.Server.ExtraVolumeMounts,
 		Resources:          values.Server.Resources,
 		NodeSelector:       values.Server.NodeSelector,
 		Tolerations:        values.Server.Tolerations,
@@ -1168,6 +1192,8 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 	spec.Image = cfg.Image
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Volumes = cfg.Volumes
+	spec.VolumeMounts = cfg.VolumeMounts
 	spec.Resources = cfg.Resources
 	spec.NodeSelector = cfg.NodeSelector
 	spec.Tolerations = cfg.Tolerations
@@ -1198,6 +1224,8 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 		ReplicaCount:       values.ReplicaCount,
 		ExtraArgs:          values.ExtraArgs,
 		ExtraEnvs:          values.ExtraEnvs,
+		ExtraVolumes:       values.ExtraVolumes,
+		ExtraVolumeMounts:  values.ExtraVolumeMounts,
 		Resources:          values.Resources,
 		NodeSelector:       values.NodeSelector,
 		Tolerations:        values.Tolerations,
@@ -1215,6 +1243,8 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 	spec.Image = cfg.Image
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Volumes = cfg.Volumes
+	spec.VolumeMounts = cfg.VolumeMounts
 	spec.Resources = cfg.Resources
 	spec.NodeSelector = cfg.NodeSelector
 	spec.Tolerations = cfg.Tolerations

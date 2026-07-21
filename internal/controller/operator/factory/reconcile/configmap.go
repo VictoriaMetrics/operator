@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -37,10 +38,10 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s", nsn.String())}
-		dataDiff := diffDeep(newObj.Data, existingObj.Data, "data")
+		dataDiff := changedKeysWithSizes(newObj.Data, existingObj.Data, "data")
 		needsUpdate := metaChanged || len(dataDiff) > 0
 
-		binDataDiff := diffDeep(newObj.BinaryData, existingObj.BinaryData, "binaryData")
+		binDataDiff := changedKeysWithSizes(newObj.BinaryData, existingObj.BinaryData, "binaryData")
 		needsUpdate = needsUpdate || len(binDataDiff) > 0
 
 		if !needsUpdate {
@@ -53,4 +54,29 @@ func ConfigMap(ctx context.Context, rclient client.Client, newObj *corev1.Config
 		return rclient.Update(ctx, &existingObj)
 	})
 	return updated, err
+}
+
+// changedKeysWithSizes returns the sorted keys whose values differ between
+// desired and current, annotated with the value byte size on each side.
+// Values themselves are never included: a single ConfigMap value can reach
+// multiple megabytes, and logging it verbatim produces log lines that
+// downstream log pipelines with per-line size limits cannot ingest.
+func changedKeysWithSizes[V string | []byte](desired, current map[string]V, root string) []string {
+	changed := make([]string, 0, len(desired))
+	for key, desiredValue := range desired {
+		currentValue, ok := current[key]
+		switch {
+		case !ok:
+			changed = append(changed, fmt.Sprintf("%s['%s'](current=absent,desired=%dB)", root, key, len(desiredValue)))
+		case string(currentValue) != string(desiredValue):
+			changed = append(changed, fmt.Sprintf("%s['%s'](current=%dB,desired=%dB)", root, key, len(currentValue), len(desiredValue)))
+		}
+	}
+	for key, currentValue := range current {
+		if _, ok := desired[key]; !ok {
+			changed = append(changed, fmt.Sprintf("%s['%s'](current=%dB,desired=absent)", root, key, len(currentValue)))
+		}
+	}
+	sort.Strings(changed)
+	return changed
 }

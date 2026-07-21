@@ -374,6 +374,39 @@ func TestConvertVMSingle(t *testing.T) {
 			return cr
 		},
 	)
+
+	// extraVolumes/extraVolumeMounts must be propagated. See #2424.
+	f(
+		&VMSingleHelmValues{
+			Server: ServerValues{
+				ExtraVolumes: []corev1.Volume{
+					{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+				ExtraVolumeMounts: []corev1.VolumeMount{
+					{Name: "extra", MountPath: "/extra"},
+				},
+			},
+		},
+		func() *vmv1beta1.VMSingle {
+			cr := &vmv1beta1.VMSingle{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMSingle",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.Volumes = []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			}
+			cr.Spec.VolumeMounts = []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
+			}
+			return cr
+		},
+	)
 }
 
 func TestConvertVMCluster(t *testing.T) {
@@ -492,6 +525,37 @@ func TestConvertVMAgent(t *testing.T) {
 			return cr
 		},
 	)
+
+	// extraVolumes/extraVolumeMounts must be propagated. See #2424.
+	f(
+		&VMAgentHelmValues{
+			ExtraVolumes: []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			},
+			ExtraVolumeMounts: []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
+			},
+		},
+		func() *vmv1beta1.VMAgent {
+			cr := &vmv1beta1.VMAgent{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAgent",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-agent",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.Volumes = []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			}
+			cr.Spec.VolumeMounts = []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
+			}
+			return cr
+		},
+	)
 }
 
 func TestConvertVMAlert(t *testing.T) {
@@ -531,6 +595,39 @@ func TestConvertVMAlert(t *testing.T) {
 			cr.Spec.Image.Tag = "v1.93.0"
 			cr.Spec.Notifier = &vmv1beta1.VMAlertNotifierSpec{
 				URL: "http://vmalertmanager:9093",
+			}
+			return cr
+		},
+	)
+
+	// extraVolumes/extraVolumeMounts must be propagated. See #2424.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				ExtraVolumes: []corev1.Volume{
+					{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+				ExtraVolumeMounts: []corev1.VolumeMount{
+					{Name: "extra", MountPath: "/extra"},
+				},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			cr := &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.Volumes = []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			}
+			cr.Spec.VolumeMounts = []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
 			}
 			return cr
 		},
@@ -580,6 +677,51 @@ func TestConvertVMAnomaly(t *testing.T) {
 			}
 			cr.Spec.Writer = &vmv1.VMAnomalyWritersSpec{
 				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
+			}
+			return cr
+		},
+	)
+
+	// extraVolumes/extraVolumeMounts must be propagated. See #2424.
+	f(
+		&VMAnomalyHelmValues{
+			Reader: &VMAnomalyReaderValues{
+				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
+				SamplingPeriod: "1m",
+			},
+			Writer: &VMAnomalyWriterValues{
+				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
+			},
+			ExtraVolumes: []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			},
+			ExtraVolumeMounts: []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
+			},
+		},
+		func() *vmv1.VMAnomaly {
+			cr := &vmv1.VMAnomaly{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VMAnomaly",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-anomaly",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.Reader = &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
+				SamplingPeriod: "1m",
+			}
+			cr.Spec.Writer = &vmv1.VMAnomalyWritersSpec{
+				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
+			}
+			cr.Spec.Volumes = []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			}
+			cr.Spec.VolumeMounts = []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
 			}
 			return cr
 		},
@@ -707,6 +849,77 @@ func TestConvertVLCluster(t *testing.T) {
 								Tag:        "v0.3.2",
 							},
 							ReplicaCount: ptr.To(int32(2)),
+						},
+					},
+				},
+			}
+		},
+	)
+
+	// extraVolumes/extraVolumeMounts must be propagated for every cluster role. See #2424.
+	f(
+		&VLClusterHelmValues{
+			VLSelect: ServerValues{
+				Enabled: ptr.To(true),
+				ExtraVolumes: []corev1.Volume{
+					{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+				ExtraVolumeMounts: []corev1.VolumeMount{
+					{Name: "extra", MountPath: "/extra"},
+				},
+			},
+			VLInsert: ServerValues{
+				Enabled: ptr.To(true),
+				ExtraVolumes: []corev1.Volume{
+					{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+				ExtraVolumeMounts: []corev1.VolumeMount{
+					{Name: "extra", MountPath: "/extra"},
+				},
+			},
+			VLStorage: ServerValues{
+				Enabled: ptr.To(true),
+				ExtraVolumes: []corev1.Volume{
+					{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+				ExtraVolumeMounts: []corev1.VolumeMount{
+					{Name: "extra", MountPath: "/extra"},
+				},
+			},
+		},
+		func() *vmv1.VLCluster {
+			extraVolumes := []corev1.Volume{
+				{Name: "extra", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+			}
+			extraVolumeMounts := []corev1.VolumeMount{
+				{Name: "extra", MountPath: "/extra"},
+			}
+			return &vmv1.VLCluster{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VLCluster",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VLClusterSpec{
+					VLSelect: &vmv1.VLSelect{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Volumes:      extraVolumes,
+							VolumeMounts: extraVolumeMounts,
+						},
+					},
+					VLInsert: &vmv1.VLInsert{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Volumes:      extraVolumes,
+							VolumeMounts: extraVolumeMounts,
+						},
+					},
+					VLStorage: &vmv1.VLStorage{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							Volumes:      extraVolumes,
+							VolumeMounts: extraVolumeMounts,
 						},
 					},
 				},

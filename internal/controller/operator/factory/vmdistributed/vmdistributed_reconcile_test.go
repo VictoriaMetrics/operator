@@ -48,7 +48,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			mux := http.NewServeMux()
 			handler := func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, `%s{path="/tmp/1_19F3EC170A0DA31A"} 0`, vmAgentQueueMetricName)
+				fmt.Fprintf(w, `%s{url="http://vminsert-test-dist-zone-1.default.svc:8480/insert/multitenant/prometheus/api/v1/write"} 0`, vmAgentQueueMetricName)
 			}
 			mux.HandleFunc("/metrics", handler)
 			ts := httptest.NewServer(mux)

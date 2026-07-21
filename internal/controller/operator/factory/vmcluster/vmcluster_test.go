@@ -1996,4 +1996,77 @@ func TestVMClusterDiscoveryArgs(t *testing.T) {
 			assert.True(t, hasArg(args, `-storageNode.filter=vmstorage-test-[0-1]\.`), "vminsert: expected global filter, got %v", args)
 		},
 	)
+
+	// extraStorageNodes: appended to vmselect only, read-only, static mode
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ExtraStorageNodes: []vmv1beta1.VMStorageNode{
+					{Addr: "localhost:10101"},
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode="), "vmselect: expected storageNode flag, got %v", args)
+			assert.True(t, hasArg(args, "-storageNode=vmstorage-test-0"), "vmselect: expected managed storage node first, got %v", args)
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					assert.True(t, strings.HasSuffix(a, ",localhost:10101"), "vmselect: expected extra storage node appended, got %v", a)
+				}
+			}
+		},
+		func(t *testing.T, args []string) {
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					assert.NotContains(t, a, "localhost:10101", "vminsert: extra storage node must not be forwarded to vminsert")
+				}
+			}
+		},
+	)
+
+	// extraStorageNodes: appended to vmselect only, read-only, discovery mode
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			License:   &vmv1beta1.License{Key: licenseKey},
+			Discovery: &vmv1beta1.VMClusterDiscovery{Enabled: true},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ExtraStorageNodes: []vmv1beta1.VMStorageNode{
+					{Addr: "localhost:10101"},
+				},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=srv+"), "vmselect: expected srv+ storageNode, got %v", args)
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					assert.True(t, strings.HasSuffix(a, ",localhost:10101"), "vmselect: expected extra storage node appended, got %v", a)
+				}
+			}
+		},
+		func(t *testing.T, args []string) {
+			for _, a := range args {
+				if strings.HasPrefix(a, "-storageNode=") {
+					assert.NotContains(t, a, "localhost:10101", "vminsert: extra storage node must not be forwarded to vminsert")
+				}
+			}
+		},
+	)
 }

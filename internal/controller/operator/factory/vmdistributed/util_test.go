@@ -13,6 +13,7 @@ import (
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 )
 
 func TestFetchMetricValues(t *testing.T) {
@@ -26,7 +27,7 @@ func TestFetchMetricValues(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		values, err := fetchMetricValues(ctx, ts.Client(), ts.URL, metric, dimension)
+		values, err := podutil.FetchMetricValues(ctx, ts.Client(), ts.URL, metric, dimension)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, values)
@@ -61,7 +62,7 @@ func TestMergeSpecs(t *testing.T) {
 	t.Run("VMCluster", func(t *testing.T) {
 		f := func(common, zone *vmv1beta1.VMClusterSpec, zoneName string, expected *vmv1beta1.VMClusterSpec) {
 			t.Helper()
-			got, err := mergeSpecs(common, zone, zoneName)
+			got, err := podutil.MergeSpecs(common, zone, zoneName)
 			assert.NoError(t, err)
 			assert.Equal(t, expected, got)
 		}
@@ -114,7 +115,7 @@ func TestMergeSpecs(t *testing.T) {
 	t.Run("VMAgent", func(t *testing.T) {
 		f := func(common, zone *vmv1alpha1.VMDistributedZoneAgentSpec, zoneName string, expected *vmv1alpha1.VMDistributedZoneAgentSpec) {
 			t.Helper()
-			got, err := mergeSpecs(common, zone, zoneName)
+			got, err := podutil.MergeSpecs(common, zone, zoneName)
 			assert.NoError(t, err)
 			assert.Equal(t, expected, got)
 		}

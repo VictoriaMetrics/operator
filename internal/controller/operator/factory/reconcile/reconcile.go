@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
@@ -201,6 +202,9 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)
+	_, isVMCluster := any(obj).(*vmv1beta1.VMCluster)
+	_, isVLCluster := any(obj).(*vmv1.VLCluster)
+	isCluster := isVMCluster || isVLCluster
 	err := wait.PollUntilContextCancel(ctx, interval, true, func(ctx context.Context) (done bool, err error) {
 		if err = rclient.Get(ctx, nsn, obj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -213,12 +217,18 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 		if lastStatus != nil && !limiter.Throttle() {
 			logger.WithContext(ctx).V(1).Info(fmt.Sprintf("waiting for %T=%s to be ready, current status: %s", obj, nsn.String(), string(lastStatus.UpdateStatus)))
 		}
+		if lastStatus != nil && lastStatus.UpdateStatus == vmv1beta1.UpdateStatusFailed && isCluster {
+			return false, fmt.Errorf("object %T=%s reached failed status", obj, nsn.String())
+		}
 		return lastStatus != nil && minGeneration <= lastStatus.ObservedGeneration && lastStatus.UpdateStatus == status, nil
 	})
 	if err != nil {
 		updateStatus := "unknown"
 		if lastStatus != nil {
 			updateStatus = string(lastStatus.UpdateStatus)
+		}
+		if isCluster && wait.Interrupted(err) {
+			return fmt.Errorf("failed to wait for %T=%s to be ready: %v, current status: %s", obj, nsn.String(), err, updateStatus)
 		}
 		return fmt.Errorf("failed to wait for %T=%s to be ready: %w, current status: %s", obj, nsn.String(), err, updateStatus)
 	}

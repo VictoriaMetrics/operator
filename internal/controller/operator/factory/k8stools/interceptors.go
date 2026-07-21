@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -44,6 +45,15 @@ func updateStatus(ctx context.Context, cl client.WithWatch, obj client.Object, o
 		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 		v.Status.ObservedGeneration = v.Generation
 	case *vmv1beta1.VMAuth:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *vmv1.VLCluster:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *vmv1.VLAgent:
+		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		v.Status.ObservedGeneration = v.Generation
+	case *vmv1.VLSingle:
 		v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 		v.Status.ObservedGeneration = v.Generation
 	case *corev1.PersistentVolumeClaim:

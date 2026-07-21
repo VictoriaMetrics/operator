@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
 
@@ -333,6 +334,64 @@ func TestVMCluster_Validate(t *testing.T) {
 		License:  testLicense,
 		VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
 	}, false)
+
+	// extraStorageNodes with unique addresses
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ExtraStorageNodes: []VMStorageNode{
+				{Addr: "localhost:10101"},
+				{Addr: "localhost:10102"},
+			},
+		},
+	}, false)
+
+	// extraStorageNodes with duplicate addresses
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ExtraStorageNodes: []VMStorageNode{
+				{Addr: "localhost:10101"},
+				{Addr: "localhost:10101"},
+			},
+		},
+	}, true)
+
+	// extraStorageNodes duplicating extraArgs storageNode
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			CommonAppsParams: CommonAppsParams{
+				ExtraArgs: map[string]string{"storageNode": "localhost:10101"},
+			},
+			ExtraStorageNodes: []VMStorageNode{
+				{Addr: "localhost:10101"},
+			},
+		},
+	}, true)
+
+	// extraStorageNodes with an empty addr
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ExtraStorageNodes: []VMStorageNode{
+				{Addr: ""},
+			},
+		},
+	}, true)
+
+	// extraStorageNodes colliding with a managed vmstorage pod address
+	{
+		cr := &VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test"},
+			Spec: VMClusterSpec{
+				VMStorage: &VMStorage{
+					CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+					VMSelectPort:     "8481",
+				},
+				VMSelect: &VMSelect{},
+			},
+		}
+		managedAddr := PodDNSAddress(cr.PrefixedName(ClusterComponentStorage), 0, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)
+		cr.Spec.VMSelect.ExtraStorageNodes = []VMStorageNode{{Addr: managedAddr}}
+		assert.Error(t, cr.Validate())
+	}
 }
 
 func TestVMCluster_PrefixedName(t *testing.T) {

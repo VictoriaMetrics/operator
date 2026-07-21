@@ -143,7 +143,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
 	for idx, i := range storageNodeIds {
 		// TODO: introduce TLS webserver config for storage nodes
-		storageNodeFlag.Add(build.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
+		storageNodeFlag.Add(vmv1beta1.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
 	}
 	totalNodes := len(storageNodeIds)
 	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)

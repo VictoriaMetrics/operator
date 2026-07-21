@@ -500,6 +500,7 @@ var controllersByName = map[string]crdController{
 	"VMStaticScrape":       &vmcontroller.VMStaticScrapeReconciler{},
 	"VMScrapeConfig":       &vmcontroller.VMScrapeConfigReconciler{},
 	"VMDistributed":        &vmcontroller.VMDistributedReconciler{},
+	"VLDistributed":        &vmcontroller.VLDistributedReconciler{},
 	"PodMonitor":           &vmcontroller.PromPodMonitorReconciler{},
 	"ServiceMonitor":       &vmcontroller.PromServiceMonitorReconciler{},
 	"ScrapeConfig":         &vmcontroller.PromScrapeConfigReconciler{},

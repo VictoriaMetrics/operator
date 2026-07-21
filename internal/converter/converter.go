@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	k8syaml "sigs.k8s.io/yaml"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -1682,12 +1683,12 @@ func sanitizeK8sName(s string) string {
 			prevDash = true
 		}
 	}
+	result := b.String()
 	maxLen := validation.DNS1123SubdomainMaxLength
 	if len(result) > maxLen {
 		result = result[:maxLen]
 		// Re-trim in case truncation split on a hyphen
 		result = strings.TrimSuffix(result, "-")
 	}
-
 	return result
 }

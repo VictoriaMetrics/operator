@@ -9,6 +9,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -97,6 +98,9 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
 		)
+	}
+	if cfg.VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: ns}})
 	}
 	objsToRemove = append(objsToRemove, cr)
 	deleteOwnerReferences := make([]bool, len(objsToRemove))

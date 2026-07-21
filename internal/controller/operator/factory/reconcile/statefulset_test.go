@@ -322,14 +322,16 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 				return cl.Get(ctx, key, obj)
 			},
 		})
-		err := performRollingUpdateOnSts(ctx, fclient, o.sts, o.opts)
-		if o.wantErr {
-			assert.Error(t, err)
-			return
-		} else {
-			assert.NoError(t, err)
-		}
-		assert.Equal(t, actions, o.actions)
+		synctest.Test(t, func(t *testing.T) {
+			err := performRollingUpdateOnSts(ctx, fclient, o.sts, o.opts)
+			if o.wantErr {
+				assert.Error(t, err)
+				return
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, actions, o.actions)
+		})
 	}
 
 	// rolling update is not needed

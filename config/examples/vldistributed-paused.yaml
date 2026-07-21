@@ -1,0 +1,43 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VLDistributed
+metadata:
+  name: sample-paused
+spec:
+  paused: true
+  vmauth:
+    name: global-vmauth
+    spec:
+      replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vlagent:
+      spec:
+        replicaCount: 1
+    vlcluster:
+      name: vlcluster-%ZONE%
+      spec:
+        vlstorage:
+          replicaCount: 1
+        vlselect:
+          replicaCount: 1
+        vlinsert:
+          replicaCount: 1
+  zones:
+    - name: us-east-1
+      vlcluster:
+        spec:
+          vlselect:
+            replicaCount: 3
+    - name: us-west-2
+      vlcluster:
+        spec:
+          vlselect:
+            replicaCount: 4
+    - name: eu-west-1
+      vlcluster:
+        spec:
+          vlselect:
+            replicaCount: 2

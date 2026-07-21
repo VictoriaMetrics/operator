@@ -4,19 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
-	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -27,6 +21,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 )
 
 // VMBackend is implemented by *vmv1beta1.VMCluster and *vmv1beta1.VMSingle.
@@ -154,7 +149,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			}
 		}
-		vmAgentCustomSpec, err := mergeSpecs(&cr.Spec.ZoneCommon.VMAgent.Spec, &z.VMAgent.Spec, z.Name)
+		vmAgentCustomSpec, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.VMAgent.Spec, &z.VMAgent.Spec, z.Name)
 		if err != nil {
 			return nil, fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
 		}
@@ -170,7 +165,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		vmAgentSpec.RemoteWrite = vmAgentSpec.RemoteWrite[:0]
 		for j := range cr.Spec.Zones {
 			cz := &cr.Spec.Zones[j]
-			customRemoteWrite, err := mergeSpecs(&cr.Spec.ZoneCommon.RemoteWrite, &cz.RemoteWrite, cz.Name)
+			customRemoteWrite, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.RemoteWrite, &cz.RemoteWrite, cz.Name)
 			if err != nil {
 				return nil, fmt.Errorf("spec.zones[%d].vmagent: failed to build remote write for zone[%d]: %w", i, j, err)
 			}
@@ -224,7 +219,7 @@ func buildVMClusterBackend(ctx context.Context, rclient client.Client, cr *vmv1a
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		}
 	}
-	vmClusterSpec, err := mergeSpecs(&cr.Spec.ZoneCommon.VMCluster.Spec, &z.VMCluster.Spec, z.Name)
+	vmClusterSpec, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.VMCluster.Spec, &z.VMCluster.Spec, z.Name)
 	if err != nil {
 		return vmBackend{}, false, fmt.Errorf("vmcluster.spec: %w", err)
 	}
@@ -272,7 +267,7 @@ func buildVMSingleBackend(ctx context.Context, rclient client.Client, cr *vmv1al
 	if zoneSpec == nil {
 		zoneSpec = &vmv1beta1.VMSingleSpec{}
 	}
-	vmSingleSpec, err := mergeSpecs(commonSpec, zoneSpec, z.Name)
+	vmSingleSpec, err := podutil.MergeSpecs(commonSpec, zoneSpec, z.Name)
 	if err != nil {
 		return vmBackend{}, false, fmt.Errorf("vmsingle.spec: %w", err)
 	}
@@ -376,57 +371,11 @@ func (zs *zones) updateLB(ctx context.Context, rclient client.Client, cr *vmv1al
 }
 
 func getMetricsAddrs(ctx context.Context, rclient client.Client, vmAgent *vmv1beta1.VMAgent) sets.Set[string] {
-	var esl discoveryv1.EndpointSliceList
-	o := client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{discoveryv1.LabelServiceName: vmAgent.PrefixedName()}),
-		Namespace:     vmAgent.Namespace,
-	}
-	if err := rclient.List(ctx, &esl, &o); err != nil {
-		logger.WithContext(ctx).Error(err, "failed to load endpointslices", "service", vmAgent.PrefixedName())
-		return nil
-	}
-	if len(esl.Items) == 0 {
-		return nil
-	}
-	addrs := sets.New[string]()
-	for i := range esl.Items {
-		es := &esl.Items[i]
-		var port int32
-		for _, p := range es.Ports {
-			if p.Name != nil && *p.Name == "http" && p.Port != nil {
-				port = *p.Port
-			}
-		}
-		if port == 0 {
-			continue
-		}
-		for _, ep := range es.Endpoints {
-			if ep.Conditions.Ready == nil || !*ep.Conditions.Ready {
-				continue
-			}
-			for _, a := range ep.Addresses {
-				if a == "" {
-					continue
-				}
-				host := fmt.Sprintf("%s:%d", a, port)
-				if es.AddressType == discoveryv1.AddressTypeIPv6 {
-					host = fmt.Sprintf("[%s]:%d", a, port)
-				}
-				u := &url.URL{
-					Host:   host,
-					Scheme: strings.ToLower(vmAgent.ProbeScheme()),
-					Path:   vmAgent.GetMetricsPath(),
-				}
-				addrs.Insert(u.String())
-			}
-		}
-	}
-	return addrs
+	return podutil.GetMetricsAddrs(ctx, rclient, vmAgent)
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
-	clusterURLHash := fmt.Sprintf("%016X", xxhash.Sum64([]byte(backendURL)))
 
 	backendName := zs.backends[clusterIdx].obj.GetName()
 	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vmagents[clusterIdx].Namespace}
@@ -436,19 +385,13 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
 			var metricValues map[string]float64
-			if metricValues, err = fetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "path"); err != nil {
+			if metricValues, err = podutil.FetchMetricValues(ctx, zs.httpClient, addr, vmAgentQueueMetricName, "url"); err != nil {
 				logger.WithContext(ctx).Error(err, "attempt to get metrics failed", "url", addr, "name", nsn.String())
 				// Treat fetch errors as transient -> not ready, continue polling.
 				return false, nil
 			}
-			for p, v := range metricValues {
-				pqDir := filepath.Base(p)
-				idx := strings.Index(pqDir, "_")
-				if idx == -1 {
-					continue
-				}
-				urlHash := pqDir[idx+1:]
-				if clusterURLHash != urlHash {
+			for u, v := range metricValues {
+				if u != backendURL {
 					continue
 				}
 				if v > 0 {
@@ -471,27 +414,27 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 			Name:      vmAgent.Name,
 			Namespace: vmAgent.Namespace,
 		}
-		m := newManager(ctx)
+		m := podutil.NewManager(ctx)
 		wg.Go(func() {
-			wait.UntilWithContext(m.ctx, func(ctx context.Context) {
+			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
 				addrs := getMetricsAddrs(ctx, rclient, vmAgent)
 				for addr := range addrs {
-					if m.has(addr) {
+					if m.Has(addr) {
 						continue
 					}
 					logger.WithContext(ctx).V(1).Info("start polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
-					pctx := m.add(addr)
+					pctx := m.Add(addr)
 					wg.Go(func() {
 						if err := pollMetrics(pctx, nsn, addr); err != nil {
 							return
 						}
-						m.stop(addr)
+						m.Stop(addr)
 					})
 				}
-				for _, addr := range m.ids() {
+				for _, addr := range m.IDs() {
 					if _, ok := addrs[addr]; !ok {
 						logger.WithContext(ctx).V(1).Info("stop polling metrics from VMAgent instance", "url", addr, "name", nsn.String())
-						m.delete(addr)
+						m.Delete(addr)
 					}
 				}
 			}, defaultEndpointsUpdateInterval)
@@ -502,85 +445,4 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	if ctx.Err() == nil {
 		logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster.String())
 	}
-}
-
-func newManager(ctx context.Context) *manager {
-	actx, acancel := context.WithCancel(ctx)
-	return &manager{
-		ctx:     actx,
-		cancel:  acancel,
-		cancels: make(map[string]context.CancelFunc),
-	}
-}
-
-type manager struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
-	cancels map[string]context.CancelFunc
-	mu      sync.Mutex
-}
-
-func (m *manager) add(id string) context.Context {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	cancel, ok := m.cancels[id]
-	if ok && cancel != nil {
-		cancel()
-	}
-	pctx, pcancel := context.WithCancel(m.ctx)
-	m.cancels[id] = pcancel
-	return pctx
-}
-
-func (m *manager) stop(id string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if cancel, ok := m.cancels[id]; ok {
-		if cancel != nil {
-			cancel()
-			m.cancels[id] = nil
-		}
-	}
-	m.cancelIfNeeded()
-}
-
-func (m *manager) has(id string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	_, ok := m.cancels[id]
-	return ok
-}
-
-func (m *manager) delete(id string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if cancel, ok := m.cancels[id]; ok {
-		if cancel != nil {
-			cancel()
-		}
-		delete(m.cancels, id)
-	}
-	m.cancelIfNeeded()
-}
-
-func (m *manager) cancelIfNeeded() {
-	if len(m.cancels) == 0 {
-		return
-	}
-	for _, cancel := range m.cancels {
-		if cancel != nil {
-			return
-		}
-	}
-	m.cancel()
-}
-
-func (m *manager) ids() []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	var ids []string
-	for id := range m.cancels {
-		ids = append(ids, id)
-	}
-	return ids
 }

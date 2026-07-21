@@ -1,0 +1,39 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VLDistributed
+metadata:
+  name: sample-vlagent
+spec:
+  vmauth:
+    name: global-vmauth
+    spec:
+      replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vlagent:
+      spec:
+        image:
+          repository: victoriametrics/vlagent
+          pullPolicy: IfNotPresent
+        replicaCount: 1
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "350Mi"
+          limits:
+            cpu: "500m"
+            memory: "850Mi"
+    vlcluster:
+      spec:
+        vlstorage:
+          replicaCount: 1
+        vlselect:
+          replicaCount: 1
+        vlinsert:
+          replicaCount: 1
+  zones:
+    - name: us-east-1
+    - name: us-west-2
+    - name: eu-west-1

@@ -201,6 +201,12 @@ func TestGetZones(t *testing.T) {
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {
+	// Pre-compute the expected backend URL for VMCluster named "test" in ns "default"
+	backendURL := (&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec:       vmv1beta1.VMClusterSpec{VMInsert: &vmv1beta1.VMInsert{}},
+	}).GetRemoteWriteURL()
+
 	type opts struct {
 		handler  http.HandlerFunc
 		timeout  time.Duration
@@ -263,12 +269,16 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			&endpointSlice,
 		})
 
+		backend := &vmv1beta1.VMCluster{
+			ObjectMeta: objMeta,
+			Spec:       vmv1beta1.VMClusterSpec{VMInsert: &vmv1beta1.VMInsert{}},
+		}
 		zs := &zones{
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
 			vmagents: []*vmv1beta1.VMAgent{vmAgent},
-			backends: []vmBackend{{obj: &vmv1beta1.VMCluster{ObjectMeta: objMeta}}},
+			backends: []vmBackend{{obj: backend}},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
@@ -290,7 +300,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	// VMAgent metrics return zero
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, `%s{path="/tmp/1_EF46DB3751D8E999"} 0`, vmAgentQueueMetricName)
+			fmt.Fprintf(w, "%s{url=%q} 0", vmAgentQueueMetricName, backendURL)
 		},
 		timeout: time.Second,
 	})
@@ -303,7 +313,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			mu.Lock()
 			defer mu.Unlock()
-			fmt.Fprintf(w, `%s{path="/tmp/1_EF46DB3751D8E999"} %d`, vmAgentQueueMetricName, value)
+			fmt.Fprintf(w, "%s{url=%q} %d", vmAgentQueueMetricName, backendURL, value)
 			callCount++
 			value = 0
 		},
@@ -319,7 +329,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	f(opts{
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(2 * time.Second) // Simulate a long response
-			fmt.Fprintf(w, `%s{path="/tmp/1_EF46DB3751D8E999"} 0`, vmAgentQueueMetricName)
+			fmt.Fprintf(w, "%s{url=%q} 0", vmAgentQueueMetricName, backendURL)
 		},
 		timeout: 500 * time.Millisecond,
 		errMsg:  "context deadline exceeded",

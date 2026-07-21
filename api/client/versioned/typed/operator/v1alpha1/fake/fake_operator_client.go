@@ -27,6 +27,10 @@ type FakeOperatorV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeOperatorV1alpha1) VLDistributeds(namespace string) v1alpha1.VLDistributedInterface {
+	return newFakeVLDistributeds(c, namespace)
+}
+
 func (c *FakeOperatorV1alpha1) VMDistributed(namespace string) v1alpha1.VMDistributedInterface {
 	return newFakeVMDistributed(c, namespace)
 }

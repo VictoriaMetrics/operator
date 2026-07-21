@@ -65,10 +65,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputData, err := k8syaml.Marshal(cr)
-	if err != nil {
-		fmt.Printf("cannot marshal CR: %v\n", err)
-		os.Exit(1)
+	objects := []any{cr}
+	if authValues, ok := values.(*converter.VMAuthHelmValues); ok {
+		users, err := converter.ConvertVMAuthUsers(*name, *namespace, authValues)
+		if err != nil {
+			fmt.Printf("cannot convert config.users: %v\n", err)
+			os.Exit(1)
+		}
+		for _, u := range users {
+			objects = append(objects, u)
+		}
+	}
+
+	var outputData []byte
+	for i, obj := range objects {
+		if i > 0 {
+			outputData = append(outputData, []byte("---\n")...)
+		}
+		data, err := k8syaml.Marshal(obj)
+		if err != nil {
+			fmt.Printf("cannot marshal CR: %v\n", err)
+			os.Exit(1)
+		}
+		outputData = append(outputData, data...)
 	}
 
 	if err := os.WriteFile(*outputFile, outputData, 0644); err != nil {

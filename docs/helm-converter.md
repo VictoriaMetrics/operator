@@ -84,6 +84,8 @@ spec:
 
 The tool maps the majority of critical parameters, including Replicas, Images, Resource Requests/Limits, Affinity, NodeSelectors, Tolerations, ExtraArgs/ExtraEnvs, PersistentVolumes, and specific behavioral flags. 
 
+For `victoria-metrics-auth`, the chart's `config` value (vmauth's own native config file) is parsed too: each entry under `config.users` becomes a standalone `VMUser` CR, and `config.unauthorized_user` becomes the `VMAuth` CR's `spec.unauthorizedUserAccessSpec`. Since a single output file can now contain multiple CRs, the generated `VMUser` manifests are appended after the `VMAuth` one as additional YAML documents (separated by `---`). The `VMAuth` CR's `spec.userSelector` is set to match a label applied to each generated `VMUser`, so the operator actually loads them — without it, a `VMAuth`'s default selectors match nothing.
+
 ## Limitations
 
 Helm converter manifests are not 1:1

@@ -1682,5 +1682,12 @@ func sanitizeK8sName(s string) string {
 			prevDash = true
 		}
 	}
-	return strings.TrimSuffix(b.String(), "-")
+	maxLen := validation.DNS1123SubdomainMaxLength
+	if len(result) > maxLen {
+		result = result[:maxLen]
+		// Re-trim in case truncation split on a hyphen
+		result = strings.TrimSuffix(result, "-")
+	}
+
+	return result
 }

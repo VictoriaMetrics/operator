@@ -138,6 +138,9 @@ type VMAlertSpec struct {
 	// Configures vertical pod autoscaling.
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
+	// NetworkPolicy defines network access rules for pods created by this CR.
+	// +optional
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)

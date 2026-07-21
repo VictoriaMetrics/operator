@@ -156,6 +156,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmauthName},
 			{Verb: "Get", Kind: "PodDisruptionBudget", Resource: vmauthName},
+			{Verb: "Get", Kind: "NetworkPolicy", Resource: vmauthName},
 			{Verb: "Get", Kind: "Ingress", Resource: vmauthName},
 			{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmauthName},
 		},

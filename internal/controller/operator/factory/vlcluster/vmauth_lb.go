@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -62,6 +63,19 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 	if cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
 		if err := createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx, rclient, cr, prevCR); err != nil {
 			return fmt.Errorf("cannot create or update PodDisruptionBudget for vmauth lb: %w", err)
+		}
+	}
+	if cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
+		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+		np := build.NetworkPolicy(b, cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
+			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+			prevNP = build.NetworkPolicy(b, prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
+		}
+		owner := cr.AsOwner()
+		if err := reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner); err != nil {
+			return fmt.Errorf("cannot create or update NetworkPolicy for vmauth lb: %w", err)
 		}
 	}
 	if err := createOrUpdateVMAuthLBHPA(ctx, rclient, cr, prevCR); err != nil {

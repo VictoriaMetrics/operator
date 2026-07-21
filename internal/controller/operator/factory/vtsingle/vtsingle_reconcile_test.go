@@ -138,6 +138,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	},
 		want{
 			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "NetworkPolicy", Resource: vtsingleName},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vtsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vtsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vtsingleName},

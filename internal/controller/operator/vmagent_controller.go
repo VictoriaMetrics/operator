@@ -67,23 +67,18 @@ func (r *VMAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=pods,verbs=*
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;watch;list
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list
-// +kubebuilder:rbac:groups="",resources=events,verbs=*
-// +kubebuilder:rbac:groups="",resources=endpoints,verbs=*
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups="",resources=events;endpoints;services;pods,verbs=*
 // +kubebuilder:rbac:groups="",resources=endpointslices,verbs=get;watch;list
-// +kubebuilder:rbac:groups="",resources=services,verbs=*
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=*,verbs=*
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;watch;list
-// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;create,update;list
-// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings;clusterrolebindings;clusterroles,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets;daemonsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=*
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

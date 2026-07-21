@@ -101,6 +101,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		if newStorage.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
+		if newStorage.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
 		if newStorage.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
@@ -124,6 +127,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
 		if newSelect.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newSelect.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
 		}
 		if newSelect.HPA != nil {
 			cc.KeepHPA(commonName)
@@ -154,6 +160,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		if newInsert.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
 		}
+		if newInsert.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
 		if newInsert.HPA != nil {
 			cc.KeepHPA(commonName)
 		}
@@ -177,6 +186,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLClust
 		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 		if newLB.Spec.PodDisruptionBudget != nil {
 			cc.KeepPDB(commonName)
+		}
+		if newLB.Spec.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
 		}
 		if !ptr.Deref(newLB.Spec.DisableSelfServiceScrape, false) {
 			cc.KeepScrape(commonName)

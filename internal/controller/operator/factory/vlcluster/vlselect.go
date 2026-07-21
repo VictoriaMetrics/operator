@@ -10,6 +10,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -40,6 +41,19 @@ func createOrUpdateVLSelect(ctx context.Context, rclient client.Client, cr, prev
 		owner := cr.AsOwner()
 		err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner)
 		if err != nil {
+			return err
+		}
+	}
+	if cr.Spec.VLSelect.NetworkPolicy != nil {
+		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+		np := build.NetworkPolicy(b, cr.Spec.VLSelect.NetworkPolicy)
+		var prevNP *networkingv1.NetworkPolicy
+		if prevCR != nil && prevCR.Spec.VLSelect != nil && prevCR.Spec.VLSelect.NetworkPolicy != nil {
+			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+			prevNP = build.NetworkPolicy(b, prevCR.Spec.VLSelect.NetworkPolicy)
+		}
+		owner := cr.AsOwner()
+		if err := reconcile.NetworkPolicy(ctx, rclient, np, prevNP, &owner); err != nil {
 			return err
 		}
 	}

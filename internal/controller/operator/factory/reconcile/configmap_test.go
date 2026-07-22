@@ -14,6 +14,42 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func TestChangedKeysWithSizes(t *testing.T) {
+	// no changes
+	assert.Empty(t, changedKeysWithSizes(map[string]string{"a": "1"}, map[string]string{"a": "1"}, "data"))
+
+	// nil vs empty map
+	assert.Empty(t, changedKeysWithSizes(nil, map[string]string{}, "data"))
+
+	// added, changed and removed keys
+	desired := map[string]string{
+		"added.yaml":   "abc",
+		"changed.yaml": "123456",
+		"same.yaml":    "same",
+	}
+	current := map[string]string{
+		"changed.yaml": "12",
+		"removed.yaml": "wxyz",
+		"same.yaml":    "same",
+	}
+	expected := []string{
+		"data['added.yaml'](current=absent,desired=3B)",
+		"data['changed.yaml'](current=2B,desired=6B)",
+		"data['removed.yaml'](current=4B,desired=absent)",
+	}
+	assert.Equal(t, expected, changedKeysWithSizes(desired, current, "data"))
+
+	// binary data
+	expected = []string{
+		"binaryData['blob'](current=2B,desired=5B)",
+	}
+	assert.Equal(t, expected, changedKeysWithSizes(
+		map[string][]byte{"blob": []byte("12345")},
+		map[string][]byte{"blob": []byte("12")},
+		"binaryData",
+	))
+}
+
 func TestConfigMapReconcile(t *testing.T) {
 	type opts struct {
 		new               *corev1.ConfigMap

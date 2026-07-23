@@ -93,7 +93,7 @@ func (pos *ParsedObjects) UpdateStatusesForChildObjects(ctx context.Context, rcl
 		return nil
 	}
 	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
-	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyConfig{childObject})
+	return reconcile.StatusForChildObject(ctx, rclient, parentObject, childObject)
 }
 
 type header struct {

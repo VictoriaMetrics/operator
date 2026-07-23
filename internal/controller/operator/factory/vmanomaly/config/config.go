@@ -206,7 +206,7 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 		}
 		c.Models = map[string]*model{
 			"placeholder": {
-				anomalyModel: &zScoreModel{
+				anomalyModel: &onlineZScoreModel{
 					commonModelParams: commonModelParams{
 						Class:      "zscore",
 						Schedulers: []string{"noop"},
@@ -422,7 +422,11 @@ func (d *duration) UnmarshalYAML(unmarshal func(any) error) (err error) {
 	if err = unmarshal(&input); err != nil {
 		return
 	}
-	v := strings.TrimSpace(input.(string))
+	v, ok := input.(string)
+	if !ok {
+		return fmt.Errorf("duration must be a string, got %T", input)
+	}
+	v = strings.TrimSpace(v)
 	if len(v) > 1 && (v[0] == '"' || v[0] == '`') && v[0] == v[len(v)-1] {
 		if v, err = strconv.Unquote(v); err != nil {
 			return

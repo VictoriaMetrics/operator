@@ -1,4 +1,4 @@
-package vmagent
+package vmsingle
 
 import (
 	"context"
@@ -6,14 +6,12 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// getScrapeDiscoveryRules returns the K8s service-discovery rules needed in every watched namespace.
 func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
@@ -34,29 +32,17 @@ func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 	}
 }
 
-// getSingleNamespaceRules returns rules for the Role that lives in cr's own namespace.
-// It includes a scoped secrets rule for the config-reloader plus the SD discovery rules.
-func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
-	ingestOnly := ptr.Deref(cr.Spec.IngestOnlyMode, false)
-	if ingestOnly && !hasRemoteWriteSecrets(cr) {
-		return nil
-	}
+func getSingleNamespaceRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
 	secretsRule := rbacv1.PolicyRule{
 		APIGroups:     []string{""},
 		Verbs:         []string{"get", "watch", "list"},
 		Resources:     []string{"secrets"},
 		ResourceNames: []string{cr.PrefixedName()},
 	}
-	if ingestOnly {
-		return []rbacv1.PolicyRule{secretsRule}
-	}
 	return append([]rbacv1.PolicyRule{secretsRule}, getScrapeDiscoveryRules()...)
 }
 
-func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
-	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		return nil
-	}
+func getClusterWideRules() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{"discovery.k8s.io"},
@@ -85,40 +71,39 @@ func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 	}
 }
 
-// createK8sAPIAccess creates RBAC access rules for vmagent.
+// createK8sAPIAccess creates RBAC access rules for vmsingle.
 // namespaces is the list of watched namespaces; an empty slice means cluster-wide access.
-func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, namespaces []string) error {
+func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, namespaces []string) error {
 	if len(namespaces) == 0 {
 		if err := ensureCRExist(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's cluster role: %w", err)
 		}
 		if err := ensureCRBExist(ctx, rclient, cr, prevCR); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's cluster role binding: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's cluster role binding: %w", err)
 		}
 
-		// Secrets access must be namespace-scoped even in cluster-wide mode to prevent
-		// reading credentials from namespaces other than the vmagent's own namespace.
+		// Secrets/config access must be namespace-scoped even in cluster-wide mode.
 		if err := ensureRoleExist(ctx, rclient, cr, prevCR, cr.Namespace); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's role: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's role: %w", err)
 		}
 		if err := ensureRBExist(ctx, rclient, cr, prevCR, cr.Namespace); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
+			return fmt.Errorf("cannot ensure state of vmsingle's role binding: %w", err)
 		}
 		return nil
 	}
 
 	for _, ns := range namespaces {
 		if err := ensureRoleExist(ctx, rclient, cr, prevCR, ns); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's role for namespace %s: %w", ns, err)
+			return fmt.Errorf("cannot ensure state of vmsingle's role for namespace %s: %w", ns, err)
 		}
 		if err := ensureRBExist(ctx, rclient, cr, prevCR, ns); err != nil {
-			return fmt.Errorf("cannot ensure state of vmagent's role binding for namespace %s: %w", ns, err)
+			return fmt.Errorf("cannot ensure state of vmsingle's role binding for namespace %s: %w", ns, err)
 		}
 	}
 	return nil
 }
 
-func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	var prevClusterRole *rbacv1.ClusterRole
 	if prevCR != nil {
 		prevClusterRole = buildCR(prevCR)
@@ -126,7 +111,7 @@ func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	return reconcile.ClusterRole(ctx, rclient, buildCR(cr), prevClusterRole)
 }
 
-func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
+func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
 	var prevCRB *rbacv1.ClusterRoleBinding
 	if prevCR != nil {
 		prevCRB = buildCRB(prevCR)
@@ -134,12 +119,13 @@ func ensureCRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1
 	return reconcile.ClusterRoleBinding(ctx, rclient, buildCRB(cr), prevCRB)
 }
 
-func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
+func buildCRB(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -156,18 +142,19 @@ func buildCRB(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRoleBinding {
 	}
 }
 
-func buildCR(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
+func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
-		Rules: getClusterWideRules(cr),
+		Rules: getClusterWideRules(),
 	}
 }
 
-func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ns string) error {
+func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ns string) error {
 	nr := buildRole(cr, ns)
 	var prevRole *rbacv1.Role
 	if prevCR != nil {
@@ -181,7 +168,7 @@ func ensureRoleExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv
 	return reconcile.Role(ctx, rclient, nr, prevRole, owner)
 }
 
-func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ns string) error {
+func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, ns string) error {
 	rb := buildRB(cr, ns)
 	var prevRB *rbacv1.RoleBinding
 	if prevCR != nil {
@@ -195,38 +182,31 @@ func ensureRBExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1b
 	return reconcile.RoleBinding(ctx, rclient, rb, prevRB, owner)
 }
 
-// buildRole builds the Role for ns.
-// In cr's own namespace: includes the scoped secrets rule (for config-reloader) plus SD rules,
-// with an owner reference so K8s GC cleans it up.
-// In any other watched namespace: SD rules only, no owner reference.
-func buildRole(cr *vmv1beta1.VMAgent, ns string) *rbacv1.Role {
+func buildRole(cr *vmv1beta1.VMSingle, ns string) *rbacv1.Role {
 	r := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Namespace:   ns,
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 	}
 	if ns == cr.Namespace {
 		r.OwnerReferences = []metav1.OwnerReference{cr.AsOwner()}
 		r.Rules = getSingleNamespaceRules(cr)
-	} else if !ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		r.Rules = getScrapeDiscoveryRules()
 	}
 	return r
 }
 
-// buildRB builds the RoleBinding for ns.
-// The subject always points to the vmagent service account in cr.Namespace.
-// An owner reference is set only in cr's own namespace.
-func buildRB(cr *vmv1beta1.VMAgent, ns string) *rbacv1.RoleBinding {
+func buildRB(cr *vmv1beta1.VMSingle, ns string) *rbacv1.RoleBinding {
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetRBACName(),
 			Namespace:   ns,
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
+			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{

@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -453,10 +454,25 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		return fmt.Errorf("cannot remove serviceScrapes: %w", err)
 	}
 
+	cfg := config.MustGetBaseConfig()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+		rbacName := cr.GetRBACName()
+		if len(cfg.WatchNamespaces) == 0 {
+			objsToRemove = append(objsToRemove,
+				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
+				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
+			)
+		} else {
+			for _, ns := range cfg.WatchNamespaces {
+				objsToRemove = append(objsToRemove,
+					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+				)
+			}
+		}
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }

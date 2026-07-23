@@ -27,7 +27,8 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 		return err
 	}
 	ns := cr.GetNamespace()
-	if config.IsClusterWideAccessAllowed() {
+	cfg := config.MustGetBaseConfig()
+	if len(cfg.WatchNamespaces) == 0 {
 		objMeta := metav1.ObjectMeta{
 			Name: cr.GetRBACName(),
 		}
@@ -64,14 +65,6 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 			Name:      build.ResourceName(build.StreamAggrConfigResourceKind, cr),
 			Namespace: ns,
 		}},
-		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetRBACName(),
-			Namespace: ns,
-		}},
-		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetRBACName(),
-			Namespace: ns,
-		}},
 	}
 	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
@@ -92,6 +85,16 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 				Namespace: ns,
 			}})
 		}
+	}
+	namespaces := cfg.WatchNamespaces
+	if len(namespaces) == 0 {
+		namespaces = []string{cr.Namespace}
+	}
+	for _, watchedNS := range namespaces {
+		objsToRemove = append(objsToRemove,
+			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
+			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
+		)
 	}
 	objsToRemove = append(objsToRemove, cr)
 	deleteOwnerReferences := make([]bool, len(objsToRemove))

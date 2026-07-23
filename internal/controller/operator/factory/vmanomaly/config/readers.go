@@ -13,10 +13,14 @@ type reader struct {
 	SamplingPeriod             *duration         `yaml:"sampling_period"`
 	QueryRangePath             string            `yaml:"query_range_path,omitempty"`
 	ExtraFilters               []string          `yaml:"extra_filters,omitempty"`
+	FetchTimeout               *duration         `yaml:"fetch_timeout,omitempty"`
+	ProcessingTimeout          *duration         `yaml:"processing_timeout,omitempty"`
 	QueryFromLastSeenTimestamp bool              `yaml:"query_from_last_seen_timestamp,omitempty"`
+	QueryLastSeenMaxLookback   *duration         `yaml:"query_last_seen_max_lookback,omitempty"`
 	LatencyOffset              *duration         `yaml:"latency_offset,omitempty"`
 	Offset                     *duration         `yaml:"offset,omitempty"`
 	MaxPointsPerQuery          int               `yaml:"max_points_per_query,omitempty"`
+	SeriesProcessingBatchSize  int               `yaml:"series_processing_batch_size,omitempty"`
 	Timezone                   string            `yaml:"tz,omitempty"`
 	DataRange                  []string          `yaml:"data_range,omitempty"`
 	Queries                    map[string]*query `yaml:"queries,omitempty"`

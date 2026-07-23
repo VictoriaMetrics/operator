@@ -60551,6 +60551,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  fetchTimeout:
+                    description: FetchTimeout limits each datasource read request.
+                      It falls back to timeout when omitted.
+                    type: string
                   healthPath:
                     description: HealthPath defines absolute or relative URL address
                       where to check availability of the remote webserver
@@ -60568,16 +60572,29 @@ spec:
                     description: Offset adds a time shift to the query window for
                       all queries, e.g. to account for delayed data ingestion
                     type: string
+                  processingTimeout:
+                    description: ProcessingTimeout limits post-fetch preparation for
+                      fit and infer stages. It falls back to timeout when omitted.
+                    type: string
                   queryFromLastSeenTimestamp:
                     description: If True, then query will be performed from the last
                       seen timestamp for a given series.
                     type: boolean
+                  queryLastSeenMaxLookback:
+                    description: QueryLastSeenMaxLookback caps how far last-seen recovery
+                      may move a query start into the past.
+                    type: string
                   queryRangePath:
                     description: Performs PromQL/MetricsQL range query
                     type: string
                   samplingPeriod:
                     description: Frequency of the points returned
                     type: string
+                  seriesProcessingBatchSize:
+                    description: SeriesProcessingBatchSize controls how many series
+                      are prepared together for fit and infer stages.
+                    minimum: 1
+                    type: integer
                   tenantID:
                     description: TenantID defines for VictoriaMetrics Cluster version
                       only, tenants are identified by accountID, accountID:projectID

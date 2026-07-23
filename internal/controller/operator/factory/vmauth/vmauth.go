@@ -448,7 +448,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
 	if childObject != nil {
 		if u := pos.users.Get(childObject); u != nil {
-			return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{u})
+			return reconcile.StatusForChildObject(ctx, rclient, parentObject, u)
 		}
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.users.All()); err != nil {

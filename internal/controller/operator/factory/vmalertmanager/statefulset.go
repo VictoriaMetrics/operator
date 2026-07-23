@@ -553,7 +553,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	if childCR != nil {
 		// fast path update only single object
 		if o := pos.configs.Get(childCR); o != nil {
-			return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{o})
+			return reconcile.StatusForChildObject(ctx, rclient, parent, o)
 		}
 	}
 	if err := reconcile.StatusForChildObjects(ctx, rclient, parent, pos.configs.All()); err != nil {

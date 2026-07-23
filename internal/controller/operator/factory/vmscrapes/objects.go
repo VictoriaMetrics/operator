@@ -332,27 +332,27 @@ func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rc
 		switch t := childObject.(type) {
 		case *vmv1beta1.VMStaticScrape:
 			if o := pos.staticScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMStaticScrape{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		case *vmv1beta1.VMProbe:
 			if o := pos.probes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMProbe{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		case *vmv1beta1.VMScrapeConfig:
 			if o := pos.scrapeConfigs.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMScrapeConfig{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		case *vmv1beta1.VMNodeScrape:
 			if o := pos.nodeScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMNodeScrape{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		case *vmv1beta1.VMPodScrape:
 			if o := pos.podScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMPodScrape{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		case *vmv1beta1.VMServiceScrape:
 			if o := pos.serviceScrapes.Get(t); o != nil {
-				return reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMServiceScrape{o})
+				return reconcile.StatusForChildObject(ctx, rclient, parentName, o)
 			}
 		}
 	}

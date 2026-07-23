@@ -107,6 +107,21 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 	return getTestClient(predefinedObjects, &fns)
 }
 
+// childConditionIndexedKinds are the CRD kinds reconcile.StatusForChildObjects can be
+// called with; they need ChildConditionIndexField registered for release lookups to work.
+var childConditionIndexedKinds = []client.Object{
+	&vmv1beta1.VMRule{},
+	&vmv1beta1.VMServiceScrape{},
+	&vmv1beta1.VMPodScrape{},
+	&vmv1beta1.VMProbe{},
+	&vmv1beta1.VMScrapeConfig{},
+	&vmv1beta1.VMStaticScrape{},
+	&vmv1beta1.VMNodeScrape{},
+	&vmv1beta1.VMUser{},
+	&vmv1beta1.VMAlertmanagerConfig{},
+	&vmv1.VMAnomalyConfig{},
+}
+
 func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) client.Client {
 	builder := fake.NewClientBuilder().
 		WithScheme(testGetScheme()).
@@ -140,6 +155,9 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 			&vpav1.VerticalPodAutoscaler{},
 		).
 		WithRuntimeObjects(predefinedObjects...)
+	for _, obj := range childConditionIndexedKinds {
+		builder = builder.WithIndex(obj, ChildConditionIndexField, ChildConditionIndexerFunc)
+	}
 	if fns != nil {
 		builder = builder.WithInterceptorFuncs(*fns)
 	}

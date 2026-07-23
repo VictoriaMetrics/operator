@@ -77,7 +77,7 @@ func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1
 		if o := pos.rules.Get(childCR); o != nil {
 			// fast path update a single object that triggered event
 			// it should be fast path for the most cases
-			if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{o}); err != nil {
+			if err := reconcile.StatusForChildObject(ctx, rclient, parentObject, o); err != nil {
 				return nil, err
 			}
 			return cmNames, nil

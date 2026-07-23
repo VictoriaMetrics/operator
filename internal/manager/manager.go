@@ -283,6 +283,10 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
+	if err := registerChildConditionIndexers(ctx, mgr); err != nil {
+		return fmt.Errorf("cannot register status condition indexers: %w", err)
+	}
+
 	if err := mgr.AddReadyzCheck("ready", func(req *http.Request) error {
 		wasSynced := atomic.LoadUint32(&wasCacheSynced)
 		// fast path
@@ -352,6 +356,17 @@ func RunManager(ctx context.Context) error {
 	}
 
 	setupLog.Info("gracefully stopped")
+	return nil
+}
+
+// registerChildConditionIndexers registers k8stools.ChildConditionIndexerFunc for every CRD
+// kind in k8stools.ChildConditionIndexedKinds.
+func registerChildConditionIndexers(ctx context.Context, mgr ctrl.Manager) error {
+	for _, obj := range k8stools.ChildConditionIndexedKinds {
+		if err := mgr.GetFieldIndexer().IndexField(ctx, obj, k8stools.ChildConditionIndexField, k8stools.ChildConditionIndexerFunc); err != nil {
+			return fmt.Errorf("cannot index %T: %w", obj, err)
+		}
+	}
 	return nil
 }
 

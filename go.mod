@@ -1,10 +1,10 @@
 module github.com/VictoriaMetrics/operator
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.147.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.148.0
 	github.com/VictoriaMetrics/metrics v1.44.0
 	github.com/VictoriaMetrics/metricsql v0.87.3
 	github.com/VictoriaMetrics/operator/api v0.73.1

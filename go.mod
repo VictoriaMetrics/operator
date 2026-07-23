@@ -1,10 +1,10 @@
 module github.com/VictoriaMetrics/operator
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/VictoriaMetrics/VictoriaMetrics v1.147.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.148.0
 	github.com/VictoriaMetrics/metrics v1.44.0
 	github.com/VictoriaMetrics/metricsql v0.87.3
 	github.com/VictoriaMetrics/operator/api v0.73.1
@@ -146,7 +146,7 @@ require (
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect

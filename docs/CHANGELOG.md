@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vmoperator](https://docs.victoriametrics.com/operator/): validation webhooks for prometheus-operator CRDs added to the operator in [0.72.0](https://github.com/VictoriaMetrics/vmoperator/releases/tag/v0.72.0) is now disabled by default. Use `VM_PROMCR_VALIDATION_ENABLED` env var to enable it explicitly.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.148.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0).
 

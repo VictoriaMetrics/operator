@@ -120,6 +120,8 @@ type BaseOperatorConf struct {
 	// Enables support for VerticalPodAutoscaler API.
 	// When enabled, operator can create and manage VPA objects for VM components.
 	VPAAPIEnabled bool `default:"false" env:"VM_VPA_API_ENABLED"`
+	// Enables validation webhooks for prometheus-operator CRDs.
+	PromCRValidationEnabled bool `default:"false" env:"VM_PROMCR_VALIDATION_ENABLED"`
 
 	// Defines a list of namespaces to be watched by operator.
 	// Operator don't perform any cluster wide API calls if namespaces not empty.

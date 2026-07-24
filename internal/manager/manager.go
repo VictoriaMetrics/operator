@@ -309,7 +309,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	if *enableWebhook {
-		if err := addWebhooks(mgr); err != nil {
+		if err := addWebhooks(mgr, baseConfig); err != nil {
 			l.Error(err, "cannot register webhooks")
 			return err
 		}
@@ -355,7 +355,7 @@ func RunManager(ctx context.Context) error {
 	return nil
 }
 
-func addWebhooks(mgr ctrl.Manager) error {
+func addWebhooks(mgr ctrl.Manager, baseConfig *config.BaseOperatorConf) error {
 	f := func(setupWebhooks []func(ctrl.Manager) error) error {
 		for _, setupWebhook := range setupWebhooks {
 			if err := setupWebhook(mgr); err != nil {
@@ -364,7 +364,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		}
 		return nil
 	}
-	return f([]func(ctrl.Manager) error{
+	webhooks := []func(ctrl.Manager) error{
 		webhookv1beta1.SetupVMAgentWebhookWithManager,
 		webhookv1beta1.SetupVMAlertWebhookWithManager,
 		webhookv1.SetupVMAnomalyWebhookWithManager,
@@ -389,13 +389,19 @@ func addWebhooks(mgr ctrl.Manager) error {
 		webhookv1beta1.SetupVMScrapeConfigWebhookWithManager,
 		webhookv1beta1.SetupVMStaticScrapeWebhookWithManager,
 		webhookv1beta1.SetupVMProbeWebhookWithManager,
+	}
+	promConvertionWebhooks := []func(ctrl.Manager) error{
 		webhookpromv1.SetupServiceMonitorWebhookWithManager,
 		webhookpromv1.SetupPodMonitorWebhookWithManager,
 		webhookpromv1.SetupPrometheusRuleWebhookWithManager,
 		webhookpromv1.SetupProbeWebhookWithManager,
 		webhookpromv1alpha1.SetupAlertmanagerConfigWebhookWithManager,
 		webhookpromv1alpha1.SetupScrapeConfigWebhookWithManager,
-	})
+	}
+	if baseConfig.PromCRValidationEnabled {
+		webhooks = append(webhooks, promConvertionWebhooks...)
+	}
+	return f(webhooks)
 }
 
 func getClientCacheOptions(disabledCacheObjects string) (*client.CacheOptions, error) {

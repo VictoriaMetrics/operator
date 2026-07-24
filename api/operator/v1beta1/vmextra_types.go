@@ -412,9 +412,9 @@ type EmbeddedPodDisruptionBudgetSpec struct {
 	// Valid policies are IfHealthyBudget and AlwaysAllow.
 	// If no policy is specified, the default behavior will be used,
 	// which corresponds to the IfHealthyBudget policy.
-	// Available from operator v0.64.0
 	// +optional
 	// +kubebuilder:validation:Enum=IfHealthyBudget;AlwaysAllow
+	// +notes={available_from: "v0.64.0"}
 	UnhealthyPodEvictionPolicy string `json:"unhealthyPodEvictionPolicy,omitempty"`
 }
 
@@ -530,8 +530,9 @@ type StreamAggrConfig struct {
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
 	// +optional
 	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
-	// EnableWindows enables aggregating data in separate windows ( available from v0.54.0).
+	// EnableWindows enables aggregating data in separate windows.
 	// +optional
+	// +notes={available_from: "v0.54.0"}
 	EnableWindows bool `json:"enableWindows,omitempty"`
 }
 
@@ -1134,7 +1135,7 @@ type CommonConfigReloaderParams struct {
 	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
-	// +deprecated={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {configReloaderImage}}
+	// +notes={deprecated_in: "v0.67.0", removed_in: "v0.69.0", replacements: {configReloaderImage}}
 	// +optional
 	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
 	// ConfigReloaderImage defines image:tag for config-reloader container
@@ -1254,7 +1255,7 @@ type CommonAppsParams struct {
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated.
-	/// +optional
+	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the Application container
@@ -1271,12 +1272,13 @@ type CommonAppsParams struct {
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
-	// DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+	// DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
 	// Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
 	// For example, vmagent and vm-config-reloader requires k8s API access.
 	// Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
 	// And also adds VolumeMounts at /var/run/secrets/kubernetes.io/serviceaccount.
 	// +optional
+	// +notes={available_from: "v0.54.0"}
 	DisableAutomountServiceAccountToken bool `json:"disableAutomountServiceAccountToken,omitempty"`
 
 	// ExtraEnvsFrom defines source of env variables for the application container

@@ -774,6 +774,407 @@ server:
 `,
 	})
 
+	// prophet model with seasonalities (plural slice, not singular pointer)
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  prophet_model:
+    class: 'prophet'
+    queries: ['test_query']
+    seasonalities:
+      - name: daily
+        period: 1
+        fourier_order: 5
+      - name: weekly
+        period: 7
+    tz_seasonalities:
+      - name: business_hours
+        period: 0.5
+        prior_scale: 10
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_model:
+    class: prophet
+    queries:
+    - test_query
+    seasonalities:
+    - name: daily
+      period: 1
+      fourier_order: 5
+    - name: weekly
+      period: 7
+    tz_seasonalities:
+    - name: business_hours
+      period: 0.5
+      prior_scale: 10
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// prophet: tz_seasonalities as list of strings — regression test for #2356
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  prophet_model:
+    class: 'prophet'
+    queries: ['test_query']
+    tz_aware: true
+    tz_seasonalities:
+      - dow
+      - hod
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    test_query:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_model:
+    class: prophet
+    queries:
+    - test_query
+    tz_seasonalities:
+    - dow
+    - hod
+    tz_aware: true
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// prophet: tz_seasonalities as list of objects with optional mode/prior_scale — regression test for #2356
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  prophet_model:
+    class: 'prophet'
+    queries: ['test_query']
+    tz_aware: true
+    tz_seasonalities:
+      - name: hod
+        fourier_order: 5
+        mode: additive
+      - name: dow
+        fourier_order: 3
+        prior_scale: 10
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    test_query:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_model:
+    class: prophet
+    queries:
+    - test_query
+    tz_seasonalities:
+    - name: hod
+      fourier_order: 5
+      mode: additive
+    - name: dow
+      fourier_order: 3
+      prior_scale: 10
+    tz_aware: true
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// prophet: compression config is preserved — regression test for #2356
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  prophet_model:
+    class: 'prophet'
+    queries: ['test_query']
+    compression:
+      window: 10m
+      agg_method: mean
+      adjust_boundaries: true
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_window: 1h
+reader:
+  queries:
+    test_query:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_model:
+    class: prophet
+    queries:
+    - test_query
+    compression:
+      window: 10m
+      agg_method: mean
+      adjust_boundaries: true
+schedulers:
+  s1:
+    class: periodic
+    fit_window: 1h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// prophet: exact failing config from issue #2356 — multiple seasonalities with args and clip_predictions
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  prophet_load_above_expected:
+    class: 'prophet'
+    queries: ['query1']
+    schedulers: ['periodic_online']
+    detection_direction: 'above_expected'
+    seasonalities:
+      - name: daily
+        period: 1
+        fourier_order: 15
+      - name: weekly
+        period: 7
+        fourier_order: 5
+    args:
+      interval_width: 0.95
+      seasonality_mode: additive
+    clip_predictions: true
+schedulers:
+  periodic_online:
+    class: periodic
+    infer_every: 1m
+    fit_every: 24h
+    fit_window: 30d
+reader:
+  queries:
+    query1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		expected: `
+models:
+  prophet_load_above_expected:
+    class: prophet
+    queries:
+    - query1
+    schedulers:
+    - periodic_online
+    detection_direction: above_expected
+    clip_predictions: true
+    seasonalities:
+    - name: daily
+      period: 1
+      fourier_order: 15
+    - name: weekly
+      period: 7
+      fourier_order: 5
+    args:
+      interval_width: 0.95
+      seasonality_mode: additive
+schedulers:
+  periodic_online:
+    class: periodic
+    fit_every: 24h
+    fit_window: 30d
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    query1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
 	// online quantile model with scale field
 	f(opts{
 		cr: &vmv1.VMAnomaly{
@@ -1189,6 +1590,74 @@ reader:
 writer:
   class: vm
   datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// periodic scheduler with scatter_infer_jobs — regression test for #2328
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  zscore:
+    class: zscore
+    queries: [q1]
+schedulers:
+  periodic_online:
+    class: periodic
+    infer_every: 5m
+    scatter_infer_jobs: true
+    fit_every: 10000d
+    fit_window: 3d
+reader:
+  queries:
+    q1:
+      expr: up
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://vm:8428",
+					SamplingPeriod: "1m",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://vm:8428",
+				},
+			},
+		},
+		expected: `
+models:
+  zscore:
+    class: zscore
+    queries:
+    - q1
+schedulers:
+  periodic_online:
+    class: periodic
+    fit_every: 10000d
+    fit_window: 3d
+    infer_every: 5m
+    scatter_infer_jobs: true
+reader:
+  class: vm
+  datasource_url: http://vm:8428
+  sampling_period: 1m
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://vm:8428
 monitoring:
   pull:
     port: "8080"

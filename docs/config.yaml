@@ -11,6 +11,6 @@ processor:
     - "status$"
     - "TypeMeta$"
   customMarkers:
-    - name: deprecated
+    - name: notes
       target: field
       hasValue: true

@@ -13,6 +13,17 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.147.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.147.0) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.4](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.4) version.
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.28.7](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1287) version
+
+* SECURITY: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): remove cluster-wide `secrets` and `configmaps` permissions from the operator-managed `ClusterRole`. Secret access for the config-reloader is now granted via a namespace-scoped `Role` limited to the single operator-managed config secret. For `vmsingle` in ingest-only mode (the default), no secret or configmap permissions are granted at all.
+
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add missing `scatter_infer_jobs` field to the periodic scheduler config struct. See [#2328](https://github.com/VictoriaMetrics/operator/issues/2328).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): preserve insertion order of keys in `ProphetModel` `seasonalities`, `tz_seasonalities`, `compression`, and `args` fields; previously the operator re-emitted them with keys sorted alphabetically, which broke round-trips for configs that specified keys in a non-alphabetical order. Also renamed the singular `seasonality`/`tz_seasonality` YAML keys (deprecated) to the plural `seasonalities`/`tz_seasonalities` to match the vmanomaly configuration format. See [#2356](https://github.com/VictoriaMetrics/operator/issues/2356).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): create a `Role` and `RoleBinding` in each namespace listed in `WATCH_NAMESPACES` so that vmagent/vmsingle can perform service discovery in all watched namespaces, not only its own. Previously, in namespaced mode, vmagent/vmsingle could only scrape targets from its own namespace due to missing RBAC in other watched namespaces.
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix missing credential secret and config-reloader setup in `ingestOnlyMode` when remote write entries carry authentication secrets (`basicAuth.password`, `bearerTokenSecret`, or `oauth2.clientSecret`). Previously the operator-managed secret containing the credential files was never created in ingest-only mode, causing vmagent to start with dangling file references. The secret is now reconciled and the config-reloader is configured to watch it for credential rotation.
+
 ## [v0.68.6](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.6)
 **Release date:** 25 June 2026
 

@@ -80,9 +80,9 @@ type VMAgentSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
 	// Supports only VMPodScrape
-	// (available from v0.55.0).
 	// Cannot be used with statefulMode
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	DaemonSetMode bool `json:"daemonSetMode,omitempty"`
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue

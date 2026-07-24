@@ -365,12 +365,16 @@ type Receiver struct {
 	// +optional
 	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	JiraConfigs []JiraConfig `json:"jira_configs,omitempty" yaml:"jira_configs,omitempty"`
 	// +optional
-	IncidentIOConfigs []IncidentIOConfig `json:"incidentio_configs,omitempty" yaml:"incidentio_configs,omitempty"`
+	// +notes={available_from: "v0.66.0"}
+	IncidentIOConfigs []IncidentioConfig `json:"incidentio_configs,omitempty" yaml:"incidentio_configs,omitempty"`
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	RocketchatConfigs []RocketchatConfig `json:"rocketchat_configs,omitempty" yaml:"rocketchat_configs,omitempty"`
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	MSTeamsV2Configs []MSTeamsV2Config `json:"msteamsv2_configs,omitempty" yaml:"msteamsv2_configs,omitempty"`
 }
 
@@ -903,17 +907,20 @@ type DiscordConfig struct {
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 	// Content defines message content template
-	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// Available from alertmanager v0.28.0
 	// +kubebuilder:validation:MaxLength:=2000
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	Content string `json:"content,omitempty"`
 	// Username defines message username
-	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// Available from alertmanager v0.28.0
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	Username string `json:"username,omitempty" yaml:"username"`
 	// AvatarURL defines message avatar URL
-	// Available from operator v0.55.0 and alertmanager v0.28.0
+	// Available from alertmanager v0.28.0
 	// +optional
+	// +notes={available_from: "v0.55.0"}
 	AvatarURL string `json:"avatar_url,omitempty" yaml:"avatar_url,omitempty"`
 }
 
@@ -992,8 +999,7 @@ type WebexConfig struct {
 
 // JiraConfig represent alertmanager's jira_config entry
 // https://prometheus.io/docs/alerting/latest/configuration/#jira_config
-// available from v0.55.0 operator version
-// and v0.28.0 alertmanager version
+// Available from v0.28.0 alertmanager version
 type JiraConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
@@ -1053,9 +1059,8 @@ type JiraConfig struct {
 
 // IncidentIOConfig configures notifications via incident.io.
 // https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
-// available from v0.66.0 operator version
-// and v0.29.0 alertmanager version
-type IncidentIOConfig struct {
+// Available from v0.29.0 alertmanager version
+type IncidentioConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
@@ -1079,8 +1084,7 @@ type IncidentIOConfig struct {
 
 // RocketchatConfig configures notifications via Rocketchat.
 // https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
-// available from v0.55.0 operator version
-// and v0.28.0 alertmanager version
+// Available from v0.28.0 alertmanager version
 type RocketchatConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
@@ -1154,8 +1158,7 @@ type RocketchatAttachmentAction struct {
 
 // MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
 // https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
-// available from v0.55.0 operator version
-// and v0.28.0 alertmanager version
+// Available from v0.28.0 alertmanager version
 type MSTeamsV2Config struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional

@@ -14,8 +14,6 @@ VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 DATEINFO_TAG ?= $(shell date -u +'%Y%m%d-%H%M%S')
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
-E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)
-E2E_TARGET ?= ./test/e2e/...
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
 
@@ -59,6 +57,7 @@ export FLAGS_HEADER
 
 include docs/Makefile
 include codespell/Makefile
+include test/Makefile
 
 .PHONY: all
 all: build
@@ -159,21 +158,6 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 	cd api/ && go test ./operator/...
-
-# Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
-.PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
-test-e2e: load-kind ginkgo crust-gather mirrord
-	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) CONFIG_RELOADER_IMAGE=$(CONFIG_RELOADER_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
-		-ldflags="-linkmode=external" \
-		--output-interceptor-mode=none \
-		-procs=$(E2E_TESTS_CONCURRENCY) \
-		-randomize-all \
-		-timeout=60m \
-		-junit-report=report.xml $(E2E_TARGET)
-
-.PHONY: test-e2e-upgrade  # Run only the e2e upgrade tests against a Kind k8s instance that is spun up.
-test-e2e-upgrade: E2E_TARGET=./test/e2e/upgrade/...
-test-e2e-upgrade: test-e2e
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -322,26 +306,6 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
 
-# builds image and loads it into kind.
-ensure-kind-cluster: kind
-	if [ "`$(KIND) get clusters`" != "kind" ]; then \
-		$(KIND) create cluster --config=./kind.yaml; \
-	else \
-		$(KUBECTL) cluster-info --context kind-kind; \
-	fi
-
-load-kind: docker-build docker-build-config-reloader ensure-kind-cluster
-	if [ "$(CONTAINER_TOOL)" != "podman" ]; then \
-		$(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG); \
-		$(KIND) load docker-image $(CONFIG_RELOADER_IMAGE); \
-	fi
-
-deploy-kind: OVERLAY=config/base-with-webhook
-deploy-kind: load-kind deploy
-
-undeploy-kind: OVERLAY=config/kind
-undeploy-kind: load-kind undeploy
-
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
@@ -356,29 +320,23 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 CLIENT_GEN = $(LOCALBIN)/client-gen-$(CODEGENERATOR_VERSION)
 LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
 INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
-KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
 OPERATOR_SDK = $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
 YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
-GINKGO_BIN ?= $(LOCALBIN)/ginkgo-$(GINKGO_VERSION)
-CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
-MIRRORD_BIN ?= $(LOCALBIN)/mirrord-$(MIRRORD_VERSION)
+COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.0
 CONTROLLER_TOOLS_VERSION ?= v0.20.0
 ENVTEST_VERSION ?= release-0.23
-GOLANGCI_LINT_VERSION ?= v2.10.1
+GOLANGCI_LINT_VERSION ?= v2.12.2
 CODEGENERATOR_VERSION ?= v0.35.1
-KIND_VERSION ?= v0.31.0
-OLM_VERSION ?= 0.40.0
-OPERATOR_SDK_VERSION ?= v1.42.0
-OPM_VERSION ?= v1.62.0
-YQ_VERSION ?= v4.50.1
-GINKGO_VERSION ?= v2.28.1
-CRUST_GATHER_VERSION ?= v0.12.1
-MIRRORD_VERSION ?= 3.199.0
+OLM_VERSION ?= 0.45.0
+OPERATOR_SDK_VERSION ?= v1.42.2
+OPM_VERSION ?= v1.72.0
+YQ_VERSION ?= v4.53.3
+COSIGN_VERSION ?= v3.1.1
 
 CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
 
@@ -393,7 +351,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest ginkgo
+install-tools: crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest
 
 .PHONY: crd-ref-docs
 crd-ref-docs: $(CRD_REF_DOCS)
@@ -405,10 +363,6 @@ $(CRD_REF_DOCS): $(LOCALBIN)
 client-gen: $(CLIENT_GEN)
 $(CLIENT_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODEGENERATOR_VERSION))
-
-.PHONY: ginkgo
-ginkgo:
-	$(call go-install-tool,$(GINKGO_BIN),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
 .PHONY: lister-gen
 lister-gen: $(LISTER_GEN)
@@ -441,11 +395,6 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
-.PHONY: kind
-kind: $(KIND)
-$(KIND): $(LOCALBIN)
-	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
-
 .PHONY: yq
 yq: $(YQ)
 $(YQ): $(LOCALBIN)
@@ -454,21 +403,6 @@ $(YQ): $(LOCALBIN)
 UNAME_S=$(shell uname -s 2>/dev/null)
 OS=$(shell echo $(UNAME_S) | tr A-Z a-z)
 ARCH=$(if $(filter x86_64,$(shell uname -m 2>/dev/null)),amd64,arm64)
-MIRRORD_OS=$(if $(filter darwin,$(OS)),mac,linux)
-MIRRORD_ARCH=$(if $(filter mac,$(MIRRORD_OS)),universal,$(if $(filter x86_64,$(shell uname -m 2>/dev/null)),x86_64,aarch64))
-.PHONY: crust-gather
-crust-gather: $(CRUST_GATHER_BIN)
-$(CRUST_GATHER_BIN): $(LOCALBIN)
-	$(call download-github-release,$(CRUST_GATHER_BIN),crust-gather/crust-gather,$(CRUST_GATHER_VERSION),kubectl-crust-gather_$(CRUST_GATHER_VERSION)_$(OS)_$(ARCH).tar.gz,kubectl-crust-gather)
-
-.PHONY: mirrord
-mirrord: $(MIRRORD_BIN)
-$(MIRRORD_BIN): $(LOCALBIN)
-	$(call download-github-release,$(MIRRORD_BIN),metalbear-co/mirrord,$(MIRRORD_VERSION),mirrord_$(MIRRORD_OS)_$(MIRRORD_ARCH).zip,mirrord)
-
-.PHONY: allure-report
-allure-report:
-	@[ -d ./allure-results ] && npx allure awesome --single-file ./allure-results -o ./allure-report || echo "allure-results dir not found, skipping report generation"
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

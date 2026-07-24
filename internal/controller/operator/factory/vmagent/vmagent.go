@@ -127,6 +127,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		}
 	}
 	owner := cr.AsOwner()
+	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -135,8 +136,8 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, config.IsClusterWideAccessAllowed()); err != nil {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || hasRemoteWriteSecrets(cr) {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
@@ -893,6 +894,21 @@ func sortMap(m map[string]string) []item {
 	return kv
 }
 
+func hasRemoteWriteSecrets(cr *vmv1beta1.VMAgent) bool {
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
+			return true
+		}
+		if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
+			return true
+		}
+		if rw.OAuth2 != nil && rw.OAuth2.ClientSecret != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
 	maxDiskUsage := defaultMaxDiskUsage
 	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.MaxDiskUsagePerURL != nil {
@@ -1157,18 +1173,20 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
-		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
-		if config.IsClusterWideAccessAllowed() {
+		rbacName := cr.GetRBACName()
+		watchNamespaces := config.MustGetBaseConfig().WatchNamespaces
+		if len(watchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
-				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
+				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			rbacMeta.Namespace = cr.Namespace
-			objsToRemove = append(objsToRemove,
-				&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.Role{ObjectMeta: rbacMeta},
-			)
+			for _, ns := range watchNamespaces {
+				objsToRemove = append(objsToRemove,
+					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+				)
+			}
 		}
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)

@@ -281,6 +281,10 @@ func (cr *VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+func (cr *VMSingle) GetRBACName() string {
+	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
+}
+
 func (cr *VMSingle) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {

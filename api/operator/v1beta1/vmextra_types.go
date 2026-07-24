@@ -1841,3 +1841,59 @@ func (bs *BytesString) String() string {
 	}
 	return string(*bs)
 }
+
+func mergeMapsRecursive(baseMap, overrideMap map[string]any) {
+	if len(overrideMap) == 0 {
+		return
+	}
+	for key, overrideValue := range overrideMap {
+		if baseVal, ok := baseMap[key]; ok {
+			if baseMapNested, isBaseMap := baseVal.(map[string]any); isBaseMap {
+				if overrideMapNested, isOverrideMap := overrideValue.(map[string]any); isOverrideMap {
+					mergeMapsRecursive(baseMapNested, overrideMapNested)
+					continue
+				}
+			}
+		}
+		baseMap[key] = overrideValue
+	}
+}
+
+// MergeDeep merges an override object into a base one using JSON round-trip.
+// Fields present in the override overwrite corresponding fields in the base.
+// When reverse is true the roles are swapped: base fills absent fields in override
+// (useful when the override should win and the base provides defaults).
+func MergeDeep[T comparable](base, override T, reverse bool) error {
+	var zero T
+	if override == zero {
+		return nil
+	}
+	baseJSON, err := json.Marshal(base)
+	if err != nil {
+		return fmt.Errorf("failed to marshal base spec: %w", err)
+	}
+	overrideJSON, err := json.Marshal(override)
+	if err != nil {
+		return fmt.Errorf("failed to marshal override spec: %w", err)
+	}
+	var baseMap map[string]any
+	if err := json.Unmarshal(baseJSON, &baseMap); err != nil {
+		return fmt.Errorf("failed to unmarshal base spec to map: %w", err)
+	}
+	var overrideMap map[string]any
+	if err := json.Unmarshal(overrideJSON, &overrideMap); err != nil {
+		return fmt.Errorf("failed to unmarshal override spec to map: %w", err)
+	}
+	if reverse {
+		baseMap, overrideMap = overrideMap, baseMap
+	}
+	mergeMapsRecursive(baseMap, overrideMap)
+	mergedJSON, err := json.Marshal(baseMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal merged spec map: %w", err)
+	}
+	if err := json.Unmarshal(mergedJSON, base); err != nil {
+		return fmt.Errorf("failed to unmarshal merged spec JSON: %w", err)
+	}
+	return nil
+}

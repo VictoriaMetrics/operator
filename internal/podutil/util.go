@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
@@ -284,7 +284,7 @@ func MergeSpecs[T any](a, b *T, name string) (*T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to render spec: %w", err)
 	}
-	if err := build.MergeDeep(merged, b, false); err != nil {
+	if err := vmv1beta1.MergeDeep(merged, b, false); err != nil {
 		return nil, fmt.Errorf("failed to merge spec: %w", err)
 	}
 	return merged, nil

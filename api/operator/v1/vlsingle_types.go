@@ -337,13 +337,13 @@ func (cr *VLSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-func (cr *VLSingle) AsURL(isExtra bool) string {
+func (cr *VLSingle) AsURL(isExtra bool) (string, error) {
 	specPort := cr.Spec.Port
 	if specPort == "" {
 		specPort = "9428"
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port), nil
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -364,5 +364,9 @@ func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 
 // GetRemoteWriteURL returns the native insert URL for VLSingle (used by VLDistributed)
 func (cr *VLSingle) GetRemoteWriteURL() string {
-	return cr.AsURL(false) + "/insert/native"
+	url, err := cr.AsURL(false)
+	if err != nil {
+		return ""
+	}
+	return url + "/insert/native"
 }

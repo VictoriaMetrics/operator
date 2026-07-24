@@ -655,7 +655,11 @@ func (cr *VTCluster) Validate() error {
 	}
 	storageNodes := sets.New[string]()
 	if cr.Spec.Storage != nil {
-		storageNodes.Insert(cr.AsURL(vmv1beta1.ClusterComponentStorage, false))
+		storageURL, err := cr.AsURL(vmv1beta1.ClusterComponentStorage, false)
+		if err != nil {
+			return err
+		}
+		storageNodes.Insert(storageURL)
 		vts := cr.Spec.Storage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if vts.ServiceSpec != nil && vts.ServiceSpec.Name == name {
@@ -777,14 +781,14 @@ func (cr *VTCluster) IsOwnsServiceAccount() bool {
 
 // AsURL implements stub for interface.
 // nolint:dupl,lll
-func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string {
+func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) (string, error) {
 	var defaultPort string
 	var svcSpec *vmv1beta1.AdditionalServiceSpec
 	var extraArgs map[string]string
 	switch kind {
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.Select == nil {
-			return ""
+			return "", fmt.Errorf("vtcluster %q has no spec.select configured", cr.Name)
 		}
 		defaultPort = "10471"
 		if cr.Spec.Select.Port != "" {
@@ -794,7 +798,7 @@ func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		extraArgs = cr.Spec.Select.ExtraArgs
 	case vmv1beta1.ClusterComponentInsert:
 		if cr.Spec.Insert == nil {
-			return ""
+			return "", fmt.Errorf("vtcluster %q has no spec.insert configured", cr.Name)
 		}
 		defaultPort = "10481"
 		if cr.Spec.Insert.Port != "" {
@@ -804,7 +808,7 @@ func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		extraArgs = cr.Spec.Insert.ExtraArgs
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
-			return ""
+			return "", fmt.Errorf("vtcluster %q has no spec.storage configured", cr.Name)
 		}
 		defaultPort = "10491"
 		if cr.Spec.Storage.Port != "" {
@@ -816,7 +820,7 @@ func (cr *VTCluster) AsURL(kind vmv1beta1.ClusterComponent, isExtra bool) string
 		panic("BUG unsupported cluster kind=" + string(kind))
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(kind), defaultPort, "http", svcSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port), nil
 }
 
 // +kubebuilder:object:root=true

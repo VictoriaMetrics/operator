@@ -484,13 +484,13 @@ func (cr *VLAgent) IsOwnsServiceAccount() bool {
 }
 
 // AsURL - returns url for http access
-func (cr *VLAgent) AsURL(isExtra bool) string {
+func (cr *VLAgent) AsURL(isExtra bool) (string, error) {
 	specPort := cr.Spec.Port
 	if specPort == "" {
 		specPort = "9429"
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port), nil
 }
 
 // ProbePath implements build.probeCRD interface

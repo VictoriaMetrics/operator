@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,15 +45,17 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				*config.MustGetBaseConfig() = defaultCfg
 			}()
 		}
-		err := CreateOrUpdateAlertManager(ctx, o.cr, fclient)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdateAlertManager(ctx, o.cr, fclient)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// simple alertmanager

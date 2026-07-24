@@ -3,6 +3,7 @@ package vtsingle
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,27 +41,29 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			args.preRun(ctx, fclient, args.cr)
 		}
 
-		err := CreateOrUpdate(ctx, fclient, args.cr)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
-			for i, action := range fclient.Actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, fclient, args.cr)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(fclient.Actions) {
-				break
+			if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+				for i, action := range fclient.Actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
 			}
-			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
-		}
+
+			for i, action := range want.actions {
+				if i >= len(fclient.Actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	name := "example-vtsingle"
@@ -168,26 +171,28 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	var deploy appsv1.Deployment
-	err := fclient.Get(ctx, nsn, &deploy)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		var deploy appsv1.Deployment
+		err := fclient.Get(ctx, nsn, &deploy)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
 
-	// unpause and verify reconciliation
-	cr.Spec.Paused = false
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-	err = fclient.Get(ctx, nsn, &deploy)
-	assert.NoError(t, err)
+		// unpause and verify reconciliation
+		cr.Spec.Paused = false
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+		err = fclient.Get(ctx, nsn, &deploy)
+		assert.NoError(t, err)
 
-	// pause and update replica count
-	cr.Spec.Paused = true
-	cr.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+		// pause and update replica count
+		cr.Spec.Paused = true
+		cr.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	// check that replicas count is not updated
-	err = fclient.Get(ctx, nsn, &deploy)
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), *deploy.Spec.Replicas)
+		// check that replicas count is not updated
+		err = fclient.Get(ctx, nsn, &deploy)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), *deploy.Spec.Replicas)
+	})
 }

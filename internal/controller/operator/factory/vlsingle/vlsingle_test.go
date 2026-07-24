@@ -3,6 +3,7 @@ package vlsingle
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,16 +45,18 @@ func TestCreateOrUpdateVLSingle(t *testing.T) {
 				*config.MustGetBaseConfig() = defaultCfg
 			}()
 		}
-		ctx := context.TODO()
-		err := CreateOrUpdate(ctx, fclient, o.cr)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			ctx := context.TODO()
+			err := CreateOrUpdate(ctx, fclient, o.cr)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// base gen

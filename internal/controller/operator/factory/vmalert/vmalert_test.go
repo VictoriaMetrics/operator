@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,12 +43,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
-		err := CreateOrUpdate(ctx, o.cr, fclient, o.cmNames)
-		assert.NoError(t, err)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, o.cr, fclient, o.cmNames)
+			assert.NoError(t, err)
 
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// base-spec-gen

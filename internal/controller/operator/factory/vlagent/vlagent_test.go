@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,12 +46,14 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
-		assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
-		if o.validate != nil {
-			var got appsv1.StatefulSet
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
-			o.validate(&got)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
+			if o.validate != nil {
+				var got appsv1.StatefulSet
+				assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: o.cr.Namespace, Name: o.cr.PrefixedName()}, &got))
+				o.validate(&got)
+			}
+		})
 	}
 
 	// generate vlagent statefulset with storage
@@ -1520,26 +1523,28 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	var sts appsv1.StatefulSet
-	err := fclient.Get(ctx, nsn, &sts)
-	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+		var sts appsv1.StatefulSet
+		err := fclient.Get(ctx, nsn, &sts)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
 
-	// unpause and verify reconciliation
-	cr.Spec.Paused = false
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-	err = fclient.Get(ctx, nsn, &sts)
-	assert.NoError(t, err)
+		// unpause and verify reconciliation
+		cr.Spec.Paused = false
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err = fclient.Get(ctx, nsn, &sts)
+		assert.NoError(t, err)
 
-	// pause and update replica count
-	cr.Spec.Paused = true
-	cr.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		// pause and update replica count
+		cr.Spec.Paused = true
+		cr.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	// check that replicas count is not updated
-	err = fclient.Get(ctx, nsn, &sts)
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), *sts.Spec.Replicas)
+		// check that replicas count is not updated
+		err = fclient.Get(ctx, nsn, &sts)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(1), *sts.Spec.Replicas)
+	})
 }

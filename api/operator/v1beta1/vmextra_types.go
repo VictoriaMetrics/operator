@@ -1408,7 +1408,7 @@ type CommonConfigReloaderParams struct {
 	// UseVMConfigReloader replaces prometheus-like config-reloader
 	// with vm one. It uses secrets watch instead of file watch
 	// which greatly increases speed of config updates
-	// Removed since v0.67.0: this property is ignored and no longer needed
+	// +notes={removed_in: "v0.67.0"}
 	// +optional
 	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
@@ -1429,7 +1429,7 @@ type CommonConfigReloaderParams struct {
 	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
 	// ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
 	// Given secret reference will be added to the application and vm-config-reloader as volume
-	// available since v0.57.0 version
+	// +notes={available_from: "v0.57.0"}
 	// +optional
 	ConfigReloadAuthKeySecret *corev1.SecretKeySelector `json:"configReloadAuthKeySecret,omitempty"`
 }

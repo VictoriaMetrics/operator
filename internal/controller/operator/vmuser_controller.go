@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -106,14 +107,16 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return
 	}
 
+	var g errgroup.Group
+	g.SetLimit(childReconcileConcurrencyLimit)
 	for i := range objects.Items {
 		item := &objects.Items[i]
 		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) || item.IsUnmanaged() {
 			continue
 		}
 		// reconcile users for given vmauth.
-		l = l.WithValues("vmauth", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
+		itemLog := l.WithValues("vmauth", item.Name, "parent_namespace", item.Namespace)
+		itemCtx := logger.AddToContext(ctx, itemLog)
 
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
@@ -124,20 +127,25 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				ObjectSelector:    item.Spec.UserSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts)
 			if err != nil {
-				l.Error(err, "cannot match vmauth and vmuser")
+				itemLog.Error(err, "cannot match vmauth and vmuser")
 				continue
 			}
 			if !match {
 				continue
 			}
 		}
-		if configErr := vmauth.CreateOrUpdateConfig(ctx, r, item, &instance); configErr != nil {
-			l.Error(configErr, "cannot create or update vmauth deploy for vmuser")
-			err = configErr
-		}
+		// VMAuth config reconciles are independent; run them concurrently, but wait so this VMUser reconcile completes only after each selected VMAuth has observed its config reload.
+		g.Go(func() error {
+			if configErr := vmauth.CreateOrUpdateConfig(itemCtx, r, item, &instance); configErr != nil {
+				itemLog.Error(configErr, "cannot create or update vmauth deploy for vmuser")
+				return configErr
+			}
+			return nil
+		})
 	}
+	err = g.Wait()
 	return
 }
 

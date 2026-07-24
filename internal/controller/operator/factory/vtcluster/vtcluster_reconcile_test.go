@@ -3,6 +3,7 @@ package vtcluster
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,27 +42,29 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			args.preRun(ctx, fclient, args.cr)
 		}
 
-		err := CreateOrUpdate(ctx, fclient, args.cr)
-		if want.err != nil {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-
-		if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
-			for i, action := range fclient.Actions {
-				t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, fclient, args.cr)
+			if want.err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-		}
 
-		for i, action := range want.actions {
-			if i >= len(fclient.Actions) {
-				break
+			if !assert.Equal(t, len(want.actions), len(fclient.Actions)) {
+				for i, action := range fclient.Actions {
+					t.Logf("Action %d: %s %s %s", i, action.Verb, action.Kind, action.Resource)
+				}
 			}
-			assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
-			assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
-			assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
-		}
+
+			for i, action := range want.actions {
+				if i >= len(fclient.Actions) {
+					break
+				}
+				assert.Equal(t, action.Verb, fclient.Actions[i].Verb, "idx %d verb", i)
+				assert.Equal(t, action.Kind, fclient.Actions[i].Kind, "idx %d kind", i)
+				assert.Equal(t, action.Resource, fclient.Actions[i].Resource, "idx %d resource", i)
+			}
+		})
 	}
 
 	name := "example-cluster"
@@ -330,22 +333,24 @@ func TestCreateOrUpdate_LBDeploymentWithHPA(t *testing.T) {
 	build.AddDefaults(fclient.Scheme())
 	fclient.Scheme().Default(cr)
 
-	// initial - 1 replica
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+	synctest.Test(t, func(t *testing.T) {
+		// initial - 1 replica
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	var dep appsv1.Deployment
-	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
-	assert.Equal(t, int32(1), *dep.Spec.Replicas)
+		var dep appsv1.Deployment
+		assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+		assert.Equal(t, int32(1), *dep.Spec.Replicas)
 
-	// simulate HPA scaling the Deployment to 3 replicas
-	dep.Spec.Replicas = ptr.To(int32(3))
-	assert.NoError(t, fclient.Update(ctx, &dep))
+		// simulate HPA scaling the Deployment to 3 replicas
+		dep.Spec.Replicas = ptr.To(int32(3))
+		assert.NoError(t, fclient.Update(ctx, &dep))
 
-	// set desired replica count to 2
-	cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To(int32(2))
-	assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+		// set desired replica count to 2
+		cr.Spec.RequestsLoadBalancer.Spec.ReplicaCount = ptr.To(int32(2))
+		assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 
-	// HPA-managed replica count must not be overwritten
-	assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
-	assert.Equal(t, int32(3), *dep.Spec.Replicas)
+		// HPA-managed replica count must not be overwritten
+		assert.NoError(t, fclient.Get(ctx, depNSN, &dep))
+		assert.Equal(t, int32(3), *dep.Spec.Replicas)
+	})
 }

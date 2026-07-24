@@ -55,14 +55,22 @@ func buildVMAgentServiceScrape(cr *vmv1beta1.VMAgent, svc *corev1.Service) *vmv1
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMServiceScrape(svc, cr)
+	scrape := build.VMServiceScrape(svc, cr)
+	if cr.HasConfigReloader() {
+		scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
+	}
+	return scrape
 }
 
 func buildVMAgentPodScrape(cr *vmv1beta1.VMAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr, "http")
+	scrape := build.VMPodScrape(cr, "http")
+	if cr.HasConfigReloader() {
+		scrape.Spec.PodMetricsEndpoints = append(scrape.Spec.PodMetricsEndpoints, build.ConfigReloaderPodScrapeEndpoint())
+	}
+	return scrape
 }
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
@@ -141,7 +149,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr), prevSA, &owner); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || hasRemoteWriteSecrets(cr) {
+		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasRemoteWriteSecrets() {
 			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
@@ -585,7 +593,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 	}
 
 	ingestOnly := ptr.Deref(cr.Spec.IngestOnlyMode, false)
-	needsConfigSecret := !ingestOnly || hasRemoteWriteSecrets(cr)
+	needsConfigSecret := !ingestOnly || cr.HasRemoteWriteSecrets()
 
 	if !ingestOnly {
 		args = append(args,
@@ -731,7 +739,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !ingestOnly || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() || hasRemoteWriteSecrets(cr) {
+	if cr.HasConfigReloader() {
 		var ss *corev1.SecretKeySelector
 		if needsConfigSecret {
 			ss = &corev1.SecretKeySelector{
@@ -883,7 +891,7 @@ func buildRelabelingsAssets(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*core
 	return cfgCM, nil
 }
 
-// createOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
+// createOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml.
 func createOrUpdateRelabelConfigsAssets(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	if !cr.HasAnyRelabellingConfigs() {
 		return nil
@@ -958,7 +966,7 @@ func buildStreamAggrConfig(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) (*corev
 	return cfgCM, nil
 }
 
-// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
+// createOrUpdateStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml.
 func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, ac *build.AssetsCache) error {
 	// fast path
 	if !cr.HasAnyStreamAggrRule() {
@@ -970,7 +978,7 @@ func createOrUpdateStreamAggrConfig(ctx context.Context, rclient client.Client, 
 	}
 	var prevConfigMeta *metav1.ObjectMeta
 	if prevCR != nil {
-		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, cr))
+		prevConfigMeta = ptr.To(build.ResourceMeta(build.StreamAggrConfigResourceKind, prevCR))
 	}
 	owner := cr.AsOwner()
 	_, err = reconcile.ConfigMap(ctx, rclient, streamAggrCM, prevConfigMeta, &owner)
@@ -990,21 +998,6 @@ func sortMap(m map[string]string) []item {
 		return kv[i].key < kv[j].key
 	})
 	return kv
-}
-
-func hasRemoteWriteSecrets(cr *vmv1beta1.VMAgent) bool {
-	for _, rw := range cr.Spec.RemoteWrite {
-		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
-			return true
-		}
-		if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
-			return true
-		}
-		if rw.OAuth2 != nil && rw.OAuth2.ClientSecret != nil {
-			return true
-		}
-	}
-	return false
 }
 
 func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
@@ -1341,15 +1334,14 @@ func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	if _, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac); err != nil {
-		return err
-	}
-	return nil
+	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac)
+	return err
 }
 
+// createOrUpdateScrapeConfig reconciles the main scrape config.
 func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
-		if !hasRemoteWriteSecrets(cr) {
+		if !cr.HasRemoteWriteSecrets() {
 			return 0, nil
 		}
 		// ingest-only mode with remote write credentials: reconcile a credential-only secret
@@ -1373,7 +1365,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			}
 			secret.ObjectMeta = build.ResourceMeta(kind, cr)
 			secret.Annotations = map[string]string{"generated": "true"}
-			if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+			if _, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 				return 0, err
 			}
 		}
@@ -1460,7 +1452,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		secret.Annotations = map[string]string{
 			"generated": "true",
 		}
-		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+		if _, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return 0, err
 		}
 	}
@@ -1479,7 +1471,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			return 0, fmt.Errorf("gzipping extra scrape config bucket %d: %w", idx, err)
 		}
 		s := vmscrapes.BuildExtraConfigSecret(cr, idx, compressed)
-		if err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
+		if _, err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
 			return 0, err
 		}
 	}

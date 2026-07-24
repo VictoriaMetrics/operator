@@ -713,6 +713,30 @@ func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
 
+// HasRemoteWriteSecrets reports whether any remoteWrite entry references a credential secret.
+func (cr *VMAgent) HasRemoteWriteSecrets() bool {
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
+			return true
+		}
+		if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
+			return true
+		}
+		if rw.OAuth2 != nil && rw.OAuth2.ClientSecret != nil {
+			return true
+		}
+		if rw.TLSConfig != nil && (rw.TLSConfig.CA.Secret != nil || rw.TLSConfig.Cert.Secret != nil || rw.TLSConfig.KeySecret != nil) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasConfigReloader reports whether vmagent's pod spec includes a config-reloader sidecar.
+func (cr *VMAgent) HasConfigReloader() bool {
+	return !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() || cr.HasRemoteWriteSecrets()
+}
+
 func checkRelabelConfigs(src []*RelabelConfig) error {
 	// TODO: restore check when issue will be fixed at golang
 	// https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6911

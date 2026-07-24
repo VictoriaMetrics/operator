@@ -259,3 +259,19 @@ func TestBuildVMAuthLBVMSingleBackend(t *testing.T) {
 		{Name: "single-a", Namespace: "ns"},
 	}, vmAuth.Spec.DefaultTargetRefs[1].CRD.Objects)
 }
+
+func TestBuildVMAuthLBForcesWaitForConfigReload(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-dist", Namespace: "ns"},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			VMAuth: vmv1alpha1.VMDistributedAuth{
+				Spec: vmv1beta1.VMAuthSpec{
+					WaitForConfigReload: ptr.To(false),
+				},
+			},
+		},
+	}
+	vmAuth := buildVMAuthLB(cr, &zones{})
+	assert.NotNil(t, vmAuth)
+	assert.Equal(t, ptr.To(true), vmAuth.Spec.WaitForConfigReload)
+}

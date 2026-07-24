@@ -189,8 +189,17 @@ type VMAnomalyReadersSpec struct {
 	QueryRangePath string `json:"queryRangePath,omitempty" yaml:"query_range_path,omitempty"`
 	// List of strings with series selector.
 	ExtraFilters []string `json:"extraFilters,omitempty" yaml:"extra_filters,omitempty"`
+	// FetchTimeout limits each datasource read request. It falls back to timeout when omitted.
+	// +optional
+	FetchTimeout string `json:"fetchTimeout,omitempty" yaml:"fetch_timeout,omitempty"`
+	// ProcessingTimeout limits post-fetch preparation for fit and infer stages. It falls back to timeout when omitted.
+	// +optional
+	ProcessingTimeout string `json:"processingTimeout,omitempty" yaml:"processing_timeout,omitempty"`
 	// If True, then query will be performed from the last seen timestamp for a given series.
 	QueryFromLastSeenTimestamp bool `json:"queryFromLastSeenTimestamp,omitempty" yaml:"query_from_last_seen_timestamp,omitempty"`
+	// QueryLastSeenMaxLookback caps how far last-seen recovery may move a query start into the past.
+	// +optional
+	QueryLastSeenMaxLookback string `json:"queryLastSeenMaxLookback,omitempty" yaml:"query_last_seen_max_lookback,omitempty"`
 	// It allows overriding the default -search.latencyOffsetflag of VictoriaMetrics
 	LatencyOffset string `json:"latencyOffset,omitempty" yaml:"latency_offset,omitempty"`
 	// Offset adds a time shift to the query window for all queries, e.g. to account for delayed data ingestion
@@ -198,6 +207,10 @@ type VMAnomalyReadersSpec struct {
 	Offset string `json:"offset,omitempty" yaml:"offset,omitempty"`
 	// Optional argoverrides how search.maxPointsPerTimeseries flagimpacts vmanomaly on splitting long fitWindow queries into smaller sub-intervals
 	MaxPointsPerQuery int `json:"maxPointsPerQuery,omitempty" yaml:"max_points_per_query,omitempty"`
+	// SeriesProcessingBatchSize controls how many series are prepared together for fit and infer stages.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	SeriesProcessingBatchSize int `json:"seriesProcessingBatchSize,omitempty" yaml:"series_processing_batch_size,omitempty"`
 	// Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
 	Timezone string `json:"tz,omitempty" yaml:"tz,omitempty"`
 	// Optional argumentallows defining valid data ranges for input of all the queries in queries

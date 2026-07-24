@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +18,50 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func TestDurationUnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    duration
+		wantErr bool
+	}{
+		{
+			name:  "valid duration",
+			input: "15s",
+			want:  "15s",
+		},
+		{
+			name:    "numeric duration",
+			input:   "15",
+			wantErr: true,
+		},
+		{
+			name:    "boolean duration",
+			input:   "true",
+			wantErr: true,
+		},
+		{
+			name:    "mapping duration",
+			input:   "value: 15s",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got duration
+			err := yaml.UnmarshalStrict([]byte(tt.input), &got)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "duration must be a string")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
 func TestLoad(t *testing.T) {
 	type opts struct {
@@ -1832,6 +1878,209 @@ reader:
   class: vm
   datasource_url: http://vm:8428
   sampling_period: 1m
+  queries:
+    q1:
+      expr: up
+writer:
+  class: vm
+  datasource_url: http://vm:8428
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+`,
+	})
+
+	// vmanomaly v1.30 reader, online model, Temporal Envelope and autotune fields.
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-anomaly", Namespace: "default"},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{Key: ptr.To("test")},
+				ConfigRawYaml: `
+models:
+  auto_envelope:
+    class: auto
+    tuned_class_name: temporal_envelope_multivariate
+    queries: [q1]
+    optimization_params:
+      anomaly_percentage: 0.02
+      frozen_params:
+        groupby: [cluster]
+        seasonalities: [hod_smooth, dow_smooth]
+      seed: 0
+      n_splits: 2
+      train_val_ratio: 3
+      validation_scheme: regular
+      beta: 0.5
+      exact: true
+      optimize_complexity: false
+      n_trials: 24
+      timeout: 12.5
+      n_jobs: -1
+      show_progress_bar: true
+      gc_after_trial: true
+  envelope:
+    class: temporal_envelope
+    queries: [q1]
+    ttl: 30d
+    data_range: [0, 100]
+    scale: 1.5
+    min_dev_from_expected: [0, 2]
+    min_rel_dev_from_expected: [0, 15]
+    forecast_at: [1h, 1d]
+    quantiles: [0.25, 0.75]
+    iqr_threshold: 2
+    alpha: 0.005
+    loss_reactivity: 5
+    min_n_samples_seen: 16
+    changepoint_window: 16
+    seasonalities: [hod_smooth, dow_smooth]
+    holidays:
+      countries: [US]
+      group: true
+  envelope_multi:
+    class: temporal_envelope_multivariate
+    queries: [q1]
+    groupby: [cluster]
+    seasonalities: []
+    dependency_rank: 0
+    score_aggregation: l2
+    max_channels: 1000
+    recommended_max_channels: 100
+    random_state: 0
+  std:
+    class: std
+    queries: [q1]
+    min_n_samples_seen: 16
+  zscore:
+    class: zscore
+    queries: [q1]
+    decay: 0.995
+    history_strength: 2
+schedulers:
+  periodic:
+    class: periodic
+    infer_every: 1m
+    fit_every: 1000w
+    fit_window: 2w
+reader:
+  queries:
+    q1:
+      expr: up
+writer: {}
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:              "http://vm:8428",
+					SamplingPeriod:             "1m",
+					FetchTimeout:               "15s",
+					ProcessingTimeout:          "45s",
+					QueryFromLastSeenTimestamp: true,
+					QueryLastSeenMaxLookback:   "2h",
+					SeriesProcessingBatchSize:  16,
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{DatasourceURL: "http://vm:8428"},
+			},
+		},
+		expected: `
+models:
+  auto_envelope:
+    class: auto
+    queries:
+    - q1
+    tuned_class_name: temporal_envelope_multivariate
+    optimization_params:
+      anomaly_percentage: 0.02
+      frozen_params:
+        groupby:
+        - cluster
+        seasonalities:
+        - hod_smooth
+        - dow_smooth
+      seed: 0
+      n_splits: 2
+      train_val_ratio: 3
+      validation_scheme: regular
+      beta: 0.5
+      exact: true
+      optimize_complexity: false
+      n_trials: 24
+      timeout: 12.5
+      n_jobs: -1
+      show_progress_bar: true
+      gc_after_trial: true
+  envelope:
+    class: temporal_envelope
+    queries:
+    - q1
+    ttl: 30d
+    data_range:
+    - 0
+    - 100
+    min_dev_from_expected:
+    - 0
+    - 2
+    min_rel_dev_from_expected:
+    - 0
+    - 15
+    scale: 1.5
+    forecast_at:
+    - 1h
+    - 1d
+    quantiles:
+    - 0.25
+    - 0.75
+    iqr_threshold: 2
+    alpha: 0.005
+    loss_reactivity: 5
+    min_n_samples_seen: 16
+    changepoint_window: 16
+    seasonalities:
+    - hod_smooth
+    - dow_smooth
+    holidays:
+      countries:
+      - US
+      group: true
+  envelope_multi:
+    class: temporal_envelope_multivariate
+    queries:
+    - q1
+    seasonalities: []
+    groupby:
+    - cluster
+    dependency_rank: 0
+    score_aggregation: l2
+    max_channels: 1000
+    recommended_max_channels: 100
+    random_state: 0
+  std:
+    class: std
+    queries:
+    - q1
+    min_n_samples_seen: 16
+  zscore:
+    class: zscore
+    queries:
+    - q1
+    decay: 0.995
+    history_strength: 2
+schedulers:
+  periodic:
+    class: periodic
+    fit_every: 1000w
+    fit_window: 2w
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://vm:8428
+  sampling_period: 1m
+  fetch_timeout: 15s
+  processing_timeout: 45s
+  query_from_last_seen_timestamp: true
+  query_last_seen_max_lookback: 2h
+  series_processing_batch_size: 16
   queries:
     q1:
       expr: up

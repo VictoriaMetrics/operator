@@ -59,21 +59,42 @@ func main() {
 		os.Exit(1)
 	}
 
-	cr, err := converter.Convert(*name, *namespace, values)
-	if err != nil {
-		fmt.Printf("cannot convert values: %v\n", err)
-		os.Exit(1)
-	}
-
-	objects := []any{cr}
-	if authValues, ok := values.(*converter.VMAuthHelmValues); ok {
-		users, err := converter.ConvertVMAuthUsers(*name, *namespace, authValues)
+	var objects []any
+	if alertValues, ok := values.(*converter.VMAlertHelmValues); ok {
+		// ConvertVMAlert also returns the auth Secrets, so both come from one conversion pass.
+		alert, secrets, err := converter.ConvertVMAlert(*name, *namespace, alertValues)
 		if err != nil {
-			fmt.Printf("cannot convert config.users: %v\n", err)
+			fmt.Printf("cannot convert values: %v\n", err)
 			os.Exit(1)
 		}
-		for _, u := range users {
-			objects = append(objects, u)
+		objects = append(objects, alert)
+		for _, s := range secrets {
+			objects = append(objects, s)
+		}
+		rule, err := converter.ConvertVMAlertRules(*name, *namespace, alertValues)
+		if err != nil {
+			fmt.Printf("cannot convert config.alerts.groups: %v\n", err)
+			os.Exit(1)
+		}
+		if rule != nil {
+			objects = append(objects, rule)
+		}
+	} else {
+		cr, err := converter.Convert(*name, *namespace, values)
+		if err != nil {
+			fmt.Printf("cannot convert values: %v\n", err)
+			os.Exit(1)
+		}
+		objects = append(objects, cr)
+		if authValues, ok := values.(*converter.VMAuthHelmValues); ok {
+			users, err := converter.ConvertVMAuthUsers(*name, *namespace, authValues)
+			if err != nil {
+				fmt.Printf("cannot convert config.users: %v\n", err)
+				os.Exit(1)
+			}
+			for _, u := range users {
+				objects = append(objects, u)
+			}
 		}
 	}
 

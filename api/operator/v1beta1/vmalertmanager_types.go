@@ -494,7 +494,7 @@ func (*VMAlertmanager) ProbeNeedLiveness() bool {
 
 // IsUnmanaged checks if alertmanager should managed any alertmanager config objects
 func (cr *VMAlertmanager) IsUnmanaged() bool {
-	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+	if !cr.DeletionTimestamp.IsZero() || (cr.Status.ParsingSpecError != "" && !HasUnknownFields(cr.Status.ParsingSpecError)) {
 		return true
 	}
 	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil

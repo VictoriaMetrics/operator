@@ -163,3 +163,22 @@ func TestVMAgent_PrefixedName(t *testing.T) {
 	f("myapp", false, "vmagent-myapp")
 	f("myapp", true, "myapp")
 }
+
+// TestVMAgent_IsUnmanaged is the VMAgent counterpart of TestVMAlert_IsUnmanaged.
+func TestVMAgent_IsUnmanaged(t *testing.T) {
+	f := func(cr VMAgent, want bool) {
+		t.Helper()
+		assert.Equal(t, want, cr.IsUnmanaged(nil))
+	}
+
+	f(VMAgent{Spec: VMAgentSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}}}, false)
+	f(VMAgent{}, true)
+	f(VMAgent{
+		Status: VMAgentStatus{ParsingSpecError: `json: unknown field "foo"`},
+		Spec:   VMAgentSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
+	}, false)
+	f(VMAgent{
+		Status: VMAgentStatus{ParsingSpecError: "some other unrelated parse failure"},
+		Spec:   VMAgentSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
+	}, true)
+}

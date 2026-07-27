@@ -58,7 +58,7 @@ func (r *fieldDiffRecorder) Report(rs cmp.Result) {
 			name := v.Name()
 			if i > 0 {
 				parentType := r.path[i-1].Type()
-				if parentType.Kind() == reflect.Ptr {
+				if parentType.Kind() == reflect.Pointer {
 					parentType = parentType.Elem()
 				}
 				if parentType.Kind() == reflect.Struct {
@@ -104,7 +104,7 @@ func (r *fieldDiffRecorder) Report(rs cmp.Result) {
 func toInterface(v reflect.Value) any {
 	if v.IsValid() && v.CanInterface() {
 		switch v.Kind() {
-		case reflect.Ptr, reflect.Interface, reflect.Map, reflect.Slice:
+		case reflect.Pointer, reflect.Interface, reflect.Map, reflect.Slice:
 			if v.IsNil() {
 				return nil
 			}

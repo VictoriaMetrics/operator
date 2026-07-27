@@ -89,6 +89,7 @@ type periodicScheduler struct {
 	InferEvery            *duration `yaml:"infer_every"`
 	StartFrom             time.Time `yaml:"start_from,omitempty"`
 	Timezone              string    `yaml:"tz,omitempty"`
+	ScatterInferJobs      bool      `yaml:"scatter_infer_jobs,omitempty"`
 }
 
 func (s *periodicScheduler) validate() error {

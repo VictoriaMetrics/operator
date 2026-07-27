@@ -14,22 +14,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-var (
-	policyRules = []rbacv1.PolicyRule{{
-		APIGroups: []string{""},
-		Verbs: []string{
-			"get",
-			"list",
-			"watch",
-		},
-		Resources: []string{
-			"pods",
-			"namespaces",
-			"nodes",
-		},
-	}}
-)
-
 // createK8sAPIAccess - creates RBAC access rules for vlagent
 func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
 	if !config.IsClusterWideAccessAllowed() {
@@ -88,6 +72,10 @@ func buildCR(cr *vmv1.VLAgent) *rbacv1.ClusterRole {
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
 		},
-		Rules: policyRules,
+		Rules: []rbacv1.PolicyRule{{
+			APIGroups: []string{""},
+			Verbs:     []string{"get", "list", "watch"},
+			Resources: []string{"nodes", "pods", "namespaces"},
+		}},
 	}
 }

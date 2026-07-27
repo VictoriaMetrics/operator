@@ -1324,7 +1324,7 @@ templates: []
 					Receivers: []vmv1beta1.Receiver{
 						{
 							Name: "incidentio",
-							IncidentIOConfigs: []vmv1beta1.IncidentIOConfig{
+							IncidentIOConfigs: []vmv1beta1.IncidentioConfig{
 								{
 									URL: "http://example.com/",
 									AlertSourceToken: &corev1.SecretKeySelector{

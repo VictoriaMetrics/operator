@@ -165,10 +165,10 @@ type autoTunedOptimizationParams struct {
 
 type holtWintersModel struct {
 	commonModelParams `yaml:",inline"`
-	Frequency         *duration      `yaml:"frequency,omitempty"`
-	Seasonality       *duration      `yaml:"seasonality"`
-	Threshold         float64        `yaml:"z_threshold,omitempty"`
-	Args              map[string]any `yaml:"args,omitempty"`
+	Frequency         *duration     `yaml:"frequency,omitempty"`
+	Seasonality       *duration     `yaml:"seasonality"`
+	Threshold         float64       `yaml:"z_threshold,omitempty"`
+	Args              yaml.MapSlice `yaml:"args,omitempty"`
 }
 
 func (m *holtWintersModel) validate() error {
@@ -178,9 +178,9 @@ func (m *holtWintersModel) validate() error {
 type isolationForestModel struct {
 	commonModelParams `yaml:",inline"`
 	// Contamination is a float (e.g. 0.01) or the string "auto"; vmanomaly accepts both.
-	Contamination    any            `yaml:"contamination,omitempty"`
-	SeasonalFeatures []string       `yaml:"seasonal_features,omitempty"`
-	Args             map[string]any `yaml:"args,omitempty"`
+	Contamination    any           `yaml:"contamination,omitempty"`
+	SeasonalFeatures []string      `yaml:"seasonal_features,omitempty"`
+	Args             yaml.MapSlice `yaml:"args,omitempty"`
 }
 
 func (m *isolationForestModel) validate() error {
@@ -190,9 +190,9 @@ func (m *isolationForestModel) validate() error {
 type isolationForestMultivariateModel struct {
 	commonModelParams `yaml:",inline"`
 	// Contamination is a float (e.g. 0.01) or the string "auto"; vmanomaly accepts both.
-	Contamination    any            `yaml:"contamination,omitempty"`
-	SeasonalFeatures []string       `yaml:"seasonal_features,omitempty"`
-	Args             map[string]any `yaml:"args,omitempty"`
+	Contamination    any           `yaml:"contamination,omitempty"`
+	SeasonalFeatures []string      `yaml:"seasonal_features,omitempty"`
+	Args             yaml.MapSlice `yaml:"args,omitempty"`
 }
 
 func (m *isolationForestMultivariateModel) validate() error {
@@ -269,22 +269,46 @@ func (m *zScoreModel) validate() error {
 
 type prophetModel struct {
 	commonModelParams     `yaml:",inline"`
-	Seasonalities         *prophetModelSeasonality `yaml:"seasonality,omitempty"`
-	TZSeasonalities       *prophetModelSeasonality `yaml:"tz_seasonality,omitempty"`
-	TZAware               bool                     `yaml:"tz_aware,omitempty"`
-	TZUseCyclicalEncoding bool                     `yaml:"tz_use_cyclical_encoding,omitempty"`
-	Args                  map[string]any           `yaml:"args,omitempty"`
+	Seasonalities         []yaml.MapSlice `yaml:"seasonalities,omitempty"`
+	TZSeasonalities       []tzSeasonality `yaml:"tz_seasonalities,omitempty"`
+	TZAware               bool            `yaml:"tz_aware,omitempty"`
+	TZUseCyclicalEncoding bool            `yaml:"tz_use_cyclical_encoding,omitempty"`
+	Compression           yaml.MapSlice   `yaml:"compression,omitempty"`
+	Args                  yaml.MapSlice   `yaml:"args,omitempty"`
 }
 
 func (m *prophetModel) validate() error {
 	return nil
 }
 
-type prophetModelSeasonality struct {
-	Name         string  `yaml:"name"`
-	Period       float64 `yaml:"period"`
-	FourierOrder int     `yaml:"fourier_order,omitempty"`
-	PriorScale   int     `yaml:"prior_scale,omitempty"`
+// tzSeasonality is a single vmanomaly tz_seasonality entry, which may be either
+// a plain string name (e.g. "dow") or an object with keys like name, fourier_order,
+// mode, etc. Both forms are valid in vmanomaly.
+type tzSeasonality struct {
+	val any // string or yaml.MapSlice
+}
+
+var (
+	_ yaml.Marshaler   = tzSeasonality{}
+	_ yaml.Unmarshaler = (*tzSeasonality)(nil)
+)
+
+func (t *tzSeasonality) UnmarshalYAML(unmarshal func(any) error) error {
+	var ms yaml.MapSlice
+	if err := unmarshal(&ms); err == nil {
+		t.val = ms
+		return nil
+	}
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	t.val = s
+	return nil
+}
+
+func (t tzSeasonality) MarshalYAML() (any, error) {
+	return t.val, nil
 }
 
 type rollingQuantileModel struct {

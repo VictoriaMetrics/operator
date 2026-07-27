@@ -487,7 +487,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -978,7 +978,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -2241,7 +2240,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -2574,7 +2572,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -2904,7 +2902,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -3460,7 +3457,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -3644,7 +3640,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -3988,7 +3984,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -4391,7 +4386,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -4584,7 +4578,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -5593,7 +5587,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -6025,7 +6018,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -6481,7 +6473,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -7603,7 +7595,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -8603,12 +8594,11 @@ spec:
                 description: |-
                   DaemonSetMode enables DaemonSet deployment mode instead of Deployment.
                   Supports only VMPodScrape
-                  (available from v0.55.0).
                   Cannot be used with statefulMode
                 type: boolean
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -9518,7 +9508,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -10281,7 +10270,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -10292,7 +10280,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -10355,7 +10342,7 @@ spec:
                           type: array
                         enableWindows:
                           description: EnableWindows enables aggregating data in separate
-                            windows ( available from v0.54.0).
+                            windows.
                           type: boolean
                         ignoreFirstIntervals:
                           description: IgnoreFirstIntervals instructs to ignore first
@@ -11329,7 +11316,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -11340,7 +11326,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -12757,7 +12742,7 @@ spec:
                     type: array
                   enableWindows:
                     description: EnableWindows enables aggregating data in separate
-                      windows ( available from v0.54.0).
+                      windows.
                     type: boolean
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
@@ -13208,7 +13193,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -13419,12 +13403,12 @@ spec:
                           avatar_url:
                             description: |-
                               AvatarURL defines message avatar URL
-                              Available from operator v0.55.0 and alertmanager v0.28.0
+                              Available from alertmanager v0.28.0
                             type: string
                           content:
                             description: |-
                               Content defines message content template
-                              Available from operator v0.55.0 and alertmanager v0.28.0
+                              Available from alertmanager v0.28.0
                             maxLength: 2000
                             type: string
                           http_config:
@@ -13656,7 +13640,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -13668,7 +13651,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -13854,7 +13836,7 @@ spec:
                           username:
                             description: |-
                               Username defines message username
-                              Available from operator v0.55.0 and alertmanager v0.28.0
+                              Available from alertmanager v0.28.0
                             type: string
                           webhook_url:
                             description: |-
@@ -14152,8 +14134,7 @@ spec:
                         description: |-
                           IncidentIOConfig configures notifications via incident.io.
                           https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
-                          available from v0.66.0 operator version
-                          and v0.29.0 alertmanager version
+                          Available from v0.29.0 alertmanager version
                         properties:
                           alert_source_token:
                             description: AlertSourceToken is used to authenticate
@@ -14206,8 +14187,7 @@ spec:
                         description: |-
                           JiraConfig represent alertmanager's jira_config entry
                           https://prometheus.io/docs/alerting/latest/configuration/#jira_config
-                          available from v0.55.0 operator version
-                          and v0.28.0 alertmanager version
+                          Available from v0.28.0 alertmanager version
                         properties:
                           api_url:
                             description: |-
@@ -14510,7 +14490,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -14522,7 +14501,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -14744,8 +14722,7 @@ spec:
                         description: |-
                           MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
                           https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
-                          available from v0.55.0 operator version
-                          and v0.28.0 alertmanager version
+                          Available from v0.28.0 alertmanager version
                         properties:
                           http_config:
                             x-kubernetes-preserve-unknown-fields: true
@@ -15157,8 +15134,7 @@ spec:
                         description: |-
                           RocketchatConfig configures notifications via Rocketchat.
                           https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
-                          available from v0.55.0 operator version
-                          and v0.28.0 alertmanager version
+                          Available from v0.28.0 alertmanager version
                         properties:
                           actions:
                             items:
@@ -15666,7 +15642,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -15678,7 +15653,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -16293,7 +16267,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -16305,7 +16278,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -16738,7 +16710,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -16750,7 +16721,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -17274,7 +17244,6 @@ spec:
                                   proxy_url:
                                     description: |-
                                       The proxy URL for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     type: string
                                   scopes:
@@ -17286,7 +17255,6 @@ spec:
                                   tls_config:
                                     description: |-
                                       TLSConfig for token_url connection
-                                      ( available from v0.55.0).
                                       Is only supported by Scrape objects family
                                     x-kubernetes-preserve-unknown-fields: true
                                   token_url:
@@ -18429,7 +18397,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -19088,7 +19056,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -20118,7 +20085,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -20693,7 +20659,7 @@ spec:
                 type: object
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -21515,7 +21481,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -22321,7 +22286,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -22941,7 +22905,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -23645,7 +23609,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -24773,7 +24736,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -25366,7 +25328,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -26731,8 +26693,7 @@ spec:
               internalListenPort:
                 description: |-
                   InternalListenPort instructs vmauth to serve internal routes at given port
-                  available from v0.56.0 operator
-                  and v1.111.0 vmauth version
+                  available from v1.111.0 vmauth version
                   related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
                 type: string
               license:
@@ -26877,7 +26838,6 @@ spec:
                       Valid policies are IfHealthyBudget and AlwaysAllow.
                       If no policy is specified, the default behavior will be used,
                       which corresponds to the IfHealthyBudget policy.
-                      Available from operator v0.64.0
                     enum:
                     - IfHealthyBudget
                     - AlwaysAllow
@@ -27012,9 +26972,7 @@ spec:
                 format: int32
                 type: integer
               rollingUpdate:
-                description: |-
-                  RollingUpdate - overrides deployment update params.
-                  Available from operator v0.64.0
+                description: RollingUpdate - overrides deployment update params.
                 properties:
                   maxSurge:
                     anyOf:
@@ -27760,9 +27718,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               updateStrategy:
-                description: |-
-                  UpdateStrategy - overrides default update strategy.
-                  Available from operator v0.64.0
+                description: UpdateStrategy - overrides default update strategy.
                 enum:
                 - Recreate
                 - RollingUpdate
@@ -27962,7 +27918,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -28447,7 +28402,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -28794,7 +28749,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -29197,7 +29151,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -29399,7 +29352,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -29751,7 +29704,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -30610,7 +30562,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -30801,7 +30752,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -31795,7 +31746,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -32685,7 +32635,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -35625,7 +35574,7 @@ spec:
                         type: array
                       disableAutomountServiceAccountToken:
                         description: |-
-                          DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                          DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                           Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                           For example, vmagent and vm-config-reloader requires k8s API access.
                           Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -38669,8 +38618,7 @@ spec:
                       internalListenPort:
                         description: |-
                           InternalListenPort instructs vmauth to serve internal routes at given port
-                          available from v0.56.0 operator
-                          and v1.111.0 vmauth version
+                          available from v1.111.0 vmauth version
                           related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
                         type: string
                       license:
@@ -38967,7 +38915,6 @@ spec:
                               Valid policies are IfHealthyBudget and AlwaysAllow.
                               If no policy is specified, the default behavior will be used,
                               which corresponds to the IfHealthyBudget policy.
-                              Available from operator v0.64.0
                             enum:
                             - IfHealthyBudget
                             - AlwaysAllow
@@ -39253,9 +39200,7 @@ spec:
                         format: int32
                         type: integer
                       rollingUpdate:
-                        description: |-
-                          RollingUpdate - overrides deployment update params.
-                          Available from operator v0.64.0
+                        description: RollingUpdate - overrides deployment update params.
                         properties:
                           maxSurge:
                             anyOf:
@@ -39984,7 +39929,6 @@ spec:
                                     proxy_url:
                                       description: |-
                                         The proxy URL for token_url connection
-                                        ( available from v0.55.0).
                                         Is only supported by Scrape objects family
                                       type: string
                                     scopes:
@@ -39996,7 +39940,6 @@ spec:
                                     tls_config:
                                       description: |-
                                         TLSConfig for token_url connection
-                                        ( available from v0.55.0).
                                         Is only supported by Scrape objects family
                                       x-kubernetes-preserve-unknown-fields: true
                                     token_url:
@@ -41847,9 +41790,7 @@ spec:
                             x-kubernetes-preserve-unknown-fields: true
                         type: object
                       updateStrategy:
-                        description: |-
-                          UpdateStrategy - overrides default update strategy.
-                          Available from operator v0.64.0
+                        description: UpdateStrategy - overrides default update strategy.
                         enum:
                         - Recreate
                         - RollingUpdate
@@ -42049,7 +41990,6 @@ spec:
                         description: |-
                           Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                           Volumes specified will be appended to other volumes that are generated.
-                          / +optional
                         items:
                           description: Volume represents a named volume in a pod that
                             may be accessed by any container in the pod.
@@ -47044,7 +46984,7 @@ spec:
                             type: array
                           disableAutomountServiceAccountToken:
                             description: |-
-                              DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                              DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                               Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                               For example, vmagent and vm-config-reloader requires k8s API access.
                               Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -49279,7 +49219,6 @@ spec:
                                   Valid policies are IfHealthyBudget and AlwaysAllow.
                                   If no policy is specified, the default behavior will be used,
                                   which corresponds to the IfHealthyBudget policy.
-                                  Available from operator v0.64.0
                                 enum:
                                 - IfHealthyBudget
                                 - AlwaysAllow
@@ -50942,7 +50881,6 @@ spec:
                             description: |-
                               Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                               Volumes specified will be appended to other volumes that are generated.
-                              / +optional
                             items:
                               description: Volume represents a named volume in a pod
                                 that may be accessed by any container in the pod.
@@ -55840,7 +55778,7 @@ spec:
                               type: array
                             disableAutomountServiceAccountToken:
                               description: |-
-                                DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                                DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                                 Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                                 For example, vmagent and vm-config-reloader requires k8s API access.
                                 Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -58084,7 +58022,6 @@ spec:
                                     Valid policies are IfHealthyBudget and AlwaysAllow.
                                     If no policy is specified, the default behavior will be used,
                                     which corresponds to the IfHealthyBudget policy.
-                                    Available from operator v0.64.0
                                   enum:
                                   - IfHealthyBudget
                                   - AlwaysAllow
@@ -59756,7 +59693,6 @@ spec:
                               description: |-
                                 Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                                 Volumes specified will be appended to other volumes that are generated.
-                                / +optional
                               items:
                                 description: Volume represents a named volume in a
                                   pod that may be accessed by any container in the
@@ -62155,7 +62091,6 @@ spec:
                   proxy_url:
                     description: |-
                       The proxy URL for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     type: string
                   scopes:
@@ -62166,7 +62101,6 @@ spec:
                   tls_config:
                     description: |-
                       TLSConfig for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     x-kubernetes-preserve-unknown-fields: true
                   token_url:
@@ -63140,7 +63074,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -63151,7 +63084,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -64105,7 +64037,6 @@ spec:
                   proxy_url:
                     description: |-
                       The proxy URL for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     type: string
                   scopes:
@@ -64116,7 +64047,6 @@ spec:
                   tls_config:
                     description: |-
                       TLSConfig for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     x-kubernetes-preserve-unknown-fields: true
                   token_url:
@@ -65815,7 +65745,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -65826,7 +65755,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -66291,7 +66219,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -66302,7 +66229,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -67371,7 +67297,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -67382,7 +67307,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -67973,7 +67897,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -67984,7 +67907,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -68355,7 +68277,6 @@ spec:
                   proxy_url:
                     description: |-
                       The proxy URL for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     type: string
                   scopes:
@@ -68366,7 +68287,6 @@ spec:
                   tls_config:
                     description: |-
                       TLSConfig for token_url connection
-                      ( available from v0.55.0).
                       Is only supported by Scrape objects family
                     x-kubernetes-preserve-unknown-fields: true
                   token_url:
@@ -69589,7 +69509,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -69600,7 +69519,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -70276,7 +70194,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -71152,7 +71070,7 @@ spec:
                     type: array
                   enableWindows:
                     description: EnableWindows enables aggregating data in separate
-                      windows ( available from v0.54.0).
+                      windows.
                     type: boolean
                   ignoreFirstIntervals:
                     description: IgnoreFirstIntervals instructs to ignore first interval
@@ -72041,7 +71959,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -72525,7 +72442,6 @@ spec:
                         proxy_url:
                           description: |-
                             The proxy URL for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           type: string
                         scopes:
@@ -72536,7 +72452,6 @@ spec:
                         tls_config:
                           description: |-
                             TLSConfig for token_url connection
-                            ( available from v0.55.0).
                             Is only supported by Scrape objects family
                           x-kubernetes-preserve-unknown-fields: true
                         token_url:
@@ -73854,7 +73769,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -74184,7 +74099,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -74587,7 +74501,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -74818,7 +74731,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -75162,7 +75075,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -75565,7 +75477,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -75763,7 +75674,7 @@ spec:
                     type: array
                   disableAutomountServiceAccountToken:
                     description: |-
-                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                      DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                       Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                       For example, vmagent and vm-config-reloader requires k8s API access.
                       Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -76774,7 +76685,6 @@ spec:
                           Valid policies are IfHealthyBudget and AlwaysAllow.
                           If no policy is specified, the default behavior will be used,
                           which corresponds to the IfHealthyBudget policy.
-                          Available from operator v0.64.0
                         enum:
                         - IfHealthyBudget
                         - AlwaysAllow
@@ -77206,7 +77116,6 @@ spec:
                     description: |-
                       Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                       Volumes specified will be appended to other volumes that are generated.
-                      / +optional
                     items:
                       description: Volume represents a named volume in a pod that
                         may be accessed by any container in the pod.
@@ -77529,7 +77438,7 @@ spec:
                 type: array
               disableAutomountServiceAccountToken:
                 description: |-
-                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes (available from v0.54.0).
+                  DisableAutomountServiceAccountToken whether to disable serviceAccount auto mount by Kubernetes
                   Operator will conditionally create volumes and volumeMounts for containers if it requires k8s API access.
                   For example, vmagent and vm-config-reloader requires k8s API access.
                   Operator creates volumes with name: "kube-api-access", which can be used as volumeMount for extraContainers if needed.
@@ -78459,7 +78368,6 @@ spec:
                 description: |-
                   Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
                   Volumes specified will be appended to other volumes that are generated.
-                  / +optional
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.

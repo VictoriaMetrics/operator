@@ -755,7 +755,7 @@ func (cb *configBuilder) buildJira(jira vmv1beta1.JiraConfig) error {
 	return nil
 }
 
-func (cb *configBuilder) buildIncidentIO(rc vmv1beta1.IncidentIOConfig) error {
+func (cb *configBuilder) buildIncidentIO(rc vmv1beta1.IncidentioConfig) error {
 	var temp yaml.MapSlice
 	if rc.HTTPConfig != nil {
 		c, err := cb.buildHTTPConfig(rc.HTTPConfig)

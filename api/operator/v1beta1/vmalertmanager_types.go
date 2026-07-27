@@ -404,13 +404,13 @@ func (cr *VMAlertmanager) Port() string {
 
 // AsURL returns url for accessing alertmanager
 // via corresponding service
-func (cr *VMAlertmanager) AsURL(isExtra bool) string {
+func (cr *VMAlertmanager) AsURL(isExtra bool) (string, error) {
 	portName := cr.Spec.PortName
 	if portName == "" {
 		portName = "web"
 	}
 	svcName, port := ResolveServiceURL(cr.PrefixedName(), cr.Port(), portName, cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), svcName, cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), svcName, cr.Namespace, port), nil
 }
 
 // returns fqdn for direct pod access

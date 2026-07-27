@@ -17,7 +17,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 type VMSingleHelmValues struct {
@@ -494,7 +493,7 @@ func MergeValues(base, override []byte) ([]byte, error) {
 		normalizeHeaderMaps(overrideMap)
 		return k8syaml.Marshal(overrideMap)
 	}
-	if err := build.MergeDeep(&baseMap, &overrideMap, false); err != nil {
+	if err := vmv1beta1.MergeDeep(&baseMap, &overrideMap, false); err != nil {
 		return nil, fmt.Errorf("cannot merge values: %w", err)
 	}
 	normalizeHeaderMaps(baseMap)

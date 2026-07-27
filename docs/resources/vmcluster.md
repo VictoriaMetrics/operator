@@ -863,6 +863,122 @@ spec:
       enabled: false
 ```
 
+## Storage pools
+
+`spec.pools` allows you to run multiple isolated groups of `vmstorage` nodes within a single `VMCluster`.
+Each pool has its own name, StatefulSet, headless Service, and optional PodDisruptionBudget / HPA / VPA.
+`vmselect` queries all pools simultaneously and merges results transparently, so existing queries require no changes.
+
+The primary use case is **multi-retention**: assign a different `retentionPeriod` to each pool so that some metrics expire sooner than others, without deploying separate clusters.
+
+When `spec.pools` is defined the top-level `spec.vmstorage` is **not** deployed; pools replace it entirely.
+
+### Pool configuration and inheritance
+
+Each pool entry has a `name` and an optional `vmstorage` override:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Unique identifier within the cluster. Used as a resource name suffix and as the storage group name in `vmselect`. Must match `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, max 32 chars. |
+| `vmstorage` | Pool-specific `vmstorage` configuration. Each field overrides the corresponding field in the top-level `spec.vmstorage`; absent fields inherit from the top-level. |
+| `vminsert` | Optional dedicated `vminsert` for this pool. When nil, the shared top-level `vminsert` writes to this pool's storage nodes as well. |
+
+`vmstorage.retentionPeriod` inside a pool overrides `spec.retentionPeriod` for that pool, enabling per-pool retention without enterprise retention filters.
+
+### Resource naming
+
+Pool resources follow the pattern `vm<component>-<cluster-name>-<pool-name>`:
+
+| Resource | Example |
+|----------|---------|
+| `vmstorage` StatefulSet | `vmstorage-mycluster-hot` |
+| `vmstorage` headless Service | `vmstorage-mycluster-hot` |
+| `vminsert` Deployment (dedicated) | `vminsert-mycluster-hot` |
+
+All pool pods carry an extra label `app.kubernetes.io/pool=<pool-name>` to keep per-pool selectors disjoint.
+
+### Multi-retention example
+
+Two pools with different retention periods sharing a single `vminsert` and `vmselect`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-pools
+spec:
+  retentionPeriod: "30d"  # default, used as fallback
+  vmselect:
+    replicaCount: 2
+  vminsert:
+    replicaCount: 2  # shared across both pools
+  # top-level vmstorage sets shared defaults inherited by all pools
+  vmstorage:
+    replicaCount: 3
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 50Gi
+  pools:
+    - name: hot
+      vmstorage:
+        retentionPeriod: "7d"
+    - name: cold
+      vmstorage:
+        replicaCount: 5
+        retentionPeriod: "365d"
+        storage:
+          volumeClaimTemplate:
+            spec:
+              resources:
+                requests:
+                  storage: 2Ti
+```
+
+This creates:
+- `vmstorage-example-pools-hot` StatefulSet with 3 replicas (inherited) and 7-day retention.
+- `vmstorage-example-pools-cold` StatefulSet with 5 replicas (overridden) and 365-day retention.
+- One shared `vminsert-example-pools` Deployment writing to both pools.
+- `vmselect` queries both pools and returns merged results.
+
+### Pool with a dedicated vminsert
+
+When a pool defines `vminsert`, it gets its own isolated insert path.
+The shared top-level `vminsert` is **not** deployed when every pool has a dedicated one.
+Use this when pools need different write-path configurations (e.g. different stream aggregation rules or resource limits):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-dedicated-insert
+spec:
+  retentionPeriod: "30d"
+  vmselect:
+    replicaCount: 2
+  # top-level vminsert sets shared defaults inherited by pool-level inserts
+  vminsert:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "1"
+        memory: 512Mi
+  vmstorage:
+    replicaCount: 3
+  pools:
+    - name: short
+      vmstorage:
+        retentionPeriod: "7d"
+      vminsert:
+        replicaCount: 4  # override: more replicas for high-throughput writes
+    - name: long
+      vmstorage:
+        retentionPeriod: "2y"
+      vminsert: {}  # dedicated insert inheriting all top-level vminsert defaults
+```
+
 ## Examples
 
 ### Minimal example without persistence

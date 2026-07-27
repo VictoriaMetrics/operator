@@ -392,6 +392,30 @@ func TestVMCluster_Validate(t *testing.T) {
 		cr.Spec.VMSelect.ExtraStorageNodes = []VMStorageNode{{Addr: managedAddr}}
 		assert.Error(t, cr.Validate())
 	}
+
+	// pools: no pool defines vminsert — shared top-level vminsert covers all of them, valid
+	f(VMClusterSpec{
+		Pools: []VMClusterPool{
+			{Name: "hot"},
+			{Name: "cold"},
+		},
+	}, false)
+
+	// pools: every pool defines its own vminsert — valid
+	f(VMClusterSpec{
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold", VMInsert: &VMInsert{}},
+		},
+	}, false)
+
+	// pools: only some pools define vminsert — the rest would have no ingestion path
+	f(VMClusterSpec{
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold"},
+		},
+	}, true)
 }
 
 func TestVMCluster_PrefixedName(t *testing.T) {
@@ -411,4 +435,67 @@ func TestVMCluster_PrefixedName(t *testing.T) {
 	f("myapp", true, ClusterComponentSelect, "myapp-vmselect")
 	f("myapp", true, ClusterComponentInsert, "myapp-vminsert")
 	f("myapp", true, ClusterComponentStorage, "myapp-vmstorage")
+}
+
+func TestVMCluster_AsURL(t *testing.T) {
+	newCR := func() *VMCluster {
+		return &VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster-1", Namespace: "default"},
+			Spec: VMClusterSpec{
+				VMSelect:  &VMSelect{},
+				VMInsert:  &VMInsert{},
+				VMStorage: &VMStorage{},
+			},
+		}
+	}
+	fOK := func(cr *VMCluster, kind ClusterComponent, poolName string, wantHostPrefix string) {
+		t.Helper()
+		url, err := cr.AsURL(kind, poolName, false)
+		assert.NoError(t, err)
+		assert.Contains(t, url, wantHostPrefix)
+	}
+	fErr := func(cr *VMCluster, kind ClusterComponent, poolName string) {
+		t.Helper()
+		_, err := cr.AsURL(kind, poolName, false)
+		assert.Error(t, err)
+	}
+
+	// no pools: shared components resolve normally.
+	cr := newCR()
+	fOK(cr, ClusterComponentSelect, "", "vmselect-cluster-1.")
+	fOK(cr, ClusterComponentInsert, "", "vminsert-cluster-1.")
+	fOK(cr, ClusterComponentStorage, "", "vmstorage-cluster-1.")
+
+	// no pools: unset component errors instead of returning an empty/dangling URL.
+	cr = newCR()
+	cr.Spec.VMInsert = nil
+	fErr(cr, ClusterComponentInsert, "")
+
+	// select is never pool-scoped.
+	cr = newCR()
+	fErr(cr, ClusterComponentSelect, "hot")
+
+	// pools defined, none with a dedicated insert: shared insert still resolves for poolName="".
+	cr = newCR()
+	cr.Spec.Pools = []VMClusterPool{{Name: "hot"}, {Name: "cold"}}
+	fOK(cr, ClusterComponentInsert, "", "vminsert-cluster-1.")
+	// ...and also resolves when a pool without its own insert is named explicitly.
+	fOK(cr, ClusterComponentInsert, "hot", "vminsert-cluster-1.")
+	// top-level storage no longer exists once pools are defined.
+	fErr(cr, ClusterComponentStorage, "")
+	// but a named pool's own storage does.
+	fOK(cr, ClusterComponentStorage, "hot", "vmstorage-cluster-1-hot.")
+	// referencing an unknown pool is an error.
+	fErr(cr, ClusterComponentInsert, "unknown")
+	fErr(cr, ClusterComponentStorage, "unknown")
+
+	// pools defined, every pool has its own dedicated insert: shared insert is ambiguous.
+	cr = newCR()
+	cr.Spec.Pools = []VMClusterPool{
+		{Name: "hot", VMInsert: &VMInsert{}},
+		{Name: "cold", VMInsert: &VMInsert{}},
+	}
+	fErr(cr, ClusterComponentInsert, "")
+	fOK(cr, ClusterComponentInsert, "hot", "vminsert-cluster-1-hot.")
+	fOK(cr, ClusterComponentInsert, "cold", "vminsert-cluster-1-cold.")
 }

@@ -167,6 +167,16 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 				{Verb: "Create", Kind: "VMServiceScrape", Resource: vmstorageName},
 
+				// VMInsert - pools reconcile vmstorage and vminsert together per pool, so
+				// vminsert now runs right after vmstorage, ahead of vmselect.
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Create", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName}, // wait for ready
+				{Verb: "Get", Kind: "Service", Resource: vminsertName},
+				{Verb: "Create", Kind: "Service", Resource: vminsertName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
+				{Verb: "Create", Kind: "VMServiceScrape", Resource: vminsertName},
+
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
 				{Verb: "Create", Kind: "StatefulSet", Resource: vmselectName},
@@ -175,15 +185,6 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Create", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
 				{Verb: "Create", Kind: "VMServiceScrape", Resource: vmselectName},
-
-				// VMInsert
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Create", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName}, // wait for ready
-				{Verb: "Get", Kind: "Service", Resource: vminsertName},
-				{Verb: "Create", Kind: "Service", Resource: vminsertName},
-				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
-				{Verb: "Create", Kind: "VMServiceScrape", Resource: vminsertName},
 			},
 		})
 
@@ -203,18 +204,18 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
+				// VMInsert
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Get", Kind: "Service", Resource: vminsertName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
+
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // getLatestStsState
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
-
-				// VMInsert
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Get", Kind: "Service", Resource: vminsertName},
-				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
 			},
 		})
 
@@ -239,18 +240,18 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Service", Resource: vmstorageName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmstorageName},
 
+				// VMInsert
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
+				{Verb: "Get", Kind: "Service", Resource: vminsertName},
+				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
+
 				// VMSelect
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName},
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // getLatestStsState
 				{Verb: "Get", Kind: "StatefulSet", Resource: vmselectName}, // patchSTSCurrentRevision
 				{Verb: "Get", Kind: "Service", Resource: vmselectName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmselectName},
-
-				// VMInsert
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Get", Kind: "Deployment", Resource: vminsertName},
-				{Verb: "Get", Kind: "Service", Resource: vminsertName},
-				{Verb: "Get", Kind: "VMServiceScrape", Resource: vminsertName},
 			},
 		})
 }

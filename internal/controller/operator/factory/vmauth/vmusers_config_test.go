@@ -76,8 +76,8 @@ func Test_genUserCfg(t *testing.T) {
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -155,8 +155,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -203,8 +203,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMCluster/vminsert/monitoring/vminsert": "http://vminsert.monitoring.svc:8481",
-			"VMCluster/vmselect/monitoring/vmselect": "http://vmselect.monitoring.svc:8482",
+			"VMCluster/vminsert/monitoring/vminsert/": "http://vminsert.monitoring.svc:8481",
+			"VMCluster/vmselect/monitoring/vmselect/": "http://vmselect.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -287,8 +287,8 @@ password: pass
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_map:
 - url_prefix:
@@ -360,9 +360,9 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
-			"VLogs/monitoring/db":     "http://vlogs-b.monitoring.svc:8482",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
+			"VLogs/monitoring/db/":     "http://vlogs-b.monitoring.svc:8482",
 		},
 		want: `url_map:
 - url_prefix:
@@ -409,8 +409,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -442,8 +442,8 @@ bearer_token: secret-token
 			},
 		},
 		objURLs: map[string]string{
-			"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
-			"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+			"VMAgent/monitoring/base/": "http://vmagent-base.monitoring.svc:8429",
+			"VMSingle/monitoring/db/":  "http://vmsingle-b.monitoring.svc:8429",
 		},
 		want: `url_prefix:
 - http://vmagent-base.monitoring.svc:8429
@@ -740,11 +740,11 @@ password: pass
 			},
 		},
 		objURLs: map[string]string{
-			"VLAgent/monitoring/collector":                "http://vlagent-base.monitoring.svc:9429",
-			"VLSingle/monitoring/db":                      "http://vlsingle-db.monitoring.svc:9428",
-			"VLCluster/vlinsert/monitoring/main-cluster":  "http://vlinsert-main-cluster.monitoring.svc:9401",
-			"VLCluster/vlselect/monitoring/main-cluster":  "http://vlselect-main-cluster.monitoring.svc:9401",
-			"VLCluster/vlstorage/monitoring/main-cluster": "http://vlstorage-main-cluster.monitoring.svc:9401",
+			"VLAgent/monitoring/collector/":                "http://vlagent-base.monitoring.svc:9429",
+			"VLSingle/monitoring/db/":                      "http://vlsingle-db.monitoring.svc:9428",
+			"VLCluster/vlinsert/monitoring/main-cluster/":  "http://vlinsert-main-cluster.monitoring.svc:9401",
+			"VLCluster/vlselect/monitoring/main-cluster/":  "http://vlselect-main-cluster.monitoring.svc:9401",
+			"VLCluster/vlstorage/monitoring/main-cluster/": "http://vlstorage-main-cluster.monitoring.svc:9401",
 		},
 		want: `url_map:
 - url_prefix:
@@ -3347,6 +3347,54 @@ unauthorized_user:
 - url_map:
   - url_prefix:
     - http://vminsert-test-additional-service.default.svc:18480
+    src_paths:
+    - /insert/.*
+  bearer_token: bearer
+`,
+	})
+
+	// VMUser targeting a specific pool's vminsert on a VMCluster where every pool has its own
+	// dedicated insert (the shared top-level vminsert is ambiguous in that case).
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec:       vmv1beta1.VMAuthSpec{SelectAllByDefault: true},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{Name: "pooled", Namespace: "default"},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMSelect: &vmv1beta1.VMSelect{},
+					Pools: []vmv1beta1.VMClusterPool{
+						{Name: "hot", VMInsert: &vmv1beta1.VMInsert{}},
+						{Name: "cold", VMInsert: &vmv1beta1.VMInsert{}},
+					},
+				},
+			},
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{Name: "user-1", Namespace: "default"},
+				Spec: vmv1beta1.VMUserSpec{
+					BearerToken: ptr.To("bearer"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VMCluster/vminsert",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "pooled",
+									Namespace: "default",
+									Pool:      "hot",
+								},
+							},
+							Paths: []string{"/insert/.*"},
+						},
+					},
+				},
+			},
+		},
+		want: `users:
+- url_map:
+  - url_prefix:
+    - http://vminsert-pooled-hot.default.svc:8480
     src_paths:
     - /insert/.*
   bearer_token: bearer

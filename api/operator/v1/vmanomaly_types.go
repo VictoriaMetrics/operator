@@ -483,9 +483,9 @@ func (*VMAnomaly) ProbeNeedLiveness() bool {
 
 // AsURL returns url for http access to the first replica.
 // Returns empty string if spec.server.port is not configured.
-func (cr *VMAnomaly) AsURL(isExtra bool) string {
+func (cr *VMAnomaly) AsURL(isExtra bool) (string, error) {
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), cr.Port(), "http", nil, isExtra)
-	return fmt.Sprintf("http://%s.%s.svc:%s", svcName, cr.Namespace, port)
+	return fmt.Sprintf("http://%s.%s.svc:%s", svcName, cr.Namespace, port), nil
 }
 
 // Validate performs semantic validation for component

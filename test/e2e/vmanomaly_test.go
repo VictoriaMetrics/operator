@@ -42,6 +42,8 @@ models:
   model2:
     class: 'auto'
     tuned_class_name: 'zscore'
+    optimization_params:
+      anomaly_percentage: 0.05
 schedulers:
   scheduler1:
     class: "scheduler.periodic.PeriodicScheduler"

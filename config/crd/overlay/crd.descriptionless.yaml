@@ -29307,6 +29307,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  fetchTimeout:
+                    type: string
                   healthPath:
                     type: string
                   latencyOffset:
@@ -29315,12 +29317,19 @@ spec:
                     type: integer
                   offset:
                     type: string
+                  processingTimeout:
+                    type: string
                   queryFromLastSeenTimestamp:
                     type: boolean
+                  queryLastSeenMaxLookback:
+                    type: string
                   queryRangePath:
                     type: string
                   samplingPeriod:
                     type: string
+                  seriesProcessingBatchSize:
+                    minimum: 1
+                    type: integer
                   tenantID:
                     type: string
                   timeout:

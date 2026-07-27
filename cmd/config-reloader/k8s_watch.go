@@ -169,6 +169,7 @@ func (k *k8sWatcher) start(ctx context.Context, updates chan struct{}) {
 			return fmt.Errorf("cannot write file content to disk: %w", err)
 		}
 		prevContent = newData
+		contentHashes.observe("main", hashBytes(newData))
 		select {
 		case <-time.After(time.Second):
 		case <-ctx.Done():

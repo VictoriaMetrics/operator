@@ -3,6 +3,7 @@ package vmauth
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -26,6 +27,21 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func TestTLSAssetsHash(t *testing.T) {
+	// deterministic regardless of map iteration order
+	a := tlsAssetsHash(map[string][]byte{"ca.crt": []byte("ca"), "tls.crt": []byte("cert")})
+	b := tlsAssetsHash(map[string][]byte{"tls.crt": []byte("cert"), "ca.crt": []byte("ca")})
+	assert.Equal(t, a, b)
+
+	// changing any value changes the hash
+	c := tlsAssetsHash(map[string][]byte{"ca.crt": []byte("ca"), "tls.crt": []byte("rotated")})
+	assert.NotEqual(t, a, c)
+
+	// changing keys changes the hash even with same values
+	d := tlsAssetsHash(map[string][]byte{"ca.crt": []byte("ca")})
+	assert.NotEqual(t, a, d)
+}
+
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAuth
@@ -46,15 +62,17 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		ctx := context.Background()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
-		err := CreateOrUpdate(ctx, o.cr, fclient)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, o.cr, fclient)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// simple-with-httproute

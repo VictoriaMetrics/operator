@@ -9572,7 +9572,6 @@ spec:
                         description: |-
                           ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                           Given secret reference will be added to the application and vm-config-reloader as volume
-                          available since v0.57.0 version
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -18356,7 +18355,6 @@ spec:
                           UseVMConfigReloader replaces prometheus-like config-reloader
                           with vm one. It uses secrets watch instead of file watch
                           which greatly increases speed of config updates
-                          Removed since v0.67.0: this property is ignored and no longer needed
                         type: boolean
                       userNamespaceSelector:
                         description: |-
@@ -20688,6 +20686,12 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      waitForConfigReload:
+                        description: |-
+                          WaitForConfigReload instructs the operator to verify, via the config-reloader
+                          sidecar's own reload-confirmation metric, that every replica has actually reloaded
+                          before marking dependent objects (e.g. VMUser) as applied.
+                        type: boolean
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
@@ -41690,7 +41694,6 @@ spec:
                 description: |-
                   ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                   Given secret reference will be added to the application and vm-config-reloader as volume
-                  available since v0.57.0 version
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -47416,7 +47419,6 @@ spec:
                   UseVMConfigReloader replaces prometheus-like config-reloader
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
-                  Removed since v0.67.0: this property is ignored and no longer needed
                 type: boolean
               vmAgentExternalLabelName:
                 description: |-
@@ -53205,7 +53207,6 @@ spec:
                 description: |-
                   ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                   Given secret reference will be added to the application and vm-config-reloader as volume
-                  available since v0.57.0 version
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -55399,7 +55400,6 @@ spec:
                   UseVMConfigReloader replaces prometheus-like config-reloader
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
-                  Removed since v0.67.0: this property is ignored and no longer needed
                 type: boolean
               volumeMounts:
                 description: |-
@@ -56060,7 +56060,6 @@ spec:
                 description: |-
                   ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                   Given secret reference will be added to the application and vm-config-reloader as volume
-                  available since v0.57.0 version
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -58258,7 +58257,6 @@ spec:
                   UseVMConfigReloader replaces prometheus-like config-reloader
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
-                  Removed since v0.67.0: this property is ignored and no longer needed
                 type: boolean
               volumeMounts:
                 description: |-
@@ -62403,7 +62401,6 @@ spec:
                 description: |-
                   ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                   Given secret reference will be added to the application and vm-config-reloader as volume
-                  available since v0.57.0 version
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -65660,7 +65657,6 @@ spec:
                   UseVMConfigReloader replaces prometheus-like config-reloader
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
-                  Removed since v0.67.0: this property is ignored and no longer needed
                 type: boolean
               userNamespaceSelector:
                 description: |-
@@ -66082,6 +66078,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              waitForConfigReload:
+                description: |-
+                  WaitForConfigReload instructs the operator to verify, via the config-reloader
+                  sidecar's own reload-confirmation metric, that every replica has actually reloaded
+                  before marking dependent objects (e.g. VMUser) as applied.
+                type: boolean
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
@@ -73672,7 +73674,6 @@ spec:
                         description: |-
                           ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                           Given secret reference will be added to the application and vm-config-reloader as volume
-                          available since v0.57.0 version
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -82456,7 +82457,6 @@ spec:
                           UseVMConfigReloader replaces prometheus-like config-reloader
                           with vm one. It uses secrets watch instead of file watch
                           which greatly increases speed of config updates
-                          Removed since v0.67.0: this property is ignored and no longer needed
                         type: boolean
                       userNamespaceSelector:
                         description: |-
@@ -84788,6 +84788,12 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      waitForConfigReload:
+                        description: |-
+                          WaitForConfigReload instructs the operator to verify, via the config-reloader
+                          sidecar's own reload-confirmation metric, that every replica has actually reloaded
+                          before marking dependent objects (e.g. VMUser) as applied.
+                        type: boolean
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
@@ -121819,7 +121825,6 @@ spec:
                 description: |-
                   ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
                   Given secret reference will be added to the application and vm-config-reloader as volume
-                  available since v0.57.0 version
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -125672,7 +125677,6 @@ spec:
                   UseVMConfigReloader replaces prometheus-like config-reloader
                   with vm one. It uses secrets watch instead of file watch
                   which greatly increases speed of config updates
-                  Removed since v0.67.0: this property is ignored and no longer needed
                 type: boolean
               vmAgentExternalLabelName:
                 description: |-

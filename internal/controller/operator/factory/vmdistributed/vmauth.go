@@ -71,5 +71,8 @@ func buildVMAuthLB(cr *vmv1alpha1.VMDistributed, zs *zones, excludeIds ...int) *
 	targetRefs = append(targetRefs, vmBackendTargetRef(zs.backends, kind, paths, &owner, readExcludeIds...))
 
 	vmAuth.Spec.DefaultTargetRefs = targetRefs
+	// Force-enabled regardless of user overrides, so zone rotation only proceeds once vmauth
+	// has actually reloaded its routing config, not just written it to the API server.
+	vmAuth.Spec.WaitForConfigReload = ptr.To(true)
 	return &vmAuth
 }

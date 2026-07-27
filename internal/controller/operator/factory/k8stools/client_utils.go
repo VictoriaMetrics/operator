@@ -93,7 +93,7 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 	if err != nil {
 		return fmt.Errorf("failed to list pod items: %w", err)
 	}
-	updateTime := time.Now().Format("2006-01-02T15-04-05")
+	updateTime := time.Now().Format(time.RFC3339Nano)
 	pt := client.RawPatch(types.MergePatchType,
 		fmt.Appendf(nil, `{"metadata": {"annotations": {"configmap-sync-lastupdate-at": "%s"} } }`, updateTime))
 	for _, pod := range podsToUpdate.Items {

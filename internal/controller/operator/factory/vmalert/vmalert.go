@@ -44,7 +44,11 @@ func buildScrape(cr *vmv1beta1.VMAlert, svc *corev1.Service) *vmv1beta1.VMServic
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMServiceScrape(svc, cr)
+	scrape := build.VMServiceScrape(svc, cr)
+	if cr.HasConfigReloader() {
+		scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
+	}
+	return scrape
 }
 
 // createOrUpdateService creates service for vmalert
@@ -331,7 +335,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
 	var initContainers []corev1.Container
-	if !cr.IsUnmanaged() {
+	if cr.HasConfigReloader() {
 		crc := build.ConfigReloaderContainer(false, cr, crMounts, nil)
 		// rules-out write-side: not in crMounts to avoid --watched-dir causing reload loops.
 		crc.VolumeMounts = append(crc.VolumeMounts, corev1.VolumeMount{
@@ -609,7 +613,7 @@ func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
-		err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner)
+		_, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner)
 		if err != nil {
 			return err
 		}

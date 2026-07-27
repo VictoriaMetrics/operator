@@ -17,6 +17,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.148.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.10.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.10.0) version.
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `networkPolicy` field to all supported CRDs (`VMSingle`, `VMAgent`, `VMAlert`, `VMAlertmanager`, `VMAuth`, `VLSingle`, `VLAgent`, `VTSingle`, `VMAnomaly`, and all cluster sub-components). When set, the operator creates and manages a `NetworkPolicy` resource that restricts ingress/egress to the component's pods. See [#2977](https://github.com/VictoriaMetrics/helm-charts/issues/2977).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): grant the operator's `ClusterRole` permissions on `networking.k8s.io/networkpolicies`. The `networkPolicy` feature above was shipped without this grant, so the operator would fail with a `Forbidden` error creating/updating/deleting `NetworkPolicy` objects on a real cluster.

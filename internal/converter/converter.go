@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -151,26 +152,129 @@ type VMAnomalyWriterValues struct {
 }
 
 type VMAlertServerValues struct {
-	Image              ImageValues                      `yaml:"image" json:"image"`
-	ImagePullSecrets   []corev1.LocalObjectReference    `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
-	ReplicaCount       *int32                           `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
-	ExtraArgs          map[string]interface{}           `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
-	ExtraEnvs          []corev1.EnvVar                  `yaml:"env,omitempty" json:"env,omitempty"`
-	ExtraVolumes       []corev1.Volume                  `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
-	ExtraVolumeMounts  []corev1.VolumeMount             `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
-	Resources          *corev1.ResourceRequirements     `yaml:"resources,omitempty" json:"resources,omitempty"`
-	NodeSelector       map[string]string                `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
-	Tolerations        []corev1.Toleration              `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
-	Affinity           *corev1.Affinity                 `yaml:"affinity,omitempty" json:"affinity,omitempty"`
-	PodAnnotations     map[string]string                `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
-	Labels             map[string]string                `yaml:"labels,omitempty" json:"labels,omitempty"`
-	PodSecurityContext *corev1.PodSecurityContext       `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
-	SecurityContext    *corev1.SecurityContext          `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
-	Notifier           *vmv1beta1.VMAlertNotifierSpec   `yaml:"notifier,omitempty" json:"notifier,omitempty"`
-	Notifiers          []vmv1beta1.VMAlertNotifierSpec  `yaml:"notifiers,omitempty" json:"notifiers,omitempty"`
-	RemoteWrite        *VMAlertRemoteWriteValues        `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
-	RemoteRead         *vmv1beta1.VMAlertRemoteReadSpec `yaml:"remoteRead,omitempty" json:"remoteRead,omitempty"`
-	Datasource         vmv1beta1.VMAlertDatasourceSpec  `yaml:"datasource,omitempty" json:"datasource,omitempty"`
+	Image              ImageValues                   `yaml:"image" json:"image"`
+	ImagePullSecrets   []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ReplicaCount       *int32                        `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	ExtraArgs          map[string]interface{}        `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraEnvs          []corev1.EnvVar               `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes       []corev1.Volume               `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts  []corev1.VolumeMount          `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
+	Resources          *corev1.ResourceRequirements  `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector       map[string]string             `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration           `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity              `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	PodAnnotations     map[string]string             `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	Labels             map[string]string             `yaml:"labels,omitempty" json:"labels,omitempty"`
+	PodSecurityContext *chartPodSecurityContext      `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext    *chartSecurityContext         `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	Notifier           *VMAlertNotifierValues        `yaml:"notifier,omitempty" json:"notifier,omitempty"`
+	Notifiers          []VMAlertNotifierValues       `yaml:"notifiers,omitempty" json:"notifiers,omitempty"`
+	RemoteWrite        *VMAlertRemoteWriteValues     `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
+	RemoteRead         *VMAlertHTTPAuthValues        `yaml:"remoteRead,omitempty" json:"remoteRead,omitempty"`
+	Datasource         VMAlertHTTPAuthValues         `yaml:"datasource,omitempty" json:"datasource,omitempty"`
+	Config             *VMAlertConfigValues          `yaml:"config,omitempty" json:"config,omitempty"`
+}
+
+// VMAlertConfigValues represents vmalert's own native rule config (the chart's
+// `server.config` value). Alerts.Groups reuses RuleGroup directly since its field names
+// already match vmalert's native rule group format.
+type VMAlertConfigValues struct {
+	Alerts struct {
+		Groups []vmv1beta1.RuleGroup `yaml:"groups,omitempty" json:"groups,omitempty"`
+	} `yaml:"alerts,omitempty" json:"alerts,omitempty"`
+}
+
+// chartHTTPAuth mirrors the flat, dotted-key HTTP auth convention victoria-metrics-alert's
+// values.yaml uses for datasource/remoteRead/notifier (e.g. `basicAuth.username`,
+// `bearerToken`), unlike the operator's own nested, Secret-reference-only HTTPAuth.
+type chartHTTPAuth struct {
+	BasicAuthUsername string   `yaml:"basicAuth.username,omitempty" json:"basicAuth.username,omitempty"`
+	BasicAuthPassword string   `yaml:"basicAuth.password,omitempty" json:"basicAuth.password,omitempty"`
+	BearerToken       string   `yaml:"bearerToken,omitempty" json:"bearerToken,omitempty"`
+	BearerTokenFile   string   `yaml:"bearerTokenFile,omitempty" json:"bearerTokenFile,omitempty"`
+	Headers           []string `yaml:"headers,omitempty" json:"headers,omitempty"`
+}
+
+// VMAlertHTTPAuthValues is the chart shape for a single HTTP-auth-bearing URL block
+// (datasource, remoteRead).
+type VMAlertHTTPAuthValues struct {
+	URL           string `yaml:"url,omitempty" json:"url,omitempty"`
+	chartHTTPAuth `yaml:",inline" json:",inline"`
+}
+
+// VMAlertNotifierValues is the chart shape for a notifier entry.
+type VMAlertNotifierValues struct {
+	URL           string `yaml:"url,omitempty" json:"url,omitempty"`
+	chartHTTPAuth `yaml:",inline" json:",inline"`
+}
+
+// chartPodSecurityContext mirrors the chart's `{enabled: bool, ...}` toggle shape for
+// podSecurityContext, distinct from the operator's plain corev1.PodSecurityContext.
+type chartPodSecurityContext struct {
+	Enabled                   bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	corev1.PodSecurityContext `yaml:",inline" json:",inline"`
+}
+
+func (c *chartPodSecurityContext) toCoreV1() *corev1.PodSecurityContext {
+	if c == nil || !c.Enabled {
+		return nil
+	}
+	psc := c.PodSecurityContext
+	return &psc
+}
+
+// chartSecurityContext mirrors the chart's `{enabled: bool, ...}` toggle shape for
+// securityContext, distinct from the operator's plain corev1.SecurityContext.
+type chartSecurityContext struct {
+	Enabled                bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	corev1.SecurityContext `yaml:",inline" json:",inline"`
+}
+
+func (c *chartSecurityContext) toCoreV1() *corev1.SecurityContext {
+	if c == nil || !c.Enabled {
+		return nil
+	}
+	sc := c.SecurityContext
+	return &sc
+}
+
+// convertHTTPAuth converts a chart-shaped HTTP auth block into the operator's HTTPAuth,
+// returning a Secret for any plaintext credential found (nil if none).
+func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth, *corev1.Secret) {
+	var result vmv1beta1.HTTPAuth
+	result.Headers = auth.Headers
+	data := map[string][]byte{}
+	if auth.BasicAuthUsername != "" || auth.BasicAuthPassword != "" {
+		result.BasicAuth = &vmv1beta1.BasicAuth{}
+		if auth.BasicAuthUsername != "" {
+			data["username"] = []byte(auth.BasicAuthUsername)
+			result.BasicAuth.Username = corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: secretName}, Key: "username"}
+		}
+		if auth.BasicAuthPassword != "" {
+			data["password"] = []byte(auth.BasicAuthPassword)
+			result.BasicAuth.Password = corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: secretName}, Key: "password"}
+		}
+	}
+	if auth.BearerToken != "" {
+		data["token"] = []byte(auth.BearerToken)
+		result.BearerAuth = &vmv1beta1.BearerAuth{TokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: secretName}, Key: "token"}}
+	} else if auth.BearerTokenFile != "" {
+		result.BearerAuth = &vmv1beta1.BearerAuth{TokenFilePath: auth.BearerTokenFile}
+	}
+	if len(data) == 0 {
+		return result, nil
+	}
+	return result, &corev1.Secret{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: metav1.ObjectMeta{Name: secretName},
+		Data:       data,
+	}
+}
+
+// dropRuleExtraArg removes "rule" from extraArgs, if present: rule files are handled via a
+// generated VMRule CR and spec.ruleSelector instead of a stringified -rule extraArg.
+func dropRuleExtraArg(extraArgs map[string]interface{}) {
+	delete(extraArgs, "rule")
 }
 
 type GlobalValues struct {
@@ -699,21 +803,10 @@ func Convert(name, namespace string, values any) (any, error) {
 		cr = agent
 
 	case *VMAlertHelmValues:
-		alert := &vmv1beta1.VMAlert{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "operator.victoriametrics.com/v1beta1",
-				Kind:       "VMAlert",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-		}
-		spec, err := convertVMAlertSpec(v)
+		alert, _, err := ConvertVMAlert(name, namespace, v)
 		if err != nil {
 			return nil, err
 		}
-		alert.Spec = *spec
 		cr = alert
 
 	case *VMAnomalyHelmValues:
@@ -1164,8 +1257,41 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 	return spec, nil
 }
 
-func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, error) {
+// vmAlertSecretName returns the deterministic name for a generated auth Secret, so
+// ConvertVMAlertSecrets and convertVMAlertSpec always agree on it. Truncated with a content
+// hash suffix when it would otherwise exceed Kubernetes' name length limit.
+func vmAlertSecretName(crName, field string) string {
+	name := fmt.Sprintf("%s-%s-auth", crName, field)
+	if len(name) <= validation.DNS1123SubdomainMaxLength {
+		return name
+	}
+	suffix := fmt.Sprintf("-%x", sha256.Sum256([]byte(name)))[:9]
+	return name[:validation.DNS1123SubdomainMaxLength-len(suffix)] + suffix
+}
+
+func convertVMAlertNotifiers(crName string, items []VMAlertNotifierValues) ([]vmv1beta1.VMAlertNotifierSpec, []*corev1.Secret) {
+	if items == nil {
+		return nil, nil
+	}
+	result := make([]vmv1beta1.VMAlertNotifierSpec, 0, len(items))
+	var secrets []*corev1.Secret
+	for i, item := range items {
+		auth, secret := convertHTTPAuth(vmAlertSecretName(crName, fmt.Sprintf("notifiers-%d", i)), item.chartHTTPAuth)
+		result = append(result, vmv1beta1.VMAlertNotifierSpec{URL: item.URL, HTTPAuth: auth})
+		if secret != nil {
+			secrets = append(secrets, secret)
+		}
+	}
+	return result, secrets
+}
+
+// convertVMAlertSpec converts Helm values into a VMAlertSpec, returning any Secrets generated
+// for plaintext auth credentials found in datasource/remoteRead/notifier alongside it.
+func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAlertSpec, []*corev1.Secret, error) {
 	spec := &vmv1beta1.VMAlertSpec{}
+	var secrets []*corev1.Secret
+
+	dropRuleExtraArg(values.Server.ExtraArgs)
 
 	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Server.Image,
@@ -1181,11 +1307,11 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 		Affinity:           values.Server.Affinity,
 		PodAnnotations:     values.Server.PodAnnotations,
 		Labels:             values.Server.Labels,
-		PodSecurityContext: values.Server.PodSecurityContext,
-		SecurityContext:    values.Server.SecurityContext,
+		PodSecurityContext: values.Server.PodSecurityContext.toCoreV1(),
+		SecurityContext:    values.Server.SecurityContext.toCoreV1(),
 	}, values.Global)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	spec.ReplicaCount = cfg.ReplicaCount
@@ -1202,17 +1328,41 @@ func convertVMAlertSpec(values *VMAlertHelmValues) (*vmv1beta1.VMAlertSpec, erro
 	spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
-	spec.Notifier = values.Server.Notifier
-	spec.Notifiers = values.Server.Notifiers
-	spec.RemoteWrite = convertVMAlertRemoteWrite(values.Server.RemoteWrite)
-	spec.RemoteRead = values.Server.RemoteRead
-	spec.Datasource = values.Server.Datasource
+
+	if values.Server.Notifier != nil {
+		auth, secret := convertHTTPAuth(vmAlertSecretName(name, "notifier"), values.Server.Notifier.chartHTTPAuth)
+		spec.Notifier = &vmv1beta1.VMAlertNotifierSpec{URL: values.Server.Notifier.URL, HTTPAuth: auth}
+		if secret != nil {
+			secrets = append(secrets, secret)
+		}
+	}
+	notifiers, notifierSecrets := convertVMAlertNotifiers(name, values.Server.Notifiers)
+	spec.Notifiers = notifiers
+	secrets = append(secrets, notifierSecrets...)
+
+	if rw := convertVMAlertRemoteWrite(values.Server.RemoteWrite); rw != nil && rw.URL != "" {
+		spec.RemoteWrite = rw
+	}
+
+	if values.Server.RemoteRead != nil && values.Server.RemoteRead.URL != "" {
+		auth, secret := convertHTTPAuth(vmAlertSecretName(name, "remote-read"), values.Server.RemoteRead.chartHTTPAuth)
+		spec.RemoteRead = &vmv1beta1.VMAlertRemoteReadSpec{URL: values.Server.RemoteRead.URL, HTTPAuth: auth}
+		if secret != nil {
+			secrets = append(secrets, secret)
+		}
+	}
+
+	datasourceAuth, datasourceSecret := convertHTTPAuth(vmAlertSecretName(name, "datasource"), values.Server.Datasource.chartHTTPAuth)
+	spec.Datasource = vmv1beta1.VMAlertDatasourceSpec{URL: values.Server.Datasource.URL, HTTPAuth: datasourceAuth}
+	if datasourceSecret != nil {
+		secrets = append(secrets, datasourceSecret)
+	}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
-	return spec, nil
+	return spec, secrets, nil
 }
 
 func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, error) {
@@ -1655,6 +1805,67 @@ func ConvertVMAuthUsers(vmauthName, namespace string, values *VMAuthHelmValues) 
 		})
 	}
 	return users, nil
+}
+
+// ConvertVMAlert converts Helm values into a VMAlert CR and the Secrets generated for
+// plaintext auth credentials found in it, in a single conversion pass. Convert's own
+// VMAlertHelmValues case wraps this too, so callers that also need the Secrets should call
+// this directly rather than Convert, to avoid running the conversion twice.
+func ConvertVMAlert(name, namespace string, values *VMAlertHelmValues) (*vmv1beta1.VMAlert, []*corev1.Secret, error) {
+	alert := &vmv1beta1.VMAlert{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+			Kind:       "VMAlert",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	spec, secrets, err := convertVMAlertSpec(values, name)
+	if err != nil {
+		return nil, nil, err
+	}
+	alert.Spec = *spec
+	if values.Server.Config != nil && len(values.Server.Config.Alerts.Groups) > 0 {
+		// Default ruleSelector/ruleNamespaceSelector (both nil) select nothing, so the
+		// generated VMRule would never actually get loaded without this.
+		alert.Spec.RuleSelector = &metav1.LabelSelector{MatchLabels: vmAlertRuleSelectorLabels(name)}
+	}
+	for _, s := range secrets {
+		s.Namespace = namespace
+	}
+	return alert, secrets, nil
+}
+
+func vmAlertRuleSelectorLabels(vmalertName string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/managed-by": "helm-converter",
+		"app.kubernetes.io/instance":   vmalertName,
+	}
+}
+
+// ConvertVMAlertRules converts a victoria-metrics-alert chart's server.config.alerts.groups
+// into a standalone VMRule CR, selected by the generated VMAlert via spec.ruleSelector rather
+// than mounting a rule file directly.
+func ConvertVMAlertRules(vmalertName, namespace string, values *VMAlertHelmValues) (*vmv1beta1.VMRule, error) {
+	if values.Server.Config == nil || len(values.Server.Config.Alerts.Groups) == 0 {
+		return nil, nil
+	}
+	return &vmv1beta1.VMRule{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+			Kind:       "VMRule",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      vmalertName,
+			Namespace: namespace,
+			Labels:    vmAlertRuleSelectorLabels(vmalertName),
+		},
+		Spec: vmv1beta1.VMRuleSpec{
+			Groups: values.Server.Config.Alerts.Groups,
+		},
+	}, nil
 }
 
 // convertVMAuthConfigUserTargetRefs builds TargetRefs from a config user's url_prefix/

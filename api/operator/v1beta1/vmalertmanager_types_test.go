@@ -74,3 +74,22 @@ func TestVMAlertmanager_PrefixedName(t *testing.T) {
 	f("myapp", false, "vmalertmanager-myapp")
 	f("myapp", true, "myapp")
 }
+
+// TestVMAlertmanager_IsUnmanaged is the VMAlertmanager counterpart of TestVMAlert_IsUnmanaged.
+func TestVMAlertmanager_IsUnmanaged(t *testing.T) {
+	f := func(cr VMAlertmanager, want bool) {
+		t.Helper()
+		assert.Equal(t, want, cr.IsUnmanaged())
+	}
+
+	f(VMAlertmanager{Spec: VMAlertmanagerSpec{SelectAllByDefault: true}}, false)
+	f(VMAlertmanager{}, true)
+	f(VMAlertmanager{
+		Status: VMAlertmanagerStatus{ParsingSpecError: `json: unknown field "foo"`},
+		Spec:   VMAlertmanagerSpec{SelectAllByDefault: true},
+	}, false)
+	f(VMAlertmanager{
+		Status: VMAlertmanagerStatus{ParsingSpecError: "some other unrelated parse failure"},
+		Spec:   VMAlertmanagerSpec{SelectAllByDefault: true},
+	}, true)
+}

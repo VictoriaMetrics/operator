@@ -772,7 +772,7 @@ func (cr *VMAuth) IsOwnsServiceAccount() bool {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAuth) IsUnmanaged() bool {
-	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+	if !cr.DeletionTimestamp.IsZero() || (cr.Status.ParsingSpecError != "" && !HasUnknownFields(cr.Status.ParsingSpecError)) {
 		return true
 	}
 	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) ||

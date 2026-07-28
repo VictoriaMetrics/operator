@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -324,16 +325,59 @@ func AppendArgsForInsertPorts(args []string, ip *vmv1beta1.InsertPorts) []string
 	return args
 }
 
-var (
-	configReloaderDefaultPort    = 8435
-	configReloaderContainerProbe = corev1.ProbeHandler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Path:   "/health",
-			Scheme: "HTTP",
-			Port:   intstr.FromInt(configReloaderDefaultPort),
+const (
+	// ConfigReloaderDefaultPort is the config-reloader container's fixed HTTP listen port,
+	// exposing its own /health and /metrics endpoints.
+	ConfigReloaderDefaultPort = 8435
+	// ConfigReloaderPortName is the container/service port name for ConfigReloaderDefaultPort.
+	ConfigReloaderPortName = "reloader-http"
+)
+
+var configReloaderContainerProbe = corev1.ProbeHandler{
+	HTTPGet: &corev1.HTTPGetAction{
+		Path:   "/health",
+		Scheme: "HTTP",
+		Port:   intstr.FromInt(ConfigReloaderDefaultPort),
+	},
+}
+
+func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
+	return vmv1beta1.EndpointRelabelings{
+		RelabelConfigs: []*vmv1beta1.RelabelConfig{
+			{
+				SourceLabels: []string{"job"},
+				TargetLabel:  "job",
+				Regex:        vmv1beta1.StringOrArray{"(.+)"},
+				Replacement:  ptr.To("${1}-" + ConfigReloaderPortName),
+			},
 		},
 	}
-)
+}
+
+// ConfigReloaderVMServiceScrapeEndpoint returns a VMServiceScrape endpoint that scrapes the
+// config-reloader sidecar directly by its container port (via TargetPort, resolved from the
+// pod's actual EndpointSlice ports), without requiring a matching named ServicePort.
+func ConfigReloaderVMServiceScrapeEndpoint() vmv1beta1.Endpoint {
+	return vmv1beta1.Endpoint{
+		TargetPort:          ptr.To(intstr.FromInt32(ConfigReloaderDefaultPort)),
+		EndpointRelabelings: configReloaderJobRelabeling(),
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metrics",
+		},
+	}
+}
+
+// ConfigReloaderPodScrapeEndpoint returns a VMPodScrape endpoint that scrapes the
+// config-reloader sidecar directly by its container port number.
+func ConfigReloaderPodScrapeEndpoint() vmv1beta1.PodMetricsEndpoint {
+	return vmv1beta1.PodMetricsEndpoint{
+		PortNumber:          ptr.To(int32(ConfigReloaderDefaultPort)),
+		EndpointRelabelings: configReloaderJobRelabeling(),
+		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+			Path: "/metrics",
+		},
+	}
+}
 
 type reloadable interface {
 	GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams
@@ -419,8 +463,8 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 // exposes reloader-http port for container
 func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{
-		ContainerPort: int32(configReloaderDefaultPort),
-		Name:          "reloader-http",
+		ContainerPort: int32(ConfigReloaderDefaultPort),
+		Name:          ConfigReloaderPortName,
 		Protocol:      "TCP",
 	})
 	crContainer.LivenessProbe = &corev1.Probe{

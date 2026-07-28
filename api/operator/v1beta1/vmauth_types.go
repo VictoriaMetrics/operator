@@ -131,6 +131,13 @@ type VMAuthSpec struct {
 	// +notes={available_from: "v0.73.0"}
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty" yaml:"useLegacyNaming,omitempty"`
 
+	// WaitForConfigReload instructs the operator to verify, via the config-reloader
+	// sidecar's own reload-confirmation metric, that every replica has actually reloaded
+	// before marking dependent objects (e.g. VMUser) as applied.
+	// +optional
+	// +notes={available_from: "v0.74.0"}
+	WaitForConfigReload *bool `json:"waitForConfigReload,omitempty"`
+
 	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
 	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
@@ -775,16 +782,27 @@ func (cr *VMAuth) IsUnmanaged() bool {
 
 // GetReloadURL implements reloadable interface
 func (cr *VMAuth) GetReloadURL(host string) string {
-	port := cr.Spec.Port
+	return BuildLocalURL(reloadAuthKeyFlag, host, cr.metricsPort(), reloadPath, cr.Spec.ExtraArgs)
+}
+
+// metricsPort returns the port vmauth serves /metrics (and other internal
+// routes) on: the internal port if configured, else the main port.
+func (cr *VMAuth) metricsPort() string {
 	if len(cr.Spec.InternalListenPort) > 0 {
-		port = cr.Spec.InternalListenPort
+		return cr.Spec.InternalListenPort
 	}
-	return BuildLocalURL(reloadAuthKeyFlag, host, port, reloadPath, cr.Spec.ExtraArgs)
+	return cr.Spec.Port
 }
 
 // GetReloaderParams implements reloadable interface
 func (cr *VMAuth) GetReloaderParams() *CommonConfigReloaderParams {
 	return &cr.Spec.CommonConfigReloaderParams
+}
+
+// HasConfigReloader reports whether vmauth's pod spec includes a config-reloader sidecar -
+// only true when the operator itself owns and writes the auth config (no SecretRef/LocalPath).
+func (cr *VMAuth) HasConfigReloader() bool {
+	return cr.Spec.SecretRef == nil && cr.Spec.LocalPath == ""
 }
 
 // UseProxyProtocol implements build.probeCRD interface

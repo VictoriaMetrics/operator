@@ -3,6 +3,7 @@ package vmsingle
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -44,10 +45,12 @@ func TestCreateOrUpdate(t *testing.T) {
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
 		ctx := context.TODO()
-		assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, o.cr, fclient))
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// base-vmsingle-gen

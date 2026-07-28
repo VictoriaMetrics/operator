@@ -533,6 +533,11 @@ func (cr *VMAlert) IsUnmanaged() bool {
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil
 }
 
+// HasConfigReloader reports whether vmalert's pod spec includes a config-reloader sidecar.
+func (cr *VMAlert) HasConfigReloader() bool {
+	return !cr.IsUnmanaged()
+}
+
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
 func (cr *VMAlert) LastSpecUpdated() bool {
 	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)

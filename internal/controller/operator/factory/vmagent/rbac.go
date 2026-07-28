@@ -38,7 +38,7 @@ func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 // It includes a scoped secrets rule for the config-reloader plus the SD discovery rules.
 func getSingleNamespaceRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 	ingestOnly := ptr.Deref(cr.Spec.IngestOnlyMode, false)
-	if ingestOnly && !hasRemoteWriteSecrets(cr) {
+	if ingestOnly && !cr.HasRemoteWriteSecrets() {
 		return nil
 	}
 	secretsRule := rbacv1.PolicyRule{

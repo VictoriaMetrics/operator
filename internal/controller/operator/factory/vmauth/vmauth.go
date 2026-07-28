@@ -3,10 +3,12 @@ package vmauth
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"maps"
 	"path"
 	"sort"
 
+	"github.com/cespare/xxhash/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -428,6 +430,8 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	creds := ac.GetOutput()
 	if secret, ok := creds[build.TLSAssetsResourceKind]; ok {
 		maps.Copy(s.Data, secret.Data)
+		// forces vmauth's byte-comparison reload check to notice TLS cert/key rotations too
+		generatedConfig = append(fmt.Appendf(nil, "# tls-assets-hash: %x\n", tlsAssetsHash(secret.Data)), generatedConfig...)
 	}
 
 	data, err := build.GzipConfig(generatedConfig)
@@ -440,8 +444,14 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
 	}
 	owner := cr.AsOwner()
-	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta, &owner); err != nil {
+	changed, err := reconcile.Secret(ctx, rclient, s, prevSecretMeta, &owner)
+	if err != nil {
 		return err
+	}
+	if changed && ptr.Deref(cr.Spec.WaitForConfigReload, false) {
+		if err := reconcile.WaitForConfigReloadHash(ctx, rclient, cr, crc32.ChecksumIEEE(data)); err != nil {
+			return err
+		}
 	}
 	pos.users.UpdateMetrics(ctx)
 
@@ -455,6 +465,22 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		return fmt.Errorf("cannot update statuses for vmusers: %w", err)
 	}
 	return nil
+}
+
+func tlsAssetsHash(data map[string][]byte) uint64 {
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	h := xxhash.New()
+	for _, k := range keys {
+		h.Write([]byte(k)) //nolint:errcheck
+		h.Write([]byte{0}) //nolint:errcheck
+		h.Write(data[k])   //nolint:errcheck
+		h.Write([]byte{0}) //nolint:errcheck
+	}
+	return h.Sum64()
 }
 
 func buildConfigSecretMeta(cr *vmv1beta1.VMAuth) metav1.ObjectMeta {
@@ -685,15 +711,17 @@ func buildScrape(cr *vmv1beta1.VMAuth, svc *corev1.Service) *vmv1beta1.VMService
 		return nil
 	}
 	b := build.VMServiceScrape(svc, cr)
-	if len(cr.Spec.InternalListenPort) == 0 {
-		return b
-	}
-	for idx := range b.Spec.Endpoints {
-		ep := &b.Spec.Endpoints[idx]
-		if ep.Port == "http" {
-			ep.Port = internalPortName
-			break
+	if len(cr.Spec.InternalListenPort) > 0 {
+		for idx := range b.Spec.Endpoints {
+			ep := &b.Spec.Endpoints[idx]
+			if ep.Port == "http" {
+				ep.Port = internalPortName
+				break
+			}
 		}
+	}
+	if cr.HasConfigReloader() {
+		b.Spec.Endpoints = append(b.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
 	}
 	return b
 }

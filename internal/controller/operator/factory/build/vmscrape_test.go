@@ -308,6 +308,60 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 		},
 	})
 
+	// with a custom http.pathPrefix: the primary port uses it, but an additional (sidecar)
+	// port always scrapes the literal /metrics path, since sidecars like config-reloader
+	// are unaffected by the app's own path prefix
+	f(opts{
+		filterPortNames: []string{"reloader-http"},
+		service: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vmagent-svc",
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Name: "http"},
+					{Name: "reloader-http"},
+				},
+			},
+		},
+		spec: testScrapeObject{
+			extraArgs: map[string]string{"http.pathPrefix": "/prefix"},
+		},
+		wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
+			Endpoints: []vmv1beta1.Endpoint{
+				{
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: vmAppRelabel,
+					},
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/prefix/metrics",
+					},
+					Port: "http",
+				},
+				{
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metrics",
+					},
+					Port: "reloader-http",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{
+							SourceLabels: []string{"job"},
+							TargetLabel:  "job",
+							Regex:        vmv1beta1.StringOrArray{"(.+)"},
+							Replacement:  ptr.To("${1}-reloader-http"),
+						}, victoriaMetricsAppRelabelConfig()},
+					},
+				},
+			},
+			Selector: metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      vmv1beta1.AdditionalServiceLabel,
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			},
+		},
+	})
+
 	// with authKey and tls
 	f(opts{
 		service: &corev1.Service{
@@ -401,6 +455,28 @@ func TestVMPodScrapeAddsVictoriaMetricsAppLabel(t *testing.T) {
 	for i := range podScrape.Spec.PodMetricsEndpoints {
 		assert.Contains(t, podScrape.Spec.PodMetricsEndpoints[i].RelabelConfigs, victoriaMetricsAppRelabelConfig())
 	}
+}
+
+func TestVMPodScrapeAdditionalPorts(t *testing.T) {
+	spec := testScrapeObject{extraArgs: map[string]string{"http.pathPrefix": "/prefix"}}
+
+	scrape := VMPodScrape(&spec, "http", "reloader-http")
+
+	assert.Len(t, scrape.Spec.PodMetricsEndpoints, 2)
+	primary := scrape.Spec.PodMetricsEndpoints[0]
+	assert.Equal(t, "http", *primary.Port)
+	assert.Equal(t, "/prefix/metrics", primary.Path)
+
+	extra := scrape.Spec.PodMetricsEndpoints[1]
+	assert.Equal(t, "reloader-http", *extra.Port)
+	// sidecar ports always scrape the literal /metrics path, unaffected by http.pathPrefix
+	assert.Equal(t, "/metrics", extra.Path)
+	assert.Contains(t, extra.RelabelConfigs, &vmv1beta1.RelabelConfig{
+		SourceLabels: []string{"job"},
+		TargetLabel:  "job",
+		Regex:        vmv1beta1.StringOrArray{"(.+)"},
+		Replacement:  ptr.To("${1}-reloader-http"),
+	})
 }
 
 func TestVMServiceScrapeObjectsAddVictoriaMetricsAppLabel(t *testing.T) {

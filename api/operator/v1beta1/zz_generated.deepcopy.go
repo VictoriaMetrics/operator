@@ -5903,6 +5903,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.ExternalConfig.DeepCopyInto(&out.ExternalConfig)
+	if in.WaitForConfigReload != nil {
+		in, out := &in.WaitForConfigReload, &out.WaitForConfigReload
+		*out = new(bool)
+		**out = **in
+	}
 	in.CommonConfigReloaderParams.DeepCopyInto(&out.CommonConfigReloaderParams)
 	in.CommonAppsParams.DeepCopyInto(&out.CommonAppsParams)
 	if in.UpdateStrategy != nil {

@@ -10003,6 +10003,8 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      waitForConfigReload:
+                        type: boolean
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
@@ -29307,6 +29309,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  fetchTimeout:
+                    type: string
                   healthPath:
                     type: string
                   latencyOffset:
@@ -29315,12 +29319,19 @@ spec:
                     type: integer
                   offset:
                     type: string
+                  processingTimeout:
+                    type: string
                   queryFromLastSeenTimestamp:
                     type: boolean
+                  queryLastSeenMaxLookback:
+                    type: string
                   queryRangePath:
                     type: string
                   samplingPeriod:
                     type: string
+                  seriesProcessingBatchSize:
+                    minimum: 1
+                    type: integer
                   tenantID:
                     type: string
                   timeout:
@@ -32136,6 +32147,8 @@ spec:
                         type: string
                     type: object
                 type: object
+              waitForConfigReload:
+                type: boolean
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
@@ -41143,6 +41156,8 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      waitForConfigReload:
+                        type: boolean
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object

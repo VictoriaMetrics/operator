@@ -37,8 +37,8 @@ var (
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION":  "v1.148.0",
 		"VM_LOGS_VERSION":     "v1.52.0",
-		"VM_ANOMALY_VERSION":  "v1.29.7",
-		"VM_TRACES_VERSION":   "v0.9.4",
+		"VM_ANOMALY_VERSION":  "v1.30.0",
+		"VM_TRACES_VERSION":   "v0.10.0",
 		"VM_OPERATOR_VERSION": getVersion("v0.73.1"),
 	}
 )
@@ -120,6 +120,8 @@ type BaseOperatorConf struct {
 	// Enables support for VerticalPodAutoscaler API.
 	// When enabled, operator can create and manage VPA objects for VM components.
 	VPAAPIEnabled bool `default:"false" env:"VM_VPA_API_ENABLED"`
+	// Enables validation webhooks for prometheus-operator CRDs.
+	PromCRValidationEnabled bool `default:"false" env:"VM_PROMCR_VALIDATION_ENABLED"`
 
 	// Defines a list of namespaces to be watched by operator.
 	// Operator don't perform any cluster wide API calls if namespaces not empty.

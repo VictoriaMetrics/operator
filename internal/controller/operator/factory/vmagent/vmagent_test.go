@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -49,15 +50,17 @@ func TestCreateOrUpdate(t *testing.T) {
 		}
 		build.AddDefaults(fclient.Scheme())
 		fclient.Scheme().Default(o.cr)
-		err := CreateOrUpdate(ctx, o.cr, fclient)
-		if o.wantErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
-		if o.validate != nil {
-			o.validate(ctx, fclient, o.cr)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			err := CreateOrUpdate(ctx, o.cr, fclient)
+			if o.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			if o.validate != nil {
+				o.validate(ctx, fclient, o.cr)
+			}
+		})
 	}
 
 	// generate vmagent statefulset with storage
@@ -2031,6 +2034,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 		validate: func(svc *corev1.Service) {
 			assert.Equal(t, "vmagent-base", svc.Name)
+			// http + influx-tcp + influx-udp
 			assert.Len(t, svc.Spec.Ports, 3)
 
 			assert.Equal(t, map[string]string{
@@ -2087,6 +2091,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 		validate: func(svc *corev1.Service) {
 			assert.Equal(t, "vmagent-base", svc.Name)
+			// http + influx-tcp + influx-udp
 			assert.Len(t, svc.Spec.Ports, 3)
 
 			assert.Equal(t, map[string]string{
@@ -2105,6 +2110,42 @@ func TestCreateOrUpdateService(t *testing.T) {
 	})
 }
 
+func TestBuildVMAgentServiceScrapeConfigReloaderPort(t *testing.T) {
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmagent-base"},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{Name: "http"},
+			},
+		},
+	}
+
+	hasReloaderEndpoint := func(scrape *vmv1beta1.VMServiceScrape) bool {
+		for _, ep := range scrape.Spec.Endpoints {
+			if ep.TargetPort != nil && ep.TargetPort.IntValue() == build.ConfigReloaderDefaultPort {
+				return true
+			}
+		}
+		return false
+	}
+
+	// config-reloader present (default: not ingest-only): scrape includes its endpoint
+	withReloader := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"}}
+	scrape := buildVMAgentServiceScrape(withReloader, svc)
+	assert.True(t, hasReloaderEndpoint(scrape))
+
+	// ingest-only mode with no relabel/streamAggr/remoteWrite secrets: no config-reloader,
+	// so the scrape must not reference its endpoint
+	withoutReloader := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{IngestOnlyMode: ptr.To(true)},
+		},
+	}
+	scrape = buildVMAgentServiceScrape(withoutReloader, svc)
+	assert.False(t, hasReloaderEndpoint(scrape))
+}
+
 func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent
@@ -2116,7 +2157,8 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		assert.NoError(t, createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac))
+		err := createOrUpdateRelabelConfigsAssets(ctx, cl, o.cr, nil, ac)
+		assert.NoError(t, err)
 		var createdCM corev1.ConfigMap
 		assert.NoError(t, cl.Get(ctx, types.NamespacedName{
 			Namespace: o.cr.Namespace,
@@ -2216,7 +2258,8 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ctx := context.TODO()
 		ac := build.NewAssetsCache(ctx, cl, nil)
-		assert.NoError(t, createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac))
+		err := createOrUpdateStreamAggrConfig(ctx, cl, o.cr, nil, ac)
+		assert.NoError(t, err)
 		var createdCM corev1.ConfigMap
 		assert.NoError(t, cl.Get(ctx,
 			types.NamespacedName{
@@ -2392,6 +2435,52 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 			assert.Equal(t, wantGlobal, data)
 		},
 	})
+}
+
+func TestCreateOrUpdateStreamAggrConfigRemovesStaleManagedLabel(t *testing.T) {
+	newCR := func(managedLabels map[string]string) *vmv1beta1.VMAgent {
+		return &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vmagent",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
+					Labels: managedLabels,
+				},
+				RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+					{
+						URL: "localhost:8429",
+						StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+							Rules: []vmv1beta1.StreamAggrRule{{
+								Interval: "1m",
+								Outputs:  []string{"total"},
+							}},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	ctx := context.TODO()
+	cl := k8stools.GetTestClientWithObjects(nil)
+	ac := build.NewAssetsCache(ctx, cl, nil)
+
+	prevCR := newCR(map[string]string{"stale-label": "should-be-removed"})
+	err := createOrUpdateStreamAggrConfig(ctx, cl, prevCR, nil, ac)
+	assert.NoError(t, err)
+
+	var cm corev1.ConfigMap
+	nsn := types.NamespacedName{Namespace: prevCR.Namespace, Name: build.ResourceName(build.StreamAggrConfigResourceKind, prevCR)}
+	assert.NoError(t, cl.Get(ctx, nsn, &cm))
+	assert.Contains(t, cm.Labels, "stale-label")
+
+	cr := newCR(nil)
+	err = createOrUpdateStreamAggrConfig(ctx, cl, cr, prevCR, ac)
+	assert.NoError(t, err)
+	assert.NoError(t, cl.Get(ctx, nsn, &cm))
+	assert.NotContains(t, cm.Labels, "stale-label")
 }
 
 func TestMakeSpecForAgentOk(t *testing.T) {

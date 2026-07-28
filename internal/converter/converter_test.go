@@ -3,6 +3,7 @@ package converter
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 	k8syaml "sigs.k8s.io/yaml"
 
@@ -574,7 +576,7 @@ func TestConvertVMAlert(t *testing.T) {
 					Repository: "victoriametrics/vmalert",
 					Tag:        "v1.93.0",
 				},
-				Notifier: &vmv1beta1.VMAlertNotifierSpec{
+				Notifier: &VMAlertNotifierValues{
 					URL: "http://vmalertmanager:9093",
 				},
 			},
@@ -632,6 +634,270 @@ func TestConvertVMAlert(t *testing.T) {
 			return cr
 		},
 	)
+
+	// extraArgs.rule (the chart's default -rule flag, pointing at a file the chart itself
+	// mounts) is dropped rather than passed through as a broken stringified extraArg: rule
+	// content instead comes from config.alerts.groups via a generated VMRule. See issue #2398.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				ExtraArgs: map[string]interface{}{
+					"rule":           []interface{}{"/config/alert-rules.yaml"},
+					"envflag.enable": true,
+				},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			cr := &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.ExtraArgs = map[string]string{"envflag.enable": "true"}
+			return cr
+		},
+	)
+
+	// remoteRead/remoteWrite with an empty url (the chart's default `{}` stub) must not
+	// produce a dangling empty-URL spec. See issue #2398.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				RemoteRead:  &VMAlertHTTPAuthValues{},
+				RemoteWrite: &VMAlertRemoteWriteValues{},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			return &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+		},
+	)
+
+	// podSecurityContext/securityContext use the chart's {enabled, ...} toggle shape; disabled
+	// must not produce an empty-but-non-nil context. See issue #2398.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				PodSecurityContext: &chartPodSecurityContext{Enabled: false},
+				SecurityContext:    &chartSecurityContext{Enabled: false},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			return &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+		},
+	)
+
+	// enabled: true carries the rest of the chart's securityContext fields through.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				SecurityContext: &chartSecurityContext{
+					Enabled:         true,
+					SecurityContext: corev1.SecurityContext{ReadOnlyRootFilesystem: ptr.To(true)},
+				},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			cr := &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.SecurityContext = &vmv1beta1.SecurityContext{
+				ContainerSecurityContext: &vmv1beta1.ContainerSecurityContext{
+					ReadOnlyRootFilesystem: ptr.To(true),
+				},
+			}
+			return cr
+		},
+	)
+
+	// datasource bearer token is a plaintext value in the chart, but the operator only accepts
+	// a Secret reference; converting must reference a Secret rather than dropping it. See
+	// issue #2398.
+	f(
+		&VMAlertHelmValues{
+			Server: VMAlertServerValues{
+				Datasource: VMAlertHTTPAuthValues{
+					URL: "http://vmselect:8481",
+					chartHTTPAuth: chartHTTPAuth{
+						BearerToken: "s3cr3t",
+					},
+				},
+			},
+		},
+		func() *vmv1beta1.VMAlert {
+			cr := &vmv1beta1.VMAlert{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1beta1",
+					Kind:       "VMAlert",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-alert",
+					Namespace: "test-ns",
+				},
+			}
+			cr.Spec.Datasource = vmv1beta1.VMAlertDatasourceSpec{
+				URL: "http://vmselect:8481",
+				HTTPAuth: vmv1beta1.HTTPAuth{
+					BearerAuth: &vmv1beta1.BearerAuth{
+						TokenSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "test-alert-datasource-auth"},
+							Key:                  "token",
+						},
+					},
+				},
+			}
+			return cr
+		},
+	)
+}
+
+func TestConvertVMAlertSecrets(t *testing.T) {
+	values := &VMAlertHelmValues{
+		Server: VMAlertServerValues{
+			Datasource: VMAlertHTTPAuthValues{
+				URL:           "http://vmselect:8481",
+				chartHTTPAuth: chartHTTPAuth{BearerToken: "datasource-token"},
+			},
+			RemoteRead: &VMAlertHTTPAuthValues{
+				URL:           "http://vmselect:8481/prometheus",
+				chartHTTPAuth: chartHTTPAuth{BasicAuthUsername: "ro-user", BasicAuthPassword: "ro-pass"},
+			},
+			// singular Notifier and the first Notifiers entry both carry credentials, and must
+			// not collide on the same generated Secret name.
+			Notifier: &VMAlertNotifierValues{
+				URL:           "http://vmalertmanager:9093",
+				chartHTTPAuth: chartHTTPAuth{BearerToken: "notifier-token"},
+			},
+			Notifiers: []VMAlertNotifierValues{
+				{
+					URL:           "http://vmalertmanager-2:9093",
+					chartHTTPAuth: chartHTTPAuth{BearerToken: "notifiers-0-token"},
+				},
+			},
+		},
+	}
+
+	_, secrets, err := ConvertVMAlert("test-alert", "test-ns", values)
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 4)
+
+	byName := make(map[string]*corev1.Secret, len(secrets))
+	for _, s := range secrets {
+		assert.Equal(t, "test-ns", s.Namespace)
+		byName[s.Name] = s
+	}
+
+	assert.Equal(t, []byte("datasource-token"), byName["test-alert-datasource-auth"].Data["token"])
+	assert.Equal(t, []byte("ro-user"), byName["test-alert-remote-read-auth"].Data["username"])
+	assert.Equal(t, []byte("ro-pass"), byName["test-alert-remote-read-auth"].Data["password"])
+	assert.Equal(t, []byte("notifier-token"), byName["test-alert-notifier-auth"].Data["token"])
+	assert.Equal(t, []byte("notifiers-0-token"), byName["test-alert-notifiers-0-auth"].Data["token"])
+}
+
+func TestVMAlertSecretName_LongNameTruncated(t *testing.T) {
+	longName := strings.Repeat("a", 300)
+	got := vmAlertSecretName(longName, "datasource")
+	assert.LessOrEqual(t, len(got), validation.DNS1123SubdomainMaxLength)
+	// must stay unique across different fields even after truncation.
+	assert.NotEqual(t, got, vmAlertSecretName(longName, "remote-read"))
+}
+
+func TestConvertVMAlertRules(t *testing.T) {
+	// no config.alerts.groups: no VMRule generated, no ruleSelector set.
+	values := &VMAlertHelmValues{}
+	rule, err := ConvertVMAlertRules("test-alert", "test-ns", values)
+	assert.NoError(t, err)
+	assert.Nil(t, rule)
+
+	cr, err := Convert("test-alert", "test-ns", values)
+	assert.NoError(t, err)
+	assert.Nil(t, cr.(*vmv1beta1.VMAlert).Spec.RuleSelector)
+
+	// config.alerts.groups converts to a standalone VMRule, selected via spec.ruleSelector
+	// rather than mounting a rule file directly. See issue #2398.
+	values = &VMAlertHelmValues{
+		Server: VMAlertServerValues{
+			Config: &VMAlertConfigValues{
+				Alerts: struct {
+					Groups []vmv1beta1.RuleGroup `yaml:"groups,omitempty" json:"groups,omitempty"`
+				}{
+					Groups: []vmv1beta1.RuleGroup{
+						{
+							Name: "example",
+							Rules: []vmv1beta1.Rule{
+								{Alert: "ExampleAlert", Expr: "up == 0"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	rule, err = ConvertVMAlertRules("test-alert", "test-ns", values)
+	assert.NoError(t, err)
+	assert.Equal(t, &vmv1beta1.VMRule{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+			Kind:       "VMRule",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-alert",
+			Namespace: "test-ns",
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "helm-converter",
+				"app.kubernetes.io/instance":   "test-alert",
+			},
+		},
+		Spec: vmv1beta1.VMRuleSpec{
+			Groups: []vmv1beta1.RuleGroup{
+				{
+					Name: "example",
+					Rules: []vmv1beta1.Rule{
+						{Alert: "ExampleAlert", Expr: "up == 0"},
+					},
+				},
+			},
+		},
+	}, rule)
+
+	cr, err = Convert("test-alert", "test-ns", values)
+	assert.NoError(t, err)
+	assert.Equal(t, &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"app.kubernetes.io/managed-by": "helm-converter",
+			"app.kubernetes.io/instance":   "test-alert",
+		},
+	}, cr.(*vmv1beta1.VMAlert).Spec.RuleSelector)
 }
 
 func TestConvertVMAnomaly(t *testing.T) {

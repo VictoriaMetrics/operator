@@ -228,3 +228,22 @@ func TestVMSingle_PrefixedName(t *testing.T) {
 	// useLegacyNaming — CR name used as-is
 	f("myapp", true, "myapp")
 }
+
+// TestVMSingle_IsUnmanaged is the VMSingle counterpart of TestVMAlert_IsUnmanaged.
+func TestVMSingle_IsUnmanaged(t *testing.T) {
+	f := func(cr VMSingle, want bool) {
+		t.Helper()
+		assert.Equal(t, want, cr.IsUnmanaged(nil))
+	}
+
+	f(VMSingle{Spec: VMSingleSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}}}, false)
+	f(VMSingle{}, true)
+	f(VMSingle{
+		Status: VMSingleStatus{ParsingSpecError: `json: unknown field "foo"`},
+		Spec:   VMSingleSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
+	}, false)
+	f(VMSingle{
+		Status: VMSingleStatus{ParsingSpecError: "some other unrelated parse failure"},
+		Spec:   VMSingleSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
+	}, true)
+}

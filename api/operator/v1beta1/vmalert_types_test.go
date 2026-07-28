@@ -121,3 +121,25 @@ func TestVMAlert_PrefixedName(t *testing.T) {
 	f("myapp", false, "vmalert-myapp")
 	f("myapp", true, "myapp")
 }
+
+// TestVMAlert_IsUnmanaged: an unknown-fields-only ParsingSpecError (the operator's
+// strict-unmarshal warning that every other ParsingSpecError check in the codebase treats
+// as non-fatal) must not make an otherwise fully-configured VMAlert unmanaged, or rule
+// selection silently never runs.
+func TestVMAlert_IsUnmanaged(t *testing.T) {
+	f := func(cr VMAlert, want bool) {
+		t.Helper()
+		assert.Equal(t, want, cr.IsUnmanaged())
+	}
+
+	f(VMAlert{Spec: VMAlertSpec{SelectAllByDefault: true}}, false)
+	f(VMAlert{}, true)
+	f(VMAlert{
+		Status: VMAlertStatus{ParsingSpecError: `json: unknown field "foo"`},
+		Spec:   VMAlertSpec{SelectAllByDefault: true},
+	}, false)
+	f(VMAlert{
+		Status: VMAlertStatus{ParsingSpecError: "some other unrelated parse failure"},
+		Spec:   VMAlertSpec{SelectAllByDefault: true},
+	}, true)
+}

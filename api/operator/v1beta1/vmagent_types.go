@@ -644,7 +644,7 @@ func (cr *VMAgent) ScrapeSelectors(scrape client.Object) (*metav1.LabelSelector,
 
 // IsUnmanaged checks if object should managed any config objects
 func (cr *VMAgent) IsUnmanaged(scrape client.Object) bool {
-	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+	if !cr.DeletionTimestamp.IsZero() || (cr.Status.ParsingSpecError != "" && !HasUnknownFields(cr.Status.ParsingSpecError)) {
 		return true
 	}
 	if scrape == nil {

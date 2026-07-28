@@ -141,3 +141,22 @@ func TestVMAuth_PrefixedName(t *testing.T) {
 	f("myapp", false, "vmauth-myapp")
 	f("myapp", true, "myapp")
 }
+
+// TestVMAuth_IsUnmanaged is the VMAuth counterpart of TestVMAlert_IsUnmanaged.
+func TestVMAuth_IsUnmanaged(t *testing.T) {
+	f := func(cr VMAuth, want bool) {
+		t.Helper()
+		assert.Equal(t, want, cr.IsUnmanaged())
+	}
+
+	f(VMAuth{Spec: VMAuthSpec{SelectAllByDefault: true}}, false)
+	f(VMAuth{}, true)
+	f(VMAuth{
+		Status: VMAuthStatus{ParsingSpecError: `json: unknown field "foo"`},
+		Spec:   VMAuthSpec{SelectAllByDefault: true},
+	}, false)
+	f(VMAuth{
+		Status: VMAuthStatus{ParsingSpecError: "some other unrelated parse failure"},
+		Spec:   VMAuthSpec{SelectAllByDefault: true},
+	}, true)
+}

@@ -527,7 +527,7 @@ func (cr *VMAlert) AsURL(isExtra bool) string {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAlert) IsUnmanaged() bool {
-	if !cr.DeletionTimestamp.IsZero() || cr.Status.ParsingSpecError != "" {
+	if !cr.DeletionTimestamp.IsZero() || (cr.Status.ParsingSpecError != "" && !HasUnknownFields(cr.Status.ParsingSpecError)) {
 		return true
 	}
 	return !cr.Spec.SelectAllByDefault && cr.Spec.RuleSelector == nil && cr.Spec.RuleNamespaceSelector == nil

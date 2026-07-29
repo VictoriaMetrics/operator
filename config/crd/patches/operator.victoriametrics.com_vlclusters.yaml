@@ -28,11 +28,6 @@
   value:
     x-kubernetes-preserve-unknown-fields: true
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlstorage/properties/extraEnvs/items/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlstorage/properties/extraEnvs/items/properties/valueFrom
-- op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlstorage/properties/initContainers/items/x-kubernetes-preserve-unknown-fields
   value: true
 - op: remove
@@ -97,11 +92,6 @@
   value:
     x-kubernetes-preserve-unknown-fields: true
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlselect/properties/extraEnvs/items/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlselect/properties/extraEnvs/items/properties/valueFrom
-- op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlselect/properties/initContainers/items/x-kubernetes-preserve-unknown-fields
   value: true
 - op: remove
@@ -165,11 +155,6 @@
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlinsert/properties/dnsConfig/items
   value:
     x-kubernetes-preserve-unknown-fields: true
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlinsert/properties/extraEnvs/items/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlinsert/properties/extraEnvs/items/properties/valueFrom
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/vlinsert/properties/initContainers/items/x-kubernetes-preserve-unknown-fields
   value: true

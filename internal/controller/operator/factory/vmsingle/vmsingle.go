@@ -850,7 +850,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		secret.Annotations = map[string]string{
 			"generated": "true",
 		}
-		if _, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return 0, err
 		}
 	}
@@ -866,7 +866,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			return 0, fmt.Errorf("gzipping extra scrape config bucket %d for vmsingle: %w", idx, err)
 		}
 		s := vmscrapes.BuildExtraConfigSecret(cr, idx, compressed)
-		if _, err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
+		if err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
 			return 0, err
 		}
 	}

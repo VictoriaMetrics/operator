@@ -30,6 +30,7 @@ var allUpdateStatuses = []vmv1beta1.UpdateStatus{
 	vmv1beta1.UpdateStatusFailed,
 	vmv1beta1.UpdateStatusExpanding,
 	vmv1beta1.UpdateStatusPaused,
+	vmv1beta1.UpdateStatusIgnored,
 }
 
 type objectCollector struct {

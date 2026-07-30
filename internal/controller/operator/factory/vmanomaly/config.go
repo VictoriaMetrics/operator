@@ -2,6 +2,7 @@ package vmanomaly
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,5 +66,14 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 		return err
 	}
 
-	return pos.UpdateStatusesForChildObjects(ctx, rclient, cr, childObject)
+	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
+	if childObject != nil {
+		if o := pos.ChildObjects().Get(childObject); o != nil {
+			return reconcile.StatusForChildObject(ctx, rclient, parentObject, o)
+		}
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentObject, pos.ChildObjects().All()); err != nil {
+		return fmt.Errorf("cannot update statuses for anomaly config objects: %w", err)
+	}
+	return nil
 }

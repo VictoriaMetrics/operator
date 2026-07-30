@@ -140,6 +140,9 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 			&vpav1.VerticalPodAutoscaler{},
 		).
 		WithRuntimeObjects(predefinedObjects...)
+	for _, obj := range ChildConditionIndexedKinds {
+		builder = builder.WithIndex(obj, ChildConditionIndexField, ChildConditionIndexerFunc)
+	}
 	if fns != nil {
 		builder = builder.WithInterceptorFuncs(*fns)
 	}

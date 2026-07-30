@@ -13,7 +13,6 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 func NewParsedObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) (*ParsedObjects, error) {
@@ -55,6 +54,11 @@ type ParsedObjects struct {
 	configs *build.ChildObjects[*vmv1.VMAnomalyConfig]
 }
 
+// ChildObjects returns the VMAnomalyConfig objects selected by cr.
+func (pos *ParsedObjects) ChildObjects() *build.ChildObjects[*vmv1.VMAnomalyConfig] {
+	return pos.configs
+}
+
 // Load returns vmanomaly config merged with provided secrets
 func (pos *ParsedObjects) Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byte, error) {
 	var data []byte
@@ -86,14 +90,6 @@ func (pos *ParsedObjects) Load(cr *vmv1.VMAnomaly, ac *build.AssetsCache) ([]byt
 		return nil, fmt.Errorf("failed to marshal anomaly configuration, name=%q: %w", cr.Name, err)
 	}
 	return data, nil
-}
-
-func (pos *ParsedObjects) UpdateStatusesForChildObjects(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly, childObject *vmv1.VMAnomalyConfig) error {
-	if childObject == nil {
-		return nil
-	}
-	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
-	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyConfig{childObject})
 }
 
 type header struct {

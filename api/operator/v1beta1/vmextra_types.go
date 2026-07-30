@@ -34,6 +34,7 @@ const (
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
 	UpdateStatusPaused      UpdateStatus = "paused"
+	UpdateStatusIgnored     UpdateStatus = "ignored"
 )
 
 // WorkloadKind represents the kind of Kubernetes workload managed by an operator component.

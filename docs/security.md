@@ -24,8 +24,100 @@ To run in a cluster the operator needs certain permissions, you can see them in 
 
 Also, you can use single-namespace mode with minimal permissions, see [this section](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode) for details.
 
-<!-- TODO: service accounts / role bindings? -->
-<!-- TODO: resource/roles relations -->
+### Managed component RBAC
+
+`VMAgent` uses Kubernetes service discovery for scrape targets, so its `ServiceAccount` needs read-only access to Kubernetes discovery objects.
+The example [`vmagent_rbac.yaml` file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_rbac.yaml) creates a `ClusterRole` with these permissions:
+
+- `get`, `list`, and `watch` for `nodes`, `nodes/metrics`, `services`, `endpoints`, `endpointslices`, `pods`, and `ingresses` in core, `networking.k8s.io`, `extensions`, and `discovery.k8s.io` API groups. These permissions allow vmagent to discover scrape targets across the cluster.
+- `get` for `namespaces` and `configmaps`. These permissions allow namespace metadata lookups and config map reads needed by discovery configuration.
+- `get` for non-resource URLs `/metrics`, `/metrics/resources`, and `/metrics/slis`. These permissions allow scraping Kubernetes API server metrics endpoints when configured.
+- `get` for OpenShift's `routers/metrics` and `registry/metrics` resources in `route.openshift.io` and `image.openshift.io` API groups. These permissions allow scraping OpenShift router and registry metrics when configured.
+
+`VMSingle` can use the same Kubernetes service discovery as `VMAgent` when it scrapes targets directly.
+When `spec.ingestOnlyMode` is disabled, operator creates the same cluster-wide discovery `ClusterRole` and `ClusterRoleBinding` for `VMSingle`.
+When `spec.ingestOnlyMode` is enabled, `VMSingle` doesn't need service discovery permissions and operator doesn't add these cluster-wide rules.
+
+`VLAgent` can collect Kubernetes logs by watching pods, nodes, and namespaces.
+When cluster-wide access is allowed, operator creates a `ClusterRole` with `get`, `list`, and `watch` permissions for `nodes`, `pods`, and `namespaces` in the core API group.
+When the operator runs in namespaced mode, operator skips the `VLAgent` `ClusterRole` and `ClusterRoleBinding`; configure namespaced RBAC manually if `VLAgent` still needs Kubernetes API access.
+
+`VMAuth` and `VMAlertmanager` don't need cluster-wide RBAC for their own runtime configuration reload.
+Operator creates namespaced `Role` and `RoleBinding` objects with `get`, `list`, and `watch` permissions for `secrets` in their own namespace, so the config-reloader can watch generated configuration secrets.
+
+For example, this `VMSingle` needs scrape discovery RBAC because it scrapes targets directly:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: scrape
+  namespace: monitoring
+spec:
+  ingestOnlyMode: false
+  selectAllByDefault: true
+```
+
+This `VMSingle` doesn't need scrape discovery RBAC, because it only receives ingested data:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: ingest
+  namespace: monitoring
+spec:
+  ingestOnlyMode: true
+```
+
+This `VLAgent` needs Kubernetes API access for pod metadata and log target discovery:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VLAgent
+metadata:
+  name: logs
+  namespace: monitoring
+spec:
+  remoteWrite:
+    - url: http://vlinsert-vlogs.monitoring.svc:9428/insert/jsonline
+```
+
+With cluster-wide operator access, it gets a `ClusterRole` similar to:
+
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+```
+
+`VMAuth` and `VMAlertmanager` get namespace-scoped secret access similar to:
+
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+```
+
+### Reducing API access scope
+Cluster-wide discovery roles are created because Kubernetes service discovery can discover targets in multiple namespaces and cluster-scoped resources such as `nodes`.
+To reduce API access scope, run the operator in namespaced mode with the `WATCH_NAMESPACE` environment variable.
+When `WATCH_NAMESPACE` is set, operator avoids cluster-wide watches and limits object selection to the configured namespace list.
+For `VMAgent` and `VMSingle`, operator creates namespaced `Role` and `RoleBinding` objects in watched namespaces so service discovery can work there without granting a cluster-wide `ClusterRole` for namespaced resources.
+Their config and credential `secrets` access stays namespace-scoped even in cluster-wide mode.
+Cluster-scoped discovery, such as `nodes` and `nodes/metrics`, still requires cluster-level permissions if enabled in scrape configuration.
+
+For example, this operator watches only two namespaces:
+
+```yaml
+env:
+  - name: WATCH_NAMESPACE
+    value: team-a,team-b
+```
+
+In this mode, operator creates namespaced discovery `Role` and `RoleBinding` objects for `VMAgent` and `VMSingle` in `team-a` and `team-b` instead of cluster-wide discovery RBAC for namespaced resources.
 
 ### Namespace isolation with enforced labels
 

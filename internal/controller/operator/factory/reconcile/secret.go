@@ -14,14 +14,12 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// Secret reconciles secret object. The returned bool reports whether the Secret was actually
-// created or updated (false if reconciliation found nothing to change).
-func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) (bool, error) {
+// Secret reconciles secret object.
+func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
-	updated := true
 	removeFinalizer := true
 	rclient.Scheme().Default(newObj)
-	err := retryOnConflict(func() error {
+	return retryOnConflict(func() error {
 		var existingObj corev1.Secret
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -43,12 +41,10 @@ func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, p
 		logMessageMetadata = append(logMessageMetadata, fmt.Sprintf("data_changed=%t", !isDataEqual))
 
 		if !needsUpdate {
-			updated = false
 			return nil
 		}
 		existingObj.Data = newObj.Data
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Secret %s", strings.Join(logMessageMetadata, ", ")))
 		return rclient.Update(ctx, &existingObj)
 	})
-	return updated, err
 }

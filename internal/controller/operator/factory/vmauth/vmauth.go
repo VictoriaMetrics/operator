@@ -444,11 +444,10 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 		prevSecretMeta = ptr.To(buildConfigSecretMeta(prevCR))
 	}
 	owner := cr.AsOwner()
-	changed, err := reconcile.Secret(ctx, rclient, s, prevSecretMeta, &owner)
-	if err != nil {
+	if err := reconcile.Secret(ctx, rclient, s, prevSecretMeta, &owner); err != nil {
 		return err
 	}
-	if changed && ptr.Deref(cr.Spec.WaitForConfigReload, false) {
+	if ptr.Deref(cr.Spec.WaitForConfigReload, false) {
 		if err := reconcile.WaitForConfigReloadHash(ctx, rclient, cr, crc32.ChecksumIEEE(data)); err != nil {
 			return err
 		}

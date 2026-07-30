@@ -547,7 +547,7 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	}
 
 	owner := cr.AsOwner()
-	if _, err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta, &owner); err != nil {
+	if err := reconcile.Secret(ctx, rclient, newAMSecretConfig, prevSecretMeta, &owner); err != nil {
 		return err
 	}
 

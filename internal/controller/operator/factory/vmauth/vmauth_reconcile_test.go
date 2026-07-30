@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -209,5 +210,48 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		err = fclient.Get(ctx, nsn, &deploy)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(1), *deploy.Spec.Replicas)
+	})
+}
+
+// TestCreateOrUpdate_WaitsForConfigReloadEvenWhenSecretUnchanged: the reload wait must not
+// be skipped just because the config secret didn't need rewriting this cycle.
+func TestCreateOrUpdate_WaitsForConfigReloadEvenWhenSecretUnchanged(t *testing.T) {
+	cr := &vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "wait-reload", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			WaitForConfigReload: ptr.To(true),
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		// first reconcile creates the config secret
+		assert.NoError(t, CreateOrUpdate(ctx, cr.DeepCopy(), fclient))
+
+		// a pod matching the selector exists but nothing is listening on its
+		// config-reloader port, i.e. the reload was never actually confirmed
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "wait-reload-0",
+				Namespace: cr.Namespace,
+				Labels:    cr.SelectorLabels(),
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				PodIP: "127.0.0.1",
+				Conditions: []corev1.PodCondition{
+					{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+				},
+			},
+		}
+		assert.NoError(t, fclient.Create(ctx, pod))
+
+		// second reconcile: the config secret content is unchanged, but the reload
+		// must still be verified instead of silently reporting success
+		err := CreateOrUpdate(ctx, cr.DeepCopy(), fclient)
+		assert.Error(t, err)
 	})
 }

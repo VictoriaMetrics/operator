@@ -613,8 +613,7 @@ func createOrUpdateAssets(ctx context.Context, rclient client.Client, cr, prevCR
 		if prevCR != nil {
 			prevSecretMeta = ptr.To(build.ResourceMeta(kind, prevCR))
 		}
-		_, err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner)
-		if err != nil {
+		if err := reconcile.Secret(ctx, rclient, &secret, prevSecretMeta, &owner); err != nil {
 			return err
 		}
 	}

@@ -1454,6 +1454,13 @@ func buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig, ns string, ac *build.AssetsC
 	if httpCfg.FollowRedirects != nil {
 		r.set("follow_redirects", *httpCfg.FollowRedirects)
 	}
+	if len(httpCfg.HTTPHeaders) > 0 {
+		cfg, err := buildHTTPHeaders(httpCfg.HTTPHeaders, ns, ac)
+		if err != nil {
+			return nil, err
+		}
+		r.set("http_headers", cfg)
+	}
 	if httpCfg.OAuth2 != nil {
 		cfg, err := ac.OAuth2ToYAML(ns, httpCfg.OAuth2)
 		if err != nil {
@@ -1469,6 +1476,37 @@ func buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig, ns string, ac *build.AssetsC
 		r.items = append(r.items, cfg...)
 	}
 	return r.items, nil
+}
+
+// buildHTTPHeaders renders http_headers as name -> {values, secrets, files}, matching
+// Alertmanager's http_header config (supported starting from Alertmanager v0.28.0).
+func buildHTTPHeaders(headers map[string]vmv1beta1.HTTPHeaderConfig, ns string, ac *build.AssetsCache) (yaml.MapSlice, error) {
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	var result yaml.MapSlice
+	for _, name := range names {
+		h := headers[name]
+		var hv rawValue
+		hv.set("values", h.Values)
+		if len(h.Secrets) > 0 {
+			secrets := make([]string, 0, len(h.Secrets))
+			for i, sel := range h.Secrets {
+				secret, err := ac.LoadKeyFromSecret(ns, &sel)
+				if err != nil {
+					return nil, fmt.Errorf("cannot find secret for httpHeaders[%s].secrets[%d]: %w", name, i, err)
+				}
+				secrets = append(secrets, secret)
+			}
+			hv.set("secrets", secrets)
+		}
+		hv.set("files", h.Files)
+		result = append(result, yaml.MapItem{Key: name, Value: hv.items})
+	}
+	return result, nil
 }
 
 func buildProxyConfig(proxyCfg *vmv1beta1.ProxyConfig, ns string, ac *build.AssetsCache) (yaml.MapSlice, error) {

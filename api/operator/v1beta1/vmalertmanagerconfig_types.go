@@ -24,14 +24,17 @@ import (
 	"html/template"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	amcfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/matcher/compat"
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
+	"golang.org/x/net/http/httpguts"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -1754,8 +1757,65 @@ type HTTPConfig struct {
 	// FollowRedirects controls redirects for scraping.
 	// +optional
 	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// HTTPHeaders defines custom HTTP headers to be sent along with each request.
+	// Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	HTTPHeaders map[string]HTTPHeaderConfig `json:"http_headers,omitempty" yaml:"http_headers,omitempty"`
 	// +optional
 	ProxyConfig `json:",inline"`
+}
+
+// HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+// See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+type HTTPHeaderConfig struct {
+	// Values are literal header values to send as-is.
+	// +optional
+	Values []string `json:"values,omitempty" yaml:"values,omitempty"`
+	// Secrets are header values read from Kubernetes Secrets.
+	// +optional
+	Secrets []corev1.SecretKeySelector `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	// Files are paths on the vmalertmanager container's filesystem to read header values from.
+	// +optional
+	Files []string `json:"files,omitempty" yaml:"files,omitempty"`
+}
+
+// reservedHTTPHeaders change the connection, are set by vmalertmanager, or can be changed
+// otherwise; matches Alertmanager's own http_header validation.
+var reservedHTTPHeaders = map[string]struct{}{
+	"Authorization":                       {},
+	"Host":                                {},
+	"Content-Encoding":                    {},
+	"Content-Length":                      {},
+	"Content-Type":                        {},
+	"User-Agent":                          {},
+	"Connection":                          {},
+	"Keep-Alive":                          {},
+	"Proxy-Authenticate":                  {},
+	"Proxy-Authorization":                 {},
+	"Www-Authenticate":                    {},
+	"Accept-Encoding":                     {},
+	"X-Prometheus-Remote-Write-Version":   {},
+	"X-Prometheus-Remote-Read-Version":    {},
+	"X-Prometheus-Scrape-Timeout-Seconds": {},
+	"X-Amz-Date":                          {},
+	"X-Amz-Security-Token":                {},
+	"X-Amz-Content-Sha256":                {},
+}
+
+func validateHTTPHeaderNames(headers map[string]HTTPHeaderConfig) error {
+	for name, config := range headers {
+		if _, ok := reservedHTTPHeaders[http.CanonicalHeaderKey(name)]; ok {
+			return fmt.Errorf("setting header %q is not allowed", http.CanonicalHeaderKey(name))
+		}
+		if !httpguts.ValidHeaderFieldName(name) {
+			return fmt.Errorf("invalid HTTP header name %q", name)
+		}
+		if len(config.Values) == 0 && len(config.Secrets) == 0 && len(config.Files) == 0 {
+			return fmt.Errorf("header %q must define at least one of values, secrets, or files", name)
+		}
+	}
+	return nil
 }
 
 func (c *HTTPConfig) validateArbitraryFSAccess() error {
@@ -1771,6 +1831,16 @@ func (c *HTTPConfig) validateArbitraryFSAccess() error {
 	}
 	if c.Authorization != nil && c.Authorization.CredentialsFile != "" {
 		props = append(props, "authorization.credentialsFile")
+	}
+	headerNames := make([]string, 0, len(c.HTTPHeaders))
+	for name := range c.HTTPHeaders {
+		headerNames = append(headerNames, name)
+	}
+	sort.Strings(headerNames)
+	for _, name := range headerNames {
+		if len(c.HTTPHeaders[name].Files) > 0 {
+			props = append(props, fmt.Sprintf("httpHeaders[%s].files", name))
+		}
 	}
 	props = c.TLSConfig.appendForbiddenProperties(props)
 	if len(props) > 0 {
@@ -1840,6 +1910,9 @@ func (c *HTTPConfig) validate() error {
 		if err := c.TLSConfig.Validate(); err != nil {
 			return err
 		}
+	}
+	if err := validateHTTPHeaderNames(c.HTTPHeaders); err != nil {
+		return err
 	}
 	return nil
 }

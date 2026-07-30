@@ -2456,12 +2456,26 @@ Appears in: [DiscordConfig](#discordconfig), [IncidentioConfig](#incidentioconfi
 | bearer_token_file<a href="#httpconfig-bearer_token_file" id="httpconfig-bearer_token_file">#</a><br/>_string_ | _(Optional)_<br/>BearerTokenFile defines filename for bearer token, it must be mounted to pod. |
 | bearer_token_secret<a href="#httpconfig-bearer_token_secret" id="httpconfig-bearer_token_secret">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>The secret's key that contains the bearer token<br />It must be at them same namespace as CRD |
 | follow_redirects<a href="#httpconfig-follow_redirects" id="httpconfig-follow_redirects">#</a><br/>_boolean_ | _(Optional)_<br/>FollowRedirects controls redirects for scraping. |
+| http_headers<a href="#httpconfig-http_headers" id="httpconfig-http_headers">#</a><br/>_object (keys:string, values:[HTTPHeaderConfig](#httpheaderconfig))_ | _(Optional)_<br/>HTTPHeaders defines custom HTTP headers to be sent along with each request.<br />Only supported starting from Alertmanager v0.28.0; ignored by older versions.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0750">v0.75.0</a> |
 | noProxy<a href="#httpconfig-noproxy" id="httpconfig-noproxy">#</a><br/>_string_ | _(Optional)_<br/>NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.<br />IP and domain names can contain port numbers. |
 | oauth2<a href="#httpconfig-oauth2" id="httpconfig-oauth2">#</a><br/>_[OAuth2](#oauth2)_ | _(Optional)_<br/>OAuth2 client credentials used to fetch a token for the targets. |
 | proxyConnectHeader<a href="#httpconfig-proxyconnectheader" id="httpconfig-proxyconnectheader">#</a><br/>_object (keys:string, values:[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core))_ | _(Optional)_<br/>ProxyConnectHeader optionally specifies headers to send to proxies during CONNECT requests. |
 | proxyFromEnvironment<a href="#httpconfig-proxyfromenvironment" id="httpconfig-proxyfromenvironment">#</a><br/>_boolean_ | _(Optional)_<br/>ProxyFromEnvironment defines whether to use the proxy configuration defined by environment variables (HTTP_PROXY, HTTPS_PROXY, and NO_PROXY). |
 | proxyURL<a href="#httpconfig-proxyurl" id="httpconfig-proxyurl">#</a><br/>_string_ | _(Optional)_<br/>ProxyUrl defines the HTTP proxy server to use. |
 | tls_config<a href="#httpconfig-tls_config" id="httpconfig-tls_config">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Optional)_<br/>TLS configuration for the client. |
+
+#### HTTPHeaderConfig
+
+HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+
+Appears in: [HTTPConfig](#httpconfig)
+
+| Field | Description |
+| --- | --- |
+| files<a href="#httpheaderconfig-files" id="httpheaderconfig-files">#</a><br/>_string array_ | _(Optional)_<br/>Files are paths on the vmalertmanager container's filesystem to read header values from. |
+| secrets<a href="#httpheaderconfig-secrets" id="httpheaderconfig-secrets">#</a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core) array_ | _(Optional)_<br/>Secrets are header values read from Kubernetes Secrets. |
+| values<a href="#httpheaderconfig-values" id="httpheaderconfig-values">#</a><br/>_string array_ | _(Optional)_<br/>Values are literal header values to send as-is. |
 
 #### HTTPSDConfig
 

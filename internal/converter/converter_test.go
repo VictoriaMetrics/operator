@@ -1512,6 +1512,9 @@ config:
 	assert.Equal(t, "loadbalanced-user", second.Name)
 	require.NotNil(t, second.Spec.BearerToken)
 	assert.Equal(t, "mytoken", *second.Spec.BearerToken)
+	assert.Nil(t, second.Spec.Username, "username must not be set alongside bearerToken, vmauth itself rejects that combination")
+	require.NotNil(t, second.Spec.Name)
+	assert.Equal(t, "LoadBalanced_User", *second.Spec.Name, "username is preserved as the display Name when bearer_token is used")
 	require.Len(t, second.Spec.TargetRefs, 1)
 	assert.Equal(t, []string{"/api/v1/query.*"}, second.Spec.TargetRefs[0].Paths)
 	require.NotNil(t, second.Spec.TargetRefs[0].Static)
@@ -1522,12 +1525,49 @@ func TestConvertVMAuthUsers_Errors(t *testing.T) {
 	_, err := ConvertVMAuthUsers("test-name", "test-ns", &VMAuthHelmValues{
 		Config: &VMAuthConfigValues{Users: []VMAuthConfigUser{{Password: "x"}}},
 	})
-	assert.ErrorContains(t, err, "username is required")
+	assert.ErrorContains(t, err, "one of username or bearer_token is required")
 
 	_, err = ConvertVMAuthUsers("test-name", "test-ns", &VMAuthHelmValues{
 		Config: &VMAuthConfigValues{Users: []VMAuthConfigUser{{Username: "foo"}}},
 	})
 	assert.ErrorContains(t, err, "url_prefix is required")
+}
+
+// TestConvertVMAuthUsers_UsernameAndBearerToken reproduces #2441.
+func TestConvertVMAuthUsers_UsernameAndBearerToken(t *testing.T) {
+	users, err := ConvertVMAuthUsers("test-name", "test-ns", &VMAuthHelmValues{
+		Config: &VMAuthConfigValues{Users: []VMAuthConfigUser{{
+			Username:    "svc-account",
+			BearerToken: "mytoken",
+			URLPrefix:   vmv1beta1.StringOrArray{"http://vmselect:8481/"},
+		}}},
+	})
+	require.NoError(t, err)
+	require.Len(t, users, 1)
+	u := users[0]
+	assert.Nil(t, u.Spec.Username)
+	require.NotNil(t, u.Spec.BearerToken)
+	assert.Equal(t, "mytoken", *u.Spec.BearerToken)
+	require.NotNil(t, u.Spec.Name)
+	assert.Equal(t, "svc-account", *u.Spec.Name)
+	assert.Equal(t, "svc-account", u.Name, "object name still derives from username when name isn't explicitly set")
+}
+
+// TestConvertVMAuthUsers_ExplicitName covers a user config that sets name distinctly from username.
+func TestConvertVMAuthUsers_ExplicitName(t *testing.T) {
+	users, err := ConvertVMAuthUsers("test-name", "test-ns", &VMAuthHelmValues{
+		Config: &VMAuthConfigValues{Users: []VMAuthConfigUser{{
+			Name:        "readable-label",
+			BearerToken: "mytoken",
+			URLPrefix:   vmv1beta1.StringOrArray{"http://vmselect:8481/"},
+		}}},
+	})
+	require.NoError(t, err)
+	require.Len(t, users, 1)
+	u := users[0]
+	require.NotNil(t, u.Spec.Name)
+	assert.Equal(t, "readable-label", *u.Spec.Name)
+	assert.Equal(t, "readable-label", u.Name)
 }
 
 func TestConvertVMAuthUsers_NoConfig(t *testing.T) {

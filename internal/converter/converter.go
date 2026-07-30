@@ -104,6 +104,7 @@ type VMAuthConfigValues struct {
 // operator types whose field names already match vmauth's native keys. Backend TLS
 // (tls_ca_file etc.) isn't covered: it doesn't map onto the operator's nested tlsConfig.
 type VMAuthConfigUser struct {
+	Name         string                                     `yaml:"name,omitempty" json:"name,omitempty"`
 	Username     string                                     `yaml:"username,omitempty" json:"username,omitempty"`
 	Password     string                                     `yaml:"password,omitempty" json:"password,omitempty"`
 	BearerToken  string                                     `yaml:"bearer_token,omitempty" json:"bearer_token,omitempty"`
@@ -1772,24 +1773,41 @@ func ConvertVMAuthUsers(vmauthName, namespace string, values *VMAuthHelmValues) 
 	}
 	users := make([]*vmv1beta1.VMUser, 0, len(values.Config.Users))
 	for i, u := range values.Config.Users {
-		if u.Username == "" {
-			return nil, fmt.Errorf("config.users[%d]: username is required", i)
+		if u.Username == "" && u.BearerToken == "" {
+			return nil, fmt.Errorf("config.users[%d]: one of username or bearer_token is required", i)
 		}
+		objectName := u.Name
+		if objectName == "" {
+			objectName = u.Username
+		}
+		if objectName == "" {
+			objectName = fmt.Sprintf("user-%d", i)
+		}
+
 		targetRefs, err := convertVMAuthConfigUserTargetRefs(u)
 		if err != nil {
-			return nil, fmt.Errorf("config.users[%d] (username=%q): %w", i, u.Username, err)
+			return nil, fmt.Errorf("config.users[%d] (name=%q): %w", i, objectName, err)
 		}
 		spec := vmv1beta1.VMUserSpec{
-			Username:            &u.Username,
 			TargetRefs:          targetRefs,
 			MetricLabels:        u.MetricLabels,
 			VMUserConfigOptions: u.VMUserConfigOptions,
 		}
-		if u.Password != "" {
-			spec.Password = &u.Password
-		}
+		// username and bearerToken can't both be set; keep username as the display Name.
+		displayName := u.Name
 		if u.BearerToken != "" {
 			spec.BearerToken = &u.BearerToken
+			if displayName == "" {
+				displayName = u.Username
+			}
+		} else {
+			spec.Username = &u.Username
+			if u.Password != "" {
+				spec.Password = &u.Password
+			}
+		}
+		if displayName != "" {
+			spec.Name = &displayName
 		}
 		users = append(users, &vmv1beta1.VMUser{
 			TypeMeta: metav1.TypeMeta{
@@ -1797,7 +1815,7 @@ func ConvertVMAuthUsers(vmauthName, namespace string, values *VMAuthHelmValues) 
 				Kind:       "VMUser",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      sanitizeK8sName(u.Username),
+				Name:      sanitizeK8sName(objectName),
 				Namespace: namespace,
 				Labels:    vmAuthUserSelectorLabels(vmauthName),
 			},

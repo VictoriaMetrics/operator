@@ -387,6 +387,7 @@ func addWebhooks(mgr ctrl.Manager, baseConfig *config.BaseOperatorConf) error {
 		webhookv1beta1.SetupVMSingleWebhookWithManager,
 		webhookv1beta1.SetupVMClusterWebhookWithManager,
 		webhookv1alpha1.SetupVMDistributedWebhookWithManager,
+		webhookv1alpha1.SetupVLDistributedWebhookWithManager,
 		webhookv1beta1.SetupVLogsWebhookWithManager,
 		webhookv1.SetupVLAgentWebhookWithManager,
 		webhookv1.SetupVLSingleWebhookWithManager,

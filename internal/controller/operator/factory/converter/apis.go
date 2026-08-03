@@ -124,7 +124,7 @@ func ServiceMonitor(ctx context.Context, serviceMon *promv1.ServiceMonitor, conf
 	if serviceMon.Spec.ServiceDiscoveryRole != nil {
 		cs.Spec.DiscoveryRole = strings.ToLower(string(*serviceMon.Spec.ServiceDiscoveryRole))
 	}
-	if serviceMon.Spec.SampleLimit != nil && *serviceMon.Spec.SampleLimit <= uint64(math.MaxInt) {
+	if serviceMon.Spec.SampleLimit != nil && *serviceMon.Spec.SampleLimit <= int64(math.MaxInt) {
 		cs.Spec.SampleLimit = int(*serviceMon.Spec.SampleLimit)
 	}
 	if serviceMon.Spec.AttachMetadata != nil {
@@ -322,7 +322,7 @@ func ConvertRelabelConfig(ctx context.Context, promRelabelConfig []promv1.Relabe
 			SourceLabels: sourceLabelsToStringSlice(relabel.SourceLabels),
 			Separator:    relabel.Separator,
 			TargetLabel:  relabel.TargetLabel,
-			Modulus:      relabel.Modulus,
+			Modulus:      uint64(relabel.Modulus),
 			Replacement:  relabel.Replacement,
 			Action:       relabel.Action,
 		})
@@ -402,7 +402,7 @@ func PodMonitor(ctx context.Context, podMon *promv1.PodMonitor, conf *config.Bas
 			ScrapeClassName:     podMon.Spec.ScrapeClassName,
 		},
 	}
-	if podMon.Spec.SampleLimit != nil && *podMon.Spec.SampleLimit <= uint64(math.MaxInt) {
+	if podMon.Spec.SampleLimit != nil && *podMon.Spec.SampleLimit <= int64(math.MaxInt) {
 		cs.Spec.SampleLimit = int(*podMon.Spec.SampleLimit)
 	}
 	if podMon.Spec.AttachMetadata != nil {
@@ -491,7 +491,7 @@ func Probe(ctx context.Context, probe *promv1.Probe, conf *config.BaseOperatorCo
 	if probe.Spec.ProberSpec.ProxyURL != nil {
 		cp.Spec.ProxyURL = probe.Spec.ProberSpec.ProxyURL
 	}
-	if probe.Spec.SampleLimit != nil && *probe.Spec.SampleLimit <= uint64(math.MaxInt) {
+	if probe.Spec.SampleLimit != nil && *probe.Spec.SampleLimit <= int64(math.MaxInt) {
 		cp.Spec.SampleLimit = int(*probe.Spec.SampleLimit)
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {

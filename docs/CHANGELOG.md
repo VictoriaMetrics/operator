@@ -13,6 +13,11 @@ aliases:
 
 ## tip
 
+## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
+**Release date:** 04 August 2026
+
+* BUGFIX: [vldistributed](https://docs.victoriametrics.com/operator/resources/vldistributed/): add validation webhook for VLDistributed resources.
+
 ## [v0.74.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.0)
 **Release date:** 30 July 2026
 

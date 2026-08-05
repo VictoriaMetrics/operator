@@ -469,9 +469,15 @@ type entry struct {
 
 func entries(es []entry) []TableEntry {
 	var result []TableEntry
+	seen := make(map[string]struct{})
 	for _, e := range es {
 		for _, p := range e.pairs {
 			obj := p.cr(p.version)
+			key := fmt.Sprintf("%s:%s:%T:%t", p.version, e.name, obj, p.isEnterprise)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
 			result = append(result, Entry(fmt.Sprintf("from %s: %s (%T)", p.version, e.name, obj), p.version, e.genDeps, []client.Object{obj}, e.envs, p.isEnterprise))
 		}
 	}
@@ -579,33 +585,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				"VM_ENABLE_DEFAULT_PRESTOP_HOOK": "false",
 			},
 			pairs: []crVersionPair{
-				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.70.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.70.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.71.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.71.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.72.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.72.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
-				{version: "v0.72.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
 				{version: "v0.73.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
@@ -615,12 +594,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
-				{version: "v0.74.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
 			},
 		},
-		// nolint:dupl
 		{
 			name: "VMAgent/VLAgent",
 			genDeps: func(ns string) []client.Object {
@@ -667,60 +642,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				}
 			},
 			pairs: []crVersionPair{
-				{version: "v0.68.0", cr: with(vmagent)},
-				{version: "v0.68.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.0", cr: with(vlagent)},
-				{version: "v0.68.0", cr: vlagentK8sCollector},
-				{version: "v0.68.1", cr: with(vmagent)},
-				{version: "v0.68.1", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.1", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.1", cr: with(vlagent)},
-				{version: "v0.68.1", cr: vlagentK8sCollector},
-				{version: "v0.68.2", cr: with(vmagent)},
-				{version: "v0.68.2", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.2", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.2", cr: with(vlagent)},
-				{version: "v0.68.2", cr: vlagentK8sCollector},
-				{version: "v0.68.3", cr: with(vmagent)},
-				{version: "v0.68.3", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.3", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.3", cr: with(vlagent)},
-				{version: "v0.68.3", cr: vlagentK8sCollector},
-				{version: "v0.68.4", cr: with(vmagent)},
-				{version: "v0.68.4", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.4", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.4", cr: with(vlagent)},
-				{version: "v0.68.4", cr: vlagentK8sCollector},
-				{version: "v0.68.5", cr: with(vmagent)},
-				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.68.5", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.68.5", cr: with(vlagent)},
-				{version: "v0.68.5", cr: vlagentK8sCollector},
+				{version: "v0.68.6", cr: with(vmagent)},
 				{version: "v0.68.6", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
 				})},
@@ -737,33 +659,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				})},
 				{version: "v0.68.7", cr: with(vlagent)},
 				{version: "v0.68.7", cr: vlagentK8sCollector},
-				{version: "v0.70.0", cr: with(vmagent)},
-				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.70.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.70.0", cr: with(vlagent)},
-				{version: "v0.70.0", cr: vlagentK8sCollector},
-				{version: "v0.71.0", cr: with(vmagent)},
-				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.71.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.71.0", cr: with(vlagent)},
-				{version: "v0.71.0", cr: vlagentK8sCollector},
-				{version: "v0.72.0", cr: with(vmagent)},
-				{version: "v0.72.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.72.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.72.0", cr: with(vlagent)},
-				{version: "v0.72.0", cr: vlagentK8sCollector},
 				{version: "v0.73.0", cr: with(vmagent)},
 				{version: "v0.73.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
 					cr.Spec.DaemonSetMode = true
@@ -773,130 +668,37 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				})},
 				{version: "v0.73.0", cr: with(vlagent)},
 				{version: "v0.73.0", cr: vlagentK8sCollector},
-				{version: "v0.74.0", cr: with(vmagent)},
-				{version: "v0.74.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.DaemonSetMode = true
-				})},
-				{version: "v0.74.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
-					cr.Spec.StatefulMode = true
-				})},
-				{version: "v0.74.0", cr: with(vlagent)},
-				{version: "v0.74.0", cr: vlagentK8sCollector},
 			},
 		},
-		// nolint:dupl
 		{
 			name: "VMAuth/VMAlertmanager",
 			pairs: []crVersionPair{
-				{version: "v0.68.0", cr: with(vmauth)},
-				{version: "v0.68.0", cr: with(vmalertmanager)},
-				{version: "v0.68.1", cr: with(vmauth)},
-				{version: "v0.68.1", cr: with(vmalertmanager)},
-				{version: "v0.68.2", cr: with(vmauth)},
-				{version: "v0.68.2", cr: with(vmalertmanager)},
-				{version: "v0.68.3", cr: with(vmauth)},
-				{version: "v0.68.3", cr: with(vmalertmanager)},
-				{version: "v0.68.4", cr: with(vmauth)},
-				{version: "v0.68.4", cr: with(vmalertmanager)},
-				{version: "v0.68.5", cr: with(vmauth)},
-				{version: "v0.68.5", cr: with(vmalertmanager)},
 				{version: "v0.68.6", cr: with(vmauth)},
 				{version: "v0.68.6", cr: with(vmalertmanager)},
 				{version: "v0.68.7", cr: with(vmauth)},
 				{version: "v0.68.7", cr: with(vmalertmanager)},
-				{version: "v0.70.0", cr: with(vmauth)},
-				{version: "v0.70.0", cr: with(vmalertmanager)},
-				{version: "v0.71.0", cr: with(vmauth)},
-				{version: "v0.71.0", cr: with(vmalertmanager)},
-				{version: "v0.72.0", cr: with(vmauth)},
-				{version: "v0.72.0", cr: with(vmalertmanager)},
 				{version: "v0.73.0", cr: with(vmauth)},
 				{version: "v0.73.0", cr: with(vmalertmanager)},
-				{version: "v0.74.0", cr: with(vmauth)},
-				{version: "v0.74.0", cr: with(vmalertmanager)},
 			},
 		},
 		// nolint:dupl
 		{
 			name: "VM/VL/VTSingle",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", cr: with(vmsingle)},
-				{version: "v0.65.0", cr: with(vtsingle)},
-				{version: "v0.65.0", cr: with(vlsingle)},
-				{version: "v0.67.0", cr: with(vmsingle)},
-				{version: "v0.67.0", cr: with(vtsingle)},
-				{version: "v0.67.0", cr: with(vlsingle)},
-				{version: "v0.68.0", cr: with(vmsingle)},
-				{version: "v0.68.0", cr: with(vtsingle)},
-				{version: "v0.68.0", cr: with(vlsingle)},
-				{version: "v0.68.1", cr: with(vmsingle)},
-				{version: "v0.68.1", cr: with(vtsingle)},
-				{version: "v0.68.1", cr: with(vlsingle)},
-				{version: "v0.68.2", cr: with(vmsingle)},
-				{version: "v0.68.2", cr: with(vtsingle)},
-				{version: "v0.68.2", cr: with(vlsingle)},
-				{version: "v0.68.3", cr: with(vmsingle)},
-				{version: "v0.68.3", cr: with(vtsingle)},
-				{version: "v0.68.3", cr: with(vlsingle)},
-				{version: "v0.68.4", cr: with(vmsingle)},
-				{version: "v0.68.4", cr: with(vtsingle)},
-				{version: "v0.68.4", cr: with(vlsingle)},
-				{version: "v0.68.5", cr: with(vmsingle)},
-				{version: "v0.68.5", cr: with(vtsingle)},
-				{version: "v0.68.5", cr: with(vlsingle)},
 				{version: "v0.68.6", cr: with(vmsingle)},
 				{version: "v0.68.6", cr: with(vtsingle)},
 				{version: "v0.68.6", cr: with(vlsingle)},
 				{version: "v0.68.7", cr: with(vmsingle)},
 				{version: "v0.68.7", cr: with(vtsingle)},
 				{version: "v0.68.7", cr: with(vlsingle)},
-				{version: "v0.72.0", cr: with(vmsingle)},
-				{version: "v0.72.0", cr: with(vtsingle)},
-				{version: "v0.72.0", cr: with(vlsingle)},
 				{version: "v0.73.0", cr: with(vmsingle)},
 				{version: "v0.73.0", cr: with(vtsingle)},
 				{version: "v0.73.0", cr: with(vlsingle)},
-				{version: "v0.74.0", cr: with(vmsingle)},
-				{version: "v0.74.0", cr: with(vtsingle)},
-				{version: "v0.74.0", cr: with(vlsingle)},
 			},
 		},
-		// nolint:dupl
 		{
 			name: "VLCluster",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", cr: with(vlcluster)},
-				{version: "v0.65.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.67.0", cr: with(vlcluster)},
-				{version: "v0.67.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.0", cr: with(vlcluster)},
-				{version: "v0.68.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.1", cr: with(vlcluster)},
-				{version: "v0.68.1", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.2", cr: with(vlcluster)},
-				{version: "v0.68.2", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.3", cr: with(vlcluster)},
-				{version: "v0.68.3", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.4", cr: with(vlcluster)},
-				{version: "v0.68.4", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.5", cr: with(vlcluster)},
-				{version: "v0.68.5", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
 				{version: "v0.68.6", cr: with(vlcluster)},
 				{version: "v0.68.6", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
@@ -905,64 +707,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.7", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
-				{version: "v0.70.0", cr: with(vlcluster)},
-				{version: "v0.70.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.71.0", cr: with(vlcluster)},
-				{version: "v0.71.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.72.0", cr: with(vlcluster)},
-				{version: "v0.72.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
 				{version: "v0.73.0", cr: with(vlcluster)},
 				{version: "v0.73.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
-				{version: "v0.74.0", cr: with(vlcluster)},
-				{version: "v0.74.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
 			},
 		},
-		// nolint:dupl
 		{
 			name: "VTCluster",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", cr: with(vtcluster)},
-				{version: "v0.65.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.67.0", cr: with(vtcluster)},
-				{version: "v0.67.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.0", cr: with(vtcluster)},
-				{version: "v0.68.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.1", cr: with(vtcluster)},
-				{version: "v0.68.1", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.2", cr: with(vtcluster)},
-				{version: "v0.68.2", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.3", cr: with(vtcluster)},
-				{version: "v0.68.3", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.4", cr: with(vtcluster)},
-				{version: "v0.68.4", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.68.5", cr: with(vtcluster)},
-				{version: "v0.68.5", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
 				{version: "v0.68.6", cr: with(vtcluster)},
 				{version: "v0.68.6", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
@@ -972,24 +725,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
 
-				{version: "v0.70.0", cr: with(vtcluster)},
-				{version: "v0.70.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.71.0", cr: with(vtcluster)},
-				{version: "v0.71.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.72.0", cr: with(vtcluster)},
-				{version: "v0.72.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
 				{version: "v0.73.0", cr: with(vtcluster)},
 				{version: "v0.73.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-				})},
-				{version: "v0.74.0", cr: with(vtcluster)},
-				{version: "v0.74.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
 			},
@@ -998,120 +735,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		{
 			name: "VMCluster",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", cr: with(vmcluster)},
-				{version: "v0.67.0", cr: with(vmcluster)},
-				{version: "v0.68.0", cr: with(vmcluster)},
-				{version: "v0.68.1", cr: with(vmcluster)},
-				{version: "v0.68.2", cr: with(vmcluster)},
-				{version: "v0.68.3", cr: with(vmcluster)},
-				{version: "v0.68.4", cr: with(vmcluster)},
-				{version: "v0.68.5", cr: with(vmcluster)},
 				{version: "v0.68.6", cr: with(vmcluster)},
 				{version: "v0.68.7", cr: with(vmcluster)},
-				{version: "v0.70.0", cr: with(vmcluster)},
-				{version: "v0.70.0", cr: with(vmcluster)},
-				{version: "v0.71.0", cr: with(vmcluster)},
-				{version: "v0.72.0", cr: with(vmcluster)},
 				{version: "v0.73.0", cr: with(vmcluster)},
-				{version: "v0.74.0", cr: with(vmcluster)},
 			},
 		},
 		// nolint:dupl
 		{
 			name: "VMCluster with VMBackup",
 			pairs: []crVersionPair{
-				{version: "v0.65.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.68.3", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.68.4", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.68.5", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
 				{version: "v0.68.6", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
@@ -1158,99 +790,7 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						},
 					}
 				})},
-				{version: "v0.70.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.71.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.72.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
 				{version: "v0.73.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
-					cr.Spec.RequestsLoadBalancer.Enabled = true
-					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
-					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
-					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
-						Destination:                 "fs:///tmp",
-						DestinationDisableSuffixAdd: true,
-						Image: vmv1beta1.Image{
-							Tag: "v1.136.0-enterprise",
-						},
-						AcceptEULA: true,
-					}
-					cr.Spec.License = &vmv1beta1.License{
-						KeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "license",
-							},
-							Key: "key",
-						},
-					}
-				})},
-				{version: "v0.74.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
 					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
@@ -1283,14 +823,9 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 		{
 			name: "VMDistributed",
 			pairs: []crVersionPair{
-				{version: "v0.68.5", cr: with(vmdistributed)},
 				{version: "v0.68.6", cr: with(vmdistributed)},
 				{version: "v0.68.7", cr: with(vmdistributed)},
-				{version: "v0.70.0", cr: with(vmdistributed)},
-				{version: "v0.71.0", cr: with(vmdistributed)},
-				{version: "v0.72.0", cr: with(vmdistributed)},
 				{version: "v0.73.0", cr: with(vmdistributed)},
-				{version: "v0.74.0", cr: with(vmdistributed)},
 			},
 		},
 	}))

@@ -127,6 +127,17 @@ Page for every custom resource contains examples section:
 In addition, you can find examples of the custom resources for VictoriaMetrics operator in
 the **[examples directory](https://github.com/VictoriaMetrics/operator/tree/master/config/examples) of operator repository**.
 
+## Operator upgrade policy
+
+Operator supports upgrades from the two latest minor releases and the two latest LTS releases.
+
+Current upgrade coverage:
+
+- Latest minor releases: `v0.74.1` and `v0.73.0`.
+- Latest LTS releases: `v0.68.7` and `v0.68.6`.
+
+Older releases are not covered by upgrade tests but can be included in supported upgrade paths on request.
+
 ## Managing versions of VM
 
 Every custom resource with deployable application has a fields for specifying version (docker image) of component:

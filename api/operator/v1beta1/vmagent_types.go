@@ -66,6 +66,7 @@ type VMAgentSpec struct {
 	// replicas count according to spec.replicas,
 	// see [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)
 	// +optional
+	// +kubebuilder:default=0
 	ShardCount *int32 `json:"shardCount,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.

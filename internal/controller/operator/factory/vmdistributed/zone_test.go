@@ -200,6 +200,42 @@ func TestGetZones(t *testing.T) {
 	})
 }
 
+// A VMAgent whose shardCount was server-defaulted must not be perpetually reported as changed.
+func TestGetZones_PreservesExistingShardCount(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dist",
+			Namespace: "ns",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+			Zones: []vmv1alpha1.VMDistributedZone{
+				{Name: "zone-a"},
+			},
+		},
+	}
+
+	rclient := k8stools.GetTestClientWithObjects(nil)
+	zs1, err := getZones(ctx, rclient, cr)
+	assert.NoError(t, err)
+
+	// persist zs1's already-defaulted backend and agent so a second pass sees no changes
+	// there either, isolating the check below to the VMAgent shardCount handling.
+	persistedBackend := zs1.backends[0].obj.(*vmv1beta1.VMSingle).DeepCopy()
+	persistedBackend.ResourceVersion = ""
+	persistedAgent := zs1.vmagents[0].DeepCopy()
+	persistedAgent.Spec.ShardCount = ptr.To[int32](1)
+	persistedAgent.ResourceVersion = ""
+
+	rclient2 := k8stools.GetTestClientWithObjects([]runtime.Object{persistedBackend, persistedAgent})
+	zs2, err := getZones(ctx, rclient2, cr)
+	assert.NoError(t, err)
+
+	assert.False(t, zs2.hasChanges[0], "defaulted shardCount must not be reported as a spec change")
+	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
+}
+
 func TestWaitForEmptyPQ(t *testing.T) {
 	// Pre-compute the expected backend URL for VMCluster named "test" in ns "default"
 	backendURL := (&vmv1beta1.VMCluster{

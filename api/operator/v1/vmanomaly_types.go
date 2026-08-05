@@ -57,6 +57,7 @@ type VMAnomalySpec struct {
 	// in this case operator will use 1 sts per shard with
 	// replicas count according to spec.replicas.
 	// +optional
+	// +kubebuilder:default=0
 	ShardCount *int32 `json:"shardCount,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional

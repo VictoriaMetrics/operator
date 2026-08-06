@@ -988,3 +988,57 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
     }
 }`)
 }
+
+func TestHTTPConfig_ValidateHTTPHeaders(t *testing.T) {
+	f := func(headers map[string]HTTPHeaderConfig, wantErr bool) {
+		t.Helper()
+		err := (&HTTPConfig{HTTPHeaders: headers}).validate()
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	// no headers
+	f(nil, false)
+
+	// custom header is allowed
+	f(map[string]HTTPHeaderConfig{
+		"X-Custom-Header": {Values: []string{"foo"}},
+	}, false)
+
+	// reserved header is rejected regardless of case
+	f(map[string]HTTPHeaderConfig{
+		"authorization": {Values: []string{"Bearer token"}},
+	}, true)
+	f(map[string]HTTPHeaderConfig{
+		"Content-Type": {Values: []string{"application/json"}},
+	}, true)
+}
+
+func TestHTTPConfig_ValidateArbitraryFSAccess(t *testing.T) {
+	f := func(c *HTTPConfig, wantErr bool) {
+		t.Helper()
+		err := c.validateArbitraryFSAccess()
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	// header backed by a value/secret only: no filesystem access
+	f(&HTTPConfig{
+		HTTPHeaders: map[string]HTTPHeaderConfig{
+			"X-Custom-Header": {Values: []string{"foo"}},
+		},
+	}, false)
+
+	// header reading from a file on disk is arbitrary filesystem access
+	f(&HTTPConfig{
+		HTTPHeaders: map[string]HTTPHeaderConfig{
+			"X-Custom-Header": {Files: []string{"/etc/passwd"}},
+		},
+	}, true)
+}

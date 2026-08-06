@@ -48094,6 +48094,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
@@ -49129,6 +49183,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
@@ -50334,6 +50442,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
@@ -51006,6 +51168,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
@@ -51496,6 +51712,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.
@@ -52077,6 +52347,60 @@ spec:
                                 description: FollowRedirects controls redirects for
                                   scraping.
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  description: |-
+                                    HTTPHeaderConfig defines the value of a single HTTP header sent by the client.
+                                    See https://prometheus.io/docs/alerting/latest/configuration/#http_header
+                                  properties:
+                                    files:
+                                      description: Files are paths on the vmalertmanager
+                                        container's filesystem to read header values
+                                        from.
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      description: Secrets are header values read
+                                        from Kubernetes Secrets.
+                                      items:
+                                        description: SecretKeySelector selects a key
+                                          of a Secret.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      description: Values are literal header values
+                                        to send as-is.
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                description: |-
+                                  HTTPHeaders defines custom HTTP headers to be sent along with each request.
+                                  Only supported starting from Alertmanager v0.28.0; ignored by older versions.
+                                type: object
                               noProxy:
                                 description: |-
                                   NoProxy defines a comma-separated string that can contain IPs, CIDR notation, domain names that should be excluded from proxying.

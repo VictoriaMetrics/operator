@@ -22806,6 +22806,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:
@@ -23382,6 +23410,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:
@@ -24082,6 +24138,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:
@@ -24439,6 +24523,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:
@@ -24702,6 +24814,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:
@@ -25010,6 +25150,34 @@ spec:
                                 x-kubernetes-map-type: atomic
                               follow_redirects:
                                 type: boolean
+                              http_headers:
+                                additionalProperties:
+                                  properties:
+                                    files:
+                                      items:
+                                        type: string
+                                      type: array
+                                    secrets:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          name:
+                                            default: ""
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      type: array
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                type: object
                               noProxy:
                                 type: string
                               oauth2:

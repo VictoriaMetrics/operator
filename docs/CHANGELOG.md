@@ -20,7 +20,11 @@ aliases:
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 August 2026
 
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `http_headers` field to `http_config`, letting a receiver send custom HTTP headers (literal values, Secret-backed values, or values read from a file) with each notification request. See [#2459](https://github.com/VictoriaMetrics/operator/issues/2459).
+
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix `spec.arbitraryFSAccessThroughSMs.deny` silently not rejecting a `bearerTokenFile`/`basicAuth.passwordFile`/`oauth2.clientSecretFile`/`authorization.credentialsFile` reference whenever `tlsConfig` wasn't also set, since the check discarded any already-found violation instead of just skipping the (unset) TLS-specific ones.
 * BUGFIX: [vldistributed](https://docs.victoriametrics.com/operator/resources/vldistributed/): add validation webhook for VLDistributed resources.
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix a regression introduced in v0.74.0 where disabling a child-object controller via `-controller.disableReconcileFor`, directly or transitively through its parent (e.g. VMUser via VMAuth), could crash the operator on startup with `cannot register status condition indexers`. See [#2478](https://github.com/VictoriaMetrics/operator/issues/2478).
 
 ## [v0.74.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.0)
 **Release date:** 30 July 2026

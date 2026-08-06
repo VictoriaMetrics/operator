@@ -1143,7 +1143,7 @@ type TLSConfig struct {
 
 func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
 	if c == nil {
-		return nil
+		return props
 	}
 	if c.CAFile != "" {
 		props = append(props, "tlsConfig.caFile")

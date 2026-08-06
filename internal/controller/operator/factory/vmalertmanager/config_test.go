@@ -2096,6 +2096,49 @@ authorization:
   token_url: https://some-oauth2-proxy
 `,
 	})
+
+	// with http_headers: literal values, a secret-backed value, and a file path
+	f(opts{
+		httpCfg: &vmv1beta1.HTTPConfig{
+			HTTPHeaders: map[string]vmv1beta1.HTTPHeaderConfig{
+				"X-Custom-Header": {
+					Values: []string{"foo"},
+				},
+				"X-Api-Key": {
+					Secrets: []corev1.SecretKeySelector{
+						{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "api-key",
+						},
+					},
+					Files: []string{"/etc/vm/secrets/header_file"},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secret-store",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"api-key": []byte("secret-value"),
+				},
+			},
+		},
+		want: `http_headers:
+  X-Api-Key:
+    secrets:
+    - secret-value
+    files:
+    - /etc/vm/secrets/header_file
+  X-Custom-Header:
+    values:
+    - foo
+`,
+	})
 }
 
 func Test_UpdateDefaultAMConfig(t *testing.T) {

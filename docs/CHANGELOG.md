@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix a regression introduced in v0.74.0 where disabling a child-object controller via `-controller.disableReconcileFor`, directly or transitively through its parent (e.g. VMUser via VMAuth), could crash the operator on startup with `cannot register status condition indexers`. See [#2478](https://github.com/VictoriaMetrics/operator/issues/2478).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.149.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.149.0) version
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 August 2026

@@ -38,6 +38,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -283,7 +284,12 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err := registerChildConditionIndexers(ctx, mgr); err != nil {
+	disabledControllerNames, err := parseDisabledControllerNames()
+	if err != nil {
+		return err
+	}
+
+	if err := registerChildConditionIndexers(ctx, mgr, effectiveDisabledControllerNames(baseConfig, disabledControllerNames)); err != nil {
 		return fmt.Errorf("cannot register status condition indexers: %w", err)
 	}
 
@@ -330,7 +336,7 @@ func RunManager(ctx context.Context) error {
 		return RunDryRunMode(ctx, mgr, baseConfig)
 	}
 
-	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig); err != nil {
+	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
 		return err
 	}
 
@@ -360,14 +366,51 @@ func RunManager(ctx context.Context) error {
 }
 
 // registerChildConditionIndexers registers k8stools.ChildConditionIndexerFunc for every CRD
-// kind in k8stools.ChildConditionIndexedKinds.
-func registerChildConditionIndexers(ctx context.Context, mgr ctrl.Manager) error {
+// kind in k8stools.ChildConditionIndexedKinds, skipping kinds whose controller is disabled —
+// their CRD may not even be installed in the cluster, so indexing them would fail the manager
+// startup entirely.
+func registerChildConditionIndexers(ctx context.Context, mgr ctrl.Manager, disabledControllerNames sets.Set[string]) error {
 	for _, obj := range k8stools.ChildConditionIndexedKinds {
+		gvk, err := apiutil.GVKForObject(obj, mgr.GetScheme())
+		if err != nil {
+			return fmt.Errorf("cannot get GVK for %T: %w", obj, err)
+		}
+		if disabledControllerNames.Has(gvk.Kind) {
+			continue
+		}
 		if err := mgr.GetFieldIndexer().IndexField(ctx, obj, k8stools.ChildConditionIndexField, k8stools.ChildConditionIndexerFunc); err != nil {
 			return fmt.Errorf("cannot index %T: %w", obj, err)
 		}
 	}
 	return nil
+}
+
+// parseDisabledControllerNames parses the -controller.disableReconcileFor flag into a set of
+// controller names, validating each against the known controller list.
+func parseDisabledControllerNames() (sets.Set[string], error) {
+	disabledControllerNames := sets.New[string]()
+	if len(*disableControllerForCRD) > 0 {
+		names := strings.Split(*disableControllerForCRD, ",")
+		for _, cn := range names {
+			if _, ok := controllersByName[cn]; !ok {
+				return nil, fmt.Errorf("bad value=%q for flag=controller.disableReconcileFor. Expected name of reconcile controller", cn)
+			}
+			disabledControllerNames.Insert(cn)
+		}
+	}
+	return disabledControllerNames, nil
+}
+
+// effectiveDisabledControllerNames adds controllers indirectly disabled via IsDisabled
+// (e.g. VMUser when VMAuth is disabled) on top of the directly disabled set.
+func effectiveDisabledControllerNames(bs *config.BaseOperatorConf, direct sets.Set[string]) sets.Set[string] {
+	effective := direct.Clone()
+	for name, ct := range controllersByName {
+		if ct.IsDisabled(bs, direct) {
+			effective.Insert(name)
+		}
+	}
+	return effective
 }
 
 func addWebhooks(mgr ctrl.Manager, baseConfig *config.BaseOperatorConf) error {
@@ -544,18 +587,7 @@ var promCRDControllers = map[string]sets.Set[string]{
 	),
 }
 
-func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf) error {
-	disabledControllerNames := sets.New[string]()
-	if len(*disableControllerForCRD) > 0 {
-		names := strings.Split(*disableControllerForCRD, ",")
-		for _, cn := range names {
-			if _, ok := controllersByName[cn]; !ok {
-				return fmt.Errorf("bad value=%q for flag=controller.disableReconcileFor. Expected name of reconcile controller", cn)
-			}
-			disabledControllerNames.Insert(cn)
-		}
-	}
-
+func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf, disabledControllerNames sets.Set[string]) error {
 	for groupVersion, kinds := range promCRDControllers {
 		api, err := baseClient.ServerResourcesForGroupVersion(groupVersion)
 		if err != nil {
@@ -572,7 +604,10 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Cli
 		disabledControllerNames.Insert(kinds.UnsortedList()...)
 	}
 	for name, ct := range controllersByName {
-		if disabledControllerNames.Has(name) || ct.IsDisabled(bs, disabledControllerNames) {
+		if ct.IsDisabled(bs, disabledControllerNames) {
+			disabledControllerNames.Insert(name)
+		}
+		if disabledControllerNames.Has(name) {
 			l.Info("controller disabled either by provided flag or respective CRD is not found", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
 			continue
 		}

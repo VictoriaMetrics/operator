@@ -15,6 +15,8 @@ tags:
 
 `VLDistributed` is the Custom Resource Definition for orchestrated updates of several VictoriaLogs clusters or single-node instances. It allows you to define and manage components of a distributed VictoriaLogs setup and apply changes to them sequentially, ensuring high availability and minimal disruption.
 
+![CR](vldistributed.webp)
+
 **Note:** `VLDistributed` is an experimental feature and may not be suitable for production environments. API is not yet stabilized and may change in future releases.
 
 For a high-level overview of VictoriaLogs distributed architecture, refer to the official [VictoriaLogs cluster documentation](https://docs.victoriametrics.com/victorialogs/cluster/).

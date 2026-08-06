@@ -17,6 +17,8 @@ tags:
 
 **Note:** `VLDistributed` is an experimental feature and may not be suitable for production environments. API is not yet stabilized and may change in future releases.
 
+![CR](vldistributed.webp)
+
 For a high-level overview of VictoriaLogs distributed architecture, refer to the official [VictoriaLogs cluster documentation](https://docs.victoriametrics.com/victorialogs/cluster/).
 
 ## Specification

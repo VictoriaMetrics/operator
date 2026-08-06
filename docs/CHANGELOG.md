@@ -21,6 +21,7 @@ aliases:
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): default `spec.shardCount` to `0` at the CRD schema level, fixing `VerticalPodAutoscaler`'s `/scale` subresource lookups failing with `the spec replicas field ".spec.shardCount" does not exist` whenever sharding wasn't configured (the common case). See [#2473](https://github.com/VictoriaMetrics/operator/issues/2473).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): set default values for each possible `level` label of `operator_log_messages_total` metric. See [#2477](https://github.com/VictoriaMetrics/operator/issues/2477).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 August 2026

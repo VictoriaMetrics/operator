@@ -46323,6 +46323,7 @@ spec:
                 - spec
                 type: object
               shardCount:
+                default: 0
                 description: |-
                   ShardCount - numbers of shards of VMAgent
                   in this case operator will use 1 deployment/sts per shard with
@@ -61252,6 +61253,7 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               shardCount:
+                default: 0
                 description: |-
                   ShardCount - numbers of shards of VMAnomaly
                   in this case operator will use 1 sts per shard with

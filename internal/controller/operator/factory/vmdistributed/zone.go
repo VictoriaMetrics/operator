@@ -192,6 +192,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			return idxK < idxJ
 		})
 		prevAgentSpec := vmAgent.Spec
+		vmAgentSpec.ShardCount = prevAgentSpec.ShardCount
 		vmAgent.Spec = *vmAgentSpec
 		rclient.Scheme().Default(&vmAgent)
 		zs.hasChanges[i] = zs.hasChanges[i] || !equality.Semantic.DeepEqual(&vmAgent.Spec, &prevAgentSpec)

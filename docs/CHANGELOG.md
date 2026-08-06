@@ -14,6 +14,9 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.149.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.149.0) version
+
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): default `spec.shardCount` to `0` at the CRD schema level, fixing `VerticalPodAutoscaler`'s `/scale` subresource lookups failing with `the spec replicas field ".spec.shardCount" does not exist` whenever sharding wasn't configured (the common case). See [#2473](https://github.com/VictoriaMetrics/operator/issues/2473).
+
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 August 2026
 

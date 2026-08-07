@@ -38,7 +38,7 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 ## Specification
 
-You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api/#vmagent)**.
+You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api/#v1beta1-vmagent)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -684,7 +684,7 @@ VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/vi
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
  - change version of `vmagent` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmagent/#version-management).
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/victoriametrics/vmagent/#kafka-integration)

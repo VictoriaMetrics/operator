@@ -26,7 +26,7 @@ For each `VTSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VTSingle` resource in the **[API docs -> VTSingle](https://docs.victoriametrics.com/operator/api/#vtsingle)**.
+You can see the full actual specification of the `VTSingle` resource in the **[API docs -> VTSingle](https://docs.victoriametrics.com/operator/api/#v1-vtsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).

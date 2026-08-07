@@ -33,15 +33,49 @@
   {{- with $parts }}<br/><b>Deprecated: </b>{{ join " " . }}<br/>{{ end }}
 {{- end -}}
 
+{{- define "typeLink" -}}
+{{- $t := . }}
+{{- $leaf := $t }}
+{{- if and $t (eq (toJson $t.Kind) "\"POINTER\"") -}}
+  {{- $leaf = $t.UnderlyingType -}}
+{{- end -}}
+{{- if not $leaf -}}
+{{- else if markdownShouldRenderType $leaf -}}
+  {{- $version := $leaf.Package | splitList "/" | last -}}
+  {{- printf "[%s (%s)](#%s)" $leaf.Name $version (lower (printf "%s-%s" $version $leaf.Name)) -}}
+{{- else -}}
+  {{- markdownRenderTypeLink $t -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "memberType" -}}
+{{- $t := . -}}
+{{- if eq (toJson $t.Kind) "\"MAP\"" -}}
+object (keys:{{ template "typeLink" $t.KeyType }}, values:{{ template "typeLink" $t.ValueType }})
+{{- else if eq (toJson $t.Kind) "\"SLICE\"" -}}
+{{ template "typeLink" $t.UnderlyingType }} array
+{{- else -}}
+{{ template "typeLink" $t }}
+{{- end -}}
+{{- end -}}
+
 
 {{- define "type" -}}
-{{- $type := . -}}
+{{- $ctx := . -}}
+{{- $type := $ctx.type -}}
+{{- $aliases := $ctx.aliases -}}
 {{- if markdownShouldRenderType $type }}
+{{- $version := $type.Package | splitList "/" | last }}
+{{- $aliasKey := lower $type.Name }}
+{{- $isAliasOwner := eq (index $aliases $aliasKey) $type.Package }}
 
-#### {{ $type.Name }}
+#### {{ $type.Name }} {#{{ lower (printf "%s-%s" $version $type.Name) }}}
+{{- if $isAliasOwner }}
+<a id="{{ $aliasKey }}"></a>
+{{- end }}
 {{- if $type.IsAlias }}
 
-_Underlying type:_ _{{ markdownRenderTypeLink $type.UnderlyingType }}_
+_Underlying type:_ _{{ template "typeLink" $type.UnderlyingType }}_
 {{- end }}
 {{- if $type.Doc }}
 
@@ -56,7 +90,7 @@ _Validation:_
 {{- end }}
 {{- if $type.References }}
 
-Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ markdownRenderTypeLink $ref }}{{- end }}
+Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ template "typeLink" $ref }}{{- end }}
 {{- end }}
 {{- if $type.Members }}
 
@@ -73,8 +107,9 @@ Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}
 {{- $memberKeys := (keys $members | sortAlpha) }}
 {{- range $memberKeys }}
 {{- $member := index $members . }}
-{{- $id := lower (printf "%s-%s" $type.Name $member.Name) }}
-| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a><br/>_{{ markdownRenderType $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "notes" (dict "member" $member "type" $type.Name) }} |
+{{- $id := lower (printf "%s-%s-%s" $version $type.Name $member.Name) }}
+{{- $oldId := lower (printf "%s-%s" $type.Name $member.Name) }}
+| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a>{{- if $isAliasOwner }}<a id="{{ $oldId }}"></a>{{- end }}<br/>_{{ template "memberType" $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "notes" (dict "member" $member "type" $type.Name) }} |
 {{- end }}
 {{- end }}
 {{- end }}

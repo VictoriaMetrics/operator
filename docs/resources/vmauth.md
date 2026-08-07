@@ -22,7 +22,7 @@ So it will be possible to access these credentials from any application by targe
 ## Specification
 
 You can see the full actual specification of the `VMAuth` resource in
-the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api/#vmauth)**.
+the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api/#v1beta1-vmauth)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -268,7 +268,7 @@ Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametr
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
  - change version of `vmauth` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmauth/#version-management).
 
 ### IP Filters

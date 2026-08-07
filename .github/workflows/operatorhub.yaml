@@ -19,7 +19,7 @@ jobs:
   update:
     name: Publish new OperatorHub release
     runs-on:  vm-runner
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (! contains(github.event.workflow_run.head_branch, '-') || startsWith(github.event.workflow_run.head_branch, 'release-'))) }}
     strategy:
       matrix:
         repo:

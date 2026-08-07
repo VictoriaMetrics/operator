@@ -14,7 +14,7 @@ aliases:
 ## tip
 
 ## [v0.68.7](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.7)
-**Release date:** 27 July 2026
+**Release date:** 27 Jul 2026
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.147.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.147.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.9.4](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.9.4) version.
@@ -28,7 +28,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fix missing credential secret and config-reloader setup in `ingestOnlyMode` when remote write entries carry authentication secrets (`basicAuth.password`, `bearerTokenSecret`, or `oauth2.clientSecret`). Previously the operator-managed secret containing the credential files was never created in ingest-only mode, causing vmagent to start with dangling file references. The secret is now reconciled and the config-reloader is configured to watch it for credential rotation.
 
 ## [v0.68.6](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.6)
-**Release date:** 25 June 2026
+**Release date:** 25 Jun 2026
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.146.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.146.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0).
@@ -66,7 +66,7 @@ aliases:
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/) and [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Fix incorrect scaling logs for sharded vmagent and vmanomaly.
 
 ## [v0.68.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.4)
-**Release date:** 09 April 2026
+**Release date:** 09 Apr 2026
 
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce statefulRollingUpdateStrategyBehavior to allow managing VMAgent update strategy in a statefulMode. See [#1987](https://github.com/VictoriaMetrics/operator/issues/1987).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Dry-run mode. See [#1832](https://github.com/VictoriaMetrics/operator/issues/1832).
@@ -79,7 +79,7 @@ aliases:
 * BUGFIX: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/): use default stub, when no VMAuth backends are available
 
 ## [v0.68.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.3)
-**Release date:** 16 March 2026
+**Release date:** 16 Mar 2026
 
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): prettify reconcile diff in logs, now diff objects show only changed JSON fields.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): introduce VM_LOOPBACK env variable, which allows to override default loopback address, which is either `localhost` if `VM_ENABLETCP6=true` or `127.0.0.1` in other cases. Note: this change may cause component rollouts when 127.0.0.1 is used as the loopback address. Make sure to set this env var before upgrading.
@@ -93,7 +93,7 @@ aliases:
 * SECURITY: upgrade Go builder from Go1.25.7 to Go1.25.8. See [the list of issues addressed in Go1.25.8](https://github.com/golang/go/issues?q=milestone%3AGo1.25.8+label%3ACherryPickApproved).
 
 ## [v0.68.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.2)
-**Release date:** 04 March 2026
+**Release date:** 04 Mar 2026
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0).
 
@@ -107,14 +107,14 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): wait for STS deletion in case of recreation without throwing an error.
 
 ## [v0.68.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.1)
-**Release date:** 23 February 2026
+**Release date:** 23 Feb 2026
 
 * SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.7. See [the list of issues addressed in Go1.25.7](https://github.com/golang/go/issues?q=milestone%3AGo1.25.7+label%3ACherryPickApproved).
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix configuration marshalling for [Prophet model](https://docs.victoriametrics.com/anomaly-detection/components/models/#prophet). Previously, using Prophet model would lead to panic during configuration marshalling.
 
 ## [v0.68.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.68.0)
-**Release date:** 23 February 2026
+**Release date:** 23 Feb 2026
 
 **Update note 1**: deprecated VMProbe's `spec.targets.ingress`. Use `spec.targets.kubernetes` slice instead. Please check [example of VMProbe with Ingress discovery](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmprobe-k8s.yaml). This field will be removed in v0.71.0.
 
@@ -149,7 +149,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): fixed RBAC, when ingestOnlyMode is enabled and relabel of stream aggregation configurations defined. See [#1828](https://github.com/VictoriaMetrics/operator/issues/1828).
 
 ## [v0.67.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.67.0)
-**Release date:** 23 January 2026
+**Release date:** 23 Jan 2026
 
 **Update note 1**: removed 3rd-party config reloaders. Now VMAlert, VMAgent, VMAuth and VMAlertmanager are using only VM config reloader. Please verify `spec.configReloaderExtraArgs` in all instances of `VMAlert`, `VMAuth`, `VMAgent` and `VMAlertmanager` CRs are using [valid config-reloader arguments](https://docs.victoriametrics.com/operator/configuration/#config-reloader-flags) before upgrading.
 
@@ -197,7 +197,7 @@ aliases:
 
 ## [v0.66.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.1)
 
-**Release date:** 06 December 2025
+**Release date:** 06 Dec 2025
 
 SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues addressed in Go1.25.5](https://github.com/golang/go/issues?q=milestone%3AGo1.25.5+label%3ACherryPickApproved).
 
@@ -207,7 +207,7 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 
 ## [v0.66.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.66.0)
 
-**Release date:** 03 December 2025
+**Release date:** 03 Dec 2025
 
 **Update note 1**: `labels` and `annotations` inheritance is removed. It was deprecated in v0.51.0. Consider moving all needed labels and annotations to the `spec.managedMetadata` fields.
 
@@ -232,7 +232,7 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 
 ## [v0.65.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.65.0)
 
-**Release date:** 31 October 2025
+**Release date:** 31 Oct 2025
 
 * FEATURE: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): added HPA  support with `spec.hpa` field for the VMAuth. See this issue [#1573](https://github.com/VictoriaMetrics/operator/issues/1573) for details. Thanks to the @endesapt
 * FEATURE: [converter](https://docs.victoriametrics.com/operator/integrations/prometheus/#objects-conversion): support `ServiceMonitor's` [ServiceDiscoveryRole](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceDiscoveryRole).
@@ -244,13 +244,13 @@ SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues 
 
 ## [v0.64.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.1)
 
-**Release date:** 30 October 2025
+**Release date:** 30 Oct 2025
 
 * BUGFIX: [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/): fix `-storageNode` argument generation for vlinsert. Bug was introduced in [ff722eb](https://github.com/VictoriaMetrics/operator/commit/ff722eb3ba4e72765548b4353b5f370b42d143f7).
 
 ## [v0.64.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.64.0)
 
-**Release date:** 29 October 2025
+**Release date:** 29 Oct 2025
 
 **It isn't recommended to use Operator  v0.64.0 because of the bug [#1583](https://github.com/VictoriaMetrics/operator/issues/1583), which incorrectly builds args for `VLCluster` resources. Upgrade to [v0.65.0](https://docs.victoriametrics.com/operator/changelog/#v0641) instead.**
 
@@ -317,7 +317,7 @@ This change could be reverted by providing env variable `VM_USECUSTOMCONFIGRELOA
 
 ## [v0.61.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.2)
 
-**Release date:** 19 July 2025
+**Release date:** 19 Jul 2025
 
 Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.122.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11220) version
 
@@ -326,7 +326,7 @@ Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated de
 
 ## [v0.61.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.1)
 
-**Release date:** 19 July 2025
+**Release date:** 19 Jul 2025
 
 **It isn't recommended to use Operator  v0.61.1 because of the bug [#1478](https://github.com/VictoriaMetrics/operator/issues/1478), which may result in `VMAgent` endless reconcile loop. Upgrade to [v0.61.2](https://docs.victoriametrics.com/operator/changelog/#v0612) instead.**
 
@@ -335,7 +335,7 @@ Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated de
 
 ## [v0.61.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.61.0)
 
-**Release date:** 15 July 2025
+**Release date:** 15 Jul 2025
 
 
 **It isn't recommended to use Operator  v0.61.0 because of the bug [#1478](https://github.com/VictoriaMetrics/operator/issues/1478), which may result in `VMAgent` endless reconcile loop. Upgrade to [v0.61.2](https://docs.victoriametrics.com/operator/changelog/#v0612) instead.**
@@ -372,7 +372,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)
 
-**Release date:** 27 June 2025
+**Release date:** 27 Jun 2025
 
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): clear `status.reason` when transitioning to `expanding` state. This makes less confusing as resource in `expanding` state is no longer affected by an error displayed in `status.reason`. See [#1426](https://github.com/VictoriaMetrics/operator/issues/1426).
 * BUGFIX: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): properly load TLS secrets into VMAlert secret. See [#1437](https://github.com/VictoriaMetrics/operator/issues/1437).
@@ -382,7 +382,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 ## [v0.60.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.1)
 
-**Release date:** 24 June 2025
+**Release date:** 24 Jun 2025
 
 * SECURITY: upgrade Go builder from Go1.24.3 to Go1.24.4. See [the list of issues addressed in Go1.24.4](https://github.com/golang/go/issues?q=milestone%3AGo1.24.4+label%3ACherryPickApproved).
 
@@ -394,7 +394,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 ## [v0.60.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.0)
 
-**Release date:** 23 June 2025
+**Release date:** 23 Jun 2025
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.120.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11200) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.24.0](https://docs.victoriametrics.com/victorialogs/changelog/#v1240) version
@@ -414,7 +414,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 
 ## [v0.59.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.59.2)
 
-**Release date:** 10 June 2025
+**Release date:** 10 Jun 2025
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.119.0](https://docs.victoriametrics.com/victoriametrics/changelog/#v11190) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.23.3](https://docs.victoriametrics.com/victorialogs/changelog/#v1233) version

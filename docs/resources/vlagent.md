@@ -58,7 +58,7 @@ As a `remoteWrite` target, VLAgent supports all VictoriaLogs components:
 
 ## Specification
 
-You can see the full actual specification of the `VLAgent` resource in the **[API docs -> VLAgent](https://docs.victoriametrics.com/operator/api/#vlagent)**.
+You can see the full actual specification of the `VLAgent` resource in the **[API docs -> VLAgent](https://docs.victoriametrics.com/operator/api/#v1-vlagent)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).

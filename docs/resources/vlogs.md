@@ -25,7 +25,7 @@ For each `VLogs` resource, the Operator adds `Service` and `VMServiceScrape` in 
 
 ## Specification
 
-You can see the full actual specification of the `VLogs` resource in the **[API docs -> VLogs](https://docs.victoriametrics.com/operator/api/#vlogs)**.
+You can see the full actual specification of the `VLogs` resource in the **[API docs -> VLogs](https://docs.victoriametrics.com/operator/api/#v1beta1-vlogs)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).

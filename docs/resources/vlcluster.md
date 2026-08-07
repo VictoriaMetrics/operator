@@ -24,7 +24,7 @@ For each `VLCluster` resource components, the Operator adds `Service` and `VMSer
 
 ## Specification
 
-You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api/#vlcluster)**.
+You can see the full actual specification of the `VLCluster` resource in the **[API docs -> VLCluster](https://docs.victoriametrics.com/operator/api/#v1-vlcluster)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -236,7 +236,7 @@ Also, you can specify requests without limits - in this case default values for 
 
  Operator provides enhanced load-balancing mechanism for `vlinsert` and `vlselect` clients. By default, operator uses built-in Kubernetes [service](https://kubernetes.io/docs/concepts/services-networking/service/) with `clusterIP` type for clients connection. It's good solution for short lived connections. But it acts poorly with long-lived TCP sessions and leads to the uneven resources utilization for `vlselect` and `vlinsert` components.
 
- Operator allows to tweak Kubernetes TCP-based load-balancing with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
+ Operator allows to tweak Kubernetes TCP-based load-balancing with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#v1-vlclusterspec-requestsloadbalancer):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

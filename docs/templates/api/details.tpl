@@ -8,7 +8,9 @@
 {{- if $gv.Kinds  }}
 ### Resource Types
 {{- range $gv.SortedKinds }}
-- {{ $gv.TypeForKind . | markdownRenderTypeLink }}
+{{- $t := $gv.TypeForKind . }}
+{{- $version := $t.Package | splitList "/" | last }}
+- [{{ $t.Name }}](#{{ lower (printf "%s-%s" $version $t.Name) }})
 {{- end }}
 {{- end }}
 {{- range $gv.SortedTypes }}

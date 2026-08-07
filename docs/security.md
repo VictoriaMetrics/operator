@@ -274,7 +274,7 @@ spec:
         storage: 25Gi
 ```
 
- In addition, operator supports more granular per resource security configuration with [spec.securityContext](https://docs.victoriametrics.com/operator/api/#securitycontext) and [ContainerSecurityContext](https://docs.victoriametrics.com/operator/api/#containersecuritycontext)
+ In addition, operator supports more granular per resource security configuration with [spec.securityContext](https://docs.victoriametrics.com/operator/api/#v1beta1-securitycontext) and [ContainerSecurityContext](https://docs.victoriametrics.com/operator/api/#v1beta1-containersecuritycontext)
 
 ### Pod SecurityContext
 

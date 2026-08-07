@@ -39,7 +39,7 @@ The most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wai
 
 ## Specification
 
-You can see the full actual specification of the `VMCluster` resource in the **[API docs -> VMCluster](https://docs.victoriametrics.com/operator/api/#vmcluster)**.
+You can see the full actual specification of the `VMCluster` resource in the **[API docs -> VMCluster](https://docs.victoriametrics.com/operator/api/#v1beta1-vmcluster)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -124,7 +124,7 @@ see [Authorization and exposing components — VMCluster](https://docs.victoriam
 
  In this case clients could establish multiple connections to the same `pod` via `service`. And client requests will be served only by subset of `pods`.
 
- Operator allows to tweak this behaviour with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#vmclusterspec-requestsloadbalancer):
+ Operator allows to tweak this behaviour with enabled [requestsLoadBalancer](https://docs.victoriametrics.com/operator/api/#v1beta1-vmclusterspec-requestsloadbalancer):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -493,7 +493,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 - [Automatic vmstorage discovery](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery)
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
  - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management).
 
 ### Downsampling
@@ -770,7 +770,7 @@ It's needed to make consistent backups for each storage node.
 
 You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
-Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api/#vmbackup)
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api/#v1beta1-vmbackup)
 
 **Using VMBackupmanager for restoring backups** in Kubernetes environment is described [here](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/#how-to-restore-in-kubernetes).
 

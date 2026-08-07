@@ -126,4 +126,4 @@ writer:
 ## Specification
 
 You can see the full actual specification of the `VMAnomalyConfig` resource in
-the **[API docs -> VMAnomalyConfig](https://docs.victoriametrics.com/operator/api/#vmanomalyconfig)**.
+the **[API docs -> VMAnomalyConfig](https://docs.victoriametrics.com/operator/api/#v1-vmanomalyconfig)**.

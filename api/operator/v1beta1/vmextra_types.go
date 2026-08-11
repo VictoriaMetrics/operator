@@ -385,6 +385,9 @@ type AdditionalServiceSpec struct {
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Spec corev1.ServiceSpec `json:"spec"`
 }
 
@@ -1440,6 +1443,9 @@ type CommonConfigReloaderParams struct {
 type CommonAppsParams struct {
 	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
 	// +optional
@@ -1475,6 +1481,9 @@ type CommonAppsParams struct {
 	// Parameters specified here will be merged to the generated DNS
 	// configuration based on DNSPolicy.
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	DNSConfig *corev1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// EnableServiceLinks indicates whether information about services should be injected into pod's
 	// environment variables, matching the syntax of Docker links.
@@ -1487,6 +1496,9 @@ type CommonAppsParams struct {
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	SecurityContext *SecurityContext `json:"securityContext,omitempty"`
 	// TopologySpreadConstraints embedded kubernetes pod configuration option,
 	// controls how pods are spread across your cluster among failure-domains
@@ -1606,12 +1618,21 @@ type CommonAppsParams struct {
 	PreStopSleepSeconds *int32 `json:"preStopSleepSeconds,omitempty"`
 	// LivenessProbe that will be added to CR pod
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
 	// ReadinessProbe that will be added to CR pod
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// StartupProbe that will be added to CR pod
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
 }
 

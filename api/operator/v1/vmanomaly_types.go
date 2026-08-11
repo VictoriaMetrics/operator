@@ -52,6 +52,9 @@ type VMAnomalySpec struct {
 	LogLevel string `json:"logLevel,omitempty"`
 	// ServiceScrapeSpec that will be added to vmanomaly VMPodScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// ShardCount - numbers of shards of VMAnomaly
 	// in this case operator will use 1 sts per shard with

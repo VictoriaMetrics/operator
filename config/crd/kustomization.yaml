@@ -28,36 +28,22 @@ resources:
 - bases/operator.victoriametrics.com_vldistributed.yaml
 - bases/operator.victoriametrics.com_vmanomalyconfigs.yaml
 patches:
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
-# patches here are for enabling the conversion webhook for each CRD
-- path: patches/operator.victoriametrics.com_vmagents.yaml
+- path: patches/common-array-fields-with-claimtemplates.yaml
   target:
     kind: CustomResourceDefinition
-    name: vmagents.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vmanomalies.yaml
+    name: ^(vlagents|vmagents|vmalertmanagers|vmanomalies)\.operator\.victoriametrics\.com$
+- path: patches/common-array-fields.yaml
   target:
     kind: CustomResourceDefinition
-    name: vmanomalies.operator.victoriametrics.com
+    name: ^(vlsingles|vmauths|vmsingles|vtsingles|vmalerts)\.operator\.victoriametrics\.com$
 - path: patches/operator.victoriametrics.com_vmalerts.yaml
   target:
     kind: CustomResourceDefinition
     name: vmalerts.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vmalertmanagers.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: vmalertmanagers.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vmsingles.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: vmsingles.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vmclusters.yaml
   target:
     kind: CustomResourceDefinition
     name: vmclusters.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vmauths.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: vmauths.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
   target:
     kind: CustomResourceDefinition
@@ -66,26 +52,22 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vlogs.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vlsingles.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: vlsingles.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vlclusters.yaml
   target:
     kind: CustomResourceDefinition
     name: vlclusters.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vtsingles.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: vtsingles.operator.victoriametrics.com
 - path: patches/operator.victoriametrics.com_vtclusters.yaml
   target:
     kind: CustomResourceDefinition
     name: vtclusters.operator.victoriametrics.com
-- path: patches/operator.victoriametrics.com_vlagents.yaml
+- path: patches/operator.victoriametrics.com_vmdistributed.yaml
   target:
     kind: CustomResourceDefinition
-    name: vlagents.operator.victoriametrics.com
+    name: vmdistributed.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vldistributed.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vldistributed.operator.victoriametrics.com
 # - path: patches/webhook_in_operator_vmagents.yaml
 # - path: patches/webhook_in_operator_vmsingles.yaml
 # - path: patches/webhook_in_operator_vmalertmanagers.yaml

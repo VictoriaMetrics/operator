@@ -372,6 +372,9 @@ type VMSelect struct {
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
@@ -466,6 +469,9 @@ type VMInsert struct {
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
@@ -570,6 +576,9 @@ type VMStorage struct {
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
@@ -1151,6 +1160,9 @@ type VMAuthLoadBalancerSpec struct {
 	AdditionalServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmauthlb VMServiceScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// LogFormat for vmauth

@@ -59,6 +59,9 @@ type VMAgentSpec struct {
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec
 	// +optional
+	// +kubebuilder:validation:Type=object
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// ShardCount - numbers of shards of VMAgent

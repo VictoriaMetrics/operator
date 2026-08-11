@@ -124,9 +124,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		keepServicesScrapes.Insert(svcName)
 	}
-	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
-		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices.Insert(extraSvcName)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		keepServices.Insert(spec.NameOrDefaultForKey(svcName, key))
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

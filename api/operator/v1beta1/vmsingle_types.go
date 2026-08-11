@@ -71,7 +71,14 @@ type VMSingleSpec struct {
 	License *License `json:"license,omitempty"`
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -411,8 +418,8 @@ func (cr *VMSingle) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	if err := ValidateServiceSpecs(cr.PrefixedName(), cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs, SimplePortNameSet(append([]string{"http-alias", "vmbackupmanager"}, insertPortNames...)...)); err != nil {
+		return err
 	}
 	if cr.Spec.VMBackup != nil {
 		if err := cr.Spec.VMBackup.validate(cr.Spec.License); err != nil {
@@ -492,5 +499,5 @@ func (cr *VMSingle) GetStatusMetadata() *StatusMetadata {
 
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMSingle) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+	return ResolveDefaultServiceSpec(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs)
 }

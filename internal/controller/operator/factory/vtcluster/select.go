@@ -124,28 +124,41 @@ func buildVTSelectScrape(cr *vmv1.VTCluster, svc *corev1.Service) *vmv1beta1.VMS
 }
 
 func createOrUpdateVTSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevAdditionalSvcBase corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.Select != nil {
 		prevSvc = buildVTSelectService(prevCR)
-		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase = *prevSvc
 		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.Select.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.Select.ServiceSpec, prevCR.Spec.Select.ServiceSpecs)
 	}
 	svc := buildVTSelectService(cr)
 	owner := cr.AsOwner()
-	if err := cr.Spec.Select.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+	prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.Select.ServiceSpec, cr.Spec.Select.ServiceSpecs) {
+		spec := spec
 		additionalSvcBase := *svc
-		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
+		additionalSvcBase.Name = prefixedName
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(prefixedName, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("VTSelect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("VTSelect additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "clusternative" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile service for select: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile select service: %w", err)
@@ -175,6 +188,10 @@ func buildVTSelectService(cr *vmv1.VTCluster) *corev1.Service {
 	svc := build.Service(b, cr.Spec.Select.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
+		// same port, second name - lets ServiceSpecs split it out as its own Service.
+		clusternative := svc.Spec.Ports[0]
+		clusternative.Name = "clusternative"
+		svc.Spec.Ports = append(svc.Spec.Ports, clusternative)
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		svc.Name = cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)

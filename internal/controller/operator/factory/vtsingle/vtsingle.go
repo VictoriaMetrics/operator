@@ -323,23 +323,31 @@ func buildScrape(cr *vmv1.VTSingle, svc *corev1.Service) *vmv1beta1.VMServiceScr
 // createOrUpdateService creates service for vtsingle
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTSingle) error {
 	owner := cr.AsOwner()
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.ServiceSpec, prevCR.Spec.ServiceSpecs)
 	}
 	svc := build.Service(cr, cr.Spec.Port, nil)
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(svc, s)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		spec := spec
+		additionalService := build.AdditionalServiceFromDefault(svc, &spec)
+		additionalService.Name = spec.NameOrDefaultForKey(svc.Name, key)
 		if additionalService.Name == svc.Name {
 			return fmt.Errorf("vtsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalService, key) {
+			return fmt.Errorf("vtsingle additional service key %q does not match any port currently exposed by this service", key)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, &prevSpec)
+			prevAdditionalSvc.Name = additionalService.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vtsingle: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile service for vtsingle: %w", err)
@@ -361,9 +369,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTSingl
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		keepServicesScrapes.Insert(svcName)
 	}
-	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
-		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices.Insert(extraSvcName)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		keepServices.Insert(spec.NameOrDefaultForKey(svcName, key))
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

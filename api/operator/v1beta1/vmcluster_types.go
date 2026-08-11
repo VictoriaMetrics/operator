@@ -191,17 +191,17 @@ func (cr *VMCluster) GetAdditionalService(kind ClusterComponent) *AdditionalServ
 		if cr.Spec.VMInsert == nil {
 			return nil
 		}
-		return cr.Spec.VMInsert.ServiceSpec
+		return ResolveDefaultServiceSpec(cr.Spec.VMInsert.ServiceSpec, cr.Spec.VMInsert.ServiceSpecs)
 	case ClusterComponentSelect:
 		if cr.Spec.VMSelect == nil {
 			return nil
 		}
-		return cr.Spec.VMSelect.ServiceSpec
+		return ResolveDefaultServiceSpec(cr.Spec.VMSelect.ServiceSpec, cr.Spec.VMSelect.ServiceSpecs)
 	case ClusterComponentStorage:
 		if cr.Spec.VMStorage == nil {
 			return nil
 		}
-		return cr.Spec.VMStorage.ServiceSpec
+		return ResolveDefaultServiceSpec(cr.Spec.VMStorage.ServiceSpec, cr.Spec.VMStorage.ServiceSpecs)
 	case ClusterComponentBalancer:
 		return cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 	default:
@@ -369,7 +369,14 @@ type VMSelect struct {
 
 	// ServiceSpec that will be added to vmselect service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -466,7 +473,14 @@ type VMInsert struct {
 
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -573,7 +587,14 @@ type VMStorage struct {
 	RetentionFilters *RetentionFiltersConfig `json:"retentionFilters,omitempty"`
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -758,8 +779,8 @@ func (cr *VMCluster) Validate() error {
 	if cr.Spec.VMSelect != nil {
 		vms := cr.Spec.VMSelect
 		name := cr.PrefixedName(ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := ValidateServiceSpecs(name, vms.ServiceSpec, vms.ServiceSpecs, SimplePortNameSet("clusternative")); err != nil {
+			return err
 		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {
@@ -808,8 +829,8 @@ func (cr *VMCluster) Validate() error {
 	if cr.Spec.VMInsert != nil {
 		vmi := cr.Spec.VMInsert
 		name := cr.PrefixedName(ClusterComponentSelect)
-		if vmi.ServiceSpec != nil && vmi.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := ValidateServiceSpecs(name, vmi.ServiceSpec, vmi.ServiceSpecs, SimplePortNameSet(append([]string{"clusternative"}, insertPortNames...)...)); err != nil {
+			return err
 		}
 		if vmi.HPA != nil {
 			if err := vmi.HPA.Validate(); err != nil {
@@ -831,8 +852,8 @@ func (cr *VMCluster) Validate() error {
 	if cr.Spec.VMStorage != nil {
 		vms := cr.Spec.VMStorage
 		name := cr.PrefixedName(ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := ValidateServiceSpecs(name, vms.ServiceSpec, vms.ServiceSpecs, SimplePortNameSet("vminsert", "vmselect", "vmbackupmanager")); err != nil {
+			return err
 		}
 		if cr.Spec.VMStorage.VMBackup != nil {
 			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {

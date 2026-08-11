@@ -818,6 +818,113 @@ func TestCreateOrUpdate(t *testing.T) {
 		}})
 }
 
+func TestCreateOrUpdate_ServiceSpecs(t *testing.T) {
+	f := func(cr *vmv1.VLCluster, validate func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster)) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+		ctx := context.Background()
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+			validate(ctx, fclient, cr)
+		})
+	}
+
+	// ServiceSpecs["default"] merges into the primary service for all three components.
+	f(&vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		Spec: vmv1.VLClusterSpec{
+			VLInsert: &vmv1.VLInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+			VLSelect: &vmv1.VLSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+			VLStorage: &vmv1.VLStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+		var svc corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &svc))
+		assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &svc))
+		assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+		// vlstorage is a StatefulSet governing service and must stay headless even under a
+		// "default" key merge, same as ServiceSpec.UseAsDefault behaved before this change.
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &svc))
+		assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+	})
+
+	// a non-"default" key creates a genuinely separate Service per component.
+	f(&vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		Spec: vmv1.VLClusterSpec{
+			VLInsert: &vmv1.VLInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+			VLSelect: &vmv1.VLSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+			VLStorage: &vmv1.VLStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+				},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+		var primary corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert)}, &primary))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, primary.Spec.Type)
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert) + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &primary))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, primary.Spec.Type)
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect) + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &primary))
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage) + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+
+	// the deprecated singular ServiceSpec must keep working unchanged when ServiceSpecs is unset.
+	f(&vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+		Spec: vmv1.VLClusterSpec{
+			VLInsert: &vmv1.VLInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
+				},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLCluster) {
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentInsert) + "-additional-service"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+}
+
 func TestCreateOrUpdate_Paused(t *testing.T) {
 	// Create a paused VLCluster CR and test that it is not reconciled
 	cr := &vmv1.VLCluster{

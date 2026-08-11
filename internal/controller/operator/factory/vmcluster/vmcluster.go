@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -235,27 +236,40 @@ func buildVMSelectScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta
 
 func createOrUpdateVMSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	svc := buildVMSelectService(cr)
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevAdditionalSvcBase corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.VMSelect != nil {
 		prevSvc = buildVMSelectService(prevCR)
-		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase = *prevSvc
 		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VMSelect.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.VMSelect.ServiceSpec, prevCR.Spec.VMSelect.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.VMSelect.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+	prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VMSelect.ServiceSpec, cr.Spec.VMSelect.ServiceSpecs) {
+		spec := spec
 		additionalSvcBase := *svc
-		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
+		additionalSvcBase.Name = prefixedName
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(prefixedName, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("vmselect additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "clusternative" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile service for vmselect: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmselect service: %w", err)
@@ -383,27 +397,40 @@ func buildVMInsertScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta
 
 func createOrUpdateVMInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	svc := buildVMInsertService(cr)
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevAdditionalSvcBase corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.VMInsert != nil {
 		prevSvc = buildVMInsertService(prevCR)
-		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase = *prevSvc
 		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VMInsert.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.VMInsert.ServiceSpec, prevCR.Spec.VMInsert.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+	prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VMInsert.ServiceSpec, cr.Spec.VMInsert.ServiceSpecs) {
+		spec := spec
 		additionalSvcBase := *svc
-		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
+		additionalSvcBase.Name = prefixedName
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(prefixedName, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("vminsert additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "clusternative" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile vminsert additional service: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
@@ -462,9 +489,7 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	return build.Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
-		svc.Spec.ClusterIP = "None"
-		svc.Spec.PublishNotReadyAddresses = true
+	svc := build.Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
 		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
 			{
 				Name:       "vminsert",
@@ -489,6 +514,8 @@ func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
 			})
 		}
 	})
+	build.ForceHeadless(svc)
+	return svc
 }
 
 func buildVMStorageScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
@@ -498,25 +525,56 @@ func buildVMStorageScrape(cr *vmv1beta1.VMCluster, svc *corev1.Service) *vmv1bet
 	return build.VMServiceScrape(svc, cr.Spec.VMStorage, "vmbackupmanager")
 }
 
+// storageNodePort returns the port vminsert/vmselect should use to reach vmstorage on
+// portName ("vminsert" or "vmselect"): the override in VMStorage.ServiceSpecs[portName] if
+// set, else VMStorage's own field value.
+func storageNodePort(cr *vmv1beta1.VMCluster, portName string) string {
+	if cr.Spec.VMStorage == nil {
+		return ""
+	}
+	defaultValue := cr.Spec.VMStorage.VMInsertPort
+	if portName == "vmselect" {
+		defaultValue = cr.Spec.VMStorage.VMSelectPort
+	}
+	extra := vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VMStorage.ServiceSpec, cr.Spec.VMStorage.ServiceSpecs)
+	if spec, ok := extra[portName]; ok {
+		if p, ok := vmv1beta1.ServiceSpecPortValue(&spec, portName); ok {
+			return strconv.Itoa(int(p))
+		}
+	}
+	return defaultValue
+}
+
 func createOrUpdateVMStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMCluster) error {
 	svc := buildVMStorageService(cr)
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.VMStorage != nil {
 		prevSvc = buildVMStorageService(prevCR)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VMStorage.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.VMStorage.ServiceSpec, prevCR.Spec.VMStorage.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.VMStorage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VMStorage.ServiceSpec, cr.Spec.VMStorage.ServiceSpecs) {
+		spec := spec
+		additionalSvc := build.AdditionalServiceFromDefault(svc, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(svc.Name, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("vmstorage additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "vminsert" || key == "vmselect" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile vmstorage additional service: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
@@ -638,8 +696,9 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	} else {
 		storageNodeFlag := build.NewFlag("-storageNode", "")
 		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentSelect)
+		selectPort := storageNodePort(cr, "vmselect")
 		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, selectPort, cr.Spec.ClusterDomainName), idx)
 		}
 		for i, node := range cr.Spec.VMSelect.ExtraStorageNodes {
 			storageNodeFlag.Add(node.Addr, i+len(storageNodeIds))
@@ -868,8 +927,9 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	} else {
 		storageNodeFlag := build.NewFlag("-storageNode", "")
 		storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
+		insertPort := storageNodePort(cr, "vminsert")
 		for idx, i := range storageNodeIds {
-			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, cr.Spec.ClusterDomainName), idx)
+			storageNodeFlag.Add(vmv1beta1.PodDNSAddress(storageName, i, cr.Namespace, insertPort, cr.Spec.ClusterDomainName), idx)
 		}
 		args = build.AppendFlagsToArgs(args, len(storageNodeIds), storageNodeFlag)
 	}
@@ -1454,8 +1514,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)
-		if newStorage.ServiceSpec != nil && !newStorage.ServiceSpec.UseAsDefault {
-			cc.KeepService(newStorage.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newStorage.ServiceSpec, newStorage.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 	}
 
@@ -1478,8 +1538,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
-		if newSelect.ServiceSpec != nil && !newSelect.ServiceSpec.UseAsDefault {
-			cc.KeepService(newSelect.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newSelect.ServiceSpec, newSelect.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 		scrapeName := commonName
 		if newLB.Enabled && !newLB.DisableSelectBalancing {
@@ -1510,8 +1570,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
-		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {
-			cc.KeepService(newInsert.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newInsert.ServiceSpec, newInsert.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 		scrapeName := commonName
 		if newLB.Enabled && !newLB.DisableInsertBalancing {

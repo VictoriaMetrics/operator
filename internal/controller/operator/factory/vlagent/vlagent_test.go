@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -483,6 +484,69 @@ func TestCreateOrUpdate(t *testing.T) {
 			require.NotNil(t, cnt.Lifecycle.PreStop)
 			assert.Equal(t, int64(15), cnt.Lifecycle.PreStop.Sleep.Seconds)
 		},
+	})
+}
+
+func TestCreateOrUpdate_ServiceSpecs(t *testing.T) {
+	f := func(cr *vmv1.VLAgent, validate func(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent)) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+		ctx := context.TODO()
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+			validate(ctx, fclient, cr)
+		})
+	}
+
+	// ServiceSpecs["default"] is the map-based equivalent of ServiceSpec.UseAsDefault=true.
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-agent", Namespace: "monitoring"},
+		Spec: vmv1.VLAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent) {
+		var svc corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+		assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+	})
+
+	// a non-"default" key creates a genuinely separate Service.
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-agent", Namespace: "monitoring"},
+		Spec: vmv1.VLAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent) {
+		var primary corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &primary))
+		assert.Equal(t, corev1.ClusterIPNone, primary.Spec.ClusterIP)
+
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+
+	// the deprecated singular ServiceSpec must keep working unchanged when ServiceSpecs is unset.
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-agent", Namespace: "monitoring"},
+		Spec: vmv1.VLAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent) {
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-additional-service"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
 	})
 }
 

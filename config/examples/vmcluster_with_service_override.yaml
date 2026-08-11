@@ -12,13 +12,13 @@ spec:
       ports:
       - name: extra-port
         containerPort: 8055
-    serviceSpec:
+    serviceSpecs:
       # expose additional port with default service
-      useAsDefault: true
-      spec:
-        ports:
-        - name: extra-port
-          port: 8055
+      default:
+        spec:
+          ports:
+          - name: extra-port
+            port: 8055
     storageDataPath: "/vm-data"
     storage:
       volumeClaimTemplate:
@@ -41,13 +41,13 @@ spec:
               storage: 2Gi
   vminsert:
     replicaCount: 2
-    serviceSpec:
-      metadata:
-        annotations:
-          my-cloud-provide-annotation: value
-      useAsDefault: true
-      spec:
-        type: LoadBalancer
+    serviceSpecs:
+      default:
+        metadata:
+          annotations:
+            my-cloud-provide-annotation: value
+        spec:
+          type: LoadBalancer
     resources:
       limits:
         cpu: "1"

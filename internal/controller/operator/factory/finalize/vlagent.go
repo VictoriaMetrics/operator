@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
@@ -44,9 +45,9 @@ func OnVLAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLAgen
 		&appsv1.StatefulSet{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
-	if cr.Spec.ServiceSpec != nil {
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Name:      spec.NameOrDefaultForKey(cr.PrefixedName(), key),
 			Namespace: ns,
 		}})
 	}

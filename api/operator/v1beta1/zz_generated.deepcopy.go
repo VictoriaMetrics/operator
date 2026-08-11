@@ -4594,6 +4594,13 @@ func (in *VLogsSpec) DeepCopyInto(out *VLogsSpec) {
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(VMServiceScrapeSpec)
@@ -4908,6 +4915,13 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
@@ -5244,6 +5258,13 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(VMServiceScrapeSpec)
@@ -5574,6 +5595,13 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(VMServiceScrapeSpec)
@@ -5890,6 +5918,13 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
@@ -6317,6 +6352,13 @@ func (in *VMInsert) DeepCopyInto(out *VMInsert) {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
@@ -7219,6 +7261,13 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(VMServiceScrapeSpec)
@@ -7476,6 +7525,13 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
 		*out = new(VMServiceScrapeSpec)
@@ -7688,6 +7744,13 @@ func (in *VMStorage) DeepCopyInto(out *VMStorage) {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(AdditionalServiceSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ServiceSpecs != nil {
+		in, out := &in.ServiceSpecs, &out.ServiceSpecs
+		*out = make(map[string]AdditionalServiceSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 	if in.ServiceScrapeSpec != nil {
 		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec

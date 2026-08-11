@@ -134,17 +134,17 @@ func (cr *VLCluster) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1
 		if cr.Spec.VLInsert == nil {
 			return nil
 		}
-		return cr.Spec.VLInsert.ServiceSpec
+		return vmv1beta1.ResolveDefaultServiceSpec(cr.Spec.VLInsert.ServiceSpec, cr.Spec.VLInsert.ServiceSpecs)
 	case vmv1beta1.ClusterComponentSelect:
 		if cr.Spec.VLSelect == nil {
 			return nil
 		}
-		return cr.Spec.VLSelect.ServiceSpec
+		return vmv1beta1.ResolveDefaultServiceSpec(cr.Spec.VLSelect.ServiceSpec, cr.Spec.VLSelect.ServiceSpecs)
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.VLStorage == nil {
 			return nil
 		}
-		return cr.Spec.VLStorage.ServiceSpec
+		return vmv1beta1.ResolveDefaultServiceSpec(cr.Spec.VLStorage.ServiceSpec, cr.Spec.VLStorage.ServiceSpecs)
 	case vmv1beta1.ClusterComponentBalancer:
 		return cr.Spec.RequestsLoadBalancer.Spec.AdditionalServiceSpec
 	default:
@@ -240,7 +240,14 @@ type VLInsert struct {
 
 	// ServiceSpec that will be added to vlselect service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]vmv1beta1.AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vlselect VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -433,7 +440,14 @@ type VLSelect struct {
 
 	// ServiceSpec that will be added to vlselect service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]vmv1beta1.AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vlselect VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -557,7 +571,14 @@ type VLStorage struct {
 
 	// ServiceSpec that will be added to vlselect service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]vmv1beta1.AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vlselect VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -735,8 +756,10 @@ func (cr *VLCluster) Validate() error {
 	if cr.Spec.VLInsert != nil {
 		vli := cr.Spec.VLInsert
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		if vli.ServiceSpec != nil && vli.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := vmv1beta1.ValidateServiceSpecs(name, vli.ServiceSpec, vli.ServiceSpecs, func(key string) bool {
+			return key == "http" || key == "clusternative" || vmv1beta1.IsSyslogPortName(key)
+		}); err != nil {
+			return err
 		}
 		if vli.HPA != nil {
 			if err := vli.HPA.Validate(); err != nil {
@@ -756,8 +779,8 @@ func (cr *VLCluster) Validate() error {
 	if cr.Spec.VLStorage != nil {
 		vls := cr.Spec.VLStorage
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		if vls.ServiceSpec != nil && vls.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := vmv1beta1.ValidateServiceSpecs(name, vls.ServiceSpec, vls.ServiceSpecs, vmv1beta1.SimplePortNameSet()); err != nil {
+			return err
 		}
 		if vls.HPA != nil && vls.HPA.Behaviour != nil && vls.HPA.Behaviour.ScaleDown != nil {
 			return fmt.Errorf("vlstorage scaledown HPA behavior is not supported")
@@ -774,8 +797,8 @@ func (cr *VLCluster) Validate() error {
 	if cr.Spec.VLSelect != nil {
 		vms := cr.Spec.VLSelect
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
-			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		if err := vmv1beta1.ValidateServiceSpecs(name, vms.ServiceSpec, vms.ServiceSpecs, vmv1beta1.SimplePortNameSet("clusternative")); err != nil {
+			return err
 		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {

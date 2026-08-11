@@ -402,3 +402,48 @@ func TestImage_Reference(t *testing.T) {
 	f(Image{Repository: "victoriametrics/vmsingle", Tag: ""},
 		"victoriametrics/vmsingle:")
 }
+
+func TestValidateServiceSpecs(t *testing.T) {
+	f := func(specs map[string]AdditionalServiceSpec, isSupported func(string) bool, wantErr bool) {
+		t.Helper()
+		err := ValidateServiceSpecs("prefixed-name", nil, specs, isSupported)
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	httpOnly := SimplePortNameSet()
+
+	// an unsupported key is rejected
+	f(map[string]AdditionalServiceSpec{
+		"web-lb": {},
+	}, httpOnly, true)
+
+	// a supported key passes
+	f(map[string]AdditionalServiceSpec{
+		"http": {},
+	}, httpOnly, false)
+
+	// UseAsDefault inside a non-"default" entry is rejected
+	f(map[string]AdditionalServiceSpec{
+		"http": {UseAsDefault: true},
+	}, httpOnly, true)
+
+	// UseAsDefault inside the "default" entry is rejected too - the key alone is enough
+	f(map[string]AdditionalServiceSpec{
+		"default": {UseAsDefault: true},
+	}, httpOnly, true)
+
+	// "default" is exempt from the supported-port-name check
+	f(map[string]AdditionalServiceSpec{
+		"default": {},
+	}, httpOnly, false)
+
+	// two keys resolving to the same explicit name still collide
+	f(map[string]AdditionalServiceSpec{
+		"http":     {EmbeddedObjectMetadata: EmbeddedObjectMetadata{Name: "shared"}},
+		"internal": {EmbeddedObjectMetadata: EmbeddedObjectMetadata{Name: "shared"}},
+	}, SimplePortNameSet("internal"), true)
+}

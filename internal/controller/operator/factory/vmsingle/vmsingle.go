@@ -546,26 +546,34 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			addExtraPorts(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.ServiceSpec, prevCR.Spec.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		spec := spec
+		additionalSvc := build.AdditionalServiceFromDefault(svc, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(svc.Name, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("vmsingle additional service key %q does not match any port currently exposed by this service", key)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmsingle: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
@@ -707,9 +715,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.HasAnyStreamAggrRule() {
 		keepConfigMaps.Insert(build.ResourceName(build.StreamAggrConfigResourceKind, cr))
 	}
-	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
-		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices.Insert(extraSvcName)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		keepServices.Insert(spec.NameOrDefaultForKey(svcName, key))
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

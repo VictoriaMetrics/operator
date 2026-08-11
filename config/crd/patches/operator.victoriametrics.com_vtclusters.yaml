@@ -48,14 +48,14 @@
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/containers/items/properties
 - op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/dnsConfig/items
+  value:
+    x-kubernetes-preserve-unknown-fields: true
+- op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/hpa/x-kubernetes-preserve-unknown-fields
   value: true
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/hpa/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/dnsConfig/items
-  value:
-    x-kubernetes-preserve-unknown-fields: true
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/select/properties/extraEnvs/items/x-kubernetes-preserve-unknown-fields
   value: true
@@ -82,14 +82,14 @@
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/containers/items/properties
 - op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/dnsConfig/items
+  value:
+    x-kubernetes-preserve-unknown-fields: true
+- op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/hpa/x-kubernetes-preserve-unknown-fields
   value: true
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/hpa/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/dnsConfig/items
-  value:
-    x-kubernetes-preserve-unknown-fields: true
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/insert/properties/extraEnvs/items/x-kubernetes-preserve-unknown-fields
   value: true

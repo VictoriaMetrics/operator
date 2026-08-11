@@ -81,32 +81,35 @@ func buildVLStorageScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VM
 
 func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
-	svc := build.Service(b, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
-		svc.Spec.ClusterIP = "None"
-		svc.Spec.PublishNotReadyAddresses = true
-	})
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	svc := build.Service(b, cr.Spec.VLStorage.Port, nil)
+	build.ForceHeadless(svc)
+	var prevSvc *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
-		prevSvc = build.Service(b, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
-			svc.Spec.ClusterIP = "None"
-			svc.Spec.PublishNotReadyAddresses = true
-		})
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.VLStorage.ServiceSpec)
-
+		prevSvc = build.Service(b, prevCR.Spec.VLStorage.Port, nil)
+		build.ForceHeadless(prevSvc)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.VLStorage.ServiceSpec, prevCR.Spec.VLStorage.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.VLStorage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VLStorage.ServiceSpec, cr.Spec.VLStorage.ServiceSpecs) {
+		spec := spec
+		additionalSvc := build.AdditionalServiceFromDefault(svc, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(svc.Name, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("VLStorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("VLStorage additional service key %q does not match any port currently exposed by this service", key)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile storage additional service: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {

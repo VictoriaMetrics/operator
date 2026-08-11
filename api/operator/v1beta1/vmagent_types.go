@@ -56,7 +56,14 @@ type VMAgentSpec struct {
 
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -159,8 +166,8 @@ func (cr *VMAgent) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	if err := ValidateServiceSpecs(cr.PrefixedName(), cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs, SimplePortNameSet(insertPortNames...)); err != nil {
+		return err
 	}
 	if len(cr.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
@@ -714,7 +721,7 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+	return ResolveDefaultServiceSpec(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs)
 }
 
 // HasRemoteWriteSecrets reports whether any remoteWrite entry references a credential secret.

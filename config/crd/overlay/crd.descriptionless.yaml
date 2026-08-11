@@ -937,6 +937,31 @@ spec:
                 required:
                 - spec
                 type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                type: object
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -2074,6 +2099,31 @@ spec:
                     required:
                     - spec
                     type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    type: object
                   startupProbe:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -2853,6 +2903,31 @@ spec:
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
                     type: object
                   startupProbe:
                     type: object
@@ -3918,6 +3993,31 @@ spec:
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
                     type: object
                   startupProbe:
                     type: object
@@ -5523,6 +5623,31 @@ spec:
                             type: boolean
                         required:
                         - spec
+                        type: object
+                      serviceSpecs:
+                        additionalProperties:
+                          properties:
+                            metadata:
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                name:
+                                  type: string
+                              type: object
+                            spec:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            useAsDefault:
+                              type: boolean
+                          required:
+                          - spec
+                          type: object
                         type: object
                       startupProbe:
                         type: object
@@ -8631,6 +8756,31 @@ spec:
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
                 type: object
               startupProbe:
                 type: object
@@ -11760,6 +11910,31 @@ spec:
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
                 type: object
               shardCount:
                 default: 0
@@ -16311,6 +16486,31 @@ spec:
                 required:
                 - spec
                 type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                type: object
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -18052,6 +18252,31 @@ spec:
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
                 type: object
               startupProbe:
                 type: object
@@ -21442,6 +21667,31 @@ spec:
                 required:
                 - spec
                 type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                type: object
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -22775,6 +23025,31 @@ spec:
                     required:
                     - spec
                     type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    type: object
                   startupProbe:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -23501,6 +23776,31 @@ spec:
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
                     type: object
                   startupProbe:
                     type: object
@@ -24750,6 +25050,31 @@ spec:
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
                     type: object
                   startupProbe:
                     type: object
@@ -26599,6 +26924,31 @@ spec:
                             type: boolean
                         required:
                         - spec
+                        type: object
+                      serviceSpecs:
+                        additionalProperties:
+                          properties:
+                            metadata:
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                name:
+                                  type: string
+                              type: object
+                            spec:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            useAsDefault:
+                              type: boolean
+                          required:
+                          - spec
+                          type: object
                         type: object
                       startupProbe:
                         type: object
@@ -41028,6 +41378,31 @@ spec:
                 required:
                 - spec
                 type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                type: object
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -43521,6 +43896,31 @@ spec:
                     required:
                     - spec
                     type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    type: object
                   startupProbe:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -44247,6 +44647,31 @@ spec:
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
                     type: object
                   startupProbe:
                     type: object
@@ -45315,6 +45740,31 @@ spec:
                     required:
                     - spec
                     type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      properties:
+                        metadata:
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            name:
+                              type: string
+                          type: object
+                        spec:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    type: object
                   startupProbe:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -46102,6 +46552,31 @@ spec:
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  properties:
+                    metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
                 type: object
               startupProbe:
                 type: object

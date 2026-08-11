@@ -1015,6 +1015,246 @@ spec:
     publishnotreadyaddresses: true
 `)
 
+	// vmselect is headless by default, but an explicit serviceSpec.spec.type must let its
+	// clusterIP be allocated instead of silently staying headless. See #2487.
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vmselect-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8481
+          targetport:
+            intval: 8481
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        managed-by: vm-operator
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+`)
+
+	// ServiceSpecs["default"] is the map-based equivalent of ServiceSpec.UseAsDefault=true.
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"default": {
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeClusterIP,
+						},
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vmselect-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8481
+          targetport:
+            intval: 8481
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        managed-by: vm-operator
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+`)
+
+	// a non-"default" key in ServiceSpecs names a port and creates a genuinely separate
+	// Service carrying only that port; "clusternative" is a cluster-internal port, so its
+	// split-out Service is forced headless, unlike the "web-lb" case this replaced.
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMSelect: &vmv1beta1.VMSelect{
+				ClusterNativePort: "8451",
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"clusternative": {
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeClusterIP,
+						},
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vmselect-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8481
+          targetport:
+            intval: 8481
+        - name: clusternative
+          protocol: TCP
+          port: 8451
+          targetport:
+            intval: 8451
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+    publishnotreadyaddresses: true
+---
+objectmeta:
+    name: vmselect-test-clusternative
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        app.kubernetes.io/part-of: vmcluster
+        operator.victoriametrics.com/additional-service: managed
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: clusternative
+          protocol: TCP
+          port: 8451
+          targetport:
+            intval: 8451
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmselect
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+    publishnotreadyaddresses: true
+`)
+
+	// unlike vmselect, vmstorage's service is the StatefulSet's governing service and must
+	// stay headless regardless of serviceSpec overrides, since it's required for stable
+	// per-pod DNS records used for peer discovery.
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMStorage: &vmv1beta1.VMStorage{
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+				},
+			},
+		},
+	}, `
+objectmeta:
+    name: vmstorage-test
+    namespace: default-1
+    resourceversion: "1"
+    labels:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        app.kubernetes.io/part-of: vmcluster
+        managed-by: vm-operator
+    ownerreferences:
+        - name: test
+          controller: true
+          blockownerdeletion: true
+spec:
+    ports:
+        - name: http
+          protocol: TCP
+          port: 8482
+          targetport:
+            intval: 8482
+        - name: vminsert
+          protocol: TCP
+          port: 8400
+          targetport:
+            intval: 8400
+        - name: vmselect
+          protocol: TCP
+          port: 8401
+          targetport:
+            intval: 8401
+    selector:
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/instance: test
+        app.kubernetes.io/name: vmstorage
+        managed-by: vm-operator
+    clusterip: None
+    type: ClusterIP
+    sessionaffinity: None
+    internaltrafficpolicy: Cluster
+    publishnotreadyaddresses: true
+`)
+
 	f(&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
@@ -2067,6 +2307,34 @@ func TestVMClusterDiscoveryArgs(t *testing.T) {
 					assert.NotContains(t, a, "localhost:10101", "vminsert: extra storage node must not be forwarded to vminsert")
 				}
 			}
+		},
+	)
+
+	// overriding vmselect/vminsert-facing ports via VMStorage.ServiceSpecs changes the port
+	// used in the storageNode pod-DNS addresses built for vmselect/vminsert.
+	f(&vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"vmselect": {Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Name: "vmselect", Port: 8501}}}},
+					"vminsert": {Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Name: "vminsert", Port: 8500}}}},
+				},
+			},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		},
+	},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=vmstorage-test-0.vmstorage-test.default:8501"), "vmselect: expected overridden vmselect port, got %v", args)
+		},
+		func(t *testing.T, args []string) {
+			assert.True(t, hasArg(args, "-storageNode=vmstorage-test-0.vmstorage-test.default:8500"), "vminsert: expected overridden vminsert port, got %v", args)
 		},
 	)
 }

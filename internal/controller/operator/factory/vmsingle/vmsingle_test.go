@@ -614,3 +614,60 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 	})
 }
+
+func TestCreateOrUpdateService_ServiceSpecs(t *testing.T) {
+	f := func(cr *vmv1beta1.VMSingle, validate func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle)) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		ctx := context.TODO()
+		assert.NoError(t, createOrUpdateService(ctx, fclient, cr, nil))
+		validate(ctx, fclient, cr)
+	}
+
+	// ServiceSpecs["default"] is the map-based equivalent of ServiceSpec.UseAsDefault=true.
+	f(&vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single-1", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+		var svc corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+		assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+	})
+
+	// a non-"default" key creates a genuinely separate Service.
+	f(&vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single-1", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+		var primary corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &primary))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, primary.Spec.Type)
+
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+
+	// the deprecated singular ServiceSpec must keep working unchanged when ServiceSpecs is unset.
+	f(&vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single-1", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) {
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-additional-service"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+}

@@ -329,27 +329,40 @@ func buildVLInsertScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VMS
 
 func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	svc := buildVLInsertService(cr)
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevAdditionalSvcBase corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil && prevCR.Spec.VLInsert != nil {
 		prevSvc = buildVLInsertService(prevCR)
-		prevAdditionalSvcBase := *prevSvc
+		prevAdditionalSvcBase = *prevSvc
 		prevAdditionalSvcBase.Name = prevCR.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, prevCR.Spec.VLInsert.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.VLInsert.ServiceSpec, prevCR.Spec.VLInsert.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.VLInsert.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
+	prefixedName := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.VLInsert.ServiceSpec, cr.Spec.VLInsert.ServiceSpecs) {
+		spec := spec
 		additionalSvcBase := *svc
-		additionalSvcBase.Name = cr.PrefixedName(vmv1beta1.ClusterComponentInsert)
-		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, s)
+		additionalSvcBase.Name = prefixedName
+		additionalSvc := build.AdditionalServiceFromDefault(&additionalSvcBase, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(prefixedName, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("VLInsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, key) {
+			return fmt.Errorf("VLInsert additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "clusternative" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(&prevAdditionalSvcBase, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile insert additional service: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
@@ -382,9 +395,13 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	svc := build.Service(b, cr.Spec.VLInsert.Port, func(svc *corev1.Service) {
+		// same port, second name - lets ServiceSpecs split it out as its own Service.
+		clusternative := svc.Spec.Ports[0]
+		clusternative.Name = "clusternative"
+		svc.Spec.Ports = append(svc.Spec.Ports, clusternative)
+
 		syslogSpec := cr.Spec.VLInsert.SyslogSpec
 		if syslogSpec == nil || cr.Spec.RequestsLoadBalancer.Enabled {
-			// fast path
 			return
 		}
 		build.AddSyslogPortsToService(svc, syslogSpec)

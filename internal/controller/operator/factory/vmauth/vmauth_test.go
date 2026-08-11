@@ -604,6 +604,69 @@ func TestCreateOrUpdate(t *testing.T) {
 		}})
 }
 
+func TestCreateOrUpdate_ServiceSpecs(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAuth, validate func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth)) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+		ctx := context.TODO()
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+			validate(ctx, fclient, cr)
+		})
+	}
+
+	// ServiceSpecs["default"] is the map-based equivalent of ServiceSpec.UseAsDefault=true.
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "8427"},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+		var svc corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+		assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+	})
+
+	// a non-"default" key creates a genuinely separate Service.
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "8427"},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+		var primary corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &primary))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, primary.Spec.Type)
+
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+
+	// the deprecated singular ServiceSpec must keep working unchanged when ServiceSpecs is unset.
+	f(&vmv1beta1.VMAuth{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Spec: vmv1beta1.VMAuthSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "8427"},
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) {
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-additional-service"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeNodePort, extra.Spec.Type)
+	})
+}
+
 func TestMakeSpecForAuthOk(t *testing.T) {
 	f := func(cr *vmv1beta1.VMAuth, wantYaml string) {
 		t.Helper()

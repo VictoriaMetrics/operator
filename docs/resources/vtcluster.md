@@ -55,8 +55,8 @@ See [data ingestion docs](https://docs.victoriametrics.com/victoriatraces/data-i
 ### Customizing service type or port
 
 By default each component service is created with the type and port shown in the table above.
-Use `serviceSpec` on each component to change these settings.
-Setting `useAsDefault: true` applies the changes to the main service rather than creating an additional one:
+Use `serviceSpecs` on each component to change these settings.
+The reserved `default` key applies the changes to the main service rather than creating an additional one:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -66,16 +66,16 @@ metadata:
 spec:
   insert:
     replicaCount: 2
-    serviceSpec:
-      useAsDefault: true
-      spec:
-        type: LoadBalancer
+    serviceSpecs:
+      default:
+        spec:
+          type: LoadBalancer
   select:
     replicaCount: 2
-    serviceSpec:
-      useAsDefault: true
-      spec:
-        type: LoadBalancer
+    serviceSpecs:
+      default:
+        spec:
+          type: LoadBalancer
 ```
 
 > **Note**: changing `select` or `storage` from headless to a ClusterIP/LoadBalancer type

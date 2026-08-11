@@ -114,8 +114,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			cc.KeepScrape(commonName)
 		}
 		cc.KeepService(commonName)
-		if newStorage.ServiceSpec != nil && !newStorage.ServiceSpec.UseAsDefault {
-			cc.KeepService(newStorage.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newStorage.ServiceSpec, newStorage.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 	}
 
@@ -138,8 +138,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
-		if newSelect.ServiceSpec != nil && !newSelect.ServiceSpec.UseAsDefault {
-			cc.KeepService(newSelect.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newSelect.ServiceSpec, newSelect.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 		scrapeName := commonName
 		if newLB.Enabled && !newLB.DisableSelectBalancing {
@@ -170,8 +170,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VTClust
 			cc.KeepVPA(commonName)
 		}
 		cc.KeepService(commonName)
-		if newInsert.ServiceSpec != nil && !newInsert.ServiceSpec.UseAsDefault {
-			cc.KeepService(newInsert.ServiceSpec.NameOrDefault(commonName))
+		for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(newInsert.ServiceSpec, newInsert.ServiceSpecs) {
+			cc.KeepService(spec.NameOrDefaultForKey(commonName, key))
 		}
 		scrapeName := commonName
 		if newLB.Enabled && !newLB.DisableInsertBalancing {

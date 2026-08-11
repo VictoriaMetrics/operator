@@ -42,14 +42,15 @@ const (
 )
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
-	var prevService, prevAdditionalService *corev1.Service
+	var prevService *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
 			svc.Spec.ClusterIP = "None"
 			syslogSpec := prevCR.Spec.SyslogSpec
 			build.AddSyslogPortsToService(svc, syslogSpec)
 		})
-		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, cr.Spec.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.ServiceSpec, prevCR.Spec.ServiceSpecs)
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
@@ -58,17 +59,24 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	})
 
 	owner := cr.AsOwner()
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalService := build.AdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		spec := spec
+		additionalService := build.AdditionalServiceFromDefault(newService, &spec)
+		additionalService.Name = spec.NameOrDefaultForKey(newService.Name, key)
 		if additionalService.Name == newService.Name {
 			return fmt.Errorf("vlagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalService, key) {
+			return fmt.Errorf("vlagent additional service key %q does not match any port currently exposed by this service", key)
+		}
+		var prevAdditionalService *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalService = build.AdditionalServiceFromDefault(prevService, &prevSpec)
+			prevAdditionalService.Name = additionalService.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalService, prevAdditionalService, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vlagent: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 
 	if err := reconcile.Service(ctx, rclient, newService, prevService, &owner); err != nil {
@@ -761,9 +769,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		keepPodScrapes.Insert(svcName)
 	}
-	if cr.Spec.ServiceSpec != nil && !cr.Spec.ServiceSpec.UseAsDefault {
-		extraSvcName := cr.Spec.ServiceSpec.NameOrDefault(svcName)
-		keepServices.Insert(extraSvcName)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		keepServices.Insert(spec.NameOrDefaultForKey(svcName, key))
 	}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, cr, keepServices, true); err != nil {
 		return fmt.Errorf("cannot remove services: %w", err)

@@ -7,6 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -84,9 +85,9 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 		}
 		if serviceOverrides.Spec.Type == "" {
 			serviceOverrides.Spec.Type = svc.Spec.Type
-		}
-		if serviceOverrides.Spec.ClusterIP == "" && serviceOverrides.Spec.Type == svc.Spec.Type {
-			serviceOverrides.Spec.ClusterIP = svc.Spec.ClusterIP
+			if serviceOverrides.Spec.ClusterIP == "" {
+				serviceOverrides.Spec.ClusterIP = svc.Spec.ClusterIP
+			}
 		}
 
 		serviceOverrides.Spec.Selector = svc.Spec.Selector
@@ -101,6 +102,33 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 	}
 
 	return svc
+}
+
+// FilterServicePorts keeps only the ports in svc.Spec.Ports whose Name is in names, and
+// reports whether any port matched. No-op (returns true) if names is empty. Used to split a
+// Service down to just the port(s) a ServiceSpecs key names.
+func FilterServicePorts(svc *corev1.Service, names ...string) bool {
+	if len(names) == 0 {
+		return true
+	}
+	nameSet := sets.New(names...)
+	kept := svc.Spec.Ports[:0:0]
+	for _, p := range svc.Spec.Ports {
+		if nameSet.Has(p.Name) {
+			kept = append(kept, p)
+		}
+	}
+	svc.Spec.Ports = kept
+	return len(kept) > 0
+}
+
+// ForceHeadless pins a Service to be headless, overriding any serviceSpec.useAsDefault
+// override that Service applied above. Use it for a StatefulSet's governing service, which
+// must stay headless for the stable per-pod DNS records used for peer discovery.
+func ForceHeadless(svc *corev1.Service) {
+	svc.Spec.Type = corev1.ServiceTypeClusterIP
+	svc.Spec.ClusterIP = corev1.ClusterIPNone
+	svc.Spec.PublishNotReadyAddresses = true
 }
 
 // AppendInsertPortsToService conditionally appends insert ports to the given service definition

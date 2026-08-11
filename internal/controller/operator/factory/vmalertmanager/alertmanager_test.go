@@ -264,6 +264,46 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 		},
 	})
 
+	// overriding the mesh port via ServiceSpecs["mesh"] changes the --cluster.peer= port too
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-am",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(2)),
+				},
+				ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+					"mesh": {Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{Name: "tcp-mesh", Port: 9095},
+							{Name: "udp-mesh", Port: 9095},
+						},
+					}},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+			var set appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &set))
+			vmaContainer := set.Spec.Template.Spec.Containers[0]
+
+			clusterPeers := make([]string, 0, 2)
+			for _, arg := range vmaContainer.Args {
+				if strings.HasPrefix(arg, "--cluster.peer=") {
+					clusterPeers = append(clusterPeers, arg)
+				}
+			}
+
+			assert.Equal(t, clusterPeers, []string{
+				"--cluster.peer=vmalertmanager-test-am-0.vmalertmanager-test-am.monitoring:9095",
+				"--cluster.peer=vmalertmanager-test-am-1.vmalertmanager-test-am.monitoring:9095",
+			}, "mesh port override was not picked up in cluster peer arguments")
+		},
+	})
+
 	// managed metadata
 	f(opts{
 		cr: &vmv1beta1.VMAlertmanager{
@@ -334,6 +374,96 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				"managed-by":                  "vm-operator",
 			}, svc.Labels)
 		}})
+}
+
+func TestCreateOrUpdateAlertManager_ServiceSpecs(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAlertmanager, validate func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager)) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+		ctx := context.TODO()
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdateAlertManager(ctx, cr, fclient))
+			validate(ctx, fclient, cr)
+		})
+	}
+
+	// ServiceSpecs["default"] merges into the primary service, which must stay headless
+	// regardless (mesh gossip requires it) - the map path must not bypass that protection.
+	f(&vmv1beta1.VMAlertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "monitoring"},
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"default": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+		var svc corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &svc))
+		assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP, "primary service must stay headless despite the default-key override")
+	})
+
+	// a non-"default" key creates a genuinely separate Service, independent of the headless
+	// primary/governing one.
+	f(&vmv1beta1.VMAlertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "monitoring"},
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpecs: map[string]vmv1beta1.AdditionalServiceSpec{
+				"http": {Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+		var primary corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &primary))
+		assert.Equal(t, corev1.ClusterIPNone, primary.Spec.ClusterIP)
+
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-http"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, extra.Spec.Type)
+	})
+
+	// the deprecated singular ServiceSpec must keep working unchanged when ServiceSpecs is unset.
+	f(&vmv1beta1.VMAlertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "monitoring"},
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+			},
+		},
+	}, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) {
+		var extra corev1.Service
+		assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName() + "-additional-service"}, &extra))
+		assert.Equal(t, corev1.ServiceTypeClusterIP, extra.Spec.Type)
+	})
+
+	// removing a key between reconciles deletes the now-orphaned Service. Exercises
+	// deleteOrphaned directly (rather than the full CreateOrUpdateAlertManager, which also
+	// requires a ready StatefulSet on a second pass) since only the orphan-cleanup logic is
+	// under test here.
+	t.Run("removed key is cleaned up", func(t *testing.T) {
+		cr := &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "monitoring"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
+		}
+		extraSvc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName() + "-web-lb",
+			Namespace:       cr.Namespace,
+			Labels:          cr.SelectorLabels(),
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		}}
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{extraSvc})
+		ctx := context.TODO()
+		assert.NoError(t, deleteOrphaned(ctx, fclient, cr))
+		var got corev1.Service
+		err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: extraSvc.Name}, &got)
+		assert.True(t, k8serrors.IsNotFound(err), "ServiceSpecs entry no longer present must be deleted, got err=%v", err)
+	})
 }
 
 func Test_createDefaultAMConfig(t *testing.T) {

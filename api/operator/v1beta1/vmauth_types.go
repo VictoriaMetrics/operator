@@ -68,7 +68,14 @@ type VMAuthSpec struct {
 
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty" yaml:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]AdditionalServiceSpec `json:"serviceSpecs,omitempty" yaml:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -451,8 +458,8 @@ func (cr *VMAuth) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	if err := ValidateServiceSpecs(cr.PrefixedName(), cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs, SimplePortNameSet("internal")); err != nil {
+		return err
 	}
 	if cr.Spec.Ingress != nil {
 		// check ingress
@@ -838,5 +845,5 @@ func (cr *VMAuth) Paused() bool {
 
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAuth) GetAdditionalService() *AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+	return ResolveDefaultServiceSpec(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs)
 }

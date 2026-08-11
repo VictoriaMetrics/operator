@@ -91,10 +91,8 @@ func buildService(cr *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 	}
-	return build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
-		svc.Spec.ClusterIP = "None"
+	svc := build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
 		svc.Spec.Ports[0].Port = int32(port)
-		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "tcp-mesh",
@@ -109,7 +107,11 @@ func buildService(cr *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 				Protocol:   corev1.ProtocolUDP,
 			},
 		)
-	}), nil
+	})
+	// vmalertmanager's service is the StatefulSet's governing service and carries the
+	// gossip mesh ports, so it must stay headless regardless of serviceSpec overrides.
+	build.ForceHeadless(svc)
+	return svc, nil
 }
 
 func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
@@ -122,31 +124,51 @@ func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.V
 	return scrape
 }
 
+// meshPhysicalPortNames maps the "mesh" ServiceSpecs key to the actual tcp-mesh/udp-mesh
+// Service port names; every other key maps to itself.
+func meshPhysicalPortNames(key string) []string {
+	if key == "mesh" {
+		return []string{"tcp-mesh", "udp-mesh"}
+	}
+	return []string{key}
+}
+
 func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {
 	svc, err := buildService(cr)
 	if err != nil {
 		return err
 	}
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc *corev1.Service
+	var prevExtraSpecs map[string]vmv1beta1.AdditionalServiceSpec
 	if prevCR != nil {
 		prevSvc, err = buildService(prevCR)
 		if err != nil {
 			return err
 		}
-		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
+		prevExtraSpecs = vmv1beta1.ResolveExtraServiceSpecs(prevCR.Spec.ServiceSpec, prevCR.Spec.ServiceSpecs)
 	}
 	owner := cr.AsOwner()
-	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
-		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
+		spec := spec
+		additionalSvc := build.AdditionalServiceFromDefault(svc, &spec)
+		additionalSvc.Name = spec.NameOrDefaultForKey(svc.Name, key)
 		if additionalSvc.Name == svc.Name {
 			return fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		}
+		if key != "" && spec.Spec.Ports == nil && !build.FilterServicePorts(additionalSvc, meshPhysicalPortNames(key)...) {
+			return fmt.Errorf("vmalertmanager additional service key %q does not match any port currently exposed by this service", key)
+		}
+		if key == "mesh" {
+			build.ForceHeadless(additionalSvc)
+		}
+		var prevAdditionalSvc *corev1.Service
+		if prevSpec, ok := prevExtraSpecs[key]; ok {
+			prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, &prevSpec)
+			prevAdditionalSvc.Name = additionalSvc.Name
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmalertmanager: %w", err)
 		}
-		return nil
-	}); err != nil {
-		return err
 	}
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile service for vmalertmanager: %w", err)
@@ -224,8 +246,14 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		clusterPeerDomain = fmt.Sprintf("%s.svc.%s.", clusterPeerDomain, cr.Spec.ClusterDomainName)
 	}
 
+	meshPort := int32(9094)
+	if meshSpec, ok := vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs)["mesh"]; ok {
+		if p, ok := vmv1beta1.ServiceSpecPortValue(&meshSpec, "tcp-mesh"); ok {
+			meshPort = p
+		}
+	}
 	for i := int32(0); i < ptr.Deref(cr.Spec.ReplicaCount, 0); i++ {
-		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", cr.PrefixedName(), i, clusterPeerDomain))
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:%d", cr.PrefixedName(), i, clusterPeerDomain, meshPort))
 	}
 
 	for _, peer := range cr.Spec.AdditionalPeers {

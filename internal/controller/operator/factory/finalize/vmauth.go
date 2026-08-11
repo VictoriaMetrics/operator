@@ -42,9 +42,9 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		&rbacv1.Role{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 	}
-	if cr.Spec.ServiceSpec != nil {
+	for key, spec := range vmv1beta1.ResolveExtraServiceSpecs(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs) {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Name:      spec.NameOrDefaultForKey(cr.PrefixedName(), key),
 			Namespace: ns,
 		}})
 	}

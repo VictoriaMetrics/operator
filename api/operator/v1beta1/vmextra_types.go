@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -378,7 +379,9 @@ type BasicAuth struct {
 type AdditionalServiceSpec struct {
 	// UseAsDefault applies changes from given service definition to the main object Service
 	// Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+	// Use the reserved "default" key in serviceSpecs instead.
 	// +optional
+	// +notes={deprecated_in: "v0.75.0"}
 	UseAsDefault bool `json:"useAsDefault,omitempty"`
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
 	// +optional
@@ -405,6 +408,123 @@ func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 		return ss.Name
 	}
 	return defaultName + "-additional-service"
+}
+
+// NameOrDefaultForKey is like NameOrDefault, but derives the fallback name from a
+// ServiceSpecs map key when Name isn't set. An empty key behaves like NameOrDefault.
+func (ss *AdditionalServiceSpec) NameOrDefaultForKey(defaultName, key string) string {
+	if ss != nil && ss.Name != "" {
+		return ss.Name
+	}
+	if key == "" {
+		return ss.NameOrDefault(defaultName)
+	}
+	return defaultName + "-" + key
+}
+
+// ValidateServiceSpecs checks that ServiceSpecs entries don't collide with the CR's prefixed
+// name or each other, don't set UseAsDefault, and (besides "default") name a port
+// isSupportedPortName recognizes.
+func ValidateServiceSpecs(prefixedName string, legacy *AdditionalServiceSpec, specs map[string]AdditionalServiceSpec, isSupportedPortName func(key string) bool) error {
+	if len(specs) == 0 {
+		if legacy != nil && legacy.Name == prefixedName {
+			return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", prefixedName)
+		}
+		return nil
+	}
+	seen := make(map[string]string, len(specs))
+	for key, spec := range specs {
+		if spec.UseAsDefault {
+			return fmt.Errorf("spec.serviceSpecs[%q].useAsDefault is not supported inside serviceSpecs; use the reserved \"default\" key instead", key)
+		}
+		if key == "default" {
+			continue
+		}
+		if !isSupportedPortName(key) {
+			return fmt.Errorf("spec.serviceSpecs[%q] does not match any port exposed by this component", key)
+		}
+		name := spec.NameOrDefaultForKey(prefixedName, key)
+		if name == prefixedName {
+			return fmt.Errorf("spec.serviceSpecs[%q] resolves to name=%q, which cannot be equal to the prefixed name", key, name)
+		}
+		if otherKey, ok := seen[name]; ok {
+			return fmt.Errorf("spec.serviceSpecs[%q] and spec.serviceSpecs[%q] both resolve to the same name=%q", key, otherKey, name)
+		}
+		seen[name] = key
+	}
+	return nil
+}
+
+// ResolveDefaultServiceSpec picks the AdditionalServiceSpec that should be merged into a
+// CR's own primary Service. If specs is non-empty, it's the sole source of truth: the
+// reserved "default" key wins (with UseAsDefault forced true), or nil if that key is absent.
+// Otherwise it falls back to the deprecated singular field unchanged.
+func ResolveDefaultServiceSpec(legacy *AdditionalServiceSpec, specs map[string]AdditionalServiceSpec) *AdditionalServiceSpec {
+	if len(specs) > 0 {
+		d, ok := specs["default"]
+		if !ok {
+			return nil
+		}
+		d.UseAsDefault = true
+		return &d
+	}
+	return legacy
+}
+
+// ResolveExtraServiceSpecs returns the named specs that should be reconciled as separate
+// Services, keyed the same way they'll be looked up for naming and orphan cleanup. Same
+// specs-wins-if-non-empty precedence as ResolveDefaultServiceSpec; the legacy field maps to
+// the empty-string key so AdditionalServiceSpec.NameOrDefaultForKey falls back to its
+// original "-additional-service" suffix.
+func ResolveExtraServiceSpecs(legacy *AdditionalServiceSpec, specs map[string]AdditionalServiceSpec) map[string]AdditionalServiceSpec {
+	if len(specs) > 0 {
+		extra := make(map[string]AdditionalServiceSpec, len(specs))
+		for k, v := range specs {
+			if k != "default" {
+				extra[k] = v
+			}
+		}
+		return extra
+	}
+	if legacy != nil && !legacy.UseAsDefault {
+		return map[string]AdditionalServiceSpec{"": *legacy}
+	}
+	return nil
+}
+
+// ServiceSpecPortValue returns the overridden port number for portName from spec's explicit
+// Ports override, or ok=false if spec is nil or doesn't override that port.
+func ServiceSpecPortValue(spec *AdditionalServiceSpec, portName string) (port int32, ok bool) {
+	if spec == nil {
+		return 0, false
+	}
+	for _, p := range spec.Spec.Ports {
+		if p.Name == portName {
+			return p.Port, true
+		}
+	}
+	return 0, false
+}
+
+// insertPortNames is the set of Service port names build.AppendInsertPortsToService can add,
+// depending on which InsertPorts sub-fields are set.
+var insertPortNames = []string{"graphite-tcp", "graphite-udp", "influx-tcp", "influx-udp", "opentsdb-tcp", "opentsdb-udp", "opentsdb-http"}
+
+// syslogPortNameRE matches the dynamically-indexed Service port names build.AddSyslogPortsToService adds.
+var syslogPortNameRE = regexp.MustCompile(`^syslog-(tcp|udp)-\d+$`)
+
+// SimplePortNameSet returns an isSupportedPortName predicate (for ValidateServiceSpecs)
+// matching "http" plus any extra names - the common case for components whose Service ports
+// are a small, fixed set.
+func SimplePortNameSet(extra ...string) func(key string) bool {
+	allowed := sets.New(append([]string{"http"}, extra...)...)
+	return func(key string) bool { return allowed.Has(key) }
+}
+
+// IsSyslogPortName reports whether key matches the dynamically-indexed Service port names
+// build.AddSyslogPortsToService adds (syslog-tcp-<N> / syslog-udp-<N>).
+func IsSyslogPortName(key string) bool {
+	return syslogPortNameRE.MatchString(key)
 }
 
 // ResolveServiceURL returns the service name and port for building a CR's URL.

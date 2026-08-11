@@ -1897,9 +1897,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -4190,9 +4253,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -5739,9 +5865,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -7807,9 +7996,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -11020,9 +11272,72 @@ spec:
                             description: |-
                               UseAsDefault applies changes from given service definition to the main object Service
                               Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                              Use the reserved "default" key in serviceSpecs instead.
                             type: boolean
                         required:
                         - spec
+                        type: object
+                      serviceSpecs:
+                        additionalProperties:
+                          description: |-
+                            ServiceSpec defines additional service for CRD with user-defined params.
+                            by default, some of fields can be inherited from default service definition for the CRD:
+                            labels,selector, ports.
+                            if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                            if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                          properties:
+                            metadata:
+                              description: EmbeddedObjectMetadata defines objectMeta
+                                for additional service.
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    Annotations is an unstructured key value map stored with a resource that may be
+                                    set by external tools to store and retrieve arbitrary metadata. They are not
+                                    queryable and should be preserved when modifying objects.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    Labels Map of string keys and values that can be used to organize and categorize
+                                    (scope and select) objects. May match selectors of replication controllers
+                                    and services.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                                  type: object
+                                name:
+                                  description: |-
+                                    Name must be unique within a namespace. Is required when creating resources, although
+                                    some resources may allow a client to request the generation of an appropriate name
+                                    automatically. Name is primarily intended for creation idempotence and configuration
+                                    definition.
+                                    Cannot be updated.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                                  type: string
+                              type: object
+                            spec:
+                              description: |-
+                                ServiceSpec describes the attributes that a user creates on a service.
+                                More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            useAsDefault:
+                              description: |-
+                                UseAsDefault applies changes from given service definition to the main object Service
+                                Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                                Use the reserved "default" key in serviceSpecs instead.
+                              type: boolean
+                          required:
+                          - spec
+                          type: object
+                        description: |-
+                          ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                          the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                          creates a separate, independently-configured Service. If non-empty, this takes full
+                          precedence over serviceSpec.
                         type: object
                       startupProbe:
                         description: StartupProbe that will be added to CR pod
@@ -17451,9 +17766,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -23704,9 +24082,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               shardCount:
                 default: 0
@@ -32354,9 +32795,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -35787,9 +36291,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -42487,9 +43054,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -45035,9 +45665,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -46483,9 +47176,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -49016,9 +49772,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -52707,9 +53526,72 @@ spec:
                             description: |-
                               UseAsDefault applies changes from given service definition to the main object Service
                               Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                              Use the reserved "default" key in serviceSpecs instead.
                             type: boolean
                         required:
                         - spec
+                        type: object
+                      serviceSpecs:
+                        additionalProperties:
+                          description: |-
+                            ServiceSpec defines additional service for CRD with user-defined params.
+                            by default, some of fields can be inherited from default service definition for the CRD:
+                            labels,selector, ports.
+                            if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                            if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                          properties:
+                            metadata:
+                              description: EmbeddedObjectMetadata defines objectMeta
+                                for additional service.
+                              properties:
+                                annotations:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    Annotations is an unstructured key value map stored with a resource that may be
+                                    set by external tools to store and retrieve arbitrary metadata. They are not
+                                    queryable and should be preserved when modifying objects.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                                  type: object
+                                labels:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    Labels Map of string keys and values that can be used to organize and categorize
+                                    (scope and select) objects. May match selectors of replication controllers
+                                    and services.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                                  type: object
+                                name:
+                                  description: |-
+                                    Name must be unique within a namespace. Is required when creating resources, although
+                                    some resources may allow a client to request the generation of an appropriate name
+                                    automatically. Name is primarily intended for creation idempotence and configuration
+                                    definition.
+                                    Cannot be updated.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                                  type: string
+                              type: object
+                            spec:
+                              description: |-
+                                ServiceSpec describes the attributes that a user creates on a service.
+                                More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            useAsDefault:
+                              description: |-
+                                UseAsDefault applies changes from given service definition to the main object Service
+                                Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                                Use the reserved "default" key in serviceSpecs instead.
+                              type: boolean
+                          required:
+                          - spec
+                          type: object
+                        description: |-
+                          ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                          the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                          creates a separate, independently-configured Service. If non-empty, this takes full
+                          precedence over serviceSpec.
                         type: object
                       startupProbe:
                         description: StartupProbe that will be added to CR pod
@@ -79852,9 +80734,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod
@@ -84550,9 +85495,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -85993,9 +87001,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -88068,9 +89139,72 @@ spec:
                         description: |-
                           UseAsDefault applies changes from given service definition to the main object Service
                           Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                          Use the reserved "default" key in serviceSpecs instead.
                         type: boolean
                     required:
                     - spec
+                    type: object
+                  serviceSpecs:
+                    additionalProperties:
+                      description: |-
+                        ServiceSpec defines additional service for CRD with user-defined params.
+                        by default, some of fields can be inherited from default service definition for the CRD:
+                        labels,selector, ports.
+                        if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                        if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                      properties:
+                        metadata:
+                          description: EmbeddedObjectMetadata defines objectMeta for
+                            additional service.
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Annotations is an unstructured key value map stored with a resource that may be
+                                set by external tools to store and retrieve arbitrary metadata. They are not
+                                queryable and should be preserved when modifying objects.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                              type: object
+                            labels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                Labels Map of string keys and values that can be used to organize and categorize
+                                (scope and select) objects. May match selectors of replication controllers
+                                and services.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                              type: object
+                            name:
+                              description: |-
+                                Name must be unique within a namespace. Is required when creating resources, although
+                                some resources may allow a client to request the generation of an appropriate name
+                                automatically. Name is primarily intended for creation idempotence and configuration
+                                definition.
+                                Cannot be updated.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                              type: string
+                          type: object
+                        spec:
+                          description: |-
+                            ServiceSpec describes the attributes that a user creates on a service.
+                            More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        useAsDefault:
+                          description: |-
+                            UseAsDefault applies changes from given service definition to the main object Service
+                            Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                            Use the reserved "default" key in serviceSpecs instead.
+                          type: boolean
+                      required:
+                      - spec
+                      type: object
+                    description: |-
+                      ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                      the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                      creates a separate, independently-configured Service. If non-empty, this takes full
+                      precedence over serviceSpec.
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CR pod
@@ -89596,9 +90730,72 @@ spec:
                     description: |-
                       UseAsDefault applies changes from given service definition to the main object Service
                       Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                      Use the reserved "default" key in serviceSpecs instead.
                     type: boolean
                 required:
                 - spec
+                type: object
+              serviceSpecs:
+                additionalProperties:
+                  description: |-
+                    ServiceSpec defines additional service for CRD with user-defined params.
+                    by default, some of fields can be inherited from default service definition for the CRD:
+                    labels,selector, ports.
+                    if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+                    if UseAsDefault is set to true, changes applied to the main service without additional service creation
+                  properties:
+                    metadata:
+                      description: EmbeddedObjectMetadata defines objectMeta for additional
+                        service.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Annotations is an unstructured key value map stored with a resource that may be
+                            set by external tools to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            Labels Map of string keys and values that can be used to organize and categorize
+                            (scope and select) objects. May match selectors of replication controllers
+                            and services.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                          type: object
+                        name:
+                          description: |-
+                            Name must be unique within a namespace. Is required when creating resources, although
+                            some resources may allow a client to request the generation of an appropriate name
+                            automatically. Name is primarily intended for creation idempotence and configuration
+                            definition.
+                            Cannot be updated.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                          type: string
+                      type: object
+                    spec:
+                      description: |-
+                        ServiceSpec describes the attributes that a user creates on a service.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    useAsDefault:
+                      description: |-
+                        UseAsDefault applies changes from given service definition to the main object Service
+                        Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+                        Use the reserved "default" key in serviceSpecs instead.
+                      type: boolean
+                  required:
+                  - spec
+                  type: object
+                description: |-
+                  ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+                  the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+                  creates a separate, independently-configured Service. If non-empty, this takes full
+                  precedence over serviceSpec.
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CR pod

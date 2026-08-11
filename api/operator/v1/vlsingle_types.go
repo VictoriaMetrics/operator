@@ -89,7 +89,14 @@ type VLSingleSpec struct {
 	LogIngestedRows bool `json:"logIngestedRows,omitempty"`
 	// ServiceSpec that will be added to vlsingle service spec
 	// +optional
+	// +notes={deprecated_in: "v0.75.0", replacements: {serviceSpecs}}
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceSpecs defines named Service overrides. The reserved key "default" merges into
+	// the operator's own primary Service (like serviceSpec.useAsDefault); any other key
+	// creates a separate, independently-configured Service. If non-empty, this takes full
+	// precedence over serviceSpec.
+	// +optional
+	ServiceSpecs map[string]vmv1beta1.AdditionalServiceSpec `json:"serviceSpecs,omitempty"`
 	// ServiceScrapeSpec that will be added to vlsingle VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
@@ -304,8 +311,10 @@ func (cr *VLSingle) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
-		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	if err := vmv1beta1.ValidateServiceSpecs(cr.PrefixedName(), cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs, func(key string) bool {
+		return key == "http" || vmv1beta1.IsSyslogPortName(key)
+	}); err != nil {
+		return err
 	}
 	if cr.Spec.VPA != nil {
 		if err := cr.Spec.VPA.Validate(); err != nil {
@@ -362,7 +371,7 @@ func (cr *VLSingle) Paused() bool {
 
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
-	return cr.Spec.ServiceSpec
+	return vmv1beta1.ResolveDefaultServiceSpec(cr.Spec.ServiceSpec, cr.Spec.ServiceSpecs)
 }
 
 // GetRemoteWriteURL returns the native insert URL for VLSingle (used by VLDistributed)

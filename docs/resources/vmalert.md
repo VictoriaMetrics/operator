@@ -21,7 +21,7 @@ The `VMAlert` CRD declaratively defines a desired [VMAlert](https://docs.victori
 setup to run in a Kubernetes cluster.
 
 It has few required config options - `datasource` and `notifier` are required, for other config parameters
-check [doc](https://docs.victoriametrics.com/operator/api/#vmalert).
+check [doc](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalert).
 
 For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
 The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing
@@ -32,7 +32,7 @@ name `<VMAlert-name>`.
 
 ## Specification
 
-You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api/#vmalert)**.
+You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalert)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -305,7 +305,7 @@ and [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#mul
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
 For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
  - change version of `vmalert` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmalert/#version-management).
 
 ### Reading rules from object storage

@@ -26,7 +26,7 @@ For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api/#vmsingle)**.
+You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api/#v1beta1-vmsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
@@ -213,7 +213,7 @@ VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victor
 - [Backup automation](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
 For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#license-keyref).
+ - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
  - change version of `vmsingle` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmsingle/#version-management).
 
 ### Downsampling
@@ -336,7 +336,7 @@ stringData:
 
 You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/victoriametrics/vmbackupmanager/)
 
-Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api/#vmbackup)
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api/#v1beta1-vmbackup)
 
 #### Restoring backups
 

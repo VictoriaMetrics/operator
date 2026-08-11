@@ -25,7 +25,7 @@ Anomaly Detection pods can either use a configuration Secret created from the va
 
 ## Configuration
 
-The operator generates a configuration file for `VMAnomaly` based on user input at the definition of [CRD](https://docs.victoriametrics.com/operator/api/#vmanomaly).
+The operator generates a configuration file for `VMAnomaly` based on user input at the definition of [CRD](https://docs.victoriametrics.com/operator/api/#v1-vmanomaly).
 
 The generated configuration is stored in a Secret created by the operator, using the following naming template: config-vmanomaly-<CRD_NAME>
 

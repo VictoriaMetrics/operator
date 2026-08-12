@@ -752,6 +752,9 @@ func (cr *VMCluster) Validate() error {
 		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
+		if err := vms.ServiceSpec.ValidateNoServiceTypeOverrideWithUseAsDefault("vmselect"); err != nil {
+			return err
+		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {
 				return err
@@ -824,6 +827,9 @@ func (cr *VMCluster) Validate() error {
 		name := cr.PrefixedName(ClusterComponentSelect)
 		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if err := vms.ServiceSpec.ValidateNoServiceTypeOverrideWithUseAsDefault("vmstorage"); err != nil {
+			return err
 		}
 		if cr.Spec.VMStorage.VMBackup != nil {
 			if err := cr.Spec.VMStorage.VMBackup.validate(cr.Spec.License); err != nil {

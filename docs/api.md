@@ -705,6 +705,7 @@ Appears in: [VMAnomalySpec](#vmanomalyspec)
 | timeout<a href="#vmanomalyreadersspec-timeout" id="vmanomalyreadersspec-timeout">#</a><br/>_string_ | _(Required)_<br/>Timeout for the requests, passed as a string |
 | tlsConfig<a href="#vmanomalyreadersspec-tlsconfig" id="vmanomalyreadersspec-tlsconfig">#</a><br/>_[TLSConfig](#tlsconfig)_ | _(Required)_<br/>TLSConfig defines tls connection configuration |
 | tz<a href="#vmanomalyreadersspec-tz" id="vmanomalyreadersspec-tz">#</a><br/>_string_ | _(Required)_<br/>Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns |
+| workers<a href="#vmanomalyreadersspec-workers" id="vmanomalyreadersspec-workers">#</a><br/>_integer_ | _(Optional)_<br/>Workers limits concurrent datasource requests and disk-streamed query chunks.<br />Zero lets vmanomaly select an automatic bound. |
 
 #### VMAnomalyServerSpec
 

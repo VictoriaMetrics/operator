@@ -89,6 +89,9 @@ spec:
     delete-rate:
       expr: 'sum(rate(vm_rows_deleted_total[5m])) by (type) > 0'
       step: '1m'
+      data_range: [0, 'inf']
+      detection_direction: above_expected
+      min_rel_dev_from_expected: [0, 15]
 ```
 
 The result anomaly detection configuration is:
@@ -119,6 +122,9 @@ reader:
     test-example-delete-rate:
       expr: 'sum(rate(vm_rows_deleted_total[5m])) by (type) > 0'
       step: '1m'
+      data_range: [0, 'inf']
+      detection_direction: above_expected
+      min_rel_dev_from_expected: [0, 15]
 writer:
   datasourceURL: http://vmsingle-write-example:8428
 ```

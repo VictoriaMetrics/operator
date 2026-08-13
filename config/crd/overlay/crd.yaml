@@ -61084,6 +61084,12 @@ spec:
                       account for local shifts, like DST, in models sensitive to seasonal
                       patterns
                     type: string
+                  workers:
+                    description: |-
+                      Workers limits concurrent datasource requests and disk-streamed query chunks.
+                      Zero lets vmanomaly select an automatic bound.
+                    minimum: 0
+                    type: integer
                 required:
                 - datasourceURL
                 - samplingPeriod

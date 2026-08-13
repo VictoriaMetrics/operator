@@ -29591,6 +29591,9 @@ spec:
                     type: object
                   tz:
                     type: string
+                  workers:
+                    minimum: 0
+                    type: integer
                 required:
                 - datasourceURL
                 - samplingPeriod

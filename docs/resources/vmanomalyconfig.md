@@ -47,12 +47,13 @@ spec:
         class: "periodic"
         # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       zscore:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
   reader:
     datasourceURL: http://vmsingle-read-example:8428
     samplingPeriod: 10s
@@ -76,14 +77,15 @@ metadata:
 spec:
   models:
     zscore:
-      class: zscore
+      class: zscore_online
       z_threshold: 3.0
+      decay: 0.99 # forgetting factor; lower values adapt faster to recent data
   schedulers:
     periodic:
       class: "periodic"
       # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support
       infer_every: "1m"
-      fit_every: "2m"
+      fit_every: "1000d" # bootstrap-only; online models update from every inference
       fit_window: "3h"
   queries:
     delete-rate:
@@ -101,17 +103,18 @@ schedulers:
   test-example-periodic:
     class: "periodic"
     infer_every: "1m"
-    fit_every: "2m"
+    fit_every: "1000d"
     fit_window: "3h"
   scheduler_periodic_1m:
     class: "periodic"
     infer_every: "1m"
-    fit_every: "2m"
+    fit_every: "1000d"
     fit_window: "3h"
 models:
   test-example-zscore:
-    class: 'zscore'
+    class: 'zscore_online'
     z_threshold: 3.0
+    decay: 0.99
 reader:
   datasourceURL: http://vmsingle-read-example:8428
   samplingPeriod: 10s

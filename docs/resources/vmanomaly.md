@@ -58,13 +58,13 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "1000d"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
         class: 'zscore_online'
         z_threshold: 2.5
-        decay: 0.99
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
     settings:
       n_workers: 8
       native_threads_per_worker: 1
@@ -229,12 +229,13 @@ stringData:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 
 ---
 
@@ -285,12 +286,13 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```
 
 If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
@@ -328,12 +330,13 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```
 
 ## Dynamic configuration
@@ -444,7 +447,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Examples
 
-Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#periodic-scheduler), [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
+Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#periodic-scheduler), online [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -471,10 +474,11 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```

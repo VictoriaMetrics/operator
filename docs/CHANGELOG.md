@@ -13,7 +13,7 @@ aliases:
 
 ## tip
 
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated the default VMAnomaly version to [v1.30.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1302).
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Updated the default VMAnomaly version to [v1.30.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1302).
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2.
 

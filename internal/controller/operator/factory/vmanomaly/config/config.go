@@ -163,7 +163,8 @@ type retention struct {
 }
 
 type settings struct {
-	Workers int `yaml:"n_workers,omitempty"`
+	Workers                int `yaml:"n_workers,omitempty"`
+	NativeThreadsPerWorker int `yaml:"native_threads_per_worker,omitempty"`
 	// ScoreOutsideRange is a pointer so an explicit 0.0 survives marshalling.
 	ScoreOutsideRange *float64          `yaml:"anomaly_score_outside_data_range,omitempty"`
 	RestoreState      bool              `yaml:"restore_state,omitempty"`

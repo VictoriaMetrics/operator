@@ -21,6 +21,7 @@ type reader struct {
 	Offset                     *duration         `yaml:"offset,omitempty"`
 	MaxPointsPerQuery          int               `yaml:"max_points_per_query,omitempty"`
 	SeriesProcessingBatchSize  int               `yaml:"series_processing_batch_size,omitempty"`
+	Workers                    int               `yaml:"workers,omitempty"`
 	Timezone                   string            `yaml:"tz,omitempty"`
 	DataRange                  []string          `yaml:"data_range,omitempty"`
 	Queries                    map[string]*query `yaml:"queries,omitempty"`
@@ -61,11 +62,14 @@ func (r *reader) validate() error {
 }
 
 type query struct {
-	Expr              string    `yaml:"expr"`
-	Step              *duration `yaml:"step,omitempty"`
-	DataRange         []string  `yaml:"data_range,omitempty"`
-	MaxPointsPerQuery int       `yaml:"max_points_per_query,omitempty"`
-	TZ                string    `yaml:"tz,omitempty"`
-	TenantID          string    `yaml:"tenant_id,omitempty"`
-	Offset            *duration `yaml:"offset,omitempty"`
+	Expr                  string                  `yaml:"expr"`
+	Step                  *duration               `yaml:"step,omitempty"`
+	DataRange             []string                `yaml:"data_range,omitempty"`
+	DetectionDirection    modelDetectionDirection `yaml:"detection_direction,omitempty"`
+	MinDevFromExpected    any                     `yaml:"min_dev_from_expected,omitempty"`
+	MinRelDevFromExpected any                     `yaml:"min_rel_dev_from_expected,omitempty"`
+	MaxPointsPerQuery     int                     `yaml:"max_points_per_query,omitempty"`
+	TZ                    string                  `yaml:"tz,omitempty"`
+	TenantID              string                  `yaml:"tenant_id,omitempty"`
+	Offset                *duration               `yaml:"offset,omitempty"`
 }

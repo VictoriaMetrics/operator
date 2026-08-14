@@ -27,13 +27,13 @@ Anomaly Detection pods can either use a configuration Secret created from the va
 
 The operator generates a configuration file for `VMAnomaly` based on user input at the definition of [CRD](https://docs.victoriametrics.com/operator/api/#vmanomaly).
 
-The generated configuration is stored in a Secret created by the operator, using the following naming template: config-vmanomaly-<CRD_NAME>
+The generated configuration is stored in a Secret created by the operator, using the following naming template: `config-vmanomaly-<CRD_NAME>`.
 
 This configuration file is mounted at `VMAnomaly` `Pod`.
 
 **VMAnomaly is enterprise only, license is required for this CRD**. [Trial license can be requested](https://victoriametrics.com/products/enterprise/trial/) for `VMAnomaly` CRD evaluation.
 
-In contrast to Anomaly Detection configuration, `VMAnomaly` CRD requires to define [`reader`](https://docs.victoriametrics.com/anomaly-detection/components/reader/), [`writer`](https://docs.victoriametrics.com/anomaly-detection/components/writer/) and [`monitoring`](https://docs.victoriametrics.com/anomaly-detection/components/monitoring/) sections in raw configuration (except `reader.queries`, which should be defined at `spec.configRawYaml` or `spec.configSecret`). `reader`, `writer` and `monitoring` have dedicated sections in `VMAnomaly` CRD:
+The `VMAnomaly` CRD exposes connection and concurrency settings through typed `spec.reader`, `spec.writer`, and `spec.monitoring` fields. Query definitions and query-level business policies remain in `spec.configRawYaml`, `spec.configSecret`, or selected [`VMAnomalyConfig`](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/) resources. Models, schedulers, and service settings are also defined in the raw configuration:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -50,20 +50,28 @@ spec:
         ingestion_rate:
           expr: 'sum(rate(vm_rows_inserted_total[5m])) by (type) > 0'
           step: '1m'
+          data_range: [0, 'inf']
+          detection_direction: above_expected
+          min_rel_dev_from_expected: [0, 15]
     schedulers:
       scheduler_periodic_1m:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
+    settings:
+      n_workers: 8
+      native_threads_per_worker: 1
   reader:
     datasourceURL: http://vmsingle-read-example:8428
     samplingPeriod: 10s
+    workers: 0
   writer:
     datasourceURL: http://vmsingle-write-example:8428
   monitoring:
@@ -73,7 +81,9 @@ spec:
 
 ### Reader, Writer and Monitoring
 
-While Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/) and [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/) should be defined in `spec.configRawYaml` or `spec.configSecret`, [reader](https://docs.victoriametrics.com/anomaly-detection/components/reader/), [writer](https://docs.victoriametrics.com/anomaly-detection/components/writer/) and [monitoring](https://docs.victoriametrics.com/anomaly-detection/components/monitoring/) sections should defined at `spec.reader`, `spec.writer` and `spec.monitoring` respectively.
+Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/), [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/), and `reader.queries` are defined in `spec.configRawYaml` or `spec.configSecret`. Reader connection settings and `reader.workers` are configured under `spec.reader`; writer and monitoring connection settings are configured under `spec.writer` and `spec.monitoring`.
+
+Starting with vmanomaly v1.30.2, stable KPI policies - `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` - should be configured on each `reader.queries.<alias>`. Model-level placement remains compatible but is deprecated. `settings.native_threads_per_worker` remains in the raw `settings` section because `VMAnomaly` does not expose typed service settings. A value of `0` selects the automatic limit for both `spec.reader.workers` and `settings.native_threads_per_worker`.
 
 This was done to allow to use K8s secrets and configmaps as a source for TLS, basic and bearer secrets for reader, writer and monitoring endpoints. Also structure of this sections differ from Anomaly Detection configuration structure.
 
@@ -219,12 +229,13 @@ stringData:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 
 ---
 
@@ -275,12 +286,13 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```
 
 If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
@@ -318,12 +330,13 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```
 
 ## Dynamic configuration
@@ -434,7 +447,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Examples
 
-Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#periodic-scheduler), [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
+Below is an example of VMAnomaly setup with [periodic scheduler](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/#periodic-scheduler), online [z-score model](https://docs.victoriametrics.com/anomaly-detection/components/models/#z-score), that is applied against data extracted using given `ingestion_rate` query from `http://vmsingle-read-example:8428` endpoint
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -461,10 +474,11 @@ spec:
         class: "periodic"
         # class: "periodic" # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support)
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       model_univariate_1:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```

@@ -146,6 +146,7 @@ type VMAnomalyHelmValues struct {
 type VMAnomalyReaderValues struct {
 	DatasourceURL  string `yaml:"datasourceURL,omitempty" json:"datasourceURL,omitempty"`
 	SamplingPeriod string `yaml:"samplingPeriod,omitempty" json:"samplingPeriod,omitempty"`
+	Workers        int    `yaml:"workers,omitempty" json:"workers,omitempty"`
 }
 
 type VMAnomalyWriterValues struct {
@@ -1243,6 +1244,7 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 		spec.Reader = &vmv1.VMAnomalyReadersSpec{
 			DatasourceURL:  values.Reader.DatasourceURL,
 			SamplingPeriod: values.Reader.SamplingPeriod,
+			Workers:        values.Reader.Workers,
 		}
 	}
 	if values.Writer != nil {

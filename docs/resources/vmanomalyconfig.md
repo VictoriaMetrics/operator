@@ -47,12 +47,13 @@ spec:
         class: "periodic"
         # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support
         infer_every: "1m"
-        fit_every: "2m"
+        fit_every: "1000d" # bootstrap-only; online models update from every inference
         fit_window: "3h"
     models:
       zscore:
-        class: 'zscore'
+        class: 'zscore_online'
         z_threshold: 2.5
+        decay: 0.99 # forgetting factor; lower values adapt faster to recent data
   reader:
     datasourceURL: http://vmsingle-read-example:8428
     samplingPeriod: 10s
@@ -76,19 +77,23 @@ metadata:
 spec:
   models:
     zscore:
-      class: zscore
+      class: zscore_online
       z_threshold: 3.0
+      decay: 0.99 # forgetting factor; lower values adapt faster to recent data
   schedulers:
     periodic:
       class: "periodic"
       # or class: "scheduler.periodic.PeriodicScheduler" until v1.13.0 with class alias support
       infer_every: "1m"
-      fit_every: "2m"
+      fit_every: "1000d" # bootstrap-only; online models update from every inference
       fit_window: "3h"
   queries:
     delete-rate:
       expr: 'sum(rate(vm_rows_deleted_total[5m])) by (type) > 0'
       step: '1m'
+      data_range: [0, 'inf']
+      detection_direction: above_expected
+      min_rel_dev_from_expected: [0, 15]
 ```
 
 The result anomaly detection configuration is:
@@ -98,17 +103,18 @@ schedulers:
   test-example-periodic:
     class: "periodic"
     infer_every: "1m"
-    fit_every: "2m"
+    fit_every: "1000d"
     fit_window: "3h"
   scheduler_periodic_1m:
     class: "periodic"
     infer_every: "1m"
-    fit_every: "2m"
+    fit_every: "1000d"
     fit_window: "3h"
 models:
   test-example-zscore:
-    class: 'zscore'
+    class: 'zscore_online'
     z_threshold: 3.0
+    decay: 0.99
 reader:
   datasourceURL: http://vmsingle-read-example:8428
   samplingPeriod: 10s
@@ -119,6 +125,9 @@ reader:
     test-example-delete-rate:
       expr: 'sum(rate(vm_rows_deleted_total[5m])) by (type) > 0'
       step: '1m'
+      data_range: [0, 'inf']
+      detection_direction: above_expected
+      min_rel_dev_from_expected: [0, 15]
 writer:
   datasourceURL: http://vmsingle-write-example:8428
 ```

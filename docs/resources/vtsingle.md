@@ -37,6 +37,41 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 
 `VTSingle` doesn't support high availability. Consider using [`VTCluster`](https://docs.victoriametrics.com/operator/resources/vtcluster/) or multiple `VTSingle` resources.
 
+## gRPC ingestion
+
+In addition to OTLP/HTTP on the default port, `VTSingle` can accept trace spans over OTLP/gRPC. Set
+`spec.grpcSpec.listenPort` to enable a gRPC listener alongside the default HTTP one:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: "VTSingle"
+metadata:
+  name: example
+spec:
+  grpcSpec:
+    listenPort: 4317
+```
+
+TLS for the gRPC listener is disabled by default. To enable it, set `spec.grpcSpec.tlsConfig` with a certificate and
+key, either referencing a `Secret` or a file already mounted into the pod:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: "VTSingle"
+metadata:
+  name: example
+spec:
+  grpcSpec:
+    listenPort: 4317
+    tlsConfig:
+      certSecret:
+        name: vtsingle-grpc-tls
+        key: tls.crt
+      keySecret:
+        name: vtsingle-grpc-tls
+        key: tls.key
+```
+
 ## Version management
 
 To set `VTSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaTraces/releases)

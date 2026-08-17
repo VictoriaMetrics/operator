@@ -84,6 +84,46 @@ spec:
 To expose VTCluster components outside the cluster via an ingress with authentication,
 see [Authorization and exposing components — VTCluster](https://docs.victoriametrics.com/operator/auth/#vtcluster).
 
+## gRPC ingestion
+
+In addition to OTLP/HTTP on the `vtinsert` service, `VTCluster` can accept trace spans over OTLP/gRPC. Set
+`spec.insert.grpcSpec.listenPort` to enable a gRPC listener alongside the default HTTP one; the operator adds a
+matching `otlp-grpc` port to the `vtinsert-<name>` service:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  insert:
+    replicaCount: 2
+    grpcSpec:
+      listenPort: 4317
+```
+
+TLS for the gRPC listener is disabled by default. To enable it, set `spec.insert.grpcSpec.tlsConfig` with a
+certificate and key, either referencing a `Secret` or a file already mounted into the pod:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  insert:
+    replicaCount: 2
+    grpcSpec:
+      listenPort: 4317
+      tlsConfig:
+        certSecret:
+          name: vtinsert-grpc-tls
+          key: tls.crt
+        keySecret:
+          name: vtinsert-grpc-tls
+          key: tls.key
+```
+
 ## Version management
 
 To set `VTCluster` version add `spec.clusterVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaTraces/releases)

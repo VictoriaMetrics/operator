@@ -48,6 +48,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VLCluster{}, addVLClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VLAgent{}, addVLAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VTSingle{}, addVTSingleDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VTAgent{}, addVTAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
@@ -353,6 +354,15 @@ func addVLAgentDefaults(objI any) {
 		tag:     cr.Spec.ComponentVersion,
 		license: cr.Spec.License,
 	}
+	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
+}
+
+func addVTAgentDefaults(objI any) {
+	cr := objI.(*vmv1.VTAgent)
+	c := getCfg()
+	addDefaultMetadata(cr)
+	cv := config.ApplicationDefaults(c.VTAgent)
+	cp := commonParams{tag: cr.Spec.ComponentVersion}
 	addDefaultsToCommonParams(&cr.Spec.CommonAppsParams, &cp, &cv)
 }
 

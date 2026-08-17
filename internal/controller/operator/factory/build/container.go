@@ -586,8 +586,9 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 	tlsEnabled := NewEmptyFlag("-syslog.tls")
 	tlsCertFile := NewEmptyFlag("-syslog.tlsCertFile")
 	tlsKeyFile := NewEmptyFlag("-syslog.tlsKeyFile")
+	tlsCipherSuites := NewEmptyFlag("-syslog.tlsCipherSuites")
 
-	var value string
+	var value, tlsMinVersion string
 
 	for idx, sTCP := range syslogSpec.TCPListeners {
 		tcpListenAddr.Add(fmt.Sprintf(":%d", sTCP.ListenPort), idx)
@@ -616,12 +617,24 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
 			}
 			tlsKeyFile.Add(value, idx)
+			if len(tlsC.CipherSuites) > 0 {
+				cs := strings.ReplaceAll(strings.Join(tlsC.CipherSuites, ","), `\`, `\\`)
+				cs = strings.ReplaceAll(cs, "'", `\'`)
+				tlsCipherSuites.Add(fmt.Sprintf("'%s'", cs), idx)
+			} else {
+				tlsCipherSuites.Add("", idx)
+			}
+			if tlsMinVersion == "" && tlsC.MinVersion != "" {
+				tlsMinVersion = tlsC.MinVersion
+			}
 		}
 	}
-	dst = AppendFlagsToArgs(dst, len(syslogSpec.TCPListeners), tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile)
+	dst = AppendFlagsToArgs(dst, len(syslogSpec.TCPListeners), tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile, tlsCipherSuites)
+	if tlsMinVersion != "" {
+		dst = append(dst, fmt.Sprintf("-syslog.tlsMinVersion=%s", tlsMinVersion))
+	}
 
 	udpListenAddr := NewEmptyFlag("-syslog.listenAddr.udp")
-	// vmv1.FieldsListString must be quoted with ''
 	udpStreamFileds := NewFlag("-syslog.streamFields.udp", "''")
 	udpIgnoreFields := NewFlag("-syslog.ignoreFields.udp", "''")
 	udpDecolorizedFields := NewFlag("-syslog.decolorizeFields.udp", "''")
@@ -695,6 +708,98 @@ func AddSyslogTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.
 			addSecretMount(tlsC.KeySecret)
 		}
 
+	}
+	return dstVolumes, dstMounts
+}
+
+// AddOTLPGRPCPortTo adds the OTLP gRPC container port if grpcSpec is configured
+func AddOTLPGRPCPortTo(dst []corev1.ContainerPort, grpcSpec *vmv1.OTLPGRPCSpec) []corev1.ContainerPort {
+	if grpcSpec == nil {
+		return dst
+	}
+	return append(dst, corev1.ContainerPort{
+		Name:          "otlp-grpc",
+		Protocol:      corev1.ProtocolTCP,
+		ContainerPort: grpcSpec.ListenPort,
+	})
+}
+
+// AddOTLPGRPCArgsTo adds otlpGRPC flag args into provided dst
+func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfigMountPath string) []string {
+	if grpcSpec == nil {
+		return dst
+	}
+	dst = append(dst, fmt.Sprintf("-otlpGRPCListenAddr=:%d", grpcSpec.ListenPort))
+
+	tlsC := grpcSpec.TLSConfig
+	if tlsC == nil {
+		return dst
+	}
+	dst = append(dst, "-otlpGRPC.tls=true")
+	switch {
+	case tlsC.CertFile != "":
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCertFile=%s", tlsC.CertFile))
+	case tlsC.CertSecret != nil:
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCertFile=%s/%s/%s", tlsServerConfigMountPath, tlsC.CertSecret.Name, tlsC.CertSecret.Key))
+	}
+	switch {
+	case tlsC.KeyFile != "":
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsKeyFile=%s", tlsC.KeyFile))
+	case tlsC.KeySecret != nil:
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsKeyFile=%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key))
+	}
+	if tlsC.MinVersion != "" {
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsMinVersion=%s", tlsC.MinVersion))
+	}
+	if len(tlsC.CipherSuites) > 0 {
+		dst = append(dst, fmt.Sprintf("-otlpGRPC.tlsCipherSuites=%s", strings.Join(tlsC.CipherSuites, ",")))
+	}
+	return dst
+}
+
+// AddOTLPGRPCTLSConfigToVolumes adds OTLP gRPC tlsConfig volumes and mounts to the provided dsts
+func AddOTLPGRPCTLSConfigToVolumes(dstVolumes []corev1.Volume, dstMounts []corev1.VolumeMount, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfigMountPath string) ([]corev1.Volume, []corev1.VolumeMount) {
+	if grpcSpec == nil || grpcSpec.TLSConfig == nil {
+		return dstVolumes, dstMounts
+	}
+
+	addSecretVolume := func(sr *corev1.SecretKeySelector) {
+		name := fmt.Sprintf("secret-tls-%s", sr.Name)
+		for _, dst := range dstVolumes {
+			if dst.Name == name {
+				return
+			}
+		}
+		dstVolumes = append(dstVolumes, corev1.Volume{
+			Name: name,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sr.Name,
+				},
+			},
+		})
+	}
+	addSecretMount := func(sr *corev1.SecretKeySelector) {
+		name := fmt.Sprintf("secret-tls-%s", sr.Name)
+		for _, dst := range dstMounts {
+			if dst.Name == name {
+				return
+			}
+		}
+		dstMounts = append(dstMounts, corev1.VolumeMount{
+			Name:      name,
+			MountPath: fmt.Sprintf("%s/%s", tlsServerConfigMountPath, sr.Name),
+		})
+	}
+
+	tlsC := grpcSpec.TLSConfig
+	if tlsC.CertSecret != nil {
+		addSecretVolume(tlsC.CertSecret)
+		addSecretMount(tlsC.CertSecret)
+	}
+	if tlsC.KeySecret != nil {
+		addSecretVolume(tlsC.KeySecret)
+		addSecretMount(tlsC.KeySecret)
 	}
 	return dstVolumes, dstMounts
 }

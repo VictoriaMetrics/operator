@@ -200,3 +200,16 @@ func AddSyslogPortsToService(svc *corev1.Service, syslogSpec *vmv1.SyslogServerS
 		)
 	}
 }
+
+// AddOTLPGRPCPortToService adds the OTLP gRPC port to the provided service
+func AddOTLPGRPCPortToService(svc *corev1.Service, grpcSpec *vmv1.OTLPGRPCSpec) {
+	if grpcSpec == nil {
+		return
+	}
+	svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+		Name:       "otlp-grpc",
+		Protocol:   corev1.ProtocolTCP,
+		Port:       grpcSpec.ListenPort,
+		TargetPort: intstr.FromInt32(grpcSpec.ListenPort),
+	})
+}

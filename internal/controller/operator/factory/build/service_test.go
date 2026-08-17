@@ -6,9 +6,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
+
+func TestAddOTLPGRPCPortToService(t *testing.T) {
+	svc := &corev1.Service{}
+	AddOTLPGRPCPortToService(svc, nil)
+	assert.Empty(t, svc.Spec.Ports)
+
+	AddOTLPGRPCPortToService(svc, &vmv1.OTLPGRPCSpec{ListenPort: 4317})
+	assert.Equal(t, []corev1.ServicePort{
+		{Name: "otlp-grpc", Protocol: corev1.ProtocolTCP, Port: 4317, TargetPort: intstr.FromInt32(4317)},
+	}, svc.Spec.Ports)
+}
 
 func Test_mergeServiceSpec(t *testing.T) {
 	type opts struct {

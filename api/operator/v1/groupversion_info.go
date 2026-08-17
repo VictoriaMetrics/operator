@@ -41,6 +41,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VLAgent{}, &VLAgentList{},
 		&VLSingle{}, &VLSingleList{},
 		&VTSingle{}, &VTSingleList{},
+		&VTAgent{}, &VTAgentList{},
 		&VLCluster{}, &VLClusterList{},
 		&VTCluster{}, &VTClusterList{},
 		&VMAnomaly{}, &VMAnomalyList{},

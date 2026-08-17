@@ -86,6 +86,9 @@ type VTSingleSpec struct {
 	// Whether to log all the ingested log entries; this can be useful for debugging of data ingestion;
 	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	LogIngestedRows bool `json:"logIngestedRows,omitempty"`
+	// GRPCSpec defines OTLP gRPC ingestion listener configuration
+	// +optional
+	GRPCSpec *OTLPGRPCSpec `json:"grpcSpec,omitempty"`
 	// ServiceSpec that will be added to vtsingle service spec
 	// +optional
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -306,6 +309,13 @@ func (cr *VTSingle) Validate() error {
 		if err := cr.Spec.VPA.Validate(); err != nil {
 			return err
 		}
+	}
+	specPort := cr.Spec.Port
+	if specPort == "" {
+		specPort = "10428"
+	}
+	if err := cr.Spec.GRPCSpec.Validate(specPort); err != nil {
+		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err

@@ -1,0 +1,24 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VTAgent
+metadata:
+  name: example
+spec:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "150Mi"
+    limits:
+      cpu: "500m"
+      memory: "500Mi"
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+  storage:
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 10Gi
+  remoteWrite:
+    - url: "http://vtsingle-example:10428/insert/native"
+      maxDiskUsage: 5GB

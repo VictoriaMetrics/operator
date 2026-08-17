@@ -23,6 +23,7 @@ resources:
 - bases/operator.victoriametrics.com_vlclusters.yaml
 - bases/operator.victoriametrics.com_vtsingles.yaml
 - bases/operator.victoriametrics.com_vtclusters.yaml
+- bases/operator.victoriametrics.com_vtagents.yaml
 - bases/operator.victoriametrics.com_vmanomalies.yaml
 - bases/operator.victoriametrics.com_vmdistributed.yaml
 - bases/operator.victoriametrics.com_vldistributed.yaml
@@ -86,6 +87,10 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vlagents.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vtagents.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vtagents.operator.victoriametrics.com
 # - path: patches/webhook_in_operator_vmagents.yaml
 # - path: patches/webhook_in_operator_vmsingles.yaml
 # - path: patches/webhook_in_operator_vmalertmanagers.yaml

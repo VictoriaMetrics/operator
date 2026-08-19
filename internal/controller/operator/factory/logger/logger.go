@@ -26,6 +26,8 @@ type Logger struct {
 // cannot be used concurrently
 func New(origin logr.LogSink) logr.Logger {
 	messageCounter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "operator_log_messages_total", Help: "rate of log messages by level"}, []string{"level"})
+	messageCounter.WithLabelValues("info").Add(0)
+	messageCounter.WithLabelValues("error").Add(0)
 	registry := metrics.Registry
 	registry.MustRegister(messageCounter)
 	l := logr.New(&Logger{origin: origin, messageCounter: messageCounter})

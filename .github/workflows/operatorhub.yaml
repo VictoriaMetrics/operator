@@ -19,7 +19,7 @@ jobs:
   update:
     name: Publish new OperatorHub release
     runs-on:  vm-runner
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && ! contains(github.event.workflow_run.head_branch, '-')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (! contains(github.event.workflow_run.head_branch, '-') || startsWith(github.event.workflow_run.head_branch, 'release-'))) }}
     strategy:
       matrix:
         repo:
@@ -37,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
 
       - name: Check out OperatorHub operators repo fork
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           repository: ${{ matrix.repo.upstream }}
           ref: main

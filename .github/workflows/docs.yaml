@@ -63,9 +63,6 @@ jobs:
           REF="$GITHUB_REF_NAME"
           if [[ "$REF" == "master" ]]; then
             make docs
-            # Sync markdown files and pictures; CHANGELOG.md is merged separately below
-            # instead of overwritten, so LTS-only entries merged in from release branches
-            # aren't wiped out.
             rsync -zarv \
               --include="*/" \
               --exclude="CHANGELOG.md" \
@@ -78,9 +75,6 @@ jobs:
               --source=docs/CHANGELOG.md \
               --master
           elif [[ "$REF" =~ ^release-[0-9]+\.[0-9]+$ ]]; then
-            # LTS release branch: merge only its changelog. Other doc pages are never
-            # synced from here, so a release branch can't overwrite current docs with
-            # its own, older copies.
             python3 hack/merge_changelog.py \
               --target=../__vm-docs/content/operator/CHANGELOG.md \
               --source=docs/CHANGELOG.md

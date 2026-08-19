@@ -396,6 +396,19 @@ func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec
 	return cb(asc)
 }
 
+// ValidateNoServiceTypeOverrideWithUseAsDefault rejects an explicit spec.type
+// combined with useAsDefault, because the default service must stay headless
+// (clusterIP: None) for cluster-native communication. Per #2487.
+func (asc *AdditionalServiceSpec) ValidateNoServiceTypeOverrideWithUseAsDefault() error {
+	if asc == nil || !asc.UseAsDefault {
+		return nil
+	}
+	if asc.Spec.Type != "" {
+		return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with an explicit spec.type=%q: the default service is headless (clusterIP: None) and must stay headless. Remove spec.type, or create a separate service with serviceSpec.useAsDefault=false and a distinct metadata.name", asc.Spec.Type)
+	}
+	return nil
+}
+
 // NameOrDefault returns name or default value with suffix
 func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	if ss != nil && ss.Name != "" {

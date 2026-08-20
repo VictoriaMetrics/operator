@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import unittest
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -17,29 +16,25 @@ def version(heading, body):
     return mc.Version(heading, body)
 
 
-class ParseReleaseDateTest(unittest.TestCase):
-    def test_abbreviated_month(self):
-        body = "**Release date:** 12 Sep 2025\n\n* stuff"
-        self.assertEqual(mc.parse_release_date(body), datetime(2025, 9, 12))
+class ParseVersionTest(unittest.TestCase):
+    def test_multi_part_version(self):
+        heading = "## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)"
+        self.assertEqual(mc.parse_version(heading), (0, 74, 1))
 
-    def test_full_month_name(self):
-        body = "**Release date:** 04 August 2026\n\n* stuff"
-        self.assertEqual(mc.parse_release_date(body), datetime(2026, 8, 4))
+    def test_tip_has_no_version(self):
+        self.assertIsNone(mc.parse_version("## tip"))
 
-    def test_missing_date(self):
-        self.assertIsNone(mc.parse_release_date("* no date here"))
-
-    def test_unparseable_date(self):
-        self.assertIsNone(mc.parse_release_date("**Release date:** not-a-date"))
+    def test_non_version_heading(self):
+        self.assertIsNone(mc.parse_version("## [unreleased](url)"))
 
 
 class MergeDedupeTest(unittest.TestCase):
     def test_shared_version_kept_once_source_body_wins(self):
         target = changelog(versions=[
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* target body (stale, should be ignored)"),
+            version("## [v1.1.0](url)", "* target body (stale, should be ignored)"),
         ])
         source = changelog(tip="source tip", versions=[
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* source body"),
+            version("## [v1.1.0](url)", "* source body"),
         ])
 
         merged = mc.merge(target, source, source_is_master=False)
@@ -50,11 +45,11 @@ class MergeDedupeTest(unittest.TestCase):
 
     def test_source_only_version_is_added(self):
         target = changelog(versions=[
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* v1.1.0"),
+            version("## [v1.1.0](url)", "* v1.1.0"),
         ])
         source = changelog(versions=[
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* v1.1.0"),
-            version("## [v1.2.0](url)", "**Release date:** 03 Feb 2026\n\n* v1.2.0"),
+            version("## [v1.1.0](url)", "* v1.1.0"),
+            version("## [v1.2.0](url)", "* v1.2.0"),
         ])
 
         merged = mc.merge(target, source, source_is_master=False)
@@ -64,10 +59,10 @@ class MergeDedupeTest(unittest.TestCase):
 
     def test_repeated_merge_is_idempotent(self):
         target = changelog(versions=[
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* v1.1.0"),
+            version("## [v1.1.0](url)", "* v1.1.0"),
         ])
         source = changelog(versions=[
-            version("## [v1.2.0](url)", "**Release date:** 03 Feb 2026\n\n* v1.2.0"),
+            version("## [v1.2.0](url)", "* v1.2.0"),
         ])
 
         once = mc.merge(target, source, source_is_master=False)
@@ -81,13 +76,13 @@ class MergeDedupeTest(unittest.TestCase):
 
 
 class MergeSortTest(unittest.TestCase):
-    def test_sorted_descending_by_date_mixing_full_and_abbreviated_months(self):
+    def test_sorted_descending_by_version(self):
         target = changelog(versions=[
-            version("## [v1.0.0](url)", "**Release date:** 12 Sep 2025\n\n* old"),
+            version("## [v1.0.0](url)", "* old"),
         ])
         source = changelog(versions=[
-            version("## [v1.2.0](url)", "**Release date:** 04 August 2026\n\n* newest"),
-            version("## [v1.1.0](url)", "**Release date:** 02 Jan 2026\n\n* middle"),
+            version("## [v1.2.0](url)", "* newest"),
+            version("## [v1.1.0](url)", "* middle"),
         ])
 
         merged = mc.merge(target, source, source_is_master=False)
@@ -97,11 +92,29 @@ class MergeSortTest(unittest.TestCase):
             ["## [v1.2.0](url)", "## [v1.1.0](url)", "## [v1.0.0](url)"],
         )
 
-    def test_unparseable_dates_sort_last_preserving_relative_order(self):
+    def test_sorted_numerically_not_lexicographically(self):
+        # A string sort would put "v0.10.0" before "v0.9.0"; the numeric parts
+        # must be compared as integers instead.
         target = changelog(versions=[
-            version("## [vA](url)", "no date here first"),
-            version("## [vB](url)", "**Release date:** 02 Jan 2026\n\n* dated"),
-            version("## [vC](url)", "no date here second"),
+            version("## [v0.9.0](url)", "* nine"),
+        ])
+        source = changelog(versions=[
+            version("## [v0.10.0](url)", "* ten"),
+            version("## [v0.2.0](url)", "* two"),
+        ])
+
+        merged = mc.merge(target, source, source_is_master=False)
+
+        self.assertEqual(
+            [v.heading for v in merged.versions],
+            ["## [v0.10.0](url)", "## [v0.9.0](url)", "## [v0.2.0](url)"],
+        )
+
+    def test_unparseable_versions_sort_last_preserving_relative_order(self):
+        target = changelog(versions=[
+            version("## [unreleased-a](url)", "no version here first"),
+            version("## [v1.1.0](url)", "* dated"),
+            version("## [unreleased-b](url)", "no version here second"),
         ])
         source = changelog(versions=[])
 
@@ -109,7 +122,7 @@ class MergeSortTest(unittest.TestCase):
 
         self.assertEqual(
             [v.heading for v in merged.versions],
-            ["## [vB](url)", "## [vA](url)", "## [vC](url)"],
+            ["## [v1.1.0](url)", "## [unreleased-a](url)", "## [unreleased-b](url)"],
         )
 
 

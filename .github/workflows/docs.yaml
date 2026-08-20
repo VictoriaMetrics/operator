@@ -9,6 +9,7 @@ on:
       - 'docs/**'
       - 'README.md'
       - '.github/workflows/docs.yaml'
+      - 'hack/*.py'
 
 permissions: {}
 

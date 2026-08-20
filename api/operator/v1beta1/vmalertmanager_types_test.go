@@ -73,7 +73,7 @@ receivers:
 			Spec: VMAlertmanagerSpec{
 				ServiceSpec: &AdditionalServiceSpec{
 					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
 				},
 			},
 		},

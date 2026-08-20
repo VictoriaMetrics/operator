@@ -403,7 +403,7 @@ func (asc *AdditionalServiceSpec) ValidateNoServiceTypeOverrideWithUseAsDefault(
 	if asc == nil || !asc.UseAsDefault {
 		return nil
 	}
-	if asc.Spec.Type != "" {
+	if asc.Spec.Type != "" && asc.Spec.Type != corev1.ServiceTypeClusterIP {
 		return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with an explicit spec.type=%q: the default service is headless (clusterIP: None) and must stay headless. Remove spec.type, or create a separate service with serviceSpec.useAsDefault=false and a distinct metadata.name", asc.Spec.Type)
 	}
 	return nil

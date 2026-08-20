@@ -988,6 +988,7 @@ var _ = Describe("e2e vmcluster", Label("vm", "cluster", "vmcluster"), func() {
 				testStep{
 					modify: func(cr *vmv1beta1.VMCluster) {
 						cr.Spec.VMStorage.ServiceSpec.UseAsDefault = true
+						cr.Spec.VMStorage.ServiceSpec.Spec.Type = ""
 						cr.Spec.VMSelect.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 								Name: "my-service-name-v2",

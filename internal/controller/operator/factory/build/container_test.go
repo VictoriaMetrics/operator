@@ -228,9 +228,13 @@ func TestLifecycle(t *testing.T) {
 	k8stools.ServerMinorVersion = 28
 	f(&vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)}, nil)
 
-	// supported k8s version (>= 1.29) — native SleepAction
-	k8stools.ServerMajorVersion = 1
+	// PodLifecycleSleepAction is alpha (off by default) in 1.29 — must not set an empty handler
 	k8stools.ServerMinorVersion = 29
+	f(&vmv1beta1.CommonAppsParams{PreStopSleepSeconds: ptr.To[int32](15)}, nil)
+
+	// supported k8s version (>= 1.30) — native SleepAction
+	k8stools.ServerMajorVersion = 1
+	k8stools.ServerMinorVersion = 30
 	t.Cleanup(func() { k8stools.ServerMajorVersion = 0; k8stools.ServerMinorVersion = 0 })
 
 	// sleep >= terminationGracePeriodSeconds — no hook to avoid SIGKILL during preStop

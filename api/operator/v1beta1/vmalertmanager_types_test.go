@@ -73,11 +73,34 @@ receivers:
 			Spec: VMAlertmanagerSpec{
 				ServiceSpec: &AdditionalServiceSpec{
 					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.1.1.1",
+					},
 				},
 			},
 		},
 		wantErr: true,
+	})
+
+	// serviceSpec.useAsDefault with headless service is allowed
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: corev1.ClusterIPNone,
+					},
+				},
+			},
+		},
+		wantErr: false,
 	})
 
 	// serviceSpec.useAsDefault without an explicit type is allowed

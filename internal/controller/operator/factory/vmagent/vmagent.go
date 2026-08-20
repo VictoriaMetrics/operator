@@ -215,7 +215,6 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	deploymentToKeep := sets.New[string]()
 	stsToKeep := sets.New[string]()
 	pdbToKeep := sets.New[string]()
-	vpaToKeep := sets.New[string]()
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -382,12 +381,6 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		}
 	}
 
-	// A single CR-level VPA is managed by createOrUpdateVPA regardless of sharding; include
-	// it in keepNames so RemoveOrphanedVPAs doesn't accidentally delete it.
-	if cr.Spec.VPA != nil && !cr.Spec.DaemonSetMode {
-		vpaToKeep.Insert(cr.Name)
-	}
-
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err
 	}
@@ -395,9 +388,6 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		return err
 	}
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep, true); err != nil {
-		return err
-	}
-	if err := finalize.RemoveOrphanedVPAs(ctx, rclient, cr, vpaToKeep, true); err != nil {
 		return err
 	}
 	return nil
@@ -1282,11 +1272,20 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.Spec.DaemonSetMode {
 		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
 	}
+	// TODO: drop the cr.Name-named HPA/VPA objects deletes after v0.80.0
+	if cr.PrefixedName() != cr.Name {
+		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
+	}
 	if cr.Spec.HPA == nil {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	if config.MustGetBaseConfig().VPAAPIEnabled && (cr.Spec.VPA == nil || cr.Spec.DaemonSetMode) {
-		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		if cr.PrefixedName() != cr.Name {
+			objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
+		}
+		if cr.Spec.VPA == nil || cr.Spec.DaemonSetMode {
+			objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+		}
 	}
 	if cr.Spec.NetworkPolicy == nil {
 		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})

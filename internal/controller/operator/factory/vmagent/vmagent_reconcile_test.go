@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	}
 
 	vmagentName := types.NamespacedName{Namespace: "default", Name: "vmagent-vmagent"}
+	vmagentUnprefixedName := types.NamespacedName{Namespace: "default", Name: "vmagent"}
 	clusterRoleName := types.NamespacedName{Name: "monitoring:default:vmagent-vmagent"}
 	roleName := types.NamespacedName{Namespace: "default", Name: "monitoring:default:vmagent-vmagent"}
 	tlsAssetsName := types.NamespacedName{Namespace: "default", Name: "tls-assets-vmagent-vmagent"}
@@ -182,6 +184,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
+				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentUnprefixedName},
 				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentName},
 				{Verb: "Get", Kind: "NetworkPolicy", Resource: vmagentName},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmagentName},
@@ -302,7 +305,7 @@ func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
 			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
 			var vpa vpav1.VerticalPodAutoscaler
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &vpa))
 			assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
 				Name:       cr.Name,
 				Kind:       "VMAgent",
@@ -351,16 +354,249 @@ func TestCreateOrUpdateVPA_RemovedOnDisable(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
+		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 		var vpa vpav1.VerticalPodAutoscaler
 		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
 
-		// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
+		// deleteOrphaned only runs once cr.Status.LastAppliedSpec is set, as a real reconcile loop would
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		cr.Spec.VPA = nil
 		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 		err := fclient.Get(ctx, vpaNSN, &vpa)
 		assert.Error(t, err)
 		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
+// regression test for https://github.com/VictoriaMetrics/operator/issues/2518
+func TestCreateOrUpdateVPA_OldNameCleanedUpOnMigration(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = true
+	defer func() { *cfg = defaultCfg }()
+
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-migrate-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			VPA:         &vmv1beta1.EmbeddedVPA{},
+		},
+	}
+	// pre-migration VPA under the old, unprefixed name
+	staleVPA := build.VPA(cr, autoscalingv1.CrossVersionObjectReference{
+		Name:       cr.Name,
+		Kind:       "VMAgent",
+		APIVersion: "operator.victoriametrics.com/v1beta1",
+	}, cr.Spec.VPA)
+	staleVPA.Name = cr.Name
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr, staleVPA})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &vpa))
+
+		err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
+// regression test: with UseLegacyNaming, cr.PrefixedName() == cr.Name, so the migration
+// cleanup for the old cr.Name-named VPA must not delete the current, identically-named one.
+func TestCreateOrUpdateVPA_LegacyNamingNotChurned(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = true
+	defer func() { *cfg = defaultCfg }()
+
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-legacy-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			UseLegacyNaming: true,
+			RemoteWrite:     []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			VPA:             &vmv1beta1.EmbeddedVPA{},
+		},
+	}
+	fclient := k8stools.GetTestClientWithActionsAndObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
+
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		fclient.Actions = nil
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
+		for _, action := range fclient.Actions {
+			if action.Kind == "VerticalPodAutoscaler" {
+				assert.NotEqual(t, "Delete", action.Verb, "the live VPA must not be deleted when UseLegacyNaming makes cr.PrefixedName() == cr.Name")
+			}
+		}
+	})
+}
+
+func TestCreateOrUpdateHPA_TargetsCR(t *testing.T) {
+	f := func(cr *vmv1beta1.VMAgent) {
+		t.Helper()
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+		ctx := context.TODO()
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
+
+		synctest.Test(t, func(t *testing.T) {
+			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+			var hpa autoscalingv2.HorizontalPodAutoscaler
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &hpa))
+			assert.Equal(t, autoscalingv2.CrossVersionObjectReference{
+				Name:       cr.Name,
+				Kind:       "VMAgent",
+				APIVersion: "operator.victoriametrics.com/v1beta1",
+			}, hpa.Spec.ScaleTargetRef)
+		})
+	}
+
+	// non-sharded
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	})
+
+	// sharded
+	f(&vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-vmagent-sharded", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			ShardCount:  ptr.To(int32(3)),
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	})
+}
+
+// regression test for https://github.com/VictoriaMetrics/operator/issues/2518
+func TestCreateOrUpdateHPA_RemovedOnDisable(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-disable-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		hpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+		var hpa autoscalingv2.HorizontalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
+
+		// deleteOrphaned only runs once cr.Status.LastAppliedSpec is set, as a real reconcile loop would
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		cr.Spec.HPA = nil
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err := fclient.Get(ctx, hpaNSN, &hpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
+// regression test for https://github.com/VictoriaMetrics/operator/issues/2518
+func TestCreateOrUpdateHPA_OldNameCleanedUpOnMigration(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-migrate-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	}
+	// pre-migration HPA under the old, unprefixed name
+	staleHPA := build.HPA(cr, autoscalingv2.CrossVersionObjectReference{
+		Name:       cr.Name,
+		Kind:       "VMAgent",
+		APIVersion: "operator.victoriametrics.com/v1beta1",
+	}, cr.Spec.HPA)
+	staleHPA.Name = cr.Name
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr, staleHPA})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		var hpa autoscalingv2.HorizontalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &hpa))
+
+		err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &hpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
+// regression test: with UseLegacyNaming, cr.PrefixedName() == cr.Name, so the migration
+// cleanup for the old cr.Name-named HPA must not delete the current, identically-named one.
+func TestCreateOrUpdateHPA_LegacyNamingNotChurned(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-legacy-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			UseLegacyNaming: true,
+			RemoteWrite:     []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithActionsAndObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		hpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+		var hpa autoscalingv2.HorizontalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
+
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		fclient.Actions = nil
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
+		for _, action := range fclient.Actions {
+			if action.Kind == "HorizontalPodAutoscaler" {
+				assert.NotEqual(t, "Delete", action.Verb, "the live HPA must not be deleted when UseLegacyNaming makes cr.PrefixedName() == cr.Name")
+			}
+		}
 	})
 }
 

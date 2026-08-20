@@ -3,11 +3,14 @@
 release-* branch) into the already-published CHANGELOG.md, without ever copying
 entries between branches by hand.
 
-Every version already present in target is kept; any version present in source
-but not target is added. Versions are never removed, so deleting the source branch later
-has no effect on what was already merged. If --master is passed, source's "tip"
-section replaces target's, since only master owns the "unreleased changes"
-section; a release-* branch's own tip (its not-yet-tagged changes) is ignored.
+Every version present in source is kept; any version present in target but not
+source is kept too. When the same version exists in both, source's copy wins,
+since source is freshly checked out from the operator repo and target (vmdocs)
+may hold a stale hand-edit. Versions are never removed, so deleting the source
+branch later has no effect on what was already merged. If --master is passed,
+source's "tip" section replaces target's, since only master owns the
+"unreleased changes" section; a release-* branch's own tip (its not-yet-tagged
+changes) is ignored.
 """
 import argparse
 import re
@@ -16,7 +19,7 @@ from datetime import datetime
 
 HEADING_RE = re.compile(r"^## .*$", re.MULTILINE)
 RELEASE_DATE_RE = re.compile(r"^\*\*Release date:\*\*\s*(.+)$", re.MULTILINE)
-DATE_FORMAT = "%d %b %Y"
+DATE_FORMATS = ("%d %b %Y", "%d %B %Y")
 
 
 class Version:
@@ -30,10 +33,13 @@ def parse_release_date(body):
     m = RELEASE_DATE_RE.search(body)
     if not m:
         return None
-    try:
-        return datetime.strptime(m.group(1).strip(), DATE_FORMAT)
-    except ValueError:
-        return None
+    raw = m.group(1).strip()
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    return None
 
 
 class ChangelogFile:
@@ -85,18 +91,10 @@ def parse(data):
 
 def merge(target, source, source_is_master):
     tip = source.tip if source_is_master else target.tip
-
-    versions = list(target.versions)
-    seen = {v.heading for v in versions}
-    for v in source.versions:
-        if v.heading in seen:
-            continue
-        seen.add(v.heading)
-        versions.append(v)
-
-    # unparseable/missing dates sort last, but keep their relative order (stable sort)
+    by_heading = {v.heading: v for v in target.versions}
+    by_heading.update((v.heading, v) for v in source.versions)
+    versions = list(by_heading.values())
     versions.sort(key=lambda v: v.date or datetime.min, reverse=True)
-
     return ChangelogFile(target.front_matter, tip, versions)
 
 

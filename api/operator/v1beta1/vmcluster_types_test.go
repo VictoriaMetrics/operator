@@ -382,7 +382,7 @@ func TestVMCluster_Validate(t *testing.T) {
 		VMSelect: &VMSelect{
 			ServiceSpec: &AdditionalServiceSpec{
 				UseAsDefault: true,
-				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
 			},
 		},
 	}, true)
@@ -413,7 +413,7 @@ func TestVMCluster_Validate(t *testing.T) {
 		VMStorage: &VMStorage{
 			ServiceSpec: &AdditionalServiceSpec{
 				UseAsDefault: true,
-				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
 			},
 		},
 	}, true)

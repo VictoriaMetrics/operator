@@ -790,8 +790,8 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 	if !pos.HasClusterWideAccess {
 		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
-			"Since operator launched with set WATCH_NAMESPACE param. " +
-			"Set custom ServiceAccountName property for VMSingle if needed.")
+			" Since operator launched with set WATCH_NAMESPACE param." +
+			" Set custom ServiceAccountName property for VMSingle if needed.")
 		pos.IgnoreNamespaceSelectors = true
 	}
 	sp := &cr.Spec.CommonScrapeParams

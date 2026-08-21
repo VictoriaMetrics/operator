@@ -268,6 +268,65 @@ func TestDirWatcherReloadsSyncedPairsWhenAnotherKeepsFailing(t *testing.T) {
 	}
 }
 
+func TestDirWatcherProcessesEventsWhileInitialSyncRetries(t *testing.T) {
+	origBackoff := initialSyncRetryBackoff
+	initialSyncRetryBackoff = time.Hour
+	defer func() { initialSyncRetryBackoff = origBackoff }()
+
+	srcA := t.TempDir()
+	targetA := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcA, "rules.yaml"), []byte("groups: []\n"), 0o644); err != nil {
+		t.Fatalf("failed to write source file: %v", err)
+	}
+	srcB := t.TempDir()
+	base := t.TempDir()
+	blocker := filepath.Join(base, "blocked")
+	targetB := filepath.Join(blocker, "out")
+	if err := os.WriteFile(filepath.Join(srcB, "rules.yaml"), []byte("groups: []\n"), 0o644); err != nil {
+		t.Fatalf("failed to write source file: %v", err)
+	}
+	// A regular file at targetB's parent path makes its sync fail.
+	if err := os.WriteFile(blocker, nil, 0o644); err != nil {
+		t.Fatalf("failed to write blocker file: %v", err)
+	}
+
+	dw, err := newDirWatchers([]string{srcA, srcB}, []string{targetA, targetB})
+	if err != nil {
+		t.Fatalf("failed to create dir watcher: %v", err)
+	}
+
+	updates := make(chan struct{}, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	dw.start(ctx, updates)
+	defer dw.close()
+	defer cancel()
+
+	// Drain the initial reload.
+	select {
+	case <-updates:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected update after initial sync")
+	}
+
+	if err := os.WriteFile(filepath.Join(srcA, "rules.yaml"), []byte("groups:\n- name: test\n"), 0o644); err != nil {
+		t.Fatalf("failed to update source file: %v", err)
+	}
+
+	select {
+	case <-updates:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected update from event loop while an initial sync retry is pending")
+	}
+
+	data, err := os.ReadFile(filepath.Join(targetA, "rules.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read target file: %v", err)
+	}
+	if string(data) != "groups:\n- name: test\n" {
+		t.Fatalf("unexpected target content: %q", data)
+	}
+}
+
 func TestDirWatcherNoInitialReloadWithoutWatchedDirs(t *testing.T) {
 	dw, err := newDirWatchers(nil, nil)
 	if err != nil {

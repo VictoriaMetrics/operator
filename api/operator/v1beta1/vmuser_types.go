@@ -411,6 +411,8 @@ func (cr *VMUser) AsKey(hide bool) string {
 	switch {
 	case cr.Spec.BearerToken != nil:
 		id = "bearerToken:" + hideFn(*cr.Spec.BearerToken)
+	case cr.Spec.JWT != nil:
+		id = "jwt:" + cr.Name
 	default:
 		if cr.Spec.Username != nil {
 			id = "basicAuth:" + hideFn(*cr.Spec.Username)

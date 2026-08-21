@@ -382,10 +382,25 @@ func TestVMCluster_Validate(t *testing.T) {
 		VMSelect: &VMSelect{
 			ServiceSpec: &AdditionalServiceSpec{
 				UseAsDefault: true,
-				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.1.1.1",
+				},
 			},
 		},
 	}, true)
+
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: corev1.ClusterIPNone,
+				},
+			},
+		},
+	}, false)
 
 	// vmselect: useAsDefault without an explicit type is allowed
 	f(VMClusterSpec{
@@ -408,15 +423,31 @@ func TestVMCluster_Validate(t *testing.T) {
 		},
 	}, false)
 
-	// vmstorage: useAsDefault with an explicit service type must be rejected (default service is headless)
+	// vmstorage: useAsDefault with cluster IP set must be rejected (default service is headless)
 	f(VMClusterSpec{
 		VMStorage: &VMStorage{
 			ServiceSpec: &AdditionalServiceSpec{
 				UseAsDefault: true,
-				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.1.1.1",
+				},
 			},
 		},
 	}, true)
+
+	// vmstorage: useAsDefault without cluster IP set must be allowed
+	f(VMClusterSpec{
+		VMStorage: &VMStorage{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: corev1.ClusterIPNone,
+				},
+			},
+		},
+	}, false)
 
 	// vmstorage: useAsDefault without an explicit type is allowed
 	f(VMClusterSpec{

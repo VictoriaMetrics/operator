@@ -301,11 +301,35 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 			logger.Infof("triggering reload after initial sync")
 			triggerReload()
 		}
-		retryInitialSync(ctx, pending, triggerReload)
+		// Pairs whose initial sync failed are retried with backoff, multiplexed
+		// with event processing so a failing pair never blocks the event loop.
+		backoff := initialSyncRetryBackoff
+		var retryC <-chan time.Time
+		if len(pending) > 0 {
+			retryC = time.After(backoff)
+		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
+			case <-retryC:
+				var failed []dirPair
+				for _, p := range pending {
+					if err := p.sync(); err != nil {
+						logger.Errorf("cannot copy dir %s to target: %s", p.src, err)
+						failed = append(failed, p)
+					}
+				}
+				if len(failed) < len(pending) {
+					triggerReload()
+				}
+				pending = failed
+				if len(pending) > 0 {
+					backoff = min(backoff*2, 30*time.Second)
+					retryC = time.After(backoff)
+				} else {
+					retryC = nil
+				}
 			case event := <-dw.w.Events:
 				baseDir := filepath.Dir(event.Name)
 				logger.Infof("dir update: base dir: %s", baseDir)
@@ -339,39 +363,7 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 	}()
 }
 
-const maxInitialSyncRetries = 5
-
 var initialSyncRetryBackoff = time.Second
-
-// retryInitialSync retries the pairs whose initial sync failed, triggering a
-// reload whenever a retry makes progress, so already-synced content is never
-// held back by a still-failing pair.
-func retryInitialSync(ctx context.Context, pending []dirPair, triggerReload func()) {
-	backoff := initialSyncRetryBackoff
-	for attempt := 0; len(pending) > 0; attempt++ {
-		if attempt == maxInitialSyncRetries {
-			logger.Errorf("giving up on initial sync after %d retries, waiting for source changes", attempt)
-			return
-		}
-		select {
-		case <-time.After(backoff):
-		case <-ctx.Done():
-			return
-		}
-		backoff = min(backoff*2, 30*time.Second)
-		var failed []dirPair
-		for _, p := range pending {
-			if err := p.sync(); err != nil {
-				logger.Errorf("cannot copy dir %s to target: %s", p.src, err)
-				failed = append(failed, p)
-			}
-		}
-		if len(failed) < len(pending) {
-			triggerReload()
-		}
-		pending = failed
-	}
-}
 
 func (dw *dirWatcher) close() {
 	dw.wg.Wait()

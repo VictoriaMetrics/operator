@@ -15,31 +15,28 @@ changes) is ignored.
 import argparse
 import re
 import sys
-from datetime import datetime
+
+import compare_versions
 
 HEADING_RE = re.compile(r"^## .*$", re.MULTILINE)
-RELEASE_DATE_RE = re.compile(r"^\*\*Release date:\*\*\s*(.+)$", re.MULTILINE)
-DATE_FORMATS = ("%d %b %Y", "%d %B %Y")
+VERSION_RE = re.compile(r"^## \[(\S+)\]")
 
 
 class Version:
     def __init__(self, heading, body):
         self.heading = heading
         self.body = body
-        self.date = parse_release_date(body)
+        self.version = parse_version(heading)
 
 
-def parse_release_date(body):
-    m = RELEASE_DATE_RE.search(body)
+def parse_version(heading):
+    m = VERSION_RE.match(heading)
     if not m:
         return None
-    raw = m.group(1).strip()
-    for fmt in DATE_FORMATS:
-        try:
-            return datetime.strptime(raw, fmt)
-        except ValueError:
-            continue
-    return None
+    try:
+        return compare_versions.parse_version(m.group(1))
+    except ValueError:
+        return None
 
 
 class ChangelogFile:
@@ -94,7 +91,7 @@ def merge(target, source, source_is_master):
     by_heading = {v.heading: v for v in target.versions}
     by_heading.update((v.heading, v) for v in source.versions)
     versions = list(by_heading.values())
-    versions.sort(key=lambda v: v.date or datetime.min, reverse=True)
+    versions.sort(key=lambda v: (v.version is not None, v.version or ()), reverse=True)
     return ChangelogFile(target.front_matter, tip, versions)
 
 

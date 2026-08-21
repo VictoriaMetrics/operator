@@ -275,16 +275,33 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		logger.Infof("base dir: %s hash not the same, update needed", eventPath)
 		return true, nil
 	}
+	var pending []dirPair
 	for _, p := range dw.pairs {
 		if _, err := updateCache(p.src); err != nil {
 			logger.Errorf("cannot update dir cache during start: %s", err)
 		}
 		if err := p.sync(); err != nil {
 			logger.Errorf("cannot copy dir %s to target on start: %s", p.src, err)
+			pending = append(pending, p)
+		}
+	}
+	triggerReload := func() {
+		select {
+		case updates <- struct{}{}:
+		default:
 		}
 	}
 	go func() {
 		defer dw.wg.Done()
+		if len(dw.pairs) > 0 {
+			// The application may have already read stale content before the
+			// watcher was established, or before the initial sync replaced it.
+			// Without further source changes, no fsnotify event is guaranteed,
+			// so trigger one reload after startup.
+			logger.Infof("triggering reload after initial sync")
+			triggerReload()
+		}
+		retryInitialSync(ctx, pending, triggerReload)
 		for {
 			select {
 			case <-ctx.Done():
@@ -320,6 +337,40 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 			}
 		}
 	}()
+}
+
+const maxInitialSyncRetries = 5
+
+var initialSyncRetryBackoff = time.Second
+
+// retryInitialSync retries the pairs whose initial sync failed, triggering a
+// reload whenever a retry makes progress, so already-synced content is never
+// held back by a still-failing pair.
+func retryInitialSync(ctx context.Context, pending []dirPair, triggerReload func()) {
+	backoff := initialSyncRetryBackoff
+	for attempt := 0; len(pending) > 0; attempt++ {
+		if attempt == maxInitialSyncRetries {
+			logger.Errorf("giving up on initial sync after %d retries, waiting for source changes", attempt)
+			return
+		}
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return
+		}
+		backoff = min(backoff*2, 30*time.Second)
+		var failed []dirPair
+		for _, p := range pending {
+			if err := p.sync(); err != nil {
+				logger.Errorf("cannot copy dir %s to target: %s", p.src, err)
+				failed = append(failed, p)
+			}
+		}
+		if len(failed) < len(pending) {
+			triggerReload()
+		}
+		pending = failed
+	}
 }
 
 func (dw *dirWatcher) close() {

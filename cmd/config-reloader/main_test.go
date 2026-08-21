@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"strings"
 	"sync/atomic"
@@ -70,6 +71,47 @@ func TestCfgWatcherSignalSentOnce(t *testing.T) {
 
 	if got := reloadCount.Load(); got != 1 {
 		t.Fatalf("expected 1 reload call, got %d", got)
+	}
+}
+
+// TestCfgWatcherRetriesFailedReload verifies that a failed reload call is
+// retried until it succeeds, e.g. when the application's reload endpoint is
+// not listening yet at startup.
+func TestCfgWatcherRetriesFailedReload(t *testing.T) {
+	origDelay := *delayInterval
+	*delayInterval = 0
+	defer func() { *delayInterval = origDelay }()
+	origBackoff := reloadRetryInitialBackoff
+	reloadRetryInitialBackoff = 10 * time.Millisecond
+	defer func() { reloadRetryInitialBackoff = origBackoff }()
+
+	var reloadCount atomic.Int64
+	updates := make(chan struct{}, 10)
+	w := cfgWatcher{
+		updates: updates,
+		reloader: func(_ context.Context) error {
+			if reloadCount.Add(1) < 3 {
+				return errors.New("connection refused")
+			}
+			return nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	w.start(ctx)
+
+	updates <- struct{}{}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for reloadCount.Load() < 3 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	w.close()
+
+	if got := reloadCount.Load(); got != 3 {
+		t.Fatalf("expected reload to be retried until success (3 calls), got %d", got)
 	}
 }
 

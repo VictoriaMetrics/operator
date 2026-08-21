@@ -294,15 +294,11 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 	go func() {
 		defer dw.wg.Done()
 		if len(dw.pairs) > 0 {
-			// The application may have already read stale content before the
-			// watcher was established, or before the initial sync replaced it.
-			// Without further source changes, no fsnotify event is guaranteed,
-			// so trigger one reload after startup.
+			// Reload here to catch changes between container start and initial sync
 			logger.Infof("triggering reload after initial sync")
 			triggerReload()
 		}
-		// Pairs whose initial sync failed are retried with backoff, multiplexed
-		// with event processing so a failing pair never blocks the event loop.
+		// Retry failed initial syncs without blocking event processing
 		backoff := initialSyncRetryBackoff
 		var retryC <-chan time.Time
 		if len(pending) > 0 {

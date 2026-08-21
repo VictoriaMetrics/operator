@@ -287,8 +287,7 @@ func (c *cfgWatcher) start(ctx context.Context) {
 			if !c.waitDelay(ctx) {
 				return
 			}
-			// Retry until the reload succeeds: the on-disk config is already
-			// updated, and no further update signal may ever arrive.
+			// Retry until success: another update signal may never arrive
 			backoff := reloadRetryInitialBackoff
 			for {
 				err := c.reloader(ctx)

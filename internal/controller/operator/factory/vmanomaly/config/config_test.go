@@ -2107,3 +2107,46 @@ server:
 	})
 
 }
+
+func TestLoad_ChildConfigProvidesMainModelQuery(t *testing.T) {
+	cr := &vmv1.VMAnomaly{
+		ObjectMeta: metav1.ObjectMeta{Name: "anomaly", Namespace: "default"},
+		Spec: vmv1.VMAnomalySpec{
+			SelectAllByDefault: true,
+			ConfigRawYaml: `
+models:
+  main:
+    class: zscore
+    queries: [default-child-query]
+    schedulers: [main]
+schedulers:
+  main:
+    class: periodic
+    infer_every: 1m
+`,
+			Reader: &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://reader.test",
+				SamplingPeriod: "1m",
+			},
+			Writer: &vmv1.VMAnomalyWritersSpec{DatasourceURL: "http://writer.test"},
+		},
+	}
+	child := &vmv1.VMAnomalyConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "child", Namespace: "default"},
+		Spec: runtime.RawExtension{Raw: []byte(`{
+  "queries": {
+    "query": {"expr": "up"}
+  }
+}`)},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{child})
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+	ac := build.NewAssetsCache(context.TODO(), fclient, nil)
+
+	pos, err := NewParsedObjects(context.TODO(), fclient, cr)
+	require.NoError(t, err)
+	loaded, err := pos.Load(cr, ac)
+	require.NoError(t, err)
+	assert.Contains(t, string(loaded), "default-child-query")
+}

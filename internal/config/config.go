@@ -38,7 +38,7 @@ var (
 		"VM_METRICS_VERSION":  "v1.150.0",
 		"VM_LOGS_VERSION":     "v1.52.0",
 		"VM_ANOMALY_VERSION":  "v1.30.2",
-		"VM_TRACES_VERSION":   "v0.10.0",
+		"VM_TRACES_VERSION":   "v0.11.0",
 		"VM_OPERATOR_VERSION": getVersion("v0.74.1"),
 	}
 )
@@ -276,6 +276,31 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VTSINGLEDEFAULT_"`
+
+	// VTAgent defines default settings for VTAgent (VictoriaTraces agent) deployments.
+	VTAgent struct {
+		// Default container image for VTAgent.
+		Image string `default:"victoriametrics/vtagent"`
+		// Default image version. Inherits VM_TRACES_VERSION if not set explicitly.
+		Version string `env:",expand" default:"${VM_TRACES_VERSION}"`
+		// Default HTTP listen port.
+		Port string `default:"10429"`
+		// Whether to apply default resource requests and limits.
+		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
+		Resource            struct {
+			Limit struct {
+				Mem              string `default:"500Mi"`
+				Cpu              string `default:"200m"`
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem              string `default:"200Mi"`
+				Cpu              string `default:"50m"`
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
+	} `prefix:"VM_VTAGENTDEFAULT_"`
 
 	// VMAlert defines default settings for VMAlert deployments.
 	VMAlert struct {
@@ -898,6 +923,9 @@ func (boc BaseOperatorConf) validate() error {
 		return err
 	}
 	if err := validateResource("vtsingle", Resource(boc.VTSingle.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vtagent", Resource(boc.VTAgent.Resource)); err != nil {
 		return err
 	}
 	if err := validateResource("vtselect", Resource(boc.VTCluster.Select.Resource)); err != nil {

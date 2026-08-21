@@ -1,0 +1,10 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VTAgent
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vtagent-sample
+spec:
+  remoteWrite:
+    - url: "http://vtsingle-dev:10428/insert/native"

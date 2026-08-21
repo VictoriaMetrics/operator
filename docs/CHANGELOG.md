@@ -19,6 +19,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.149.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.149.0) version
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2.
+* FEATURE: [vtagent](https://docs.victoriametrics.com/operator/resources/vtagent/): add `VTAgent` CRD for [vtagent](https://docs.victoriametrics.com/victoriatraces/vtagent/), which replicates ingested OTLP trace spans across one or more VictoriaTraces instances using a persistent queue on disk. See [#2510](https://github.com/VictoriaMetrics/operator/pull/2510).
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): default `spec.shardCount` to `0` at the CRD schema level, fixing `VerticalPodAutoscaler`'s `/scale` subresource lookups failing with `the spec replicas field ".spec.shardCount" does not exist` whenever sharding wasn't configured (the common case). See [#2473](https://github.com/VictoriaMetrics/operator/issues/2473).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): set default values for each possible `level` label of `operator_log_messages_total` metric. See [#2477](https://github.com/VictoriaMetrics/operator/issues/2477).

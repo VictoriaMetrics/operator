@@ -31,6 +31,8 @@ type Interface interface {
 	VLSingles() VLSingleInformer
 	// VMAnomalies returns a VMAnomalyInformer.
 	VMAnomalies() VMAnomalyInformer
+	// VTAgents returns a VTAgentInformer.
+	VTAgents() VTAgentInformer
 	// VTClusters returns a VTClusterInformer.
 	VTClusters() VTClusterInformer
 	// VTSingles returns a VTSingleInformer.
@@ -66,6 +68,11 @@ func (v *version) VLSingles() VLSingleInformer {
 // VMAnomalies returns a VMAnomalyInformer.
 func (v *version) VMAnomalies() VMAnomalyInformer {
 	return &vMAnomalyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VTAgents returns a VTAgentInformer.
+func (v *version) VTAgents() VTAgentInformer {
+	return &vTAgentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VTClusters returns a VTClusterInformer.

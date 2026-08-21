@@ -275,20 +275,57 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		logger.Infof("base dir: %s hash not the same, update needed", eventPath)
 		return true, nil
 	}
+	var pending []dirPair
 	for _, p := range dw.pairs {
 		if _, err := updateCache(p.src); err != nil {
 			logger.Errorf("cannot update dir cache during start: %s", err)
 		}
 		if err := p.sync(); err != nil {
 			logger.Errorf("cannot copy dir %s to target on start: %s", p.src, err)
+			pending = append(pending, p)
+		}
+	}
+	triggerReload := func() {
+		select {
+		case updates <- struct{}{}:
+		default:
 		}
 	}
 	go func() {
 		defer dw.wg.Done()
+		if len(dw.pairs) > 0 {
+			// Reload here to catch changes between container start and initial sync
+			logger.Infof("triggering reload after initial sync")
+			triggerReload()
+		}
+		// Retry failed initial syncs without blocking event processing
+		backoff := initialSyncRetryBackoff
+		var retryC <-chan time.Time
+		if len(pending) > 0 {
+			retryC = time.After(backoff)
+		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
+			case <-retryC:
+				var failed []dirPair
+				for _, p := range pending {
+					if err := p.sync(); err != nil {
+						logger.Errorf("cannot copy dir %s to target: %s", p.src, err)
+						failed = append(failed, p)
+					}
+				}
+				if len(failed) < len(pending) {
+					triggerReload()
+				}
+				pending = failed
+				if len(pending) > 0 {
+					backoff = min(backoff*2, 30*time.Second)
+					retryC = time.After(backoff)
+				} else {
+					retryC = nil
+				}
 			case event := <-dw.w.Events:
 				baseDir := filepath.Dir(event.Name)
 				logger.Infof("dir update: base dir: %s", baseDir)
@@ -321,6 +358,8 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		}
 	}()
 }
+
+var initialSyncRetryBackoff = time.Second
 
 func (dw *dirWatcher) close() {
 	dw.wg.Wait()

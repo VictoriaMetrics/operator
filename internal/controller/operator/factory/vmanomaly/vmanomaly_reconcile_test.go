@@ -354,7 +354,7 @@ func TestCreateOrUpdateVPA_TargetsCR(t *testing.T) {
 			assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
 			var vpa vpav1.VerticalPodAutoscaler
-			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa))
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &vpa))
 			assert.Equal(t, &autoscalingv1.CrossVersionObjectReference{
 				Name:       cr.Name,
 				Kind:       "VMAnomaly",
@@ -457,14 +457,79 @@ schedulers:
 
 	synctest.Test(t, func(t *testing.T) {
 		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
-		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}
+		vpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
 		var vpa vpav1.VerticalPodAutoscaler
 		assert.NoError(t, fclient.Get(ctx, vpaNSN, &vpa))
 
-		// disabling VPA must delete the VPA created under cr.Name, not one under cr.PrefixedName()
+		// deleteOrphaned only runs once cr.Status.LastAppliedSpec is set, as a real reconcile loop would
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
 		cr.Spec.VPA = nil
 		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 		err := fclient.Get(ctx, vpaNSN, &vpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
+// regression test for https://github.com/VictoriaMetrics/operator/issues/2518
+func TestCreateOrUpdateVPA_OldNameCleanedUpOnMigration(t *testing.T) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = true
+	defer func() { *cfg = defaultCfg }()
+
+	cr := &vmv1.VMAnomaly{
+		ObjectMeta: metav1.ObjectMeta{Name: "vpa-migrate-vmanomaly", Namespace: "default"},
+		Spec: vmv1.VMAnomalySpec{
+			ConfigRawYaml: `
+models:
+  M1:
+    class: "zscore"
+    z_threshold: 2.5
+    queries: ["q1"]
+    schedulers: ["S1"]
+reader:
+  queries:
+    q1:
+      expr: "sum(up)"
+schedulers:
+  S1:
+    class: "periodic"
+    infer_every: "1m"
+`,
+			Reader: &vmv1.VMAnomalyReadersSpec{
+				DatasourceURL:  "http://reader-url",
+				SamplingPeriod: "1m",
+			},
+			Writer: &vmv1.VMAnomalyWritersSpec{
+				DatasourceURL: "http://writer-url",
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To(int32(1)),
+			},
+			VPA: &vmv1beta1.EmbeddedVPA{},
+		},
+	}
+	// pre-migration VPA under the old, unprefixed name
+	staleVPA := build.VPA(cr, autoscalingv1.CrossVersionObjectReference{
+		Name:       cr.Name,
+		Kind:       "VMAnomaly",
+		APIVersion: "operator.victoriametrics.com/v1",
+	}, cr.Spec.VPA)
+	staleVPA.Name = cr.Name
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr, staleVPA})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		var vpa vpav1.VerticalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &vpa))
+
+		err := fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, &vpa)
 		assert.Error(t, err)
 		assert.True(t, k8serrors.IsNotFound(err))
 	})

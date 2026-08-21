@@ -12,7 +12,7 @@ import (
 func VPA(opts builderOpts, targetRef autoscalingv1.CrossVersionObjectReference, spec *vmv1beta1.EmbeddedVPA) *vpav1.VerticalPodAutoscaler {
 	return &vpav1.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            targetRef.Name,
+			Name:            opts.PrefixedName(),
 			Namespace:       opts.GetNamespace(),
 			Annotations:     opts.FinalAnnotations(),
 			Labels:          opts.FinalLabels(),

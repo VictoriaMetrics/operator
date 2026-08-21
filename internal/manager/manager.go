@@ -68,16 +68,14 @@ const defaultWebhookPort = 9443
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
-	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	appVersion   = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "vm_app_version",
 		Help: "version of application",
 		ConstLabels: map[string]string{
 			"version":       buildinfo.Version,
 			"short_version": buildinfo.ShortVersion(),
 		},
-	}, func() float64 {
-		return 1.0
-	})
+	}, []string{"k8s_version"})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
 		return time.Since(startTime).Seconds()
 	})
@@ -349,6 +347,7 @@ func RunManager(ctx context.Context) error {
 		// log error and do nothing, because we are using sane default values.
 		setupLog.Error(err, "cannot parse kubernetes version, using default flag values, fallback to default values")
 	}
+	appVersion.WithLabelValues(k8sServerVersion.String()).Set(1.0)
 
 	_, err = baseClient.ServerResourcesForGroupVersion("security.openshift.io/v1")
 	k8stools.SetIsOpenShiftDetected(err == nil)

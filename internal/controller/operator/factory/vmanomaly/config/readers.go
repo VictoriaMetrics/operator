@@ -36,7 +36,7 @@ func (r *reader) validate() error {
 		return fmt.Errorf("anomaly reader class=%q is not supported", r.Class)
 	}
 	if len(r.Queries) == 0 {
-		return fmt.Errorf("anomaly reader queries for class=%q are required", r.Class)
+		return fmt.Errorf("at least one query is required for anomaly reader class=%q, provide it via reader.queries in configRawYaml/configSecret or via a VMAnomalyConfig object", r.Class)
 	}
 	if r.SamplingPeriod == nil {
 		return fmt.Errorf(`"sampling_period" is required`)

@@ -222,8 +222,8 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 	if cr.Spec.Reader == nil {
 		return fmt.Errorf("reader is required for anomaly name=%q", crCanonicalName)
 	}
-	if c.Reader == nil || len(c.Reader.Queries) == 0 {
-		return fmt.Errorf("reader.queries must be provided via configRawYaml or configSecret, name=%q", crCanonicalName)
+	if c.Reader == nil {
+		c.Reader = &reader{}
 	}
 	if cr.Spec.Writer == nil {
 		return fmt.Errorf("writer is required for anomaly name=%q", crCanonicalName)
@@ -243,6 +243,9 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 	r.Class = "vm"
 
 	r.Queries = c.Reader.Queries
+	if r.Queries == nil {
+		r.Queries = make(map[string]*query)
+	}
 	c.Reader = &r
 
 	// override writer

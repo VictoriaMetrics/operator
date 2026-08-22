@@ -23,6 +23,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): set default values for each possible `level` label of `operator_log_messages_total` metric. See [#2477](https://github.com/VictoriaMetrics/operator/issues/2477).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix reconciliation error on Kubernetes 1.29 caused by setting an empty `preStop` lifecycle handler. The native `Sleep` preStop action now requires Kubernetes >= 1.30, since the `PodLifecycleSleepAction` feature gate is not enabled by default on 1.29.
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fix multiple `VMUser` resources configured with `spec.jwt` in the same namespace being treated as duplicates and dropped from the `vmauth` config, since they weren't keyed by their own name. See [#2532](https://github.com/VictoriaMetrics/operator/issues/2532).
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix `VMAnomaly` requiring a placeholder `reader.queries` entry in `spec.configRawYaml`/`spec.configSecret` even when queries were fully defined via selected `VMAnomalyConfig` objects, since the check ran before those objects were merged in. See [#2534](https://github.com/VictoriaMetrics/operator/issues/2534).
 
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)

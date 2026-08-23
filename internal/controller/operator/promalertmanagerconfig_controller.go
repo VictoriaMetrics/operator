@@ -71,15 +71,16 @@ func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ct
 	}()
 
 	// Fetch the PromAlertmanagerConfig instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 
 	RegisterObjectStat(&instance, r.name)
 	var cr *vmv1beta1.VMAlertmanagerConfig
 	if cr, err = converter.AlertmanagerConfig(&instance, r.BaseConf); err != nil {
-		err = &parsingError{err.Error(), r.name}
+		err = newParsingError(err.Error())
 		return
 	}
 	var owner *metav1.OwnerReference

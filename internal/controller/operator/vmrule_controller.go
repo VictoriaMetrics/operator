@@ -72,14 +72,15 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}()
 
 	// Fetch the VMRule instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 
 	RegisterObjectStat(&instance, r.name)
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 	if alertReconcileLimit.Throttle() {

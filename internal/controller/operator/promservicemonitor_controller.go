@@ -70,8 +70,9 @@ func (r *PromServiceMonitorReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}()
 
 	// Fetch the PromServiceMonitor instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 

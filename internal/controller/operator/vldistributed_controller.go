@@ -67,8 +67,9 @@ func (r *VLDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}()
 
 	// Fetch VLDistributed instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 
@@ -84,7 +85,7 @@ func (r *VLDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	// Check parsing error
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 

@@ -918,6 +918,7 @@ func TestConvertVMAnomaly(t *testing.T) {
 			Reader: &VMAnomalyReaderValues{
 				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
 				SamplingPeriod: "1m",
+				Workers:        4,
 			},
 			Writer: &VMAnomalyWriterValues{
 				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",
@@ -940,6 +941,7 @@ func TestConvertVMAnomaly(t *testing.T) {
 			cr.Spec.Reader = &vmv1.VMAnomalyReadersSpec{
 				DatasourceURL:  "http://vmselect:8481/select/0/prometheus",
 				SamplingPeriod: "1m",
+				Workers:        4,
 			}
 			cr.Spec.Writer = &vmv1.VMAnomalyWritersSpec{
 				DatasourceURL: "http://vminsert:8480/insert/0/prometheus",

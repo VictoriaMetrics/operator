@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
@@ -375,6 +376,100 @@ func TestVMCluster_Validate(t *testing.T) {
 			},
 		},
 	}, true)
+
+	// vmselect: useAsDefault with an explicit service type must be rejected (default service is headless)
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.1.1.1",
+				},
+			},
+		},
+	}, true)
+
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: corev1.ClusterIPNone,
+				},
+			},
+		},
+	}, false)
+
+	// vmselect: useAsDefault without an explicit type is allowed
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{{Name: "http", Port: 8481}},
+				},
+			},
+		},
+	}, false)
+
+	// vmselect: explicit type without useAsDefault creates a separate service - allowed
+	f(VMClusterSpec{
+		VMSelect: &VMSelect{
+			ServiceSpec: &AdditionalServiceSpec{
+				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+			},
+		},
+	}, false)
+
+	// vmstorage: useAsDefault with cluster IP set must be rejected (default service is headless)
+	f(VMClusterSpec{
+		VMStorage: &VMStorage{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.1.1.1",
+				},
+			},
+		},
+	}, true)
+
+	// vmstorage: useAsDefault without cluster IP set must be allowed
+	f(VMClusterSpec{
+		VMStorage: &VMStorage{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: corev1.ClusterIPNone,
+				},
+			},
+		},
+	}, false)
+
+	// vmstorage: useAsDefault without an explicit type is allowed
+	f(VMClusterSpec{
+		VMStorage: &VMStorage{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{{Name: "vminsert", Port: 8480}},
+				},
+			},
+		},
+	}, false)
+
+	// vminsert: useAsDefault with an explicit type is allowed (default service is not headless)
+	f(VMClusterSpec{
+		VMInsert: &VMInsert{
+			ServiceSpec: &AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+			},
+		},
+	}, false)
 
 	// extraStorageNodes colliding with a managed vmstorage pod address
 	{

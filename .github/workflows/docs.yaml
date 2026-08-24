@@ -4,12 +4,18 @@ on:
   push:
     branches:
       - 'master'
+      - 'release-*'
     paths:
       - 'docs/**'
       - 'README.md'
       - '.github/workflows/docs.yaml'
+      - 'hack/*.py'
 
 permissions: {}
+
+concurrency:
+  group: docs-sync
+  cancel-in-progress: false
 
 jobs:
   update-docs:
@@ -19,14 +25,14 @@ jobs:
       url: https://docs.victoriametrics.com/operator
     steps:
       - name: Checkout operator repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: __vm-operator
           persist-credentials: false
 
       - name: Checkout docs repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           repository: VictoriaMetrics/vmdocs
           ref: main
@@ -35,7 +41,7 @@ jobs:
           persist-credentials: true
 
       - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: '__vm-operator/go.mod'
           check-latest: true
@@ -55,14 +61,27 @@ jobs:
       - name: Copy docs
         id: update
         run: |
-          make docs
-          # Sync markdown files and pictures
-          rsync -zarv \
-            --include="*/" \
-            --include="*.webp" \
-            --include="*.md" \
-            --exclude="*" \
-            docs/ ../__vm-docs/content/operator/
+          REF="$GITHUB_REF_NAME"
+          if [[ "$REF" == "master" ]]; then
+            make docs
+            rsync -zarv \
+              --include="*/" \
+              --exclude="CHANGELOG.md" \
+              --include="*.webp" \
+              --include="*.md" \
+              --exclude="*" \
+              docs/ ../__vm-docs/content/operator/
+            python3 hack/merge_changelog.py \
+              --target=../__vm-docs/content/operator/CHANGELOG.md \
+              --source=docs/CHANGELOG.md \
+              --master
+          elif [[ "$REF" =~ ^release-[0-9]+\.[0-9]+$ ]]; then
+            python3 hack/merge_changelog.py \
+              --target=../__vm-docs/content/operator/CHANGELOG.md \
+              --source=docs/CHANGELOG.md
+          else
+            echo "ref=$REF is not master or an LTS release branch, nothing to do"
+          fi
           echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
         working-directory: __vm-operator
 

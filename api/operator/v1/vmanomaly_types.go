@@ -215,6 +215,11 @@ type VMAnomalyReadersSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	SeriesProcessingBatchSize int `json:"seriesProcessingBatchSize,omitempty" yaml:"series_processing_batch_size,omitempty"`
+	// Workers limits concurrent datasource requests and disk-streamed query chunks.
+	// Zero lets vmanomaly select an automatic bound.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	Workers int `json:"workers,omitempty" yaml:"workers,omitempty"`
 	// Optional argument specifies the IANA timezone to account for local shifts, like DST, in models sensitive to seasonal patterns
 	Timezone string `json:"tz,omitempty" yaml:"tz,omitempty"`
 	// Optional argumentallows defining valid data ranges for input of all the queries in queries

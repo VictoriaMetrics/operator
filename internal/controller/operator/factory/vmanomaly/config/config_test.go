@@ -1892,7 +1892,8 @@ server:
 `,
 	})
 
-	// vmanomaly v1.30 reader, online model, Temporal Envelope and autotune fields.
+	// vmanomaly v1.30.2 reader, query business policies, native thread limit,
+	// online model, Temporal Envelope and autotune fields.
 	f(opts{
 		cr: &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-anomaly", Namespace: "default"},
@@ -1925,10 +1926,7 @@ models:
     class: temporal_envelope
     queries: [q1]
     ttl: 30d
-    data_range: [0, 100]
     scale: 1.5
-    min_dev_from_expected: [0, 2]
-    min_rel_dev_from_expected: [0, 15]
     forecast_at: [1h, 1d]
     quantiles: [0.25, 0.75]
     iqr_threshold: 2
@@ -1969,7 +1967,14 @@ reader:
   queries:
     q1:
       expr: up
+      data_range: [0, 100]
+      detection_direction: above_expected
+      min_dev_from_expected: [0, 2]
+      min_rel_dev_from_expected: [0, 15]
 writer: {}
+settings:
+  n_workers: 8
+  native_threads_per_worker: 1
 `,
 				Reader: &vmv1.VMAnomalyReadersSpec{
 					DatasourceURL:              "http://vm:8428",
@@ -1979,6 +1984,7 @@ writer: {}
 					QueryFromLastSeenTimestamp: true,
 					QueryLastSeenMaxLookback:   "2h",
 					SeriesProcessingBatchSize:  16,
+					Workers:                    4,
 				},
 				Writer: &vmv1.VMAnomalyWritersSpec{DatasourceURL: "http://vm:8428"},
 			},
@@ -2015,15 +2021,6 @@ models:
     queries:
     - q1
     ttl: 30d
-    data_range:
-    - 0
-    - 100
-    min_dev_from_expected:
-    - 0
-    - 2
-    min_rel_dev_from_expected:
-    - 0
-    - 15
     scale: 1.5
     forecast_at:
     - 1h
@@ -2081,15 +2078,29 @@ reader:
   query_from_last_seen_timestamp: true
   query_last_seen_max_lookback: 2h
   series_processing_batch_size: 16
+  workers: 4
   queries:
     q1:
       expr: up
+      data_range:
+      - "0"
+      - "100"
+      detection_direction: above_expected
+      min_dev_from_expected:
+      - 0
+      - 2
+      min_rel_dev_from_expected:
+      - 0
+      - 15
 writer:
   class: vm
   datasource_url: http://vm:8428
 monitoring:
   pull:
     port: "8080"
+settings:
+  n_workers: 8
+  native_threads_per_worker: 1
 server:
   port: "8490"
 `,

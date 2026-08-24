@@ -27,6 +27,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=pods/eviction,verbs=*
+
 const podRevisionLabel = "controller-revision-hash"
 
 // StatefulSetOpts options for StatefulSet update

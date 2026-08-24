@@ -62,6 +62,8 @@ func (r *VMAnomalyConfigReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalyconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalyconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalyconfigs/finalizers,verbs=*
+
 func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	var instance vmv1.VMAnomalyConfig
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

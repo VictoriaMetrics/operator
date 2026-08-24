@@ -26,7 +26,7 @@ func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 			Resources: []string{"services", "endpoints", "pods"},
 		},
 		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
+			APIGroups: []string{"networking.k8s.io"},
 			Verbs:     []string{"get", "list", "watch"},
 			Resources: []string{"ingresses"},
 		},
@@ -62,7 +62,7 @@ func getClusterWideRules(cr *vmv1beta1.VMSingle) []rbacv1.PolicyRule {
 			Resources: []string{"nodes", "nodes/metrics", "services", "endpoints", "pods", "namespaces"},
 		},
 		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
+			APIGroups: []string{"networking.k8s.io"},
 			Verbs:     []string{"get", "list", "watch"},
 			Resources: []string{"ingresses"},
 		},

@@ -54,6 +54,10 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
+      - name: Check rbac markers are not inert
+        if: github.event.pull_request.draft == false
+        run: ./hack/check-rbac-markers.sh
+
       - name: Lint, Test and Build
         if: github.event.pull_request.draft == false
         run: |

@@ -21,6 +21,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
+
 // isSTSRecreateRequired checks whether the StatefulSet requires recreation and whether pods must be recreated.
 // There are three different cases:
 // 1. sts's VolumeClaimTemplate's element changed[added or deleted];

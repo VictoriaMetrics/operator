@@ -62,6 +62,7 @@ func (r *PromScrapeConfigReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=scrapeconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=scrapeconfigs/status,verbs=get;update;patch
+
 func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	var instance promv1alpha1.ScrapeConfig

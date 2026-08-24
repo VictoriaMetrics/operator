@@ -14,6 +14,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=*
+
 // HPA creates or update horizontalPodAutoscaler object
 func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.HorizontalPodAutoscaler, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

@@ -35,7 +35,7 @@ type objectWithStatus interface {
 }
 
 func childConditionType(parentObjectName string) string {
-	if len(strings.Split(parentObjectName, ".")) != 3 {
+	if len(strings.Split(parentObjectName, ".")) < 3 {
 		panic(fmt.Sprintf("BUG: unexpected format for parentObjectName=%q, want name.namespace.resource", parentObjectName))
 	}
 	return parentObjectName + vmv1beta1.ConditionDomainTypeAppliedSuffix
@@ -240,7 +240,7 @@ func releaseChildStatusCondition[T any, PT interface {
 
 		st.Conditions = removeConditionByType(st.Conditions, typeName)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		writeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -285,7 +285,7 @@ func updateChildStatusConditions[T any, PT interface {
 		st.Conditions = setConditionTo(st.Conditions, currCond)
 		st.Conditions = removeStaleConditionsBySuffix(st.Conditions, vmv1beta1.ConditionDomainTypeAppliedSuffix)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		writeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -344,11 +344,11 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 
 // writeAggregatedStatus derives status from per-parent conditions; a child selected by
 // multiple parents is only Failed if it fails on all of them, not just one.
-func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix string) {
+func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata) {
 	var appliedCount, failedCount int
 	var errorMessages []string
 	for _, c := range stm.Conditions {
-		if !strings.HasSuffix(c.Type, domainTypeSuffix) {
+		if !strings.HasSuffix(c.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
 			continue
 		}
 		if c.Status == "False" {
@@ -373,6 +373,38 @@ func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix strin
 			stm.Reason = fmt.Sprintf("applied on %d parent(s), failed on %d: %s", appliedCount, failedCount, errorMessages[0])
 		}
 	}
+}
+
+// SyncAggregatedChildStatus recomputes status.updateStatus/reason for a config-selector child
+// object (VMServiceScrape and friends) from its already-recorded per-parent conditions.
+func SyncAggregatedChildStatus[T any, PT interface {
+	*T
+	objectWithStatus
+}](ctx context.Context, rclient client.Client, instance PT) error {
+	nsn := types.NamespacedName{Namespace: instance.GetNamespace(), Name: instance.GetName()}
+	return retryOnConflict(func() error {
+		dst := PT(new(T))
+		if err := rclient.Get(ctx, nsn, dst); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		st := dst.GetStatusMetadata()
+		prevSt := st.DeepCopy()
+		st.ObservedGeneration = dst.GetGeneration()
+		writeAggregatedStatus(st)
+		if reflect.DeepEqual(prevSt, st) {
+			return nil
+		}
+		if err := rclient.Status().Update(ctx, dst); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		return nil
+	})
 }
 
 // adds 50% jitter to the given duration

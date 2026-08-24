@@ -30,6 +30,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 // VMPodScrapeReconciler reconciles a VMPodScrape object
@@ -80,11 +81,12 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
-		return
+	err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf, &instance)
+	if singleErr := collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf, &instance); singleErr != nil && err == nil {
+		err = singleErr
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
-		return
+	if err == nil {
+		err = reconcile.SyncAggregatedChildStatus(ctx, r.Client, &instance)
 	}
 	return
 }

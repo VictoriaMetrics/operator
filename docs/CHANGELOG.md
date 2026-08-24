@@ -22,7 +22,7 @@ aliases:
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): default `spec.shardCount` to `0` at the CRD schema level, fixing `VerticalPodAutoscaler`'s `/scale` subresource lookups failing with `the spec replicas field ".spec.shardCount" does not exist` whenever sharding wasn't configured (the common case). See [#2473](https://github.com/VictoriaMetrics/operator/issues/2473).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): set default values for each possible `level` label of `operator_log_messages_total` metric. See [#2477](https://github.com/VictoriaMetrics/operator/issues/2477).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix reconciliation error on Kubernetes 1.29 caused by setting an empty `preStop` lifecycle handler. The native `Sleep` preStop action now requires Kubernetes >= 1.30, since the `PodLifecycleSleepAction` feature gate is not enabled by default on 1.29.
-
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): removing `spec.hpa` no longer leaves the previously created `HorizontalPodAutoscaler` behind. `HorizontalPodAutoscaler` and `VerticalPodAutoscaler` objects created for `VMAgent` and `VMAnomaly` now use the operator's consistent naming convention for child objects (e.g. `vmagent-<name>`) instead of the bare CR name; a leftover object under the old name is cleaned up automatically on the next reconcile. See [#2518](https://github.com/VictoriaMetrics/operator/issues/2518).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

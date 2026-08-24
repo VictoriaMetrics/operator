@@ -226,8 +226,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	if config.MustGetBaseConfig().VPAAPIEnabled && cr.Spec.VPA == nil {
-		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		// TODO: drop the cr.Name-named VPA objects deletes after v0.80.0
+		if cr.PrefixedName() != cr.Name {
+			objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
+		}
+		if cr.Spec.VPA == nil {
+			objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+		}
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }
@@ -235,7 +241,6 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMAnoma
 func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMAnomaly, newAppTpl, prevAppTpl *appsv1.StatefulSet) error {
 	stsToKeep := sets.New[string]()
 	pdbToKeep := sets.New[string]()
-	vpaToKeep := sets.New[string]()
 	shardCount := cr.GetShardCount()
 	prevShardCount := prevCR.GetShardCount()
 
@@ -320,18 +325,10 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 	if err := utilerrors.NewAggregate(errs); err != nil {
 		return err
 	}
-	// A single CR-level VPA is managed by createOrUpdateVPA regardless of sharding; include
-	// it in keepNames so RemoveOrphanedVPAs doesn't accidentally delete it.
-	if cr.Spec.VPA != nil {
-		vpaToKeep.Insert(cr.Name)
-	}
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {
 		return err
 	}
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsToKeep, true); err != nil {
-		return err
-	}
-	if err := finalize.RemoveOrphanedVPAs(ctx, rclient, cr, vpaToKeep, true); err != nil {
 		return err
 	}
 	return nil

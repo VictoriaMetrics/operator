@@ -291,7 +291,7 @@ spec:
 
 ## Basic auth for targets
 
-To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](https://docs.victoriametrics.com/operator/api/#basicauth):
+To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](https://docs.victoriametrics.com/operator/api/#v1beta1-basicauth):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

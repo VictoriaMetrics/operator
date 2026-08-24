@@ -24,7 +24,7 @@ Read [Usage](https://docs.victoriametrics.com/operator/resources/vmalertmanagerc
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in
-the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api/#vmalertmanagerconfig)**.
+the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalertmanagerconfig)**.
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/#examples) section.
 

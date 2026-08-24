@@ -46,15 +46,15 @@ you can use `extraArgs` field for passing additional arguments to the applicatio
 
 Field `extraArgs` is supported for the following custom resources:
 
-- [VMAgent spec](https://docs.victoriametrics.com/operator/api/#vmagentspec)
-- [VMAlert spec](https://docs.victoriametrics.com/operator/api/#vmalertspec)
-- [VMAlertManager spec](https://docs.victoriametrics.com/operator/api/#vmalertmanagerspec)
-- [VMAuth spec](https://docs.victoriametrics.com/operator/api/#vmauthspec)
-- [VMCluster/vmselect spec](https://docs.victoriametrics.com/operator/api/#vmselect)
-- [VMCluster/vminsert spec](https://docs.victoriametrics.com/operator/api/#vminsert)
-- [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api/#vmstorage)
-- [VMSingle spec](https://docs.victoriametrics.com/operator/api/#vmsinglespec)
-- [VLAgent spec](https://docs.victoriametrics.com/operator/api/#vlagentspec)
+- [VMAgent spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmagentspec)
+- [VMAlert spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalertspec)
+- [VMAlertManager spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalertmanagerspec)
+- [VMAuth spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmauthspec)
+- [VMCluster/vmselect spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmselect)
+- [VMCluster/vminsert spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vminsert)
+- [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmstorage)
+- [VMSingle spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmsinglespec)
+- [VLAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vlagentspec)
 
 Supported flags for each application can be found the in the corresponding documentation:
 

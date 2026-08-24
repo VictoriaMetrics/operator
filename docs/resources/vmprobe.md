@@ -30,7 +30,7 @@ See more details about selectors [here](https://docs.victoriametrics.com/operato
 ## Specification
 
 You can see the full actual specification of the `VMProbe` resource in
-the **[API docs -> VMProbe](https://docs.victoriametrics.com/operator/api/#vmprobe)**.
+the **[API docs -> VMProbe](https://docs.victoriametrics.com/operator/api/#v1beta1-vmprobe)**.
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmprobe/#examples) section.
 

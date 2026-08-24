@@ -151,6 +151,20 @@ type VMAnomalyWritersSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	ConnectionRetryAttempts int `json:"connectionRetryAttempts,omitempty" yaml:"connection_retry_attempts,omitempty"`
+	// BatchMaxSeries defines the maximum number of output time series in one VictoriaMetrics import request.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	BatchMaxSeries int `json:"batchMaxSeries,omitempty" yaml:"batch_max_series,omitempty"`
+	// BatchMaxBytes defines the maximum serialized payload size in bytes for one VictoriaMetrics import request.
+	// A single indivisible NDJSON time series may exceed this limit.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	BatchMaxBytes int `json:"batchMaxBytes,omitempty" yaml:"batch_max_bytes,omitempty"`
+	// MetricPrefixCacheMaxEntries defines the maximum number of prepared metric-label prefixes retained by the writer.
+	// Set to 0 to disable cross-cycle prefix caching.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MetricPrefixCacheMaxEntries *int `json:"metricPrefixCacheMaxEntries,omitempty" yaml:"metric_prefix_cache_max_entries,omitempty"`
 	// +optional
 	VMAnomalyHTTPClientSpec `json:",inline,omitempty" yaml:",inline,omitempty"`
 }

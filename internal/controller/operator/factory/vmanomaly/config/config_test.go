@@ -227,7 +227,10 @@ settings:
 							"label2": "value2",
 						},
 					},
-					ConnectionRetryAttempts: 3,
+					ConnectionRetryAttempts:     3,
+					BatchMaxSeries:              1_000,
+					BatchMaxBytes:               4_194_304,
+					MetricPrefixCacheMaxEntries: ptr.To(0),
 					VMAnomalyHTTPClientSpec: vmv1.VMAnomalyHTTPClientSpec{
 						TenantID: "0:2",
 						TLSConfig: &vmv1beta1.TLSConfig{
@@ -342,6 +345,9 @@ writer:
     label1: value1
     label2: value2
   connection_retry_attempts: 3
+  batch_max_series: 1000
+  batch_max_bytes: 4194304
+  metric_prefix_cache_max_entries: 0
   tenant_id: "0:2"
   verify_tls: /test/monitoring_tls_remote-ca
   tls_cert_file: /test/monitoring_tls_remote-cert

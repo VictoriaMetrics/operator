@@ -19909,6 +19909,12 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  batchMaxBytes:
+                    minimum: 1
+                    type: integer
+                  batchMaxSeries:
+                    minimum: 1
+                    type: integer
                   bearer:
                     properties:
                       bearerTokenFile:
@@ -19948,6 +19954,9 @@ spec:
                     - __name__
                     - for
                     type: object
+                  metricPrefixCacheMaxEntries:
+                    minimum: 0
+                    type: integer
                   tenantID:
                     type: string
                   timeout:

@@ -1484,6 +1484,11 @@ func (in *VMAnomalyVMWriterMetricFormatSpec) DeepCopy() *VMAnomalyVMWriterMetric
 func (in *VMAnomalyWritersSpec) DeepCopyInto(out *VMAnomalyWritersSpec) {
 	*out = *in
 	in.MetricFormat.DeepCopyInto(&out.MetricFormat)
+	if in.MetricPrefixCacheMaxEntries != nil {
+		in, out := &in.MetricPrefixCacheMaxEntries, &out.MetricPrefixCacheMaxEntries
+		*out = new(int)
+		**out = **in
+	}
 	in.VMAnomalyHTTPClientSpec.DeepCopyInto(&out.VMAnomalyHTTPClientSpec)
 }
 

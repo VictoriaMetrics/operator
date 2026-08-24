@@ -33,6 +33,9 @@ spec:
     samplingPeriod: 1m
   writer:
     datasourceURL: http://vmsingle-vms-victoria-metrics-k8s-stack.default.svc:8428
+    batchMaxSeries: 1000
+    batchMaxBytes: 4194304
+    metricPrefixCacheMaxEntries: 10000
   storage:
     volumeClaimTemplate:
       spec:

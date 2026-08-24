@@ -1,9 +1,4 @@
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/affinity/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/affinity/properties
-- op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/claimTemplates/items/properties/metadata/x-kubernetes-preserve-unknown-fields
   value: true
 - op: add
@@ -35,28 +30,3 @@
   value: true
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/volumes/items/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/startupProbe/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/startupProbe/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/readinessProbe/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/readinessProbe/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/livenessProbe/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/livenessProbe/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/securityContext/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/securityContext/properties
-- op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/serviceScrapeSpec/x-kubernetes-preserve-unknown-fields
-  value: true
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/serviceScrapeSpec/properties

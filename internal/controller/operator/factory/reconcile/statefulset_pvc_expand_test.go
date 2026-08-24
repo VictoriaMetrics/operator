@@ -832,7 +832,7 @@ func Test_updateSTSPVC(t *testing.T) {
 		},
 	})
 
-	// PVC bigger than VCT (manual expansion case), should log info and skip
+	// PVC bigger than VCT (manual expansion case), should error and skip
 	f(opts{
 		sts: buildSTS(func(sts *appsv1.StatefulSet) {
 			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
@@ -895,5 +895,6 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
+		wantErr: true,
 	})
 }

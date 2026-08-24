@@ -173,10 +173,9 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 
 		l := logger.WithContext(ctx)
 		if direction < 0 {
-			// probably, user updated pvc manually
-			// without applying this changes to the configuration.
-			l.Info(fmt.Sprintf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", newObj.Name, existingSize.String(), newSize.String()))
-			return metaChanged, nil
+			err := fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", newObj.Name, existingSize.String(), newSize.String())
+			l.Error(err, "declined PVC size decrease")
+			return metaChanged, err
 		}
 
 		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", newObj.Name, existingSize, newSize))

@@ -77,6 +77,10 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for single node resource
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+	return CreateOrUpdateWithWatchNamespaces(ctx, cr, rclient, config.MustGetBaseConfig().WatchNamespaces)
+}
+
+func CreateOrUpdateWithWatchNamespaces(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, watchNamespaces []string) error {
 	if cr.Paused() {
 		return nil
 	}
@@ -85,7 +89,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
-		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+		if err := deleteOrphaned(ctx, rclient, cr, watchNamespaces); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
@@ -100,7 +104,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, watchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
 		}
@@ -691,7 +695,7 @@ func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
-func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle) error {
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, watchNamespaces []string) error {
 	// TODO check storage for nil
 
 	svcName := cr.PrefixedName()
@@ -733,13 +737,13 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacName := cr.GetRBACName()
-		if len(cfg.WatchNamespaces) == 0 {
+		if len(watchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			for _, ns := range cfg.WatchNamespaces {
+			for _, ns := range watchNamespaces {
 				objsToRemove = append(objsToRemove,
 					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
 					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},

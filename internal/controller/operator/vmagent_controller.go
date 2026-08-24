@@ -120,7 +120,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
-		if err := vmagent.CreateOrUpdate(ctx, &instance, r); err != nil {
+		if err := vmagent.CreateOrUpdateWithConfig(ctx, &instance, r, r.BaseConf); err != nil {
 			return result, err
 		}
 		return result, nil

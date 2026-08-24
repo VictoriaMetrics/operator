@@ -117,7 +117,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
-		if err := vmsingle.CreateOrUpdate(ctx, &instance, r); err != nil {
+		if err := vmsingle.CreateOrUpdateWithWatchNamespaces(ctx, &instance, r, r.BaseConf.WatchNamespaces); err != nil {
 			return result, fmt.Errorf("failed create or update vmsingle: %w", err)
 		}
 		return result, nil

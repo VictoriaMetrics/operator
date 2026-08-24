@@ -128,6 +128,10 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 // CreateOrUpdate creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	return CreateOrUpdateWithConfig(ctx, cr, rclient, config.MustGetBaseConfig())
+}
+
+func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, baseConf *config.BaseOperatorConf) error {
 	if cr.Paused() {
 		return nil
 	}
@@ -150,7 +154,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasRemoteWriteSecrets() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, rbacNamespaces(cr, baseConf.WatchNamespaces)); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}

@@ -104,6 +104,12 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		vmsingleSync.Lock()
+		defer vmsingleSync.Unlock()
+		parentObject := fmt.Sprintf("%s.%s.vmsingle", instance.Name, instance.Namespace)
+		if err = releaseScrapeChildStatuses(ctx, r.Client, parentObject); err != nil {
+			return
+		}
 		err = finalize.OnVMSingleDelete(ctx, r.Client, &instance)
 		return
 	}

@@ -81,14 +81,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return
 	}
 
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
-		return
-	}
-
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
-		return
-	}
-
+	err = collectAndSyncScrapeChildStatus(l, ctx, r.Client, r.BaseConf, &instance)
 	return
 }
 

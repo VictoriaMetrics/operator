@@ -11,6 +11,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,8 @@ import (
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -403,4 +406,46 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
 	return result, nil
+}
+
+// releaseScrapeChildStatuses releases parentObject's Applied condition from every
+// VMServiceScrape/VMPodScrape/VMNodeScrape/VMProbe/VMStaticScrape/VMScrapeConfig still
+// carrying it, for use on VMAgent/VMSingle deletion, since no further reconcile of the
+// deleted parent will ever release these otherwise.
+func releaseScrapeChildStatuses(ctx context.Context, rclient client.Client, parentObject string) error {
+	var errs []error
+	if !build.IsControllerDisabled("VMServiceScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMPodScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMNodeScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMProbe") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe(nil)))
+	}
+	if !build.IsControllerDisabled("VMStaticScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMScrapeConfig") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig(nil)))
+	}
+	return errors.Join(errs...)
+}
+
+// collectAndSyncScrapeChildStatus collects instance's VMAgent/VMSingle selection and syncs its aggregated Applied condition.
+func collectAndSyncScrapeChildStatus[T any, PT interface {
+	*T
+	client.Object
+	GetStatusMetadata() *vmv1beta1.StatusMetadata
+}](l logr.Logger, ctx context.Context, rclient client.Client, cfg *config.BaseOperatorConf, instance PT) error {
+	agentErr := collectVMAgentScrapes(l, ctx, rclient, cfg, instance)
+	singleErr := collectVMSingleScrapes(l, ctx, rclient, cfg, instance)
+	errs := []error{agentErr, singleErr}
+	if agentErr == nil && singleErr == nil {
+		errs = append(errs, reconcile.SyncAggregatedChildStatus(ctx, rclient, instance))
+	}
+	return errors.Join(errs...)
 }

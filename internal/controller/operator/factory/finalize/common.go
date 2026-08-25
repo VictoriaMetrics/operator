@@ -15,7 +15,6 @@ import (
 )
 
 // +kubebuilder:rbac:groups="",resources=configmaps/finalizers;persistentvolumeclaims/finalizers;secrets/finalizers;serviceaccounts/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers;deployments/finalizers;replicasets;statefulsets/finalizers,verbs=*
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=*
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings/finalizers;clusterroles/finalizers,verbs=*

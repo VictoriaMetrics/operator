@@ -54,10 +54,6 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
-      - name: Check rbac markers are not inert
-        if: github.event.pull_request.draft == false
-        run: ./hack/check-rbac-markers.sh
-
       - name: Lint, Test and Build
         if: github.event.pull_request.draft == false
         run: |
@@ -68,6 +64,10 @@ jobs:
           # check for uncommited changes to crds, docs or API
           git diff --exit-code
           make test
+
+      - name: Check rbac markers are not inert
+        if: github.event.pull_request.draft == false
+        run: ./hack/check-rbac-markers.sh
 
       - name: Save Go cache
         if: ${{ github.ref == 'refs/heads/master' }}

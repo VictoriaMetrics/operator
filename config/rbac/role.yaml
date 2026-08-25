@@ -21,7 +21,6 @@ rules:
   - events
   - persistentvolumeclaims
   - persistentvolumeclaims/finalizers
-  - pods/eviction
   - secrets
   - secrets/finalizers
   - serviceaccounts/finalizers
@@ -32,7 +31,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps/status
   - namespaces
   - nodes
   - nodes/metrics
@@ -50,6 +48,12 @@ rules:
   - list
   - patch
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
 - apiGroups:
   - ""
   resources:

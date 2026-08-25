@@ -71,15 +71,16 @@ func (r *PromScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}()
 
 	// Fetch the PromScrapeConfig instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 
 	RegisterObjectStat(&instance, r.name)
 	var cr *vmv1beta1.VMScrapeConfig
 	if cr, err = converter.ScrapeConfig(ctx, &instance, r.BaseConf); err != nil {
-		err = &parsingError{err.Error(), r.name}
+		err = newParsingError(err.Error())
 		return
 	}
 	var owner *metav1.OwnerReference

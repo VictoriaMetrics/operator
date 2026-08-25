@@ -47,13 +47,14 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer func() {
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 	RegisterObjectStat(&instance, r.name)
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {

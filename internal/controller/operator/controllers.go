@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,6 +51,7 @@ var (
 )
 
 var (
+	// TODO: remove parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal, contextCancelErrorsTotal after release 0.80.0
 	parseObjectErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_object_parsing_errors_total",
 		Help: "Counts number of objects, that was failed to parse from json",
@@ -62,20 +64,41 @@ var (
 		Name: "operator_controller_reconcile_conflict_errors_total",
 		Help: "Counts number of errors with race conditions, when object was modified by external program at reconciliation",
 	}, []string{"controller", "namespaced_name"})
-	contextCancelErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+	contextCancelErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_errors_total",
 		Help: "Counts number context.Canceled errors",
-	})
+	}, []string{"controller", "namespaced_name"})
+
+	controllerErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "operator_controller_errors_total",
+		Help: "Counts number controller errors",
+	}, []string{"controller", "namespace", "name", "reason"})
 	activeConverterWatchers = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "operator_prometheus_converter_active_watchers",
 	}, []string{"object_type_name"})
 )
 
+// Reasons a reconcile attempt can fail. They double as the "reason" label for controllerErrorsTotal.
+const (
+	reasonGetObject     = "get_object"
+	reasonParseObject   = "parse_object"
+	reasonCancelContext = "cancel_context"
+	reasonConflict      = "conflict"
+	reasonOther         = "other"
+)
+
+var legacyCounters = map[string]*prometheus.CounterVec{
+	reasonGetObject:     getObjectsErrorsTotal,
+	reasonParseObject:   parseObjectErrorsTotal,
+	reasonConflict:      conflictErrorsTotal,
+	reasonCancelContext: contextCancelErrorsTotal,
+}
+
 // InitMetrics adds metrics to the Registry
 func init() {
 	metrics.Registry.MustRegister(
 		parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal,
-		contextCancelErrorsTotal, activeConverterWatchers)
+		contextCancelErrorsTotal, activeConverterWatchers, controllerErrorsTotal)
 }
 
 func getDefaultOptions() controller.Options {
@@ -89,42 +112,62 @@ func getDefaultOptions() controller.Options {
 	return *defaultOptions
 }
 
-// parsingError usually occurs in case of x-preserve-unknown-fields option enable to CRD
-// in this case k8s api server cannot perform proper validation and it may result in bad user input for some fields
-type parsingError struct {
-	origin     string
-	controller string
-}
-
 // ErrShutdown is a custom error returned as a cause of operator context cancel
 var ErrShutdown = fmt.Errorf("graceful shutdown, exiting")
 
-func (pe *parsingError) Error() string {
-	return fmt.Sprintf("parsing object error for object controller=%q: %q",
-		pe.controller, pe.origin)
+// reconcileError wraps a failure that happened while fetching or parsing the reconciled object,
+// tagged with reason (reasonGetObject or reasonParseObject) so handleReconcileErr can tell them apart.
+type reconcileError struct {
+	origin error
+	reason string
 }
 
-func isParsingError(err error) bool {
-	var pe *parsingError
-	return errors.As(err, &pe)
+// newGetError wraps a client.Get failure as a reconcileError tagged reasonGetObject.
+func newGetError(err error) error {
+	return &reconcileError{origin: err, reason: reasonGetObject}
 }
 
-// getError could usually occur at following cases:
-// - not enough k8s permissions
-// - object was deleted and due to race condition queue by operator cache
-type getError struct {
-	origin        error
-	controller    string
-	requestObject ctrl.Request
+// newParsingError wraps a stored ParsingSpecError message as a reconcileError tagged reasonParseObject.
+func newParsingError(msg string) error {
+	return &reconcileError{origin: errors.New(msg), reason: reasonParseObject}
 }
 
 // Unwrap implements errors.Unwrap interface
-func (ge *getError) Unwrap() error {
-	return ge.origin
+func (re *reconcileError) Unwrap() error {
+	return re.origin
 }
 
-func (ge *getError) Error() string {
-	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
+func (re *reconcileError) Error() string {
+	return fmt.Sprintf("%s error, origin=%q", re.reason, re.origin)
+}
+
+func isParsingError(err error) bool {
+	var re *reconcileError
+	return errors.As(err, &re) && re.reason == reasonParseObject
+}
+
+func controllerNameFromObject(object client.Object) string {
+	t := reflect.TypeOf(object)
+	for t != nil && t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t == nil {
+		return ""
+	}
+	return strings.ToLower(t.Name())
+}
+
+func hasIdentity(object client.Object) bool {
+	return object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != ""
+}
+
+func incControllerError(object client.Object, reason string) {
+	controller := controllerNameFromObject(object)
+	namespace, name := object.GetNamespace(), object.GetName()
+	controllerErrorsTotal.WithLabelValues(controller, namespace, name, reason).Inc()
+	if legacyCounter, ok := legacyCounters[reason]; ok {
+		legacyCounter.WithLabelValues(controller, fmt.Sprintf("%s/%s", namespace, name)).Inc()
+	}
 }
 
 func handleReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
@@ -143,64 +186,64 @@ func handleReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetada
 	return result, err
 }
 
+// +kubebuilder:rbac:groups="",resources=events,verbs=create
 func handleReconcileErr(ctx context.Context, rclient client.Client, object client.Object, originResult ctrl.Result, err error) (ctrl.Result, error) {
-	if err == nil {
-		return originResult, nil
+	if err == nil || !hasIdentity(object) {
+		return originResult, err
 	}
 
-	switch e := err.(type) {
-	case *getError:
-		deregisterObjectByCollector(e.requestObject.Name, e.requestObject.Namespace, e.controller)
-		getObjectsErrorsTotal.WithLabelValues(e.controller, e.requestObject.String()).Inc()
-		if k8serrors.IsNotFound(err) {
-			return originResult, nil
-		}
-	case *parsingError:
-		if object != nil && !reflect.ValueOf(object).IsNil() {
-			namespacedName := fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
-			parseObjectErrorsTotal.WithLabelValues(e.controller, namespacedName).Inc()
-		}
-	}
+	var re *reconcileError
 
 	switch {
-	case errors.Is(err, context.Canceled):
-		contextCancelErrorsTotal.Inc()
-		if !errors.Is(context.Cause(ctx), ErrShutdown) {
-			originResult.RequeueAfter = time.Second * 5
+	case errors.As(err, &re):
+		if re.reason == reasonGetObject {
+			deregisterObjectByCollector(object.GetName(), object.GetNamespace(), controllerNameFromObject(object))
+			if k8serrors.IsNotFound(err) {
+				return originResult, nil
+			}
 		}
+		incControllerError(object, re.reason)
+	case errors.Is(err, context.Canceled):
+		if errors.Is(context.Cause(ctx), ErrShutdown) {
+			return originResult, nil
+		}
+		incControllerError(object, reasonCancelContext)
+		originResult.RequeueAfter = time.Second * 5
 		return originResult, nil
 	case k8serrors.IsConflict(err):
-		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
-			controller := object.GetObjectKind().GroupVersionKind().GroupKind().Kind
-			namespacedName := fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
-			conflictErrorsTotal.WithLabelValues(controller, namespacedName).Inc()
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+		incControllerError(object, reasonConflict)
+		originResult.RequeueAfter = time.Second * 5
+		return originResult, nil
+	default:
+		incControllerError(object, reasonOther)
 	}
-	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
-		errEvent := &corev1.Event{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "victoria-metrics-operator-" + uuid.New().String(),
-				Namespace: object.GetNamespace(),
+
+	// object is guaranteed to have identity here: the early return above already filtered out objects without one.
+	errEvent := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "victoria-metrics-operator-" + uuid.New().String(),
+			Namespace: object.GetNamespace(),
+			Annotations: map[string]string{
+				"operator.victoriametrics.com/controller": controllerNameFromObject(object),
 			},
-			Type:    corev1.EventTypeWarning,
-			Reason:  "ReconciliationError",
-			Message: err.Error(),
-			Source: corev1.EventSource{
-				Component: "victoria-metrics-operator",
-			},
-			LastTimestamp: metav1.NewTime(time.Now()),
-			InvolvedObject: corev1.ObjectReference{
-				Kind:            object.GetObjectKind().GroupVersionKind().Kind,
-				Namespace:       object.GetNamespace(),
-				Name:            object.GetName(),
-				UID:             object.GetUID(),
-				ResourceVersion: object.GetResourceVersion(),
-			},
-		}
-		if err := rclient.Create(ctx, errEvent); err != nil {
-			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
-		}
+		},
+		Type:    corev1.EventTypeWarning,
+		Reason:  "ReconciliationError",
+		Message: err.Error(),
+		Source: corev1.EventSource{
+			Component: "victoria-metrics-operator",
+		},
+		LastTimestamp: metav1.NewTime(time.Now()),
+		InvolvedObject: corev1.ObjectReference{
+			Kind:            object.GetObjectKind().GroupVersionKind().Kind,
+			Namespace:       object.GetNamespace(),
+			Name:            object.GetName(),
+			UID:             object.GetUID(),
+			ResourceVersion: object.GetResourceVersion(),
+		},
+	}
+	if err := rclient.Create(ctx, errEvent); err != nil {
+		logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
 	}
 	return originResult, err
 }

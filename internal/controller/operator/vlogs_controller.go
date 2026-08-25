@@ -72,8 +72,9 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 		return
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 	l.Info("VLogs CustomResource transited into read-only state. Please migrate to the VLSingle.")

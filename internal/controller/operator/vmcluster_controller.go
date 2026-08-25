@@ -58,8 +58,9 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
+	instance.Name, instance.Namespace = request.Name, request.Namespace
 	if err = r.Client.Get(ctx, request.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, request}
+		err = newGetError(err)
 		return
 	}
 
@@ -70,7 +71,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 	if err = finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {

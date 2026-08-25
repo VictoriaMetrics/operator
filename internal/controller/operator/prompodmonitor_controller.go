@@ -70,8 +70,9 @@ func (r *PromPodMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}()
 
 	// Fetch the PromPodMonitor instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{err, r.name, req}
+		err = newGetError(err)
 		return
 	}
 

@@ -73,8 +73,9 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VLAgent instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		err = &getError{origin: err, controller: r.name, requestObject: req}
+		err = newGetError(err)
 		return
 	}
 
@@ -85,7 +86,7 @@ func (r *VLAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
-		err = &parsingError{instance.Status.ParsingSpecError, r.name}
+		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
 

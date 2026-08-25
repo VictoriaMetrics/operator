@@ -9,8 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -361,7 +363,7 @@ func TestHandleReconcileErrWithStatus(t *testing.T) {
 
 	// parsingError
 	f(opts{
-		err: &parsingError{origin: "bad field value", controller: "vmcluster"},
+		err: newParsingError("bad field value"),
 		object: &vmv1beta1.VMCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster",
@@ -370,14 +372,19 @@ func TestHandleReconcileErrWithStatus(t *testing.T) {
 		},
 		origin:     ctrl.Result{},
 		wantResult: ctrl.Result{},
-		wantErr:    &parsingError{origin: "bad field value", controller: "vmcluster"},
+		wantErr:    newParsingError("bad field value"),
 		wantStatus: vmv1beta1.UpdateStatusFailed,
 	})
 
 	// context.Canceled sets RequeueAfter, no status update
 	f(opts{
-		err:        context.Canceled,
-		object:     &vmv1beta1.VMCluster{},
+		err: context.Canceled,
+		object: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster",
+				Namespace: "default",
+			},
+		},
 		origin:     ctrl.Result{},
 		wantResult: ctrl.Result{RequeueAfter: time.Second * 5},
 		wantErr:    nil,
@@ -385,10 +392,24 @@ func TestHandleReconcileErrWithStatus(t *testing.T) {
 
 	// transient error
 	f(opts{
-		err:        fmt.Errorf("some transient error"),
-		object:     &vmv1beta1.VMCluster{},
+		err: fmt.Errorf("some transient error"),
+		object: &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster",
+				Namespace: "default",
+			},
+		},
 		origin:     ctrl.Result{},
 		wantResult: ctrl.Result{},
+		wantErr:    fmt.Errorf("some transient error"),
+	})
+
+	// object without identity (no namespace): result/error pass through unchanged, no event/status update attempted
+	f(opts{
+		err:        fmt.Errorf("some transient error"),
+		object:     &vmv1beta1.VMCluster{},
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
 		wantErr:    fmt.Errorf("some transient error"),
 	})
 }
@@ -398,6 +419,7 @@ func TestHandleReconcileErr(t *testing.T) {
 		ctx        context.Context
 		err        error
 		origin     ctrl.Result
+		object     client.Object
 		wantResult ctrl.Result
 		wantErr    error
 	}
@@ -407,7 +429,12 @@ func TestHandleReconcileErr(t *testing.T) {
 		if o.ctx == nil {
 			o.ctx = context.Background()
 		}
-		got, err := handleReconcileErr(o.ctx, nil, (*vmv1beta1.VMCluster)(nil), o.origin, o.err)
+		object := o.object
+		if object == nil {
+			object = (*vmv1beta1.VMCluster)(nil)
+		}
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		got, err := handleReconcileErr(o.ctx, fclient, object, o.origin, o.err)
 		assert.Equal(t, o.wantErr, err)
 		assert.Equal(t, o.wantResult, got)
 	}
@@ -420,9 +447,25 @@ func TestHandleReconcileErr(t *testing.T) {
 		wantErr:    nil,
 	})
 
+	// object without identity (nil): result/error pass through unchanged, no event/metrics side effects attempted
+	f(opts{
+		err:        context.Canceled,
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    context.Canceled,
+	})
+
+	identified := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster",
+			Namespace: "default",
+		},
+	}
+
 	// context canceled
 	f(opts{
 		err:        context.Canceled,
+		object:     identified,
 		origin:     ctrl.Result{},
 		wantResult: ctrl.Result{RequeueAfter: time.Second * 5},
 		wantErr:    nil,
@@ -434,8 +477,51 @@ func TestHandleReconcileErr(t *testing.T) {
 	f(opts{
 		ctx:        shutdownCtx,
 		err:        fmt.Errorf("wrapped: %w", errors.Join(context.Canceled, ErrShutdown)),
+		object:     identified,
 		origin:     ctrl.Result{},
 		wantResult: ctrl.Result{},
+		wantErr:    nil,
+	})
+
+	gr := schema.GroupResource{Group: "operator.victoriametrics.com", Resource: "vmclusters"}
+
+	// getError wrapping NotFound: routine object deletion, swallowed silently, result passed through
+	notFoundErr := newGetError(k8serrors.NewNotFound(gr, "test-cluster"))
+	f(opts{
+		err:        notFoundErr,
+		object:     identified,
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantErr:    nil,
+	})
+
+	// getError wrapping a real (non-NotFound) API error: propagates as-is
+	forbiddenErr := newGetError(k8serrors.NewForbidden(gr, "test-cluster", fmt.Errorf("no access")))
+	f(opts{
+		err:        forbiddenErr,
+		object:     identified,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    forbiddenErr,
+	})
+
+	// propagate cancel context if it's wrapped into getError
+	getCanceledErr := newGetError(fmt.Errorf("Get %q: %w", "https://example.com", context.Canceled))
+	f(opts{
+		err:        getCanceledErr,
+		object:     identified,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{},
+		wantErr:    getCanceledErr,
+	})
+
+	// conflict: swallowed, requeued after 5s
+	conflictErr := k8serrors.NewConflict(gr, "test-cluster", fmt.Errorf("stale resourceVersion"))
+	f(opts{
+		err:        conflictErr,
+		object:     identified,
+		origin:     ctrl.Result{},
+		wantResult: ctrl.Result{RequeueAfter: time.Second * 5},
 		wantErr:    nil,
 	})
 }

@@ -18,6 +18,7 @@ aliases:
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Add `k8s_version` label to `vm_app_version` metric.
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add a unified `operator_controller_errors_total{controller, namespaced_name, reason}` metric covering all reconcile failure categories (`get_object`, `parse_object`, `cancel_context`, `conflict`, `other`) across every controller, replacing several single-purpose counters that will be removed in a future release.
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): default `spec.shardCount` to `0` at the CRD schema level, fixing `VerticalPodAutoscaler`'s `/scale` subresource lookups failing with `the spec replicas field ".spec.shardCount" does not exist` whenever sharding wasn't configured (the common case). See [#2473](https://github.com/VictoriaMetrics/operator/issues/2473).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): set default values for each possible `level` label of `operator_log_messages_total` metric. See [#2477](https://github.com/VictoriaMetrics/operator/issues/2477).

@@ -75,7 +75,7 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;watch;list
 // +kubebuilder:rbac:groups="",resources=nodes/metrics,verbs=get;watch;list
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
 // +kubebuilder:rbac:groups="",resources=events;endpoints;services;persistentvolumeclaims,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete;patch

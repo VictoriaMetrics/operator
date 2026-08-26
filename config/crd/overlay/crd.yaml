@@ -17318,6 +17318,12 @@ spec:
                 description: ReadinessProbe that will be added to CR pod
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              removePvcAfterDelete:
+                description: |-
+                  RemovePvcAfterDelete - if true, controller adds ownership to pvc
+                  and after VLSingle object deletion - pvc will be garbage collected
+                  by controller manager
+                type: boolean
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32

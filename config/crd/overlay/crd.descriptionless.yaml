@@ -8571,6 +8571,8 @@ spec:
               readinessProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              removePvcAfterDelete:
+                type: boolean
               replicaCount:
                 format: int32
                 type: integer

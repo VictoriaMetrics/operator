@@ -62,6 +62,11 @@ type VTSingleSpec struct {
 	// StorageMeta defines annotations and labels attached to PVC for given vtsingle CR
 	// +optional
 	StorageMetadata vmv1beta1.EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
+	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
+	// and after VTSingle object deletion - pvc will be garbage collected
+	// by controller manager
+	// +optional
+	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
 	// RetentionPeriod for the stored traces
 	// https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional

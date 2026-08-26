@@ -49,6 +49,7 @@ func TestOnVTSingleDelete(t *testing.T) {
 			Finalizers: []string{vmv1beta1.FinalizerName},
 		},
 		Spec: vmv1.VTSingleSpec{
+			RemovePvcAfterDelete: true,
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 					Name: "custom-service",
@@ -87,6 +88,9 @@ func TestOnVTSingleDelete(t *testing.T) {
 					Name:       cr.PrefixedName(),
 					Namespace:  cr.GetNamespace(),
 					Finalizers: []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{
+						cr.AsOwner(),
+					},
 				},
 			},
 			&corev1.Service{
@@ -126,12 +130,43 @@ func TestOnVTSingleDelete(t *testing.T) {
 			err = cl.Get(ctx, nsnPrefixed, &pvc)
 			assert.NoError(t, err)
 			assert.Empty(t, pvc.Finalizers)
+			assert.NotEmpty(t, pvc.OwnerReferences) // RemovePvcAfterDelete=true keeps owner ref for GC
 
 			nsnCustomSvc := types.NamespacedName{Name: "custom-service", Namespace: cr.Namespace}
 			var customSvc corev1.Service
 			err = cl.Get(ctx, nsnCustomSvc, &customSvc)
 			assert.NoError(t, err)
 			assert.Empty(t, customSvc.Finalizers)
+		},
+	})
+
+	// RemovePvcAfterDelete=false strips the owner reference so pvc is orphaned
+	cr2 := cr.DeepCopy()
+	cr2.Name = "test-vtsingle-2"
+	cr2.Spec.RemovePvcAfterDelete = false
+
+	f(opts{
+		cr: cr2,
+		predefinedObjects: []runtime.Object{
+			cr2,
+			&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       cr2.PrefixedName(),
+					Namespace:  cr2.GetNamespace(),
+					Finalizers: []string{vmv1beta1.FinalizerName},
+					OwnerReferences: []metav1.OwnerReference{
+						cr2.AsOwner(),
+					},
+				},
+			},
+		},
+		verify: func(cl client.Client) {
+			nsnPrefixed := types.NamespacedName{Name: cr2.PrefixedName(), Namespace: cr2.Namespace}
+			var pvc corev1.PersistentVolumeClaim
+			err := cl.Get(ctx, nsnPrefixed, &pvc)
+			assert.NoError(t, err)
+			assert.Empty(t, pvc.Finalizers)
+			assert.Empty(t, pvc.OwnerReferences)
 		},
 	})
 }

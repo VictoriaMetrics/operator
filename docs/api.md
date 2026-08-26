@@ -1332,6 +1332,19 @@ Package v1alpha1 contains API Schema definitions for the operator v1alpha1 API g
 - [VLDistributed](#v1alpha1-vldistributed)
 - [VMDistributed](#v1alpha1-vmdistributed)
 
+#### DistributedAuth {#v1alpha1-distributedauth}
+<a id="distributedauth"></a>
+
+DistributedAuth defines a VMAuth by name or inline spec
+
+Appears in: [VLDistributedAuth (v1alpha1)](#v1alpha1-vldistributedauth), [VMDistributedAuth (v1alpha1)](#v1alpha1-vmdistributedauth)
+
+| Field | Description |
+| --- | --- |
+| enabled<a href="#v1alpha1-distributedauth-enabled" id="v1alpha1-distributedauth-enabled">#</a><a id="distributedauth-enabled"></a><br/>_boolean_ | _(Optional)_<br/>Enabled defines if vmauth should be created. |
+| name<a href="#v1alpha1-distributedauth-name" id="v1alpha1-distributedauth-name">#</a><a id="distributedauth-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the DistributedAuth when Spec is provided. |
+| spec<a href="#v1alpha1-distributedauth-spec" id="v1alpha1-distributedauth-spec">#</a><a id="distributedauth-spec"></a><br/>_[VMAuthSpec (v1beta1)](#v1beta1-vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
+
 #### VLDistributed {#v1alpha1-vldistributed}
 <a id="vldistributed"></a>
 
@@ -1347,14 +1360,14 @@ VLDistributed is progressively rolling out updates to multiple zone components f
 #### VLDistributedAuth {#v1alpha1-vldistributedauth}
 <a id="vldistributedauth"></a>
 
-VLDistributedAuth defines a VMAuth by name or inline spec
+_Underlying type:_ _[DistributedAuth (v1alpha1)](#v1alpha1-distributedauth)_
 
 Appears in: [VLDistributedSpec (v1alpha1)](#v1alpha1-vldistributedspec)
 
 | Field | Description |
 | --- | --- |
 | enabled<a href="#v1alpha1-vldistributedauth-enabled" id="v1alpha1-vldistributedauth-enabled">#</a><a id="vldistributedauth-enabled"></a><br/>_boolean_ | _(Optional)_<br/>Enabled defines if vmauth should be created. |
-| name<a href="#v1alpha1-vldistributedauth-name" id="v1alpha1-vldistributedauth-name">#</a><a id="vldistributedauth-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VLDistributedAuth when Spec is provided. |
+| name<a href="#v1alpha1-vldistributedauth-name" id="v1alpha1-vldistributedauth-name">#</a><a id="vldistributedauth-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the DistributedAuth when Spec is provided. |
 | spec<a href="#v1alpha1-vldistributedauth-spec" id="v1alpha1-vldistributedauth-spec">#</a><a id="vldistributedauth-spec"></a><br/>_[VMAuthSpec (v1beta1)](#v1beta1-vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
 
 #### VLDistributedBackendType {#v1alpha1-vldistributedbackendtype}
@@ -1558,14 +1571,14 @@ VMDistributed is progressively rolling out updates to multiple zone components.
 #### VMDistributedAuth {#v1alpha1-vmdistributedauth}
 <a id="vmdistributedauth"></a>
 
-VMDistributedAuth defines a VMAuth by name or inline spec
+_Underlying type:_ _[DistributedAuth (v1alpha1)](#v1alpha1-distributedauth)_
 
 Appears in: [VMDistributedSpec (v1alpha1)](#v1alpha1-vmdistributedspec)
 
 | Field | Description |
 | --- | --- |
 | enabled<a href="#v1alpha1-vmdistributedauth-enabled" id="v1alpha1-vmdistributedauth-enabled">#</a><a id="vmdistributedauth-enabled"></a><br/>_boolean_ | _(Optional)_<br/>Enabled defines if vmauth should be created. |
-| name<a href="#v1alpha1-vmdistributedauth-name" id="v1alpha1-vmdistributedauth-name">#</a><a id="vmdistributedauth-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the VMDistributedAuth when Spec is provided. |
+| name<a href="#v1alpha1-vmdistributedauth-name" id="v1alpha1-vmdistributedauth-name">#</a><a id="vmdistributedauth-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the DistributedAuth when Spec is provided. |
 | spec<a href="#v1alpha1-vmdistributedauth-spec" id="v1alpha1-vmdistributedauth-spec">#</a><a id="vmdistributedauth-spec"></a><br/>_[VMAuthSpec (v1beta1)](#v1beta1-vmauthspec)_ | _(Optional)_<br/>Spec defines the desired state of a new VMAuth. |
 
 #### VMDistributedBackendType {#v1alpha1-vmdistributedbackendtype}
@@ -4852,7 +4865,7 @@ Appears in: [VMAuthLoadBalancer (v1beta1)](#v1beta1-vmauthloadbalancer)
 
 VMAuthSpec defines the desired state of VMAuth
 
-Appears in: [VLDistributedAuth (v1alpha1)](#v1alpha1-vldistributedauth), [VMAuth (v1beta1)](#v1beta1-vmauth), [VMDistributedAuth (v1alpha1)](#v1alpha1-vmdistributedauth)
+Appears in: [DistributedAuth (v1alpha1)](#v1alpha1-distributedauth), [VMAuth (v1beta1)](#v1beta1-vmauth)
 
 | Field | Description |
 | --- | --- |

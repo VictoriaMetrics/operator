@@ -36,6 +36,8 @@ const (
 	ZonePlaceholder = "%ZONE%"
 )
 
+type VMDistributedAuth = DistributedAuth
+
 // VMDistributedSpec defines configurable parameters for VMDistributed CR
 // +k8s:openapi-gen=true
 type VMDistributedSpec struct {
@@ -354,13 +356,13 @@ func (s *VMDistributedZoneRemoteWriteSpec) ToVMAgentRemoteWriteSpec() (*vmv1beta
 }
 
 // +k8s:openapi-gen=true
-// VMDistributedAuth defines a VMAuth by name or inline spec
-type VMDistributedAuth struct {
+// DistributedAuth defines a VMAuth by name or inline spec
+type DistributedAuth struct {
 	// Enabled defines if vmauth should be created.
 	// +optional
 	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
-	// Name specifies the static name to be used for the VMDistributedAuth when Spec is provided.
+	// Name specifies the static name to be used for the DistributedAuth when Spec is provided.
 	// +optional
 	Name string `json:"name,omitempty"`
 	// Spec defines the desired state of a new VMAuth.

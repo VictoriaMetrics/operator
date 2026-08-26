@@ -366,7 +366,7 @@ OPM_VERSION ?= v1.73.0
 YQ_VERSION ?= v4.53.3
 COSIGN_VERSION ?= v3.1.3
 
-CRD_REF_DOCS_VERSION ?= 4deb8b1eb0169ac22ac5d777feaeb26a00e38a33
+CRD_REF_DOCS_VERSION ?= c5e6088a7cbca578c33aabd74ade8210985e5a67
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.

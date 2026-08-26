@@ -32,7 +32,7 @@ patches:
 - path: patches/common-array-fields-with-claimtemplates.yaml
   target:
     kind: CustomResourceDefinition
-    name: ^(vlagents|vmagents|vmalertmanagers|vmanomalies)\.operator\.victoriametrics\.com$
+    name: ^(vlagents|vtagents|vmagents|vmalertmanagers|vmanomalies)\.operator\.victoriametrics\.com$
 - path: patches/common-array-fields.yaml
   target:
     kind: CustomResourceDefinition

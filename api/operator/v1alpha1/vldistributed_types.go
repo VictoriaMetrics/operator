@@ -33,6 +33,8 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+type VLDistributedAuth = DistributedAuth
+
 // VLDistributedSpec defines configurable parameters for VLDistributed CR
 // +k8s:openapi-gen=true
 type VLDistributedSpec struct {
@@ -331,21 +333,6 @@ func (s *VLDistributedZoneRemoteWriteSpec) ToVLAgentRemoteWriteSpec(url string) 
 	}
 	rw.URL = url
 	return &rw, nil
-}
-
-// +k8s:openapi-gen=true
-// VLDistributedAuth defines a VMAuth by name or inline spec
-type VLDistributedAuth struct {
-	// Enabled defines if vmauth should be created.
-	// +optional
-	// +kubebuilder:default=true
-	Enabled *bool `json:"enabled,omitempty"`
-	// Name specifies the static name to be used for the VLDistributedAuth when Spec is provided.
-	// +optional
-	Name string `json:"name,omitempty"`
-	// Spec defines the desired state of a new VMAuth.
-	// +optional
-	Spec vmv1beta1.VMAuthSpec `json:"spec,omitempty"`
 }
 
 // +k8s:openapi-gen=true

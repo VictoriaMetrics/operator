@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -31,6 +32,35 @@ type TLSServerConfig struct {
 	// mutually exclusive with KeySecretRef
 	// +optional
 	KeyFile string `json:"keyFile,omitempty"`
+	// MinVersion is the minimum TLS version to use for the server.
+	// +optional
+	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
+	MinVersion string `json:"minVersion,omitempty"`
+	// CipherSuites is an optional list of TLS cipher suites for the server.
+	// +optional
+	CipherSuites []string `json:"cipherSuites,omitempty"`
+}
+
+// OTLPGRPCSpec defines OTLP gRPC ingestion server configuration
+type OTLPGRPCSpec struct {
+	// ListenPort defines listen port for OTLP gRPC requests
+	ListenPort int32 `json:"listenPort"`
+	// TLSConfig enables TLS for incoming gRPC requests at the given ListenPort.
+	// If unset, TLS is disabled for the gRPC listener.
+	// +optional
+	TLSConfig *TLSServerConfig `json:"tlsConfig,omitempty"`
+}
+
+// Validate checks that ListenPort doesn't collide with httpPort, the port already used for
+// the component's main HTTP listener.
+func (g *OTLPGRPCSpec) Validate(httpPort string) error {
+	if g == nil {
+		return nil
+	}
+	if strconv.Itoa(int(g.ListenPort)) == httpPort {
+		return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
+	}
+	return nil
 }
 
 // OAuth2 defines OAuth2 configuration parameters

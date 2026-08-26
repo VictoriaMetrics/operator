@@ -26,6 +26,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+const insertTLSServerConfigMountPath = "/etc/vt/tls-server-secrets"
+
 func createOrUpdateVTInsert(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
 	if cr.Spec.Insert == nil {
 		return nil
@@ -162,6 +164,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	if len(cr.Spec.Insert.ExtraEnvs) > 0 || len(cr.Spec.Insert.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	args = build.AddOTLPGRPCArgsTo(args, cr.Spec.Insert.GRPCSpec, insertTLSServerConfigMountPath)
 
 	var envs []corev1.EnvVar
 
@@ -174,12 +177,14 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 			ContainerPort: intstr.Parse(cr.Spec.Insert.Port).IntVal,
 		},
 	}
+	ports = build.AddOTLPGRPCPortTo(ports, cr.Spec.Insert.GRPCSpec)
 
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.Insert.Volumes...)
 
 	vmMounts := make([]corev1.VolumeMount, 0)
 	vmMounts = append(vmMounts, cr.Spec.Insert.VolumeMounts...)
+	volumes, vmMounts = build.AddOTLPGRPCTLSConfigToVolumes(volumes, vmMounts, cr.Spec.Insert.GRPCSpec, insertTLSServerConfigMountPath)
 
 	for _, s := range cr.Spec.Insert.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -367,7 +372,9 @@ func createOrUpdateVTInsertService(ctx context.Context, rclient client.Client, c
 
 func buildVTInsertService(cr *vmv1.VTCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
-	svc := build.Service(b, cr.Spec.Insert.Port, nil)
+	svc := build.Service(b, cr.Spec.Insert.Port, func(svc *corev1.Service) {
+		build.AddOTLPGRPCPortToService(svc, cr.Spec.Insert.GRPCSpec)
+	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		svc.Name = cr.PrefixedInternalName(vmv1beta1.ClusterComponentInsert)
 		svc.Spec.ClusterIP = corev1.ClusterIPNone

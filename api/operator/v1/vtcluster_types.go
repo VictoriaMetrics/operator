@@ -233,6 +233,9 @@ type VTInsert struct {
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
 
+	// GRPCSpec defines OTLP gRPC ingestion listener configuration
+	// +optional
+	GRPCSpec *OTLPGRPCSpec `json:"grpcSpec,omitempty"`
 	// ServiceSpec that will be added to vtinsert service spec
 	// +optional
 	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -657,6 +660,13 @@ func (cr *VTCluster) Validate() error {
 			if err := vti.VPA.Validate(); err != nil {
 				return err
 			}
+		}
+		insertPort := "10481"
+		if vti.Port != "" {
+			insertPort = vti.Port
+		}
+		if err := vti.GRPCSpec.Validate(insertPort); err != nil {
+			return fmt.Errorf("insert: %w", err)
 		}
 		if err := vti.Validate(); err != nil {
 			return fmt.Errorf("insert: %w", err)

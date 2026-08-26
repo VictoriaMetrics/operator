@@ -1,0 +1,45 @@
+package finalize
+
+import (
+	"context"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+)
+
+// OnVTAgentDelete deletes all vtagent related resources
+func OnVTAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1.VTAgent) error {
+	ns := cr.GetNamespace()
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
+	}
+	objsToRemove := []client.Object{
+		&corev1.Service{ObjectMeta: objMeta},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}},
+		&appsv1.StatefulSet{ObjectMeta: objMeta},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+	}
+	if cr.Spec.ServiceSpec != nil {
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Namespace: ns,
+		}})
+	}
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+	}
+	objsToRemove = append(objsToRemove, cr)
+	deleteOwnerReferences := make([]bool, len(objsToRemove))
+	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
+}

@@ -30,6 +30,7 @@ Metrics Operator introduces.
 - [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/)
 - [VTSingle](https://docs.victoriametrics.com/operator/resources/vtsingle/)
 - [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
+- [VTAgent](https://docs.victoriametrics.com/operator/resources/vtagent/)
 
 Here is the scheme of relations between the custom resources:
 
@@ -55,6 +56,9 @@ Field `extraArgs` is supported for the following custom resources:
 - [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmstorage)
 - [VMSingle spec](https://docs.victoriametrics.com/operator/api/#v1beta1-vmsinglespec)
 - [VLAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vlagentspec)
+- [VTSingle spec](https://docs.victoriametrics.com/operator/api/#v1-vtsinglespec)
+- [VTCluster spec](https://docs.victoriametrics.com/operator/api/#v1-vtclusterspec)
+- [VTAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vtagentspec)
 
 Supported flags for each application can be found the in the corresponding documentation:
 
@@ -64,6 +68,8 @@ Supported flags for each application can be found the in the corresponding docum
 - [VMCluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#list-of-command-line-flags)
 - [VMSingle](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#list-of-command-line-flags)
 - [VLAgent](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)
+- [VTSingle/VTCluster](https://docs.victoriametrics.com/victoriatraces/#list-of-command-line-flags)
+- [VTAgent](https://docs.victoriametrics.com/victoriatraces/vtagent/#advanced-usage)
 
 Usage example:
 

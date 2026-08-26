@@ -150,6 +150,9 @@ rules:
   - vlclusters
   - vlclusters/finalizers
   - vlclusters/status
+  - vtagents
+  - vtagents/finalizers
+  - vtagents/status
   - vtsingles
   - vtsingles/finalizers
   - vtsingles/status

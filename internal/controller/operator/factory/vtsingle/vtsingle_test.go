@@ -6,6 +6,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -247,6 +248,46 @@ func TestCreateOrUpdate(t *testing.T) {
 	})
 }
 
+func TestMakePodSpec_GRPC(t *testing.T) {
+	cr := &vmv1.VTSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "traces-1", Namespace: "default"},
+		Spec: vmv1.VTSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+			GRPCSpec: &vmv1.OTLPGRPCSpec{
+				ListenPort: 4317,
+				TLSConfig: &vmv1.TLSServerConfig{
+					CertSecret: &corev1.SecretKeySelector{
+						Key:                  "CERT",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+					},
+					KeySecret: &corev1.SecretKeySelector{
+						Key:                  "KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+					},
+				},
+			},
+		},
+	}
+	spec, err := makePodSpec(cr)
+	require.NoError(t, err)
+	require.Len(t, spec.Spec.Containers, 1)
+	c := spec.Spec.Containers[0]
+	assert.Contains(t, c.Args, "-otlpGRPCListenAddr=:4317")
+	assert.Contains(t, c.Args, "-otlpGRPC.tls=true")
+	assert.Contains(t, c.Args, "-otlpGRPC.tlsCertFile=/etc/vm/tls-server-secrets/tls/CERT")
+	assert.Contains(t, c.Args, "-otlpGRPC.tlsKeyFile=/etc/vm/tls-server-secrets/tls/KEY")
+	assert.Contains(t, c.Ports, corev1.ContainerPort{Name: "otlp-grpc", Protocol: corev1.ProtocolTCP, ContainerPort: 4317})
+
+	var found bool
+	for _, m := range c.VolumeMounts {
+		if m.Name == "secret-tls-tls" {
+			found = true
+			assert.Equal(t, "/etc/vm/tls-server-secrets/tls", m.MountPath)
+		}
+	}
+	assert.True(t, found, "expected secret-tls-tls volume mount")
+}
+
 func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1.VTSingle
@@ -335,6 +376,26 @@ func TestCreateOrUpdateService(t *testing.T) {
 				},
 				Spec: corev1.ServiceSpec{},
 			},
+		},
+	})
+
+	// with grpc spec
+	f(opts{
+		cr: &vmv1.VTSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "traces-1",
+				Namespace: "default",
+			},
+			Spec: vmv1.VTSingleSpec{
+				GRPCSpec: &vmv1.OTLPGRPCSpec{ListenPort: 4317},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VTSingle) {
+			var got corev1.Service
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &got))
+			require.Len(t, got.Spec.Ports, 2)
+			assert.Equal(t, "otlp-grpc", got.Spec.Ports[1].Name)
+			assert.Equal(t, int32(4317), got.Spec.Ports[1].Port)
 		},
 	})
 }

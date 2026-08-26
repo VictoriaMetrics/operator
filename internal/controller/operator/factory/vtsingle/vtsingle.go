@@ -219,12 +219,14 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	if len(r.Spec.ExtraEnvs) > 0 || len(r.Spec.ExtraEnvsFrom) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	args = build.AddOTLPGRPCArgsTo(args, r.Spec.GRPCSpec, tlsServerConfigMountPath)
 
 	var envs []corev1.EnvVar
 	envs = append(envs, r.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
+	ports = build.AddOTLPGRPCPortTo(ports, r.Spec.GRPCSpec)
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if !isStorageEmpty(r.Spec.Storage) {
 		pvcSrc = &corev1.PersistentVolumeClaimVolumeSource{
@@ -235,6 +237,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	if err != nil {
 		return nil, err
 	}
+	volumes, vmMounts = build.AddOTLPGRPCTLSConfigToVolumes(volumes, vmMounts, r.Spec.GRPCSpec, tlsServerConfigMountPath)
 
 	for _, s := range r.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -325,10 +328,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	owner := cr.AsOwner()
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddOTLPGRPCPortToService(svc, prevCR.Spec.GRPCSpec)
+		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
-	svc := build.Service(cr, cr.Spec.Port, nil)
+	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddOTLPGRPCPortToService(svc, cr.Spec.GRPCSpec)
+	})
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(svc, s)
 		if additionalService.Name == svc.Name {

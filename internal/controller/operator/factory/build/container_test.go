@@ -393,7 +393,9 @@ func TestAddSyslogArgsTo(t *testing.T) {
 							Name: "tls",
 						},
 					},
-					KeyFile: "/etc/vm/secrets/tls/key",
+					KeyFile:      "/etc/vm/secrets/tls/key",
+					MinVersion:   "TLS12",
+					CipherSuites: []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"},
 				},
 			},
 		},
@@ -411,10 +413,99 @@ func TestAddSyslogArgsTo(t *testing.T) {
 		"-syslog.tls=,true",
 		"-syslog.tlsCertFile=,/etc/vm/tls-server-secrets/tls/CERT",
 		"-syslog.tlsKeyFile=,/etc/vm/secrets/tls/key",
+		"-syslog.tlsCipherSuites=,'TLS_AES_128_GCM_SHA256,TLS_CHACHA20_POLY1305_SHA256'",
+		"-syslog.tlsMinVersion=TLS12",
 		"-syslog.listenAddr.udp=:3001",
 		"-syslog.compressMethod.udp=zstd",
 	}
 	f(&spec, expected)
+}
+
+func TestAddOTLPGRPCArgsTo(t *testing.T) {
+	f := func(grpcSpec *vmv1.OTLPGRPCSpec, wantArgs []string) {
+		t.Helper()
+		args := AddOTLPGRPCArgsTo(nil, grpcSpec, "/etc/vt/tls-server-secrets")
+		assert.Equal(t, wantArgs, args)
+	}
+	f(nil, nil)
+
+	// no tls
+	f(&vmv1.OTLPGRPCSpec{ListenPort: 4317}, []string{
+		"-otlpGRPCListenAddr=:4317",
+	})
+
+	// with tls, cert/key from files
+	f(&vmv1.OTLPGRPCSpec{
+		ListenPort: 4317,
+		TLSConfig: &vmv1.TLSServerConfig{
+			CertFile: "/etc/certs/tls.crt",
+			KeyFile:  "/etc/certs/tls.key",
+		},
+	}, []string{
+		"-otlpGRPCListenAddr=:4317",
+		"-otlpGRPC.tls=true",
+		"-otlpGRPC.tlsCertFile=/etc/certs/tls.crt",
+		"-otlpGRPC.tlsKeyFile=/etc/certs/tls.key",
+	})
+
+	// with tls, cert/key from secrets, minVersion and cipherSuites
+	f(&vmv1.OTLPGRPCSpec{
+		ListenPort: 4317,
+		TLSConfig: &vmv1.TLSServerConfig{
+			CertSecret: &corev1.SecretKeySelector{
+				Key:                  "CERT",
+				LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+			},
+			KeySecret: &corev1.SecretKeySelector{
+				Key:                  "KEY",
+				LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+			},
+			MinVersion:   "TLS13",
+			CipherSuites: []string{"TLS_AES_128_GCM_SHA256"},
+		},
+	}, []string{
+		"-otlpGRPCListenAddr=:4317",
+		"-otlpGRPC.tls=true",
+		"-otlpGRPC.tlsCertFile=/etc/vt/tls-server-secrets/tls/CERT",
+		"-otlpGRPC.tlsKeyFile=/etc/vt/tls-server-secrets/tls/KEY",
+		"-otlpGRPC.tlsMinVersion=TLS13",
+		"-otlpGRPC.tlsCipherSuites=TLS_AES_128_GCM_SHA256",
+	})
+}
+
+func TestAddOTLPGRPCPortTo(t *testing.T) {
+	assert.Nil(t, AddOTLPGRPCPortTo(nil, nil))
+	ports := AddOTLPGRPCPortTo(nil, &vmv1.OTLPGRPCSpec{ListenPort: 4317})
+	assert.Equal(t, []corev1.ContainerPort{
+		{Name: "otlp-grpc", Protocol: corev1.ProtocolTCP, ContainerPort: 4317},
+	}, ports)
+}
+
+func TestAddOTLPGRPCTLSConfigToVolumes(t *testing.T) {
+	volumes, mounts := AddOTLPGRPCTLSConfigToVolumes(nil, nil, nil, "/etc/vt/tls-server-secrets")
+	assert.Nil(t, volumes)
+	assert.Nil(t, mounts)
+
+	grpcSpec := &vmv1.OTLPGRPCSpec{
+		ListenPort: 4317,
+		TLSConfig: &vmv1.TLSServerConfig{
+			CertSecret: &corev1.SecretKeySelector{
+				Key:                  "CERT",
+				LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+			},
+			KeySecret: &corev1.SecretKeySelector{
+				Key:                  "KEY",
+				LocalObjectReference: corev1.LocalObjectReference{Name: "tls"},
+			},
+		},
+	}
+	volumes, mounts = AddOTLPGRPCTLSConfigToVolumes(nil, nil, grpcSpec, "/etc/vt/tls-server-secrets")
+	require.Len(t, volumes, 1)
+	require.Len(t, mounts, 1)
+	assert.Equal(t, "secret-tls-tls", volumes[0].Name)
+	assert.Equal(t, "tls", volumes[0].Secret.SecretName)
+	assert.Equal(t, "secret-tls-tls", mounts[0].Name)
+	assert.Equal(t, "/etc/vt/tls-server-secrets/tls", mounts[0].MountPath)
 }
 
 func TestStorageVolumeMountsTo(t *testing.T) {

@@ -69,7 +69,7 @@ func (r *VMAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;watch;list
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
 // +kubebuilder:rbac:groups="",resources=events;endpoints;services,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete;patch

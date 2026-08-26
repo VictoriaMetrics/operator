@@ -102,12 +102,6 @@ type VTSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
-	// the CR name is used directly instead of the default "<type>-<name>" convention.
-	// +optional
-	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
-
 	// ComponentVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
 	// +optional
@@ -281,9 +275,6 @@ func (cr *VTSingle) ResourceLabels(input map[string]string) map[string]string {
 
 // PrefixedName format name of the component with hard-coded prefix
 func (cr *VTSingle) PrefixedName() string {
-	if cr.Spec.UseLegacyNaming {
-		return cr.Name
-	}
 	return fmt.Sprintf("vtsingle-%s", cr.Name)
 }
 
@@ -354,6 +345,11 @@ func (cr *VTSingle) AsURL(isExtra bool) string {
 	}
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+}
+
+// GetRemoteWriteURL returns the native insert URL for VTSingle
+func (cr *VTSingle) GetRemoteWriteURL() string {
+	return cr.AsURL(false) + "/insert/native"
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

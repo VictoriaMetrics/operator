@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
-	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,49 +29,10 @@ type AgentMetrics interface {
 // GetMetricsAddrs discovers the agent's active endpoints from EndpointSlices and
 // returns the full metrics URL for each ready endpoint.
 func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetrics) sets.Set[string] {
-	var esl discoveryv1.EndpointSliceList
-	if err := rclient.List(ctx, &esl,
-		client.MatchingLabels{discoveryv1.LabelServiceName: agent.PrefixedName()},
-		client.InNamespace(agent.GetNamespace()),
-	); err != nil {
+	addrs, err := DiscoverEndpointAddrs(ctx, rclient, agent.GetNamespace(), agent.PrefixedName(), "http", agent.ProbeScheme(), agent.GetMetricsPath())
+	if err != nil {
 		logger.WithContext(ctx).Error(err, "failed to load endpointslices", "service", agent.PrefixedName())
 		return nil
-	}
-	if len(esl.Items) == 0 {
-		return nil
-	}
-	addrs := sets.New[string]()
-	for i := range esl.Items {
-		es := &esl.Items[i]
-		var port int32
-		for _, p := range es.Ports {
-			if p.Name != nil && *p.Name == "http" && p.Port != nil {
-				port = *p.Port
-			}
-		}
-		if port == 0 {
-			continue
-		}
-		for _, ep := range es.Endpoints {
-			if ep.Conditions.Ready != nil && !*ep.Conditions.Ready {
-				continue
-			}
-			for _, a := range ep.Addresses {
-				if a == "" {
-					continue
-				}
-				host := fmt.Sprintf("%s:%d", a, port)
-				if es.AddressType == discoveryv1.AddressTypeIPv6 {
-					host = fmt.Sprintf("[%s]:%d", a, port)
-				}
-				u := &url.URL{
-					Host:   host,
-					Scheme: strings.ToLower(agent.ProbeScheme()),
-					Path:   agent.GetMetricsPath(),
-				}
-				addrs.Insert(u.String())
-			}
-		}
 	}
 	return addrs
 }

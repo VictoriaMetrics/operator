@@ -62,8 +62,6 @@ import (
 	webhookv1beta1 "github.com/VictoriaMetrics/operator/internal/webhook/operator/v1beta1"
 )
 
-// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list
-
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 

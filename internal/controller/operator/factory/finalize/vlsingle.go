@@ -27,7 +27,6 @@ func OnVLSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLSin
 			Name:      cr.GetServiceAccountName(),
 			Namespace: ns,
 		}},
-		&corev1.PersistentVolumeClaim{ObjectMeta: objMeta},
 	}
 	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +37,13 @@ func OnVLSingleDelete(ctx context.Context, rclient client.Client, cr *vmv1.VLSin
 	if config.MustGetBaseConfig().VPAAPIEnabled {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	objsToRemove = append(objsToRemove, cr)
 	deleteOwnerReferences := make([]bool, len(objsToRemove))
+
+	deleteOwnerReferences = append(deleteOwnerReferences, !cr.Spec.RemovePvcAfterDelete)
+	objsToRemove = append(objsToRemove, &corev1.PersistentVolumeClaim{ObjectMeta: objMeta})
+
+	deleteOwnerReferences = append(deleteOwnerReferences, false)
+	objsToRemove = append(objsToRemove, cr)
+
 	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
 }

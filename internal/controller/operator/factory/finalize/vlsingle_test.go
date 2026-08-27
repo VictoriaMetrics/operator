@@ -17,9 +17,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestOnVTSingleDelete(t *testing.T) {
+func TestOnVLSingleDelete(t *testing.T) {
 	type opts struct {
-		cr                *vmv1.VTSingle
+		cr                *vmv1.VLSingle
 		predefinedObjects []runtime.Object
 		verify            func(client client.Client)
 	}
@@ -30,7 +30,7 @@ func TestOnVTSingleDelete(t *testing.T) {
 		t.Helper()
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
-		err := OnVTSingleDelete(ctx, cl, o.cr)
+		err := OnVLSingleDelete(ctx, cl, o.cr)
 		assert.NoError(t, err)
 
 		if o.verify != nil {
@@ -38,17 +38,17 @@ func TestOnVTSingleDelete(t *testing.T) {
 		}
 	}
 
-	cr := &vmv1.VTSingle{
+	cr := &vmv1.VLSingle{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "operator.victoriametrics.com/v1",
-			Kind:       "VTSingle",
+			Kind:       "VLSingle",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:       "test-vtsingle",
+			Name:       "test-vlsingle",
 			Namespace:  "default",
 			Finalizers: []string{vmv1beta1.FinalizerName},
 		},
-		Spec: vmv1.VTSingleSpec{
+		Spec: vmv1.VLSingleSpec{
 			RemovePvcAfterDelete: true,
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
@@ -103,10 +103,10 @@ func TestOnVTSingleDelete(t *testing.T) {
 		},
 		verify: func(cl client.Client) {
 			nsnCR := types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}
-			var vtsingle vmv1.VTSingle
-			err := cl.Get(ctx, nsnCR, &vtsingle)
+			var vlsingle vmv1.VLSingle
+			err := cl.Get(ctx, nsnCR, &vlsingle)
 			assert.NoError(t, err)
-			assert.Empty(t, vtsingle.Finalizers)
+			assert.Empty(t, vlsingle.Finalizers)
 
 			nsnPrefixed := types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 
@@ -142,7 +142,7 @@ func TestOnVTSingleDelete(t *testing.T) {
 
 	// RemovePvcAfterDelete=false strips the owner reference so pvc is orphaned
 	cr2 := cr.DeepCopy()
-	cr2.Name = "test-vtsingle-2"
+	cr2.Name = "test-vlsingle-2"
 	cr2.Spec.RemovePvcAfterDelete = false
 
 	f(opts{

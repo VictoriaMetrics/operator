@@ -72,7 +72,7 @@ func (r *VMAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
 // +kubebuilder:rbac:groups="",resources=events;endpoints;services,verbs=*
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete;patch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update;patch;delete
 // +kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=get;watch;list
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=*,verbs=*

@@ -14,10 +14,11 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.150.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.150.0) version
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.30.2](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1302) version
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.30.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1303) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.11.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.11.0) version
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2.
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add typed `spec.writer.batchMaxSeries`, `spec.writer.batchMaxBytes`, and `spec.writer.metricPrefixCacheMaxEntries` fields for the bounded writer controls introduced in [vmanomaly v1.30.3](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1303). See [#2542](https://github.com/VictoriaMetrics/operator/pull/2542).
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): Add `k8s_version` label to `vm_app_version` metric.
 * FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add a unified `operator_controller_errors_total{controller, namespaced_name, reason}` metric covering all reconcile failure categories (`get_object`, `parse_object`, `cancel_context`, `conflict`, `other`) across every controller, replacing several single-purpose counters that will be removed in a future release.
 * FEATURE: [vtagent](https://docs.victoriametrics.com/operator/resources/vtagent/): add `VTAgent` CRD for [vtagent](https://docs.victoriametrics.com/victoriatraces/vtagent/), which replicates ingested OTLP trace spans across one or more VictoriaTraces instances using a persistent queue on disk. See [#2510](https://github.com/VictoriaMetrics/operator/pull/2510).

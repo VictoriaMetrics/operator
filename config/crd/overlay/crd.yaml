@@ -39504,6 +39504,17 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  batchMaxBytes:
+                    description: |-
+                      BatchMaxBytes defines the maximum serialized payload size in bytes for one VictoriaMetrics import request.
+                      A single indivisible NDJSON time series may exceed this limit.
+                    minimum: 1
+                    type: integer
+                  batchMaxSeries:
+                    description: BatchMaxSeries defines the maximum number of output
+                      time series in one VictoriaMetrics import request.
+                    minimum: 1
+                    type: integer
                   bearer:
                     description: 'BearerAuth defines authorization with Authorization:
                       Bearer header'
@@ -39572,6 +39583,12 @@ spec:
                     - __name__
                     - for
                     type: object
+                  metricPrefixCacheMaxEntries:
+                    description: |-
+                      MetricPrefixCacheMaxEntries defines the maximum number of prepared metric-label prefixes retained by the writer.
+                      Set to 0 to disable cross-cycle prefix caching.
+                    minimum: 0
+                    type: integer
                   tenantID:
                     description: TenantID defines for VictoriaMetrics Cluster version
                       only, tenants are identified by accountID, accountID:projectID

@@ -8,11 +8,14 @@ import (
 
 // Ref: https://docs.victoriametrics.com/anomaly-detection/components/writer/#vm-writer
 type writer struct {
-	Class                   string              `yaml:"class"`
-	DatasourceURL           string              `yaml:"datasource_url"`
-	MetricFormat            *writerMetricFormat `yaml:"metric_format,omitempty"`
-	ConnectionRetryAttempts int                 `yaml:"connection_retry_attempts,omitempty"`
-	ClientConfig            clientConfig        `yaml:",inline"`
+	Class                       string              `yaml:"class"`
+	DatasourceURL               string              `yaml:"datasource_url"`
+	MetricFormat                *writerMetricFormat `yaml:"metric_format,omitempty"`
+	ConnectionRetryAttempts     int                 `yaml:"connection_retry_attempts,omitempty"`
+	BatchMaxSeries              int                 `yaml:"batch_max_series,omitempty"`
+	BatchMaxBytes               int                 `yaml:"batch_max_bytes,omitempty"`
+	MetricPrefixCacheMaxEntries *int                `yaml:"metric_prefix_cache_max_entries,omitempty"`
+	ClientConfig                clientConfig        `yaml:",inline"`
 }
 
 func (w *writer) validate() error {

@@ -74,6 +74,9 @@ spec:
     workers: 0
   writer:
     datasourceURL: http://vmsingle-write-example:8428
+    batchMaxSeries: 1000
+    batchMaxBytes: 4194304
+    metricPrefixCacheMaxEntries: 10000
   monitoring:
     push:
       url: http://vmsingle-monitoring-example:8428
@@ -84,6 +87,8 @@ spec:
 Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/), [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/), and `reader.queries` are defined in `spec.configRawYaml` or `spec.configSecret`. Reader connection settings and `reader.workers` are configured under `spec.reader`; writer and monitoring connection settings are configured under `spec.writer` and `spec.monitoring`.
 
 Starting with vmanomaly v1.30.2, stable KPI policies - `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` - should be configured on each `reader.queries.<alias>`. Model-level placement remains compatible but is deprecated. `settings.native_threads_per_worker` remains in the raw `settings` section because `VMAnomaly` does not expose typed service settings. A value of `0` selects the automatic limit for both `spec.reader.workers` and `settings.native_threads_per_worker`.
+
+Starting with vmanomaly v1.30.3, `spec.writer.batchMaxSeries` and `spec.writer.batchMaxBytes` bound VictoriaMetrics import requests, while `spec.writer.metricPrefixCacheMaxEntries` bounds prepared metric-label prefix caching. Set the cache limit to `0` to disable cross-cycle caching. Rendezvous sharding remains opt-in through `spec.extraEnvs` with `VMANOMALY_SHARDING_STRATEGY=RENDEZVOUS`; the existing Operator sharding fields and defaults are unchanged.
 
 This was done to allow to use K8s secrets and configmaps as a source for TLS, basic and bearer secrets for reader, writer and monitoring endpoints. Also structure of this sections differ from Anomaly Detection configuration structure.
 

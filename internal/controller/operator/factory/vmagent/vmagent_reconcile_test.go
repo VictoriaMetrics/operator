@@ -9,12 +9,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -22,6 +24,32 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+	}
+	rbacName := cr.GetRBACName()
+	foreignNamespace := "other-reconciler-ns"
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace}},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}},
+	})
+
+	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{WatchNamespaces: []string{cr.Namespace}, VPAAPIEnabled: true}))
+	for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+		err := fclient.Get(ctx, types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, obj)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: rbacName, Namespace: foreignNamespace}, obj))
+	}
+	assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &vpav1.VerticalPodAutoscaler{})))
+}
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {

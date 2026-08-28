@@ -117,7 +117,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	r.Client.Scheme().Default(&instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance.DeepCopy(), r.name, func() (ctrl.Result, error) {
-		if err := vmsingle.CreateOrUpdate(ctx, &instance, r.Client); err != nil {
+		if err := vmsingle.CreateOrUpdateWithConfig(ctx, &instance, r, r.BaseConf); err != nil {
 			return result, fmt.Errorf("failed create or update vmsingle: %w", err)
 		}
 		return result, nil
@@ -179,7 +179,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.GetNamespace(),
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, fmt.Sprintf("cannot match VMSingle and %T", instance))
 				continue
@@ -189,7 +189,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 			}
 		}
 		g.Go(func() error {
-			if configErr := vmsingle.CreateOrUpdateScrapeConfig(itemCtx, rclient, item, instance); configErr != nil {
+			if configErr := vmsingle.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, r.BaseConf); configErr != nil {
 				itemLog.Error(configErr, "cannot update VMSingle scrape configuration")
 				return configErr
 			}

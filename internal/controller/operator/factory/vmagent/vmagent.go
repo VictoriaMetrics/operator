@@ -131,7 +131,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.C
 	return CreateOrUpdateWithConfig(ctx, cr, rclient, config.MustGetBaseConfig())
 }
 
-func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, baseConf *config.BaseOperatorConf) error {
+func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, cfg *config.BaseOperatorConf) error {
 	if cr.Paused() {
 		return nil
 	}
@@ -139,12 +139,11 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
-		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+		if err := deleteOrphaned(ctx, rclient, cr, cfg); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
 	owner := cr.AsOwner()
-	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -154,7 +153,7 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasRemoteWriteSecrets() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(baseConf.WatchNamespaces)); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
@@ -184,7 +183,7 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac)
+	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac, cfg)
 	if err != nil {
 		return err
 	}
@@ -1245,7 +1244,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	return args, nil
 }
 
-func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, baseConf *config.BaseOperatorConf) error {
 	svcName := cr.PrefixedName()
 	keepServices := sets.New(svcName)
 	keepServiceScrapes := sets.New[string]()
@@ -1283,7 +1282,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.Spec.HPA == nil {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
-	if config.MustGetBaseConfig().VPAAPIEnabled {
+	if baseConf.VPAAPIEnabled {
 		if cr.PrefixedName() != cr.Name {
 			objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
 		}
@@ -1297,14 +1296,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacName := cr.GetRBACName()
-		watchNamespaces := config.MustGetBaseConfig().WatchNamespaces
-		if len(watchNamespaces) == 0 {
+		rbacNamespaces := cr.RBACNamespaces(baseConf.WatchNamespaces)
+		if len(rbacNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			for _, ns := range watchNamespaces {
+			for _, ns := range rbacNamespaces {
 				objsToRemove = append(objsToRemove,
 					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
 					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
@@ -1331,18 +1330,22 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 // CreateOrUpdateScrapeConfig builds scrape configuration for VMAgent
 func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object) error {
+	return CreateOrUpdateScrapeConfigWithConfig(ctx, rclient, cr, childObject, config.MustGetBaseConfig())
+}
+
+func CreateOrUpdateScrapeConfigWithConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, childObject client.Object, cfg *config.BaseOperatorConf) error {
 	var prevCR *vmv1beta1.VMAgent
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac)
+	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac, cfg)
 	return err
 }
 
 // createOrUpdateScrapeConfig reconciles the main scrape config.
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache) (int, error) {
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent, childObject client.Object, ac *build.AssetsCache, cfg *config.BaseOperatorConf) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
 		if !cr.HasRemoteWriteSecrets() {
 			return 0, nil
@@ -1386,7 +1389,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		Namespace:            cr.Namespace,
 		APIServerConfig:      cr.Spec.APIServerConfig,
 		MustUseNodeSelector:  cr.Spec.DaemonSetMode,
-		HasClusterWideAccess: config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
+		HasClusterWideAccess: len(cfg.WatchNamespaces) == 0 || !cr.IsOwnsServiceAccount(),
 		ExternalLabels:       cr.ExternalLabels(),
 	}
 	if !pos.HasClusterWideAccess {
@@ -1408,7 +1411,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	// Split jobs into gzip-compressed buckets, each fitting within the Kubernetes Secret limit.
-	buckets, err := build.PackItems(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes, 150)
+	buckets, err := build.PackItems(jobs, cfg.ConfigDataBudgetBytes, 150)
 	if err != nil {
 		return 0, fmt.Errorf("splitting scrape config into buckets: %w", err)
 	}

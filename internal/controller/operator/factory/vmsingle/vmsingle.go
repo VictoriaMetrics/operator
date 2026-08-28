@@ -77,16 +77,20 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for single node resource
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
+	return CreateOrUpdateWithConfig(ctx, cr, rclient, config.MustGetBaseConfig())
+}
+
+func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, cfg *config.BaseOperatorConf) error {
 	if cr.Paused() {
 		return nil
 	}
 
 	var prevCR *vmv1beta1.VMSingle
-	cfg := config.MustGetBaseConfig()
+	rbacNamespaces := cr.RBACNamespaces(cfg.WatchNamespaces)
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
-		if err := deleteOrphaned(ctx, rclient, cr, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
+		if err := deleteOrphaned(ctx, rclient, cr, cfg); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
@@ -100,7 +104,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, rbacNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
 		}
@@ -131,7 +135,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac)
+	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac, baseConf)
 	if err != nil {
 		return err
 	}
@@ -691,7 +695,7 @@ func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
 }
 
-func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, watchNamespaces []string) error {
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, baseConf *config.BaseOperatorConf) error {
 	// TODO check storage for nil
 
 	svcName := cr.PrefixedName()
@@ -721,10 +725,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		return fmt.Errorf("cannot remove configmaps: %w", err)
 	}
 
-	cfg := config.MustGetBaseConfig()
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
-	if cfg.VPAAPIEnabled && cr.Spec.VPA == nil {
+	if baseConf.VPAAPIEnabled && cr.Spec.VPA == nil {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if cr.Spec.NetworkPolicy == nil {
@@ -733,13 +736,14 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacName := cr.GetRBACName()
-		if len(watchNamespaces) == 0 {
+		rbacNamespaces := cr.RBACNamespaces(baseConf.WatchNamespaces)
+		if len(rbacNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			for _, ns := range watchNamespaces {
+			for _, ns := range rbacNamespaces {
 				objsToRemove = append(objsToRemove,
 					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
 					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
@@ -766,18 +770,22 @@ func getAssetsCache(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 // CreateOrUpdateScrapeConfig builds scrape configuration for VMSingle
 func CreateOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject client.Object) error {
+	return CreateOrUpdateScrapeConfigWithConfig(ctx, rclient, cr, childObject, config.MustGetBaseConfig())
+}
+
+func CreateOrUpdateScrapeConfigWithConfig(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMSingle, childObject client.Object, cfg *config.BaseOperatorConf) error {
 	var prevCR *vmv1beta1.VMSingle
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	ac := getAssetsCache(ctx, rclient, cr)
-	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac)
+	_, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, childObject, ac, cfg)
 	return err
 }
 
 // createOrUpdateScrapeConfig reconciles the main scrape config.
-func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache) (int, error) {
+func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle, childObject client.Object, ac *build.AssetsCache, cfg *config.BaseOperatorConf) (int, error) {
 	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 		return 0, nil
 	}
@@ -785,7 +793,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	pos := &vmscrapes.ParsedObjects{
 		Namespace:            cr.Namespace,
 		APIServerConfig:      cr.Spec.APIServerConfig,
-		HasClusterWideAccess: config.IsClusterWideAccessAllowed() || !cr.IsOwnsServiceAccount(),
+		HasClusterWideAccess: len(cfg.WatchNamespaces) == 0 || !cr.IsOwnsServiceAccount(),
 		ExternalLabels:       cr.ExternalLabels(),
 	}
 	if !pos.HasClusterWideAccess {
@@ -805,7 +813,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		return 0, fmt.Errorf("generating config for vmsingle failed: %w", err)
 	}
 
-	buckets, err := build.PackItems(jobs, config.MustGetBaseConfig().ConfigDataBudgetBytes, 150)
+	buckets, err := build.PackItems(jobs, cfg.ConfigDataBudgetBytes, 150)
 	if err != nil {
 		return 0, fmt.Errorf("splitting scrape config into buckets for vmsingle: %w", err)
 	}

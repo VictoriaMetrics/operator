@@ -25,7 +25,6 @@ import (
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -249,8 +248,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 	return originResult, err
 }
 
-func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector *metav1.LabelSelector) (bool, error) {
-	cfg := config.MustGetBaseConfig()
+func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector *metav1.LabelSelector, watchNamespaces []string) (bool, error) {
 	switch {
 	case selector == nil:
 		if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
@@ -259,7 +257,7 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 		return false, nil
 	case len(selector.MatchLabels) == 0 && len(selector.MatchExpressions) == 0:
 		return true, nil
-	case len(cfg.WatchNamespaces) > 0:
+	case len(watchNamespaces) > 0:
 		// selector labels for namespace ignores by default for multi-namespace mode
 		return true, nil
 	}
@@ -283,13 +281,13 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 
 // isSelectorsMatchesTargetCRD checks if targetCRD matches sourceCRD by entity selectors and selectAll.
 // see https://docs.victoriametrics.com/operator/resources/vmagent/#scraping for details
-func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, opts *k8stools.SelectorOpts) (bool, error) {
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, opts *k8stools.SelectorOpts, watchNamespaces []string) (bool, error) {
 	// selectAll only works when opts.NamespaceSelector and opts.ObjectSelector opts are undefined
 	if opts == nil || (opts.ObjectSelector == nil && opts.NamespaceSelector == nil) {
 		return opts.SelectAll, nil
 	}
 	// check opts.NamespaceSelector, only return when NS not match
-	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, opts.NamespaceSelector); !isNsMatch || err != nil {
+	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, opts.NamespaceSelector, watchNamespaces); !isNsMatch || err != nil {
 		return isNsMatch, err
 	}
 	// in case of empty namespace object must be synchronized in any way,

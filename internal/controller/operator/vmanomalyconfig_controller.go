@@ -111,7 +111,7 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				ObjectSelector:    item.Spec.ConfigSelector,
 				NamespaceSelector: item.Spec.ConfigNamespaceSelector,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
 				l.Error(err, "cannot match vmanomaly and vmanomalyconfig")
 				continue

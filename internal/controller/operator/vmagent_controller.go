@@ -188,7 +188,7 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.GetNamespace(),
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, fmt.Sprintf("cannot match VMAgent and %T", instance))
 				continue
@@ -198,7 +198,7 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 			}
 		}
 		g.Go(func() error {
-			if configErr := vmagent.CreateOrUpdateScrapeConfig(itemCtx, rclient, item, instance); configErr != nil {
+			if configErr := vmagent.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, r.BaseConf); configErr != nil {
 				itemLog.Error(configErr, "cannot update VMAgent scrape configuration")
 				return configErr
 			}

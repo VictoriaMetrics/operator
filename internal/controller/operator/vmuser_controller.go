@@ -130,7 +130,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				ObjectSelector:    item.Spec.UserSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, "cannot match vmauth and vmuser")
 				continue

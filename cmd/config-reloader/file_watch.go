@@ -276,6 +276,7 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		logger.Infof("base dir: %s hash not the same, update needed", eventPath)
 		return newHash, true, nil
 	}
+	syncedOnStart := false
 	for _, p := range dw.pairs {
 		newHash, _, err := updateCache(p.src)
 		if err != nil {
@@ -288,6 +289,7 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		if newHash != nil {
 			filesContentHashPath[p.src] = newHash
 		}
+		syncedOnStart = true
 	}
 	triggerReload := func() {
 		select {
@@ -297,7 +299,7 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 	}
 	go func() {
 		defer dw.wg.Done()
-		if len(dw.pairs) > 0 {
+		if syncedOnStart {
 			// Reload here to catch changes between container start and initial sync
 			logger.Infof("triggering reload after initial sync")
 			triggerReload()

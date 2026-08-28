@@ -190,11 +190,11 @@ func TestDirWatcherRetriesFailedInitialSyncOnNextEvent(t *testing.T) {
 	defer dw.close()
 	defer cancel()
 
-	// Drain the initial reload, which fires regardless of the failing pair.
+	// No startup reload: nothing was synced.
 	select {
 	case <-updates:
-	case <-time.After(2 * time.Second):
-		t.Fatal("expected update after initial sync")
+		t.Fatal("did not expect update while the initial sync fails")
+	case <-time.After(300 * time.Millisecond):
 	}
 
 	if err := os.Remove(blocker); err != nil {

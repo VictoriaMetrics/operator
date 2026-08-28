@@ -135,7 +135,7 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclie
 	}
 
 	ac := getAssetsCache(ctx, rclient, cr)
-	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac, baseConf)
+	extraCount, err := createOrUpdateScrapeConfig(ctx, rclient, cr, prevCR, nil, ac, cfg)
 	if err != nil {
 		return err
 	}

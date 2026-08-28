@@ -29,16 +29,18 @@ func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
 	ctx := context.Background()
 	cr := &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+		Spec:       vmv1beta1.VMAgentSpec{ServiceAccountName: "external"},
 	}
 	rbacName := cr.GetRBACName()
+	owner := cr.AsOwner()
 	foreignNamespace := "other-reconciler-ns"
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
 		cr,
-		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
-		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
-		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace}},
-		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace}},
-		&vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
 	})
 
 	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{WatchNamespaces: []string{cr.Namespace}, VPAAPIEnabled: true}))

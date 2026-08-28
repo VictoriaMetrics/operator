@@ -109,7 +109,7 @@ func TestVMAgent_Reconcile_AgentSync_Managed(t *testing.T) {
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{managed})
 	r := &VMAgentReconciler{
 		Client:       fclient,
-		BaseConf:     &config.BaseOperatorConf{},
+		BaseConf:     config.MustGetBaseConfig(),
 		Log:          ctrl.Log.WithName("test"),
 		OriginScheme: fclient.Scheme(),
 	}
@@ -156,7 +156,7 @@ func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{unmanaged})
 	r := &VMAgentReconciler{
 		Client:       fclient,
-		BaseConf:     &config.BaseOperatorConf{},
+		BaseConf:     config.MustGetBaseConfig(),
 		Log:          ctrl.Log.WithName("test"),
 		OriginScheme: fclient.Scheme(),
 	}
@@ -187,8 +187,10 @@ func TestVMAgent_Reconcile_SkipsUnselectedNamespaces(t *testing.T) {
 		},
 	}
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent})
+	baseConf := *config.MustGetBaseConfig()
+	baseConf.WatchNamespaces = []string{agentNamespace, cleanupNamespace}
 	reconciler := &VMAgentReconciler{}
-	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &config.BaseOperatorConf{WatchNamespaces: []string{agentNamespace, cleanupNamespace}})
+	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 
 	_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace}})
 	if err != nil {
@@ -216,8 +218,10 @@ func TestVMAgent_Reconcile_UsesReconcilerWatchNamespaces(t *testing.T) {
 		},
 	}
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent})
+	baseConf := *config.MustGetBaseConfig()
+	baseConf.WatchNamespaces = []string{vmagent.Namespace}
 	reconciler := &VMAgentReconciler{}
-	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &config.BaseOperatorConf{WatchNamespaces: []string{vmagent.Namespace}})
+	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 
 	if _, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace}}); err != nil {
 		t.Fatal(err)

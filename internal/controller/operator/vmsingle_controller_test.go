@@ -105,8 +105,10 @@ func TestVMSingle_Reconcile_UsesReconcilerWatchNamespaces(t *testing.T) {
 		},
 	}
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmsingle})
+	baseConf := *config.MustGetBaseConfig()
+	baseConf.WatchNamespaces = []string{vmsingle.Namespace}
 	reconciler := &VMSingleReconciler{}
-	reconciler.Init("vmsingle", fclient, logr.Discard(), scheme.Scheme, &config.BaseOperatorConf{WatchNamespaces: []string{vmsingle.Namespace}})
+	reconciler.Init("vmsingle", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 	_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: vmsingle.Name, Namespace: vmsingle.Namespace}})
 	require.NoError(t, err)
 

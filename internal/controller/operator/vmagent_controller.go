@@ -155,14 +155,14 @@ func (*VMAgentReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[stri
 	return false
 }
 
-func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
+func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Client, cfg *config.BaseOperatorConf, instance client.Object) (err error) {
 	if build.IsControllerDisabled("VMAgent") && agentReconcileLimit.Throttle() {
 		return nil
 	}
 	agentSync.Lock()
 	defer agentSync.Unlock()
 	var objects vmv1beta1.VMAgentList
-	if err = k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMAgentList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, rclient, cfg.WatchNamespaces, func(dst *vmv1beta1.VMAgentList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		err = fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
@@ -188,7 +188,7 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.GetNamespace(),
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, r.BaseConf.WatchNamespaces)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, cfg.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, fmt.Sprintf("cannot match VMAgent and %T", instance))
 				continue
@@ -198,7 +198,7 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 			}
 		}
 		g.Go(func() error {
-			if configErr := vmagent.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, r.BaseConf); configErr != nil {
+			if configErr := vmagent.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, cfg); configErr != nil {
 				itemLog.Error(configErr, "cannot update VMAgent scrape configuration")
 				return configErr
 			}

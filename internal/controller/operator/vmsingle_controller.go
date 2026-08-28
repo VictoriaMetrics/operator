@@ -145,7 +145,7 @@ func (*VMSingleReconciler) IsDisabled(_ *config.BaseOperatorConf, _ sets.Set[str
 	return false
 }
 
-func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, watchNamespaces []string, instance client.Object) (err error) {
+func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.Client, cfg *config.BaseOperatorConf, instance client.Object) (err error) {
 	if build.IsControllerDisabled("VMSingle") && vmsingleReconcileLimit.Throttle() {
 		return nil
 	}
@@ -153,7 +153,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 	defer vmsingleSync.Unlock()
 
 	var objects vmv1beta1.VMSingleList
-	if err = k8stools.ListObjectsByNamespace(ctx, rclient, watchNamespaces, func(dst *vmv1beta1.VMSingleList) {
+	if err = k8stools.ListObjectsByNamespace(ctx, rclient, cfg.WatchNamespaces, func(dst *vmv1beta1.VMSingleList) {
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		err = fmt.Errorf("cannot list VMSingles for %T: %w", instance, err)
@@ -179,7 +179,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 				ObjectSelector:    objectSelector,
 				DefaultNamespace:  instance.GetNamespace(),
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, r.BaseConf.WatchNamespaces)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, rclient, instance, item, opts, cfg.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, fmt.Sprintf("cannot match VMSingle and %T", instance))
 				continue
@@ -189,7 +189,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 			}
 		}
 		g.Go(func() error {
-			if configErr := vmsingle.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, r.BaseConf); configErr != nil {
+			if configErr := vmsingle.CreateOrUpdateScrapeConfigWithConfig(itemCtx, rclient, item, instance, cfg); configErr != nil {
 				itemLog.Error(configErr, "cannot update VMSingle scrape configuration")
 				return configErr
 			}

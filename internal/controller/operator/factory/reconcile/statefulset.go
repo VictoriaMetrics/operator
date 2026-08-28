@@ -27,6 +27,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=pods,verbs=delete
 // +kubebuilder:rbac:groups="",resources=pods/eviction,verbs=create
 
 const podRevisionLabel = "controller-revision-hash"

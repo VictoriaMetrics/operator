@@ -58,13 +58,15 @@ func (r *VTAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtagents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtagents/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=pods;services,verbs=*
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
+// +kubebuilder:rbac:groups="",resources=services,verbs=*
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create;update;list
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=autoscaling.k8s.io,resources=verticalpodautoscalers,verbs=*
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+
 func (r *VTAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

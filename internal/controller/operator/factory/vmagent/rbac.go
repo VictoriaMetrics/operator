@@ -13,6 +13,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+// +kubebuilder:rbac:groups=route.openshift.io;image.openshift.io,resources=routers/metrics;registry/metrics,verbs=get
+// +kubebuilder:rbac:urls=/metrics;/metrics/resources;/metrics/slis,verbs=get;list;watch
+
 // getScrapeDiscoveryRules returns the K8s service-discovery rules needed in every watched namespace.
 func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
@@ -27,7 +30,7 @@ func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 			Resources: []string{"services", "endpoints", "pods"},
 		},
 		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
+			APIGroups: []string{"networking.k8s.io"},
 			Verbs:     []string{"get", "list", "watch"},
 			Resources: []string{"ingresses"},
 		},
@@ -69,7 +72,7 @@ func getClusterWideRules(cr *vmv1beta1.VMAgent) []rbacv1.PolicyRule {
 			Resources: []string{"nodes", "nodes/metrics", "services", "endpoints", "pods", "namespaces"},
 		},
 		{
-			APIGroups: []string{"networking.k8s.io", "extensions"},
+			APIGroups: []string{"networking.k8s.io"},
 			Verbs:     []string{"get", "list", "watch"},
 			Resources: []string{"ingresses"},
 		},

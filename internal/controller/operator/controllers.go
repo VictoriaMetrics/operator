@@ -187,6 +187,7 @@ func handleReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetada
 }
 
 // +kubebuilder:rbac:groups="",resources=events,verbs=create
+
 func handleReconcileErr(ctx context.Context, rclient client.Client, object client.Object, originResult ctrl.Result, err error) (ctrl.Result, error) {
 	if err == nil || !hasIdentity(object) {
 		return originResult, err

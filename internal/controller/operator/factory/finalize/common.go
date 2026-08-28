@@ -14,6 +14,11 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+// +kubebuilder:rbac:groups="",resources=configmaps/finalizers;persistentvolumeclaims/finalizers;secrets/finalizers;serviceaccounts/finalizers,verbs=*
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers;deployments/finalizers;replicasets;statefulsets/finalizers,verbs=*
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=*
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings/finalizers;clusterroles/finalizers,verbs=*
+
 type crObject interface {
 	AsOwner() metav1.OwnerReference
 	GetNamespace() string

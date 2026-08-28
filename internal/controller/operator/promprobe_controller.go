@@ -61,6 +61,7 @@ func (r *PromProbeReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=probes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=probes/status,verbs=get;update;patch
+
 func (r *PromProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	var instance promv1.Probe

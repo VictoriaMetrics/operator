@@ -29,7 +29,7 @@ Also, you can use single-namespace mode with minimal permissions, see [this sect
 `VMAgent` uses Kubernetes service discovery for scrape targets, so its `ServiceAccount` needs read-only access to Kubernetes discovery objects.
 The example [`vmagent_rbac.yaml` file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_rbac.yaml) creates a `ClusterRole` with these permissions:
 
-- `get`, `list`, and `watch` for `nodes`, `nodes/metrics`, `services`, `endpoints`, `endpointslices`, `pods`, and `ingresses` in core, `networking.k8s.io`, `extensions`, and `discovery.k8s.io` API groups. These permissions allow vmagent to discover scrape targets across the cluster.
+- `get`, `list`, and `watch` for `nodes`, `nodes/metrics`, `services`, `endpoints`, `endpointslices`, `pods`, and `ingresses` in core, `networking.k8s.io`, and `discovery.k8s.io` API groups. These permissions allow vmagent to discover scrape targets across the cluster.
 - `get` for `namespaces` and `configmaps`. These permissions allow namespace metadata lookups and config map reads needed by discovery configuration.
 - `get` for non-resource URLs `/metrics`, `/metrics/resources`, and `/metrics/slis`. These permissions allow scraping Kubernetes API server metrics endpoints when configured.
 - `get` for OpenShift's `routers/metrics` and `registry/metrics` resources in `route.openshift.io` and `image.openshift.io` API groups. These permissions allow scraping OpenShift router and registry metrics when configured.

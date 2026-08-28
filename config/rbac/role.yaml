@@ -2,9 +2,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: vm-operator
-    app.kubernetes.io/managed-by: kustomize
   name: operator
 rules:
 - nonResourceURLs:
@@ -13,214 +10,317 @@ rules:
   - /metrics/slis
   verbs:
   - get
-  - watch
   - list
+  - watch
 - apiGroups:
   - ""
   resources:
   - configmaps
   - configmaps/finalizers
   - endpoints
-  - events
   - persistentvolumeclaims
   - persistentvolumeclaims/finalizers
-  - pods/eviction
   - secrets
   - secrets/finalizers
+  - serviceaccounts/finalizers
   - services
   - services/finalizers
-  - serviceaccounts
-  - serviceaccounts/finalizers
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
   - ""
   resources:
-  - configmaps/status
-  - pods
+  - events
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
   - nodes
   - nodes/metrics
-  - namespaces
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - apps
   resources:
-  - deployments
-  - deployments/finalizers
-  - statefulsets
-  - statefulsets/finalizers
   - daemonsets
   - daemonsets/finalizers
+  - deployments
+  - deployments/finalizers
   - replicasets
   - statefulsets
   - statefulsets/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
   - statefulsets/status
   verbs:
-  - "*"
+  - get
+  - patch
+  - update
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - '*'
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers
+  verbs:
+  - '*'
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - image.openshift.io
+  - route.openshift.io
+  resources:
+  - registry/metrics
+  - routers/metrics
+  verbs:
+  - get
 - apiGroups:
   - monitoring.coreos.com
   resources:
-  - "*"
+  - '*'
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
-  - rbac.authorization.k8s.io
+  - monitoring.coreos.com
   resources:
-  - clusterrolebindings
-  - clusterrolebindings/finalizers
-  - clusterroles
-  - clusterroles/finalizers
-  - roles
-  - rolebindings
+  - alertmanagerconfigs
+  - podmonitors
+  - probes
+  - prometheusrules
+  - scrapeconfigs
+  - servicemonitors
   verbs:
-  - "*"
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - list
   - get
+  - list
   - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - alertmanagerconfigs/status
+  - podmonitors/status
+  - probes/status
+  - prometheusrules/status
+  - scrapeconfigs/status
+  - servicemonitors/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses/finalizers
+  - networkpolicies
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlagents
+  - vlclusters
+  - vldistributed
+  - vlogs
+  - vlsingles
+  - vmagents
+  - vmalertmanagerconfigs
+  - vmalertmanagers
+  - vmalerts
+  - vmanomalies
+  - vmanomalyconfigs
+  - vmauths
+  - vmclusters
+  - vmdistributed
+  - vmpodscrapes
+  - vmprobes
+  - vmrules
+  - vmscrapeconfigs
+  - vmservicescrapes
+  - vmsingles
+  - vmstaticscrapes
+  - vmusers
+  - vtagents
+  - vtclusters
+  - vtsingles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlagents/finalizers
+  - vlogs/finalizers
+  - vmagents/finalizers
+  - vmalertmanagerconfigs/finalizers
+  - vmalertmanagers/finalizers
+  - vmalerts/finalizers
+  - vmanomalies/finalizers
+  - vmauths/finalizers
+  - vmclusters/finalizers
+  - vmnodescrapes
+  - vmnodescrapes/finalizers
+  - vmpodscrapes/finalizers
+  - vmprobes/finalizers
+  - vmrules/finalizers
+  - vmscrapeconfigs/finalizers
+  - vmservicescrapes/finalizers
+  - vmsingles/finalizers
+  - vmstaticscrapes/finalizers
+  - vmusers/finalizers
+  - vtagents/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlagents/status
+  - vlclusters/status
+  - vldistributed/status
+  - vlogs/status
+  - vlsingles/status
+  - vmagents/status
+  - vmalertmanagerconfigs/status
+  - vmalertmanagers/status
+  - vmalerts/status
+  - vmanomalies/status
+  - vmanomalyconfigs/status
+  - vmauths/status
+  - vmclusters/status
+  - vmdistributed/status
+  - vmnodescrapes/status
+  - vmpodscrapes/status
+  - vmprobes/status
+  - vmrules/status
+  - vmscrapeconfigs/status
+  - vmservicescrapes/status
+  - vmsingles/status
+  - vmstaticscrapes/status
+  - vmusers/status
+  - vtagents/status
+  - vtclusters/status
+  - vtsingles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlclusters/finalizers
+  - vldistributed/finalizers
+  - vlsingles/finalizers
+  - vmdistributed/finalizers
+  - vtclusters/finalizers
+  - vtsingles/finalizers
+  verbs:
+  - update
 - apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
   - poddisruptionbudgets/finalizers
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
-  - route.openshift.io
-  - image.openshift.io
+  - rbac.authorization.k8s.io
   resources:
-  - routers/metrics
-  - registry/metrics
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
   verbs:
-  - get
-- apiGroups:
-  - autoscaling
-  verbs:
-  - "*"
-  resources:
-  - horizontalpodautoscalers
-- apiGroups:
-  - autoscaling.k8s.io
-  verbs:
-  - "*"
-  resources:
-  - verticalpodautoscalers
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - ingresses
-  - ingresses/finalizers
-  - networkpolicies
-  verbs:
-  - "*"
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
+  - watch
 - apiGroups:
-  - discovery.k8s.io
+  - rbac.authorization.k8s.io
   resources:
-  - endpointslices
+  - clusterrolebindings/finalizers
+  - clusterroles/finalizers
   verbs:
+  - '*'
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
   - list
   - watch
-  - get
-- apiGroups:
-  - operator.victoriametrics.com
-  resources:
-  - vlagents
-  - vlagents/finalizers
-  - vlagents/status
-  - vlogs
-  - vlogs/finalizers
-  - vlogs/status
-  - vlsingles
-  - vlsingles/finalizers
-  - vlsingles/status
-  - vlclusters
-  - vlclusters/finalizers
-  - vlclusters/status
-  - vtagents
-  - vtagents/finalizers
-  - vtagents/status
-  - vtsingles
-  - vtsingles/finalizers
-  - vtsingles/status
-  - vtclusters
-  - vtclusters/finalizers
-  - vtclusters/status
-  - vmagents
-  - vmagents/finalizers
-  - vmagents/status
-  - vmalertmanagerconfigs
-  - vmalertmanagerconfigs/finalizers
-  - vmalertmanagerconfigs/status
-  - vmalertmanagers
-  - vmalertmanagers/finalizers
-  - vmalertmanagers/status
-  - vmalerts
-  - vmalerts/finalizers
-  - vmalerts/status
-  - vmauths
-  - vmauths/finalizers
-  - vmauths/status
-  - vmclusters
-  - vmclusters/finalizers
-  - vmclusters/status
-  - vmnodescrapes
-  - vmnodescrapes/finalizers
-  - vmnodescrapes/status
-  - vmpodscrapes
-  - vmpodscrapes/finalizers
-  - vmpodscrapes/status
-  - vmprobes
-  - vmprobes/finalizers
-  - vmprobes/status
-  - vmrules
-  - vmrules/finalizers
-  - vmrules/status
-  - vmscrapeconfigs
-  - vmscrapeconfigs/finalizers
-  - vmscrapeconfigs/status
-  - vmservicescrapes
-  - vmservicescrapes/finalizers
-  - vmservicescrapes/status
-  - vmsingles
-  - vmsingles/finalizers
-  - vmsingles/status
-  - vmstaticscrapes
-  - vmstaticscrapes/finalizers
-  - vmstaticscrapes/status
-  - vmusers
-  - vmusers/finalizers
-  - vmusers/status
-  - vmanomalies
-  - vmanomalies/finalizers
-  - vmanomalies/status
-  - vmdistributed
-  - vmdistributed/finalizers
-  - vmdistributed/status
-  - vldistributed
-  - vldistributed/finalizers
-  - vldistributed/status
-  - vmanomalyconfigs
-  - vmanomalyconfigs/finalizers
-  - vmanomalyconfigs/status
-  verbs:
-  - '*'
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes
-  verbs:
-  - '*'

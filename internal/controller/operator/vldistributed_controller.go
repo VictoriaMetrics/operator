@@ -56,6 +56,7 @@ func (r *VLDistributedReconciler) Init(name string, rclient client.Client, l log
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vldistributed/finalizers,verbs=update
+
 func (r *VLDistributedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, l)

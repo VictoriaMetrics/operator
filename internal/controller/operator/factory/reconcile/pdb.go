@@ -14,6 +14,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets;poddisruptionbudgets/finalizers,verbs=*
+
 // PDB creates or updates PodDisruptionBudget
 func PDB(ctx context.Context, rclient client.Client, newObj, prevObj *policyv1.PodDisruptionBudget, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

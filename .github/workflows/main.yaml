@@ -65,6 +65,10 @@ jobs:
           git diff --exit-code
           make test
 
+      - name: Check rbac markers are not inert
+        if: github.event.pull_request.draft == false
+        run: ./hack/check-rbac-markers.sh
+
       - name: Save Go cache
         if: ${{ github.ref == 'refs/heads/master' }}
         uses: ./.github/actions/save-go-cache

@@ -18,7 +18,6 @@ rules:
   - configmaps
   - configmaps/finalizers
   - endpoints
-  - events
   - persistentvolumeclaims
   - persistentvolumeclaims/finalizers
   - secrets
@@ -26,6 +25,12 @@ rules:
   - serviceaccounts/finalizers
   - services
   - services/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - events
   verbs:
   - '*'
 - apiGroups:
@@ -43,12 +48,7 @@ rules:
   resources:
   - pods
   verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - '*'
 - apiGroups:
   - ""
   resources:
@@ -203,6 +203,7 @@ rules:
   - vmsingles
   - vmstaticscrapes
   - vmusers
+  - vtagents
   - vtclusters
   - vtsingles
   verbs:
@@ -236,6 +237,7 @@ rules:
   - vmsingles/finalizers
   - vmstaticscrapes/finalizers
   - vmusers/finalizers
+  - vtagents/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -264,6 +266,7 @@ rules:
   - vmsingles/status
   - vmstaticscrapes/status
   - vmusers/status
+  - vtagents/status
   - vtclusters/status
   - vtsingles/status
   verbs:

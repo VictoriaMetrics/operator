@@ -77,24 +77,20 @@ func makePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 
 // CreateOrUpdate performs an update for single node resource
 func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	return CreateOrUpdateWithWatchNamespaces(ctx, cr, rclient, config.MustGetBaseConfig().WatchNamespaces)
-}
-
-func CreateOrUpdateWithWatchNamespaces(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, watchNamespaces []string) error {
 	if cr.Paused() {
 		return nil
 	}
 
 	var prevCR *vmv1beta1.VMSingle
+	cfg := config.MustGetBaseConfig()
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()
 		prevCR.Spec = *cr.Status.LastAppliedSpec
-		if err := deleteOrphaned(ctx, rclient, cr, watchNamespaces); err != nil {
+		if err := deleteOrphaned(ctx, rclient, cr, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
 			return fmt.Errorf("cannot delete objects from prev state: %w", err)
 		}
 	}
 	owner := cr.AsOwner()
-	cfg := config.MustGetBaseConfig()
 	if cr.IsOwnsServiceAccount() {
 		var prevSA *corev1.ServiceAccount
 		if prevCR != nil {
@@ -104,7 +100,7 @@ func CreateOrUpdateWithWatchNamespaces(ctx context.Context, cr *vmv1beta1.VMSing
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, true) {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, watchNamespaces); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
 				return fmt.Errorf("cannot create vmsingle role and binding for it, err: %w", err)
 			}
 		}

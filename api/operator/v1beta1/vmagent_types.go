@@ -768,3 +768,22 @@ type APIServerConfig struct {
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
 }
+
+// RBACNamespaces returns the namespaces to watch for RBAC resources.
+func (cr *VMAgent) RBACNamespaces(watchedNamespaces []string) []string {
+	if len(watchedNamespaces) == 0 {
+		return nil
+	}
+
+	if cr.Spec.SelectAllByDefault ||
+		cr.Spec.ServiceScrapeNamespaceSelector != nil ||
+		cr.Spec.PodScrapeNamespaceSelector != nil ||
+		cr.Spec.ProbeNamespaceSelector != nil ||
+		cr.Spec.NodeScrapeNamespaceSelector != nil ||
+		cr.Spec.StaticScrapeNamespaceSelector != nil ||
+		cr.Spec.ScrapeConfigNamespaceSelector != nil {
+		return watchedNamespaces
+	}
+
+	return []string{cr.Namespace}
+}

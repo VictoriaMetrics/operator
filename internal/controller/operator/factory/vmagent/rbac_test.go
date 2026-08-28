@@ -17,6 +17,41 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func TestRBACNamespaces(t *testing.T) {
+	watchNamespaces := []string{"agent-ns", "other-ns"}
+	tests := []struct {
+		name string
+		cr   *vmv1beta1.VMAgent
+		want []string
+	}{
+		{
+			name: "default selectors",
+			cr:   &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Namespace: "agent-ns"}},
+			want: []string{"agent-ns"},
+		},
+		{
+			name: "select all",
+			cr: &vmv1beta1.VMAgent{
+				Spec: vmv1beta1.VMAgentSpec{CommonScrapeParams: vmv1beta1.CommonScrapeParams{SelectAllByDefault: true}},
+			},
+			want: watchNamespaces,
+		},
+		{
+			name: "namespace selector",
+			cr: &vmv1beta1.VMAgent{
+				Spec: vmv1beta1.VMAgentSpec{CommonScrapeParams: vmv1beta1.CommonScrapeParams{ServiceScrapeNamespaceSelector: &metav1.LabelSelector{}}},
+			},
+			want: watchNamespaces,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.cr.RBACNamespaces(watchNamespaces))
+		})
+	}
+}
+
 func TestCreateVMAgentRBAC(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent

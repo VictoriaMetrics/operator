@@ -116,7 +116,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				ObjectSelector:    item.Spec.ConfigSelector,
 				DefaultNamespace:  instance.Namespace,
 			}
-			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
 				itemLog.Error(err, "cannot match alertmanager against selector, probably bug")
 				continue

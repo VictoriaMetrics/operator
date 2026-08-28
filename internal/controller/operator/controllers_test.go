@@ -28,6 +28,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		selector          *metav1.LabelSelector
 		namespaceSelector *metav1.LabelSelector
 		predefinedObjects []runtime.Object
+		watchNamespaces   []string
 		isMatch           bool
 	}
 	f := func(o opts) {
@@ -38,7 +39,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			NamespaceSelector: o.namespaceSelector,
 			ObjectSelector:    o.selector,
 		}
-		matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, o.sourceCRD, o.targetCRD, opts)
+		matches, err := isSelectorsMatchesTargetCRD(context.Background(), fclient, o.sourceCRD, o.targetCRD, opts, o.watchNamespaces)
 		assert.NoError(t, err)
 		assert.Equal(t, matches, o.isMatch)
 	}
@@ -66,6 +67,20 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 			},
 		},
 		isMatch: true,
+	})
+
+	// match: namespace selector labels are ignored in multi-namespace mode
+	f(opts{
+		selectAll:       true,
+		watchNamespaces: []string{"n1"},
+		sourceCRD: &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{Name: "rule", Namespace: "n1"},
+		},
+		targetCRD: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{Name: "vmalert", Namespace: "n2"},
+		},
+		namespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "ops"}},
+		isMatch:           true,
 	})
 
 	// not match: selectors are nil, selectAll=false

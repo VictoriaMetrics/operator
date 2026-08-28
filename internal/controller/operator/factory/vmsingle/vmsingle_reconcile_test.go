@@ -8,16 +8,48 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmsingle", Namespace: "single-ns"},
+		Spec:       vmv1beta1.VMSingleSpec{ServiceAccountName: "external"},
+	}
+	rbacName := cr.GetRBACName()
+	owner := cr.AsOwner()
+	foreignNamespace := "other-reconciler-ns"
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: foreignNamespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+		&vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{owner}}},
+	})
+
+	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{WatchNamespaces: []string{cr.Namespace}, VPAAPIEnabled: true}))
+	for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+		err := fclient.Get(ctx, types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, obj)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+		assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: rbacName, Namespace: foreignNamespace}, obj))
+	}
+	assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &vpav1.VerticalPodAutoscaler{})))
+}
 
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {

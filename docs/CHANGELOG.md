@@ -31,6 +31,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix reconciliation error on Kubernetes 1.29 caused by setting an empty `preStop` lifecycle handler. The native `Sleep` preStop action now requires Kubernetes >= 1.30, since the `PodLifecycleSleepAction` feature gate is not enabled by default on 1.29.
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): removing `spec.hpa` no longer leaves the previously created `HorizontalPodAutoscaler` behind. `HorizontalPodAutoscaler` and `VerticalPodAutoscaler` objects created for `VMAgent` and `VMAnomaly` now use the operator's consistent naming convention for child objects (e.g. `vmagent-<name>`) instead of the bare CR name; a leftover object under the old name is cleaned up automatically on the next reconcile. See [#2518](https://github.com/VictoriaMetrics/operator/issues/2518).
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fix multiple `VMUser` resources configured with `spec.jwt` in the same namespace being treated as duplicates and dropped from the `vmauth` config, since they weren't keyed by their own name. See [#2532](https://github.com/VictoriaMetrics/operator/issues/2532).
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): create and remove RBAC resources in namespaces configured for each reconciler.
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

@@ -59,10 +59,10 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		err = newParsingError(instance.Status.ParsingSpecError)
 		return
 	}
-	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
+	if err = collectVMAgentScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
 		return
 	}
-	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf.WatchNamespaces, &instance); err != nil {
+	if err = collectVMSingleScrapes(l, ctx, r.Client, r.BaseConf, &instance); err != nil {
 		return
 	}
 	return

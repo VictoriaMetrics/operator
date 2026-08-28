@@ -121,24 +121,6 @@ func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *
 	return nil
 }
 
-func rbacNamespaces(cr *vmv1beta1.VMAgent, watchedNamespaces []string) []string {
-	if len(watchedNamespaces) == 0 {
-		return nil
-	}
-
-	if cr.Spec.SelectAllByDefault ||
-		cr.Spec.ServiceScrapeNamespaceSelector != nil ||
-		cr.Spec.PodScrapeNamespaceSelector != nil ||
-		cr.Spec.ProbeNamespaceSelector != nil ||
-		cr.Spec.NodeScrapeNamespaceSelector != nil ||
-		cr.Spec.StaticScrapeNamespaceSelector != nil ||
-		cr.Spec.ScrapeConfigNamespaceSelector != nil {
-		return watchedNamespaces
-	}
-
-	return []string{cr.Namespace}
-}
-
 func ensureCRExist(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	var prevClusterRole *rbacv1.ClusterRole
 	if prevCR != nil {

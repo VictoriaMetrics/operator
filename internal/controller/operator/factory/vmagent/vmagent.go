@@ -154,7 +154,7 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasRemoteWriteSecrets() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, rbacNamespaces(cr, baseConf.WatchNamespaces)); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(baseConf.WatchNamespaces)); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}

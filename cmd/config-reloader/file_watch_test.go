@@ -166,11 +166,7 @@ func TestDirWatcherTriggersReloadAfterInitialSync(t *testing.T) {
 	}
 }
 
-func TestDirWatcherRetriesFailedInitialSync(t *testing.T) {
-	origBackoff := initialSyncRetryBackoff
-	initialSyncRetryBackoff = 10 * time.Millisecond
-	defer func() { initialSyncRetryBackoff = origBackoff }()
-
+func TestDirWatcherRetriesFailedInitialSyncOnNextEvent(t *testing.T) {
 	srcDir := t.TempDir()
 	base := t.TempDir()
 	blocker := filepath.Join(base, "blocked")
@@ -204,6 +200,11 @@ func TestDirWatcherRetriesFailedInitialSync(t *testing.T) {
 	if err := os.Remove(blocker); err != nil {
 		t.Fatalf("failed to remove blocker file: %v", err)
 	}
+	// Rewriting the same content still triggers the sync: the hash of the
+	// failed pair was never committed to the cache.
+	if err := os.WriteFile(filepath.Join(srcDir, "rules.yaml"), []byte("groups: []\n"), 0o644); err != nil {
+		t.Fatalf("failed to rewrite source file: %v", err)
+	}
 
 	select {
 	case <-updates:
@@ -220,11 +221,7 @@ func TestDirWatcherRetriesFailedInitialSync(t *testing.T) {
 	}
 }
 
-func TestDirWatcherReloadsSyncedPairsWhenAnotherKeepsFailing(t *testing.T) {
-	origBackoff := initialSyncRetryBackoff
-	initialSyncRetryBackoff = 10 * time.Millisecond
-	defer func() { initialSyncRetryBackoff = origBackoff }()
-
+func TestDirWatcherReloadsSyncedPairsWhenAnotherFails(t *testing.T) {
 	srcA := t.TempDir()
 	targetA := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcA, "rules.yaml"), []byte("groups:\n- name: a\n"), 0o644); err != nil {
@@ -268,11 +265,7 @@ func TestDirWatcherReloadsSyncedPairsWhenAnotherKeepsFailing(t *testing.T) {
 	}
 }
 
-func TestDirWatcherProcessesEventsWhileInitialSyncRetries(t *testing.T) {
-	origBackoff := initialSyncRetryBackoff
-	initialSyncRetryBackoff = time.Hour
-	defer func() { initialSyncRetryBackoff = origBackoff }()
-
+func TestDirWatcherProcessesEventsWhileAnotherPairFails(t *testing.T) {
 	srcA := t.TempDir()
 	targetA := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcA, "rules.yaml"), []byte("groups: []\n"), 0o644); err != nil {
@@ -315,7 +308,7 @@ func TestDirWatcherProcessesEventsWhileInitialSyncRetries(t *testing.T) {
 	select {
 	case <-updates:
 	case <-time.After(2 * time.Second):
-		t.Fatal("expected update from event loop while an initial sync retry is pending")
+		t.Fatal("expected update from event loop while another pair's sync fails")
 	}
 
 	data, err := os.ReadFile(filepath.Join(targetA, "rules.yaml"))

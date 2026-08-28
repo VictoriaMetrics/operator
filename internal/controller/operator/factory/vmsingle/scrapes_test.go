@@ -2028,7 +2028,7 @@ scrape_configs: []
 			},
 		}
 		ac := getAssetsCache(ctx, testClient, cr)
-	if _, err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac, config.MustGetBaseConfig()); err != nil {
+		if _, err := createOrUpdateScrapeConfig(ctx, testClient, cr, nil, nil, ac, config.MustGetBaseConfig()); err != nil {
 			t.Errorf("createOrUpdateScrapeConfig() error = %s", err)
 		}
 		var configSecret corev1.Secret

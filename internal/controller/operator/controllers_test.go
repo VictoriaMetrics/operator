@@ -71,7 +71,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 
 	// match: namespace selector labels are ignored in multi-namespace mode
 	f(opts{
-		selectAll: true,
+		selectAll:       true,
 		watchNamespaces: []string{"n1"},
 		sourceCRD: &vmv1beta1.VMRule{
 			ObjectMeta: metav1.ObjectMeta{Name: "rule", Namespace: "n1"},

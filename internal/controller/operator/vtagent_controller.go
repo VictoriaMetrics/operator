@@ -60,7 +60,7 @@ func (r *VTAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtagents/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods;services,verbs=*
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create;update;list
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=autoscaling.k8s.io,resources=verticalpodautoscalers,verbs=*

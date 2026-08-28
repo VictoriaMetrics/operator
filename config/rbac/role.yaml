@@ -224,7 +224,6 @@ rules:
   - vmalertmanagers/finalizers
   - vmalerts/finalizers
   - vmanomalies/finalizers
-  - vmanomalyconfigs/finalizers
   - vmauths/finalizers
   - vmclusters/finalizers
   - vmnodescrapes

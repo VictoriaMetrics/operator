@@ -382,7 +382,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	volumes, vmMounts = build.RelabelVolumeTo(volumes, vmMounts, cr)
 	crMounts = append(crMounts, vmMounts[mountsLen:]...)
 
-	relabelKeys := []string{"relabel.yaml"}
+	relabelKeys := []string{relabelingName}
 	relabelConfigs := []*vmv1beta1.CommonRelabelParams{&cr.Spec.CommonRelabelParams}
 	args = build.RelabelArgsTo(args, "relabelConfig", relabelKeys, relabelConfigs...)
 

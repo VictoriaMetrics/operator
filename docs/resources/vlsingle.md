@@ -163,6 +163,10 @@ spec:
 
 ### VLSingle with resources set
 
+`removePvcAfterDelete: true` makes the operator keep an owner reference on the `PersistentVolumeClaim`, so it's
+garbage-collected by Kubernetes when the `VLSingle` object is deleted. By default (`false`) the owner reference is
+stripped and the PVC is kept to preserve existing data.
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
 kind: VLSingle
@@ -170,6 +174,7 @@ metadata:
   name: example
 spec:
   retentionPeriod: "12"
+  removePvcAfterDelete: true
   storage:
     resources:
       requests:

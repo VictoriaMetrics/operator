@@ -100,16 +100,20 @@ spec:
       useAsDefault: true
       spec:
         type: LoadBalancer
-  vmselect:
-    replicaCount: 2
-    serviceSpec:
-      useAsDefault: true
-      spec:
-        type: LoadBalancer
 ```
 
-> **Note**: changing `vmselect` or `vmstorage` from headless to a ClusterIP/LoadBalancer type
-> may break internal pod-to-pod communication between cluster components.
+> **Note**: `vmselect` and `vmstorage` default services must stay headless (`clusterIP: None`) for
+> internal pod-to-pod communication, so the operator rejects `serviceSpec.useAsDefault: true` combined
+> with an explicit `spec.type` for these components. To expose `vmselect` externally, omit
+> `useAsDefault` so the operator creates an additional, separate `Service` instead:
+>
+> ```yaml
+>   vmselect:
+>     replicaCount: 2
+>     serviceSpec:
+>       spec:
+>         type: LoadBalancer
+> ```
 
 To expose VMCluster components outside the cluster via an ingress with authentication,
 see [Authorization and exposing components — VMCluster](https://docs.victoriametrics.com/operator/auth/#vmcluster).

@@ -152,6 +152,10 @@ Also, you can specify requests without limits - in this case default values for 
 
 ### VTSingle with resources set
 
+`removePvcAfterDelete: true` makes the operator keep an owner reference on the `PersistentVolumeClaim`, so it's
+garbage-collected by Kubernetes when the `VTSingle` object is deleted. By default (`false`) the owner reference is
+stripped and the PVC is kept to preserve existing data.
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
 kind: VTSingle
@@ -159,6 +163,7 @@ metadata:
   name: example
 spec:
   retentionPeriod: "12"
+  removePvcAfterDelete: true
   storage:
     resources:
       requests:

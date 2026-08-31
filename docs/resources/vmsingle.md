@@ -415,6 +415,10 @@ Advantages of using `VMBackupmanager` include:
 
 ## Examples
 
+`removePvcAfterDelete: true` makes the operator keep an owner reference on the `PersistentVolumeClaim`, so it's
+garbage-collected by Kubernetes when the `VMSingle` object is deleted. By default (`false`) the owner reference is
+stripped and the PVC is kept to preserve existing data.
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle

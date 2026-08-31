@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -212,10 +213,10 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test-vmalert", Namespace: "default"},
 		},
 		cb: func(_ client.Client) (ctrl.Result, error) {
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		},
 		wantStatus: vmv1beta1.UpdateStatusOperational,
-		wantResult: ctrl.Result{Requeue: true},
+		wantResult: ctrl.Result{RequeueAfter: time.Minute},
 	})
 }
 

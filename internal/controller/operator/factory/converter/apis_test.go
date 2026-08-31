@@ -241,7 +241,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
 					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
-						BearerTokenSecret: &corev1.SecretKeySelector{},
+						Authorization: &promv1.SafeAuthorization{},
 					},
 					TLSConfig: &promv1.SafeTLSConfig{
 						CA: promv1.SecretOrConfigMap{
@@ -256,6 +256,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 		want: []vmv1beta1.PodMetricsEndpoint{{
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				EndpointAuth: vmv1beta1.EndpointAuth{
+					Authorization: &vmv1beta1.Authorization{},
 					TLSConfig: &vmv1beta1.TLSConfig{
 						CA: vmv1beta1.SecretOrConfigMap{
 							ConfigMap: &corev1.ConfigMapKeySelector{
@@ -274,7 +275,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
 					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
-						BearerTokenSecret: &corev1.SecretKeySelector{},
+						Authorization: &promv1.SafeAuthorization{},
 					},
 					TLSConfig: &promv1.SafeTLSConfig{
 						InsecureSkipVerify: ptr.To(true),
@@ -291,6 +292,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 		want: []vmv1beta1.PodMetricsEndpoint{{
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				EndpointAuth: vmv1beta1.EndpointAuth{
+					Authorization: &vmv1beta1.Authorization{},
 					TLSConfig: &vmv1beta1.TLSConfig{
 						InsecureSkipVerify: true,
 						ServerName:         "some-srv",
@@ -305,13 +307,15 @@ func TestConvertPodEndpoints(t *testing.T) {
 		}},
 	})
 
-	// with basic auth and bearer
+	// with basic auth and authorization
 	f(opts{
 		pe: []promv1.PodMetricsEndpoint{{
 			HTTPConfigWithProxy: promv1.HTTPConfigWithProxy{
 				HTTPConfig: promv1.HTTPConfig{
 					HTTPConfigWithoutTLS: promv1.HTTPConfigWithoutTLS{
-						BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+						Authorization: &promv1.SafeAuthorization{
+							Credentials: &corev1.SecretKeySelector{Key: "bearer"},
+						},
 						BasicAuth: &promv1.BasicAuth{
 							Username: corev1.SecretKeySelector{Key: "username"},
 							Password: corev1.SecretKeySelector{Key: "password"},
@@ -323,8 +327,8 @@ func TestConvertPodEndpoints(t *testing.T) {
 		want: []vmv1beta1.PodMetricsEndpoint{{
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				EndpointAuth: vmv1beta1.EndpointAuth{
-					BearerTokenSecret: &corev1.SecretKeySelector{
-						Key: "bearer",
+					Authorization: &vmv1beta1.Authorization{
+						Credentials: &corev1.SecretKeySelector{Key: "bearer"},
 					},
 					BasicAuth: &vmv1beta1.BasicAuth{
 						Username: corev1.SecretKeySelector{

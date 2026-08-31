@@ -232,6 +232,27 @@ It is an AP (available and partition tolerant) system. Being an AP system means 
 
 The Victoria Metrics Operator ensures that Alertmanager clusters are properly configured to run highly available on Kubernetes.
 
+## Customizing service type or port
+
+By default `VMAlertmanager`'s `Service` is headless (`clusterIP: None`), which is required for gossip-based
+peer discovery between replicas. Use `spec.serviceSpec` to change the service type or port:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: example
+spec:
+  replicaCount: 2
+  serviceSpec:
+    spec:
+      type: LoadBalancer
+```
+
+> **Note**: because the default service must stay headless for peer discovery, the operator rejects
+> `serviceSpec.useAsDefault: true` combined with a non-headless explicit `spec.type` such as `LoadBalancer`; an explicit headless `ClusterIP` with `clusterIP: None` remains allowed. The example above creates an
+> additional, separate `Service` instead of replacing the default one.
+
 ## Version management
 
 To set `VMAlertmanager` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)

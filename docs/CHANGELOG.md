@@ -33,6 +33,7 @@ aliases:
 * BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fix multiple `VMUser` resources configured with `spec.jwt` in the same namespace being treated as duplicates and dropped from the `vmauth` config, since they weren't keyed by their own name. See [#2532](https://github.com/VictoriaMetrics/operator/issues/2532).
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): create and remove RBAC resources in namespaces configured for each reconciler.
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): write the relabeling asset under the key that the `-relabelConfig` flag reads, fixing the crash-loop of `VMSingle` with `spec.relabelConfig` or `spec.inlineRelabelConfig`. See [#2552](https://github.com/VictoriaMetrics/operator/issues/2552).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): config-reloader: trigger an application reload after the initial directory sync and retry failed reload requests with backoff. Previously, a config change landing between the init container's copy and the sidecar's start could leave the application serving stale content until the next change. See [#2527](https://github.com/VictoriaMetrics/operator/issues/2527).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

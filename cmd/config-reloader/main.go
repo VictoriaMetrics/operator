@@ -269,6 +269,11 @@ func (r *reloader) reload(ctx context.Context) error {
 	return nil
 }
 
+var (
+	reloadRetryInitialBackoff = time.Second
+	reloadRetryMaxBackoff     = 30 * time.Second
+)
+
 func (c *cfgWatcher) start(ctx context.Context) {
 	c.wg.Add(1)
 	go func() {
@@ -282,11 +287,22 @@ func (c *cfgWatcher) start(ctx context.Context) {
 			if !c.waitDelay(ctx) {
 				return
 			}
-			if err := c.reloader(ctx); err != nil {
-				logger.Errorf("cannot trigger api reload: %s", err.Error())
+			// Retry until success: another update signal may never arrive
+			backoff := reloadRetryInitialBackoff
+			for {
+				err := c.reloader(ctx)
+				if err == nil {
+					break
+				}
+				logger.Errorf("cannot trigger api reload, retrying in %s: %s", backoff, err.Error())
 				configLastReloadSuccess.Set(0)
 				configReloadErrorsTotal.Inc()
-				continue
+				select {
+				case <-time.After(backoff):
+				case <-ctx.Done():
+					return
+				}
+				backoff = min(backoff*2, reloadRetryMaxBackoff)
 			}
 			configLastReloadSuccess.Set(1)
 			configLastOkReloadTime.Set(uint64(time.Now().Unix()))

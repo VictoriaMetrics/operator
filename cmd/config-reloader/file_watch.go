@@ -212,11 +212,13 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 	dirHash := sha256.New()
 	fHash := sha256.New()
 
-	updateCache := func(eventPath string) (bool, error) {
+	// Returns the content hash of eventPath and whether it differs from the
+	// cache; the caller commits the hash only after a successful sync.
+	updateCache := func(eventPath string) ([]byte, bool, error) {
 		dirHash.Reset()
 		walkDir, err := filepath.EvalSymlinks(eventPath)
 		if err != nil {
-			return false, fmt.Errorf("cannot eval symlinks for path: %s", eventPath)
+			return nil, false, fmt.Errorf("cannot eval symlinks for path: %s", eventPath)
 		}
 
 		err = filepath.WalkDir(walkDir, func(path string, d fs.DirEntry, err error) error {
@@ -263,28 +265,45 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 		})
 		if err != nil {
 			logger.Errorf("cannot walk: %s", err)
-			return false, fmt.Errorf("cannot walk path: %s, err: %w", eventPath, err)
+			return nil, false, fmt.Errorf("cannot walk path: %s, err: %w", eventPath, err)
 		}
 
 		newHash := dirHash.Sum(nil)
 		prevHash := filesContentHashPath[eventPath]
 		if bytes.Equal(prevHash, newHash) {
-			return false, nil
+			return newHash, false, nil
 		}
-		filesContentHashPath[eventPath] = newHash
 		logger.Infof("base dir: %s hash not the same, update needed", eventPath)
-		return true, nil
+		return newHash, true, nil
 	}
+	syncedOnStart := false
 	for _, p := range dw.pairs {
-		if _, err := updateCache(p.src); err != nil {
+		newHash, _, err := updateCache(p.src)
+		if err != nil {
 			logger.Errorf("cannot update dir cache during start: %s", err)
 		}
 		if err := p.sync(); err != nil {
 			logger.Errorf("cannot copy dir %s to target on start: %s", p.src, err)
+			continue
+		}
+		if newHash != nil {
+			filesContentHashPath[p.src] = newHash
+		}
+		syncedOnStart = true
+	}
+	triggerReload := func() {
+		select {
+		case updates <- struct{}{}:
+		default:
 		}
 	}
 	go func() {
 		defer dw.wg.Done()
+		if syncedOnStart {
+			// Reload here to catch changes between container start and initial sync
+			logger.Infof("triggering reload after initial sync")
+			triggerReload()
+		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -292,7 +311,7 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 			case event := <-dw.w.Events:
 				baseDir := filepath.Dir(event.Name)
 				logger.Infof("dir update: base dir: %s", baseDir)
-				reloadNeeded, err := updateCache(baseDir)
+				newHash, reloadNeeded, err := updateCache(baseDir)
 				if err != nil {
 					logger.Errorf("cannot update dir watch cache: %s", err)
 					continue
@@ -313,10 +332,8 @@ func (dw *dirWatcher) start(ctx context.Context, updates chan struct{}) {
 				if !synced {
 					continue
 				}
-				select {
-				case updates <- struct{}{}:
-				default:
-				}
+				filesContentHashPath[baseDir] = newHash
+				triggerReload()
 			}
 		}
 	}()

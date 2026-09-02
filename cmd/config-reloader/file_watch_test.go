@@ -301,7 +301,20 @@ func TestDirWatcherProcessesEventsWhileAnotherPairFails(t *testing.T) {
 		t.Fatal("expected update after initial sync")
 	}
 
-	if err := os.WriteFile(filepath.Join(srcA, "rules.yaml"), []byte("groups:\n- name: test\n"), 0o644); err != nil {
+	// Keep staging file outside watched dir, so watcher observes only final rename.
+	updatedFile, err := os.CreateTemp(filepath.Dir(srcA), "rules.yaml.new-")
+	if err != nil {
+		t.Fatalf("failed to create staging file: %v", err)
+	}
+	defer func() { _ = os.Remove(updatedFile.Name()) }()
+	if _, err := updatedFile.Write([]byte("groups:\n- name: test\n")); err != nil {
+		_ = updatedFile.Close()
+		t.Fatalf("failed to write staging file: %v", err)
+	}
+	if err := updatedFile.Close(); err != nil {
+		t.Fatalf("failed to close staging file: %v", err)
+	}
+	if err := os.Rename(updatedFile.Name(), filepath.Join(srcA, "rules.yaml")); err != nil {
 		t.Fatalf("failed to update source file: %v", err)
 	}
 

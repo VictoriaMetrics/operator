@@ -5,11 +5,13 @@ import (
 	"maps"
 	"math/rand"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,12 +24,16 @@ const (
 	UnlimitedQuantity = "unlimited"
 )
 
+// versionRe matches a semantic version string (vX.Y.Z[-pre]) from buildinfo.Version
+var versionRe = regexp.MustCompile(`v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?`)
+
 func getVersion(defaultVersion string) string {
-	v := buildinfo.ShortVersion()
-	if len(v) == 0 {
+	raw := versionRe.FindString(buildinfo.Version)
+	v, err := semver.NewVersion(raw)
+	if err != nil {
 		return defaultVersion
 	}
-	return v
+	return "v" + v.String()
 }
 
 var (

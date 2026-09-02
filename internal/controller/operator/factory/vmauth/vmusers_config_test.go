@@ -3353,3 +3353,27 @@ unauthorized_user:
 `,
 	})
 }
+
+func TestBuildConfig_UnauthorizedUserAccessLog(t *testing.T) {
+	cr := &vmv1beta1.VMAuth{}
+	err := yaml.Unmarshal([]byte(`
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example
+  namespace: default
+spec:
+  unauthorizedUserAccessSpec:
+    access_log: {}
+`), cr)
+	assert.NoError(t, err)
+	assert.NoError(t, cr.Validate())
+
+	ctx := context.TODO()
+	testClient := k8stools.GetTestClientWithObjects(nil)
+	pos, err := selectUsers(ctx, testClient, cr)
+	assert.NoError(t, err)
+	got, err := pos.buildConfig(ctx, testClient, cr, getAssetsCache(ctx, testClient, cr))
+	assert.NoError(t, err)
+	assert.Equal(t, "unauthorized_user:\n  access_log: {}\n", string(got))
+}

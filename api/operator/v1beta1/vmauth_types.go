@@ -193,8 +193,8 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 
 // Validate performs semantic syntax validation
 func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
-	if len(s.URLMap) == 0 && len(s.URLPrefix) == 0 && len(s.TargetRefs) == 0 {
-		return fmt.Errorf("at least one of `url_map`, `url_prefix` or `targetRefs` must be defined")
+	if len(s.URLMap) == 0 && len(s.URLPrefix) == 0 && len(s.TargetRefs) == 0 && s.AccessLog == nil {
+		return fmt.Errorf("at least one of `url_map`, `url_prefix`, `targetRefs` or `access_log` must be defined")
 	}
 	if len(s.TargetRefs) != 0 && (len(s.URLMap) != 0 || len(s.URLPrefix) != 0) {
 		return fmt.Errorf("`targetRefs` cannot be used together with `url_prefix` or `url_map`")

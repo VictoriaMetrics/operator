@@ -479,7 +479,7 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac
 			})
 		}
 		var err error
-		if resultLen == len(result) {
+		if resultLen == len(result) && len(uua.TargetRefs) > 0 {
 			result, err = genURLMaps("unauthorized_user", uua.TargetRefs, result, objURLs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)

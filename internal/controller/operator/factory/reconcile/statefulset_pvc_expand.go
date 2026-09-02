@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -106,10 +107,13 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
 	}
 	nsn := types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}
+	// process all pvcs, aggregating errors
+	var errs []error
 	for _, pvc := range pvcs.Items {
 		idx := strings.LastIndexByte(pvc.Name, '-')
 		if idx <= 0 {
-			return fmt.Errorf("not expected name for PVC=%q, it must have - as separator for StatefulSet=%q", pvc.Name, nsn.String())
+			errs = append(errs, fmt.Errorf("not expected name for PVC=%q, it must have - as separator for StatefulSet=%q", pvc.Name, nsn.String()))
+			continue
 		}
 		// pvc created by sts always has name of CLAIM_NAME-STS_NAME-REPLICA_IDX
 		stsClaimName := pvc.Name[:idx]
@@ -128,14 +132,15 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 			}
 			return updatePVC(ctx, rclient, &currentPVC, &stsClaim, prevVCT, nil)
 		}); err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 		size := stsClaim.Spec.Resources.Requests[corev1.ResourceStorage]
 		if err := waitForPVCReady(ctx, rclient, nsnPvc, size); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return utilerrors.NewAggregate(errs)
 }
 
 func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) (bool, error) {

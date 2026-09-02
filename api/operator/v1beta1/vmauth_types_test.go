@@ -65,7 +65,7 @@ spec:
   unauthorizedUserAccessSpec:
     default_url:
       - http://url-1`,
-		wantErr: "incorrect cr.spec.UnauthorizedUserAccess syntax: at least one of `url_map`, `url_prefix` or `targetRefs` must be defined",
+		wantErr: "incorrect cr.spec.UnauthorizedUserAccess syntax: at least one of `url_map`, `url_prefix`, `targetRefs` or `access_log` must be defined",
 	})
 
 	// incorrect unauthorized access config, bad metric_labels syntax

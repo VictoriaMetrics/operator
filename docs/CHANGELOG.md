@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `post_updates_to_thread` field to `SlackConfig`. This allows alertmanager to post subsequent notifications for an alert group as replies in the thread of the initial Slack message; combined with `update_message`, the initial message is updated in-place and a reply is also posted to its thread. Requires alertmanager v0.35.0 or newer, see [prometheus/alertmanager#5540](https://github.com/prometheus/alertmanager/pull/5540). See [#2580](https://github.com/VictoriaMetrics/operator/pull/2580).
+
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

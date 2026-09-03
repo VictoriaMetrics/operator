@@ -28301,6 +28301,15 @@ spec:
                             items:
                               type: string
                             type: array
+                          post_updates_to_thread:
+                            description: |-
+                              Whether to post subsequent notifications for an alert group as replies
+                              in the thread of the initial message, instead of new channel messages.
+                              Can be combined with update_message to update the initial message in-place
+                              and also post a reply to its thread.
+                              Requires Slack Bot API and chat:write scope.
+                              Available since alertmanager v0.35.0.
+                            type: boolean
                           pretext:
                             type: string
                           send_resolved:

@@ -900,6 +900,14 @@ type SlackConfig struct {
 	// Available since alertmanager v0.32.0.
 	// +optional
 	UpdateMessage *bool `json:"update_message,omitempty" yaml:"update_message,omitempty"`
+	// Whether to post subsequent notifications for an alert group as replies
+	// in the thread of the initial message, instead of new channel messages.
+	// Can be combined with update_message to update the initial message in-place
+	// and also post a reply to its thread.
+	// Requires Slack Bot API and chat:write scope.
+	// Available since alertmanager v0.35.0.
+	// +optional
+	PostUpdatesToThread *bool `json:"post_updates_to_thread,omitempty" yaml:"post_updates_to_thread,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`

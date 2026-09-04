@@ -1006,4 +1006,195 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			},
 		},
 	})
+
+	// overridden http.listenAddr
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "listen-override",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderExtraArgs: map[string]string{
+						"http.listenAddr": "127.0.0.1:8436",
+					},
+				},
+			},
+		},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--http.listenAddr=127.0.0.1:8436",
+				"--reload-url=http://127.0.0.1:/-/reload",
+				"--webhook-method=POST",
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "reloader-http",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8436,
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8436),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8436),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+		},
+	})
+
+	// IPv6 http.listenAddr
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "listen-ipv6",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderExtraArgs: map[string]string{
+						"http.listenAddr": "[::1]:8437",
+					},
+				},
+			},
+		},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--http.listenAddr=[::1]:8437",
+				"--reload-url=http://127.0.0.1:/-/reload",
+				"--webhook-method=POST",
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "reloader-http",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8437,
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8437),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8437),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+		},
+	})
+
+	// invalid http.listenAddr falls back to default port
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "listen-invalid",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderExtraArgs: map[string]string{
+						"http.listenAddr": "not-a-host-port",
+					},
+				},
+			},
+		},
+		expectedContainer: corev1.Container{
+			Name: "config-reloader",
+			Args: []string{
+				"--http.listenAddr=not-a-host-port",
+				"--reload-url=http://127.0.0.1:/-/reload",
+				"--webhook-method=POST",
+			},
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "reloader-http",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8435,
+				},
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				TimeoutSeconds:   1,
+				PeriodSeconds:    10,
+				SuccessThreshold: 1,
+				FailureThreshold: 3,
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/health",
+						Port:   intstr.FromInt32(8435),
+						Scheme: "HTTP",
+					},
+				},
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      1,
+				PeriodSeconds:       10,
+				SuccessThreshold:    1,
+				FailureThreshold:    3,
+			},
+		},
+	})
+}
+
+func TestConfigReloaderHTTPPort(t *testing.T) {
+	assert.Equal(t, int32(8435), configReloaderHTTPPort(nil))
+	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{}))
+	assert.Equal(t, int32(8436), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:8436"}))
+	assert.Equal(t, int32(8436), configReloaderHTTPPort(map[string]string{"http.listenAddr": ":8436"}))
+	assert.Equal(t, int32(8437), configReloaderHTTPPort(map[string]string{"http.listenAddr": "[::1]:8437"}))
+	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "hostname-only"}))
+	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:0"}))
+	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:70000"}))
 }

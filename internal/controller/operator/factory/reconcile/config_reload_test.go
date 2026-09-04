@@ -3,9 +3,9 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,9 +20,27 @@ import (
 )
 
 func TestConfigReloaderMetricsURL(t *testing.T) {
-	assert.Equal(t, fmt.Sprintf("http://10.0.0.1:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("10.0.0.1"))
+	assert.Equal(t, fmt.Sprintf("http://10.0.0.1:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("10.0.0.1", build.ConfigReloaderDefaultPort))
 	// IPv6 must be bracketed, otherwise the port separator is ambiguous with the address itself
-	assert.Equal(t, fmt.Sprintf("http://[2001:db8::1]:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("2001:db8::1"))
+	assert.Equal(t, fmt.Sprintf("http://[2001:db8::1]:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("2001:db8::1", build.ConfigReloaderDefaultPort))
+	assert.Equal(t, "http://10.0.0.1:8436/metrics", configReloaderMetricsURL("10.0.0.1", 8436))
+}
+
+func TestConfigReloaderPortFromPod(t *testing.T) {
+	assert.Equal(t, build.ConfigReloaderDefaultPort, configReloaderPortFromPod(&corev1.Pod{}))
+
+	pod := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "config-reloader",
+				Ports: []corev1.ContainerPort{{
+					Name:          build.ConfigReloaderPortName,
+					ContainerPort: 8436,
+				}},
+			}},
+		},
+	}
+	assert.Equal(t, 8436, configReloaderPortFromPod(pod))
 }
 
 func TestWaitForConfigReloadHash_NoPodsIsNoop(t *testing.T) {
@@ -40,6 +58,15 @@ func TestWaitForConfigReloadHash_NoPodsIsNoop(t *testing.T) {
 func readyPod(name, namespace, ip string, labels map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "config-reloader",
+				Ports: []corev1.ContainerPort{{
+					Name:          build.ConfigReloaderPortName,
+					ContainerPort: int32(build.ConfigReloaderDefaultPort),
+				}},
+			}},
+		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			PodIP: ip,
@@ -50,29 +77,46 @@ func readyPod(name, namespace, ip string, labels map[string]string) *corev1.Pod 
 	}
 }
 
-func withConfigReloaderMetricsURL(t *testing.T, ts *httptest.Server) {
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+// withConfigReloaderMetricsResponse stubs the sidecar /metrics HTTP response in-process
+// (avoids httptest, which is unreliable when loopback is broken in the test environment).
+func withConfigReloaderMetricsResponse(t *testing.T, body string) {
 	t.Helper()
-	orig := configReloaderMetricsURL
-	u, err := url.Parse(ts.URL)
-	assert.NoError(t, err)
-	configReloaderMetricsURL = func(string) string { return "http://" + u.Host + "/metrics" }
-	t.Cleanup(func() { configReloaderMetricsURL = orig })
+	origURL := configReloaderMetricsURL
+	origClient := configReloadNewHTTPClient
+	configReloaderMetricsURL = func(string, int) string { return "http://config-reloader.test/metrics" }
+	configReloadNewHTTPClient = func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		}
+	}
+	t.Cleanup(func() {
+		configReloaderMetricsURL = origURL
+		configReloadNewHTTPClient = origClient
+	})
 }
 
 func TestWaitForConfigReloadHash(t *testing.T) {
 	cr := &vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "vmauth", Namespace: "default"},
 	}
-	labels := cr.SelectorLabels()
-	pod := readyPod("vmauth-0", cr.Namespace, "10.0.0.1", labels)
+	sel := cr.SelectorLabels()
+	pod := readyPod("vmauth-0", cr.Namespace, "10.0.0.1", sel)
 
 	// exact hash match succeeds immediately.
 	t.Run("match succeeds", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, "configreloader_reload_content_hash{key=\"main\"} %d\n", 42)
-		}))
-		defer ts.Close()
-		withConfigReloaderMetricsURL(t, ts)
+		withConfigReloaderMetricsResponse(t, fmt.Sprintf("configreloader_reload_content_hash{key=\"main\"} %d\n", 42))
 
 		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{pod})
 		start := time.Now()
@@ -82,9 +126,7 @@ func TestWaitForConfigReloadHash(t *testing.T) {
 
 	// metric absent entirely (sidecar predates it) - skipped rather than blocking.
 	t.Run("absent metric is skipped", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
-		defer ts.Close()
-		withConfigReloaderMetricsURL(t, ts)
+		withConfigReloaderMetricsResponse(t, "")
 
 		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{pod})
 		start := time.Now()
@@ -99,11 +141,7 @@ func TestWaitForConfigReloadHash(t *testing.T) {
 		configReloadWaitTimeout = 20 * time.Millisecond
 		defer func() { configReloadWaitInterval, configReloadWaitTimeout = origInterval, origTimeout }()
 
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, "configreloader_reload_content_hash{key=\"main\"} %d\n", 99)
-		}))
-		defer ts.Close()
-		withConfigReloaderMetricsURL(t, ts)
+		withConfigReloaderMetricsResponse(t, fmt.Sprintf("configreloader_reload_content_hash{key=\"main\"} %d\n", 99))
 
 		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{pod})
 		assert.Error(t, WaitForConfigReloadHash(context.Background(), fclient, cr, 42))

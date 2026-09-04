@@ -2,8 +2,10 @@ package build
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -326,19 +328,39 @@ func AppendArgsForInsertPorts(args []string, ip *vmv1beta1.InsertPorts) []string
 }
 
 const (
-	// ConfigReloaderDefaultPort is the config-reloader container's fixed HTTP listen port,
+	// ConfigReloaderDefaultPort is the config-reloader container's default HTTP listen port,
 	// exposing its own /health and /metrics endpoints.
 	ConfigReloaderDefaultPort = 8435
-	// ConfigReloaderPortName is the container/service port name for ConfigReloaderDefaultPort.
+	// ConfigReloaderPortName is the container/service port name for the config-reloader HTTP port.
 	ConfigReloaderPortName = "reloader-http"
 )
 
-var configReloaderContainerProbe = corev1.ProbeHandler{
-	HTTPGet: &corev1.HTTPGetAction{
-		Path:   "/health",
-		Scheme: "HTTP",
-		Port:   intstr.FromInt(ConfigReloaderDefaultPort),
-	},
+// configReloaderHTTPPort returns the HTTP listen port from ConfigReloaderExtraArgs["http.listenAddr"]
+// (forms :PORT, IP:PORT, [IPv6]:PORT). Missing or invalid values fall back to ConfigReloaderDefaultPort.
+func configReloaderHTTPPort(extraArgs map[string]string) int32 {
+	addr, ok := extraArgs["http.listenAddr"]
+	if !ok || addr == "" {
+		return ConfigReloaderDefaultPort
+	}
+	_, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return ConfigReloaderDefaultPort
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 1 || port > 65535 {
+		return ConfigReloaderDefaultPort
+	}
+	return int32(port)
+}
+
+func configReloaderProbeHandler(port int32) corev1.ProbeHandler {
+	return corev1.ProbeHandler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Path:   "/health",
+			Scheme: "HTTP",
+			Port:   intstr.FromInt32(port),
+		},
+	}
 }
 
 func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
@@ -355,11 +377,10 @@ func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
 }
 
 // ConfigReloaderVMServiceScrapeEndpoint returns a VMServiceScrape endpoint that scrapes the
-// config-reloader sidecar directly by its container port (via TargetPort, resolved from the
-// pod's actual EndpointSlice ports), without requiring a matching named ServicePort.
+// config-reloader sidecar by named container port, so scrapes follow an overridden listen port.
 func ConfigReloaderVMServiceScrapeEndpoint() vmv1beta1.Endpoint {
 	return vmv1beta1.Endpoint{
-		TargetPort:          ptr.To(intstr.FromInt32(ConfigReloaderDefaultPort)),
+		TargetPort:          ptr.To(intstr.FromString(ConfigReloaderPortName)),
 		EndpointRelabelings: configReloaderJobRelabeling(),
 		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 			Path: "/metrics",
@@ -368,10 +389,10 @@ func ConfigReloaderVMServiceScrapeEndpoint() vmv1beta1.Endpoint {
 }
 
 // ConfigReloaderPodScrapeEndpoint returns a VMPodScrape endpoint that scrapes the
-// config-reloader sidecar directly by its container port number.
+// config-reloader sidecar by named container port.
 func ConfigReloaderPodScrapeEndpoint() vmv1beta1.PodMetricsEndpoint {
 	return vmv1beta1.PodMetricsEndpoint{
-		PortNumber:          ptr.To(int32(ConfigReloaderDefaultPort)),
+		Port:                ptr.To(ConfigReloaderPortName),
 		EndpointRelabelings: configReloaderJobRelabeling(),
 		EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 			Path: "/metrics",
@@ -453,17 +474,18 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 	if !isInit {
 		c.Name = "config-reloader"
 		c.TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
-		addPortProbesToConfigReloaderContainer(&c)
+		addPortProbesToConfigReloaderContainer(&c, configReloaderHTTPPort(p.ConfigReloaderExtraArgs))
 		addConfigReloadAuthKeyToReloader(&c, p)
 	}
 	return c
 }
 
-// addPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
-// exposes reloader-http port for container
-func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
+// addPortProbesToConfigReloaderContainer adds readiness/liveness probes and the reloader-http
+// container port, using the resolved HTTP listen port from configReloaderExtraArgs.
+func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container, port int32) {
+	probe := configReloaderProbeHandler(port)
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{
-		ContainerPort: int32(ConfigReloaderDefaultPort),
+		ContainerPort: port,
 		Name:          ConfigReloaderPortName,
 		Protocol:      "TCP",
 	})
@@ -472,7 +494,7 @@ func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
 		SuccessThreshold: 1,
 		FailureThreshold: 3,
 		PeriodSeconds:    10,
-		ProbeHandler:     configReloaderContainerProbe,
+		ProbeHandler:     probe,
 	}
 	crContainer.ReadinessProbe = &corev1.Probe{
 		InitialDelaySeconds: 5,
@@ -480,7 +502,7 @@ func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container) {
 		SuccessThreshold:    1,
 		FailureThreshold:    3,
 		PeriodSeconds:       10,
-		ProbeHandler:        configReloaderContainerProbe,
+		ProbeHandler:        probe,
 	}
 }
 

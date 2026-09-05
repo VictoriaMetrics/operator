@@ -759,14 +759,15 @@ templates: []
 											Name: "slack",
 										},
 									},
-									SendResolved:  ptr.To(true),
-									UpdateMessage: ptr.To(true),
-									Text:          "some-text",
-									Title:         "some-title",
-									LinkNames:     false,
-									ThumbURL:      "some-url",
-									Pretext:       "text-1",
-									Username:      "some-user",
+									SendResolved:        ptr.To(true),
+									UpdateMessage:       ptr.To(true),
+									PostUpdatesToThread: ptr.To(true),
+									Text:                "some-text",
+									Title:               "some-title",
+									LinkNames:           false,
+									ThumbURL:            "some-url",
+									Pretext:             "text-1",
+									Username:            "some-user",
 									Actions: []vmv1beta1.SlackAction{
 										{
 											Name: "deny",
@@ -827,6 +828,7 @@ receivers:
     title: some-title
     thumb_url: some-url
     update_message: true
+    post_updates_to_thread: true
     actions:
     - name: deny
       text: text-5

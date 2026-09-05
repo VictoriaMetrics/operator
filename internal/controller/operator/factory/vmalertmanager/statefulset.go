@@ -390,7 +390,12 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 		},
 		Key: alertmanagerSecretConfigKey,
 	}
-	initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+	initContainers = append(initContainers, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+		CR:                cr,
+		Mounts:            crMounts,
+		SecretKeySelector: ss,
+		IsInit:            true,
+	}))
 	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
 
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -411,7 +416,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 	}
 	build.Probe(&vmaContainer, cr, &cr.Spec.CommonAppsParams)
 	operatorContainers := []corev1.Container{vmaContainer}
-	operatorContainers = append(operatorContainers, build.ConfigReloaderContainer(false, cr, crMounts, ss))
+	operatorContainers = append(operatorContainers, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+		CR:                cr,
+		Mounts:            crMounts,
+		SecretKeySelector: ss,
+	}))
 
 	build.AddStrictSecuritySettingsToContainers(operatorContainers, &cr.Spec.CommonAppsParams)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)

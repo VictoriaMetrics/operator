@@ -3348,3 +3348,34 @@ serviceaccountname: vmagent-agent
 `,
 	})
 }
+
+// relabeling configs combined with extra scrape config secrets, see #2583
+func TestMakeSpecForAgentOk_WatchTargetDirPairing(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "localhost:8429",
+					InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
+						{TargetLabel: "rw-1", Replacement: ptr.To("present")},
+					},
+				},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	ac := getAssetsCache(ctx, fclient, cr)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	got, err := newPodSpec(cr, ac, 2)
+	assert.NoError(t, err)
+
+	k8stools.AssertConfigReloaderWatchTargetDirs(t, got.Containers, map[string]string{
+		"/etc/vm/relabeling": "",
+		"/etc/vm/sc-raw-1":   "/etc/vm/sc-files/sc-raw-1",
+		"/etc/vm/sc-raw-2":   "/etc/vm/sc-files/sc-raw-2",
+	})
+}

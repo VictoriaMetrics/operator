@@ -428,10 +428,20 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 				},
 				Key: configFilename,
 			}
-			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+			ic = append(ic, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+				CR:                cr,
+				Mounts:            crMounts,
+				SecretKeySelector: ss,
+				IsInit:            true,
+			}))
 			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
-		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+		configReloader := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:                cr,
+			Mounts:            crMounts,
+			SecretKeySelector: ss,
+			PadTargetDirs:     extraConfigSecretCount > 0,
+		})
 		if extraConfigSecretCount > 0 {
 			// sc-files-out is write-side for the reloader; not in crMounts to avoid --watched-dir.
 			configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{

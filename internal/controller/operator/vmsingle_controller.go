@@ -104,6 +104,12 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		vmsingleSync.Lock()
+		defer vmsingleSync.Unlock()
+		parentObject := fmt.Sprintf("%s.%s.vmsingle", instance.Name, instance.Namespace)
+		if err = releaseScrapeChildStatuses(ctx, r.Client, parentObject); err != nil {
+			return
+		}
 		err = finalize.OnVMSingleDelete(ctx, r.Client, &instance)
 		return
 	}
@@ -157,7 +163,7 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		err = fmt.Errorf("cannot list VMSingles for %T: %w", instance, err)
-		return
+		return err
 	}
 
 	var g errgroup.Group
@@ -197,5 +203,5 @@ func collectVMSingleScrapes(l logr.Logger, ctx context.Context, rclient client.C
 		})
 	}
 	err = g.Wait()
-	return
+	return err
 }

@@ -18,10 +18,12 @@ package operator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,6 +35,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly"
 )
 
@@ -81,7 +84,7 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	RegisterObjectStat(&instance, r.name)
 
 	if anomalyReconcileLimit.Throttle() {
-		// fast path, rate limited
+		err = reconcile.SyncAggregatedChildStatus(ctx, r.Client, &instance)
 		return
 	}
 
@@ -95,13 +98,15 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return
 	}
 
+	var g errgroup.Group
+	g.SetLimit(childReconcileConcurrencyLimit)
 	for i := range objects.Items {
 		item := &objects.Items[i]
-		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) || item.IsUnmanaged() {
+		if !item.DeletionTimestamp.IsZero() || (item.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(item.Status.ParsingSpecError)) {
 			continue
 		}
-		l := l.WithValues("vmanomaly", item.Name, "parent_namespace", item.Namespace)
-		ctx := logger.AddToContext(ctx, l)
+		itemLog := l.WithValues("vmanomaly", item.Name, "parent_namespace", item.Namespace)
+		itemCtx := logger.AddToContext(ctx, itemLog)
 		// only check selector when deleting object,
 		// since labels can be changed when updating and we can't tell if it was selected before, and we can't tell if it's creating or updating.
 		if !instance.DeletionTimestamp.IsZero() {
@@ -111,9 +116,9 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				ObjectSelector:    item.Spec.ConfigSelector,
 				NamespaceSelector: item.Spec.ConfigNamespaceSelector,
 			}
-			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, item, opts, r.BaseConf.WatchNamespaces)
+			match, err := isSelectorsMatchesTargetCRD(itemCtx, r.Client, &instance, item, opts, r.BaseConf.WatchNamespaces)
 			if err != nil {
-				l.Error(err, "cannot match vmanomaly and vmanomalyconfig")
+				itemLog.Error(err, "cannot match vmanomaly and vmanomalyconfig")
 				continue
 			}
 			if !match {
@@ -121,10 +126,16 @@ func (r *VMAnomalyConfigReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			}
 		}
 
-		if err := vmanomaly.CreateOrUpdateConfig(ctx, r, item, &instance); err != nil {
-			l.Error(err, "failed to update vmanomaly config")
-		}
+		g.Go(func() error {
+			if configErr := vmanomaly.CreateOrUpdateConfig(itemCtx, r, item, &instance); configErr != nil {
+				itemLog.Error(configErr, "failed to update vmanomaly config")
+				return configErr
+			}
+			return nil
+		})
 	}
+	err = g.Wait()
+	err = errors.Join(err, reconcile.SyncAggregatedChildStatus(ctx, r.Client, &instance))
 	return
 }
 

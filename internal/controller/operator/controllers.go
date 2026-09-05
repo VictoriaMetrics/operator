@@ -25,6 +25,7 @@ import (
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
@@ -403,4 +404,31 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		logger.WithContext(ctx).Info("object was successfully reconciled")
 	}
 	return result, nil
+}
+
+// releaseScrapeChildStatuses releases parentObject's Applied condition from every
+// VMServiceScrape/VMPodScrape/VMNodeScrape/VMProbe/VMStaticScrape/VMScrapeConfig still
+// carrying it, for use on VMAgent/VMSingle deletion, since no further reconcile of the
+// deleted parent will ever release these otherwise.
+func releaseScrapeChildStatuses(ctx context.Context, rclient client.Client, parentObject string) error {
+	var errs []error
+	if !build.IsControllerDisabled("VMServiceScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMServiceScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMPodScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMPodScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMNodeScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMNodeScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMProbe") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMProbe(nil)))
+	}
+	if !build.IsControllerDisabled("VMStaticScrape") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMStaticScrape(nil)))
+	}
+	if !build.IsControllerDisabled("VMScrapeConfig") {
+		errs = append(errs, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMScrapeConfig(nil)))
+	}
+	return errors.Join(errs...)
 }

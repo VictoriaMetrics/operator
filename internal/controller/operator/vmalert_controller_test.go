@@ -87,6 +87,55 @@ var _ = Describe("VMAlert Controller", func() {
 	})
 })
 
+func TestVMAlert_Reconcile_DeleteReleasesChildStatus(t *testing.T) {
+	g := NewWithT(t)
+	parent := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "parent1",
+			Namespace:  "default",
+			Finalizers: []string{vmv1beta1.FinalizerName},
+		},
+		Spec: vmv1beta1.VMAlertSpec{
+			SelectAllByDefault: true,
+		},
+	}
+	conditionType := "parent1.default.vmalert" + vmv1beta1.ConditionDomainTypeAppliedSuffix
+	child := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "child1",
+			Namespace: "default",
+		},
+		Status: vmv1beta1.VMRuleStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusOperational,
+				Conditions: []vmv1beta1.Condition{
+					{Type: conditionType, Status: "True", Reason: vmv1beta1.ConditionParsingReason},
+				},
+			},
+		},
+	}
+
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{parent, child})
+	g.Expect(fclient.Delete(context.TODO(), parent)).To(Succeed())
+
+	r := &VMAlertReconciler{
+		Client:       fclient,
+		BaseConf:     &config.BaseOperatorConf{},
+		Log:          ctrl.Log.WithName("test"),
+		OriginScheme: fclient.Scheme(),
+	}
+	nsn := types.NamespacedName{Name: parent.Name, Namespace: parent.Namespace}
+	_, err := r.Reconcile(context.TODO(), reconcile.Request{NamespacedName: nsn})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	var got vmv1beta1.VMRule
+	g.Expect(fclient.Get(context.TODO(), types.NamespacedName{Name: child.Name, Namespace: child.Namespace}, &got)).To(Succeed())
+	for _, c := range got.Status.Conditions {
+		g.Expect(c.Type).NotTo(Equal(conditionType))
+	}
+	g.Expect(got.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusIgnored))
+}
+
 func TestVMAlert_Reconcile_AgentSync_Managed(t *testing.T) {
 	g := NewWithT(t)
 	managed := &vmv1beta1.VMAlert{

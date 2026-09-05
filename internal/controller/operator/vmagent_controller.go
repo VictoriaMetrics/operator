@@ -98,15 +98,21 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		agentSync.Lock()
+		defer agentSync.Unlock()
+		parentObject := fmt.Sprintf("%s.%s.vmagent", instance.Name, instance.Namespace)
+		if err = releaseScrapeChildStatuses(ctx, r.Client, parentObject); err != nil {
+			return
+		}
+		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged(nil) {
 		agentSync.RLock()
 		defer agentSync.RUnlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
@@ -166,7 +172,7 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 		objects.Items = append(objects.Items, dst.Items...)
 	}); err != nil {
 		err = fmt.Errorf("cannot list VMAgents for %T: %w", instance, err)
-		return
+		return err
 	}
 	var g errgroup.Group
 	g.SetLimit(childReconcileConcurrencyLimit)
@@ -206,5 +212,5 @@ func collectVMAgentScrapes(l logr.Logger, ctx context.Context, rclient client.Cl
 		})
 	}
 	err = g.Wait()
-	return
+	return err
 }

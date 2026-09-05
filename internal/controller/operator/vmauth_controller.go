@@ -34,6 +34,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmauth"
 )
 
@@ -89,17 +90,23 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, newGetError(err)
 	}
 
-	if !instance.IsUnmanaged() {
-		authSync.RLock()
-		defer authSync.RUnlock()
-	}
-
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		authSync.Lock()
+		defer authSync.Unlock()
+		parentObject := fmt.Sprintf("%s.%s.vmauth", instance.Name, instance.Namespace)
+		if err = reconcile.StatusForChildObjects(ctx, r.Client, parentObject, []*vmv1beta1.VMUser(nil)); err != nil {
+			return
+		}
 		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
 		return
+	}
+
+	if !instance.IsUnmanaged() {
+		authSync.RLock()
+		defer authSync.RUnlock()
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = newParsingError(instance.Status.ParsingSpecError)

@@ -25,9 +25,12 @@ import (
 // Alerting rules are dropped when hasNotifiers is false, since vmalert would have nowhere to
 // send them; recording rules are unaffected.
 func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, childCR *vmv1beta1.VMRule, hasNotifiers bool) ([]string, error) {
-	// fast path
 	if cr.IsUnmanaged() {
-		return nil, nil
+		if build.IsControllerDisabled("VMRule") {
+			return nil, nil
+		}
+		parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
+		return nil, reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule(nil))
 	}
 	return reconcileVMAlertConfig(ctx, rclient, cr, childCR, hasNotifiers)
 }

@@ -345,10 +345,6 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 func TestRuleRebalance(t *testing.T) {
 	ctx := context.Background()
 
-	origLimit := config.MustGetBaseConfig().ConfigDataBudgetBytes
-	config.MustGetBaseConfig().ConfigDataBudgetBytes = 90
-	defer func() { config.MustGetBaseConfig().ConfigDataBudgetBytes = origLimit }()
-
 	mkRule := func(ns, name, recordName string) *vmv1beta1.VMRule {
 		return &vmv1beta1.VMRule{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
@@ -360,6 +356,15 @@ func TestRuleRebalance(t *testing.T) {
 			},
 		}
 	}
+
+	singleGroupData, err := yaml.Marshal([]vmv1beta1.RuleGroup{mkRule("default", "rule-x", "job:x:total").Spec.Groups[0]})
+	assert.NoError(t, err)
+	singleGroupCompressed, err := build.GzipConfig(singleGroupData)
+	assert.NoError(t, err)
+
+	origLimit := config.MustGetBaseConfig().ConfigDataBudgetBytes
+	config.MustGetBaseConfig().ConfigDataBudgetBytes = len(singleGroupCompressed)
+	defer func() { config.MustGetBaseConfig().ConfigDataBudgetBytes = origLimit }()
 
 	ns := "default"
 	cr := &vmv1beta1.VMAlert{

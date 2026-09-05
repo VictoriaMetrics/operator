@@ -1,6 +1,9 @@
 package build
 
 import (
+	"errors"
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/utils/ptr"
@@ -61,8 +64,8 @@ func IsOpenShiftCompatibilityActive() bool {
 }
 
 // WarnOpenShiftClusterSpec returns OpenShift security context warnings for all sub-components
-// of a VMClusterSpec (VMSelect, VMInsert, VMStorage, RequestsLoadBalancer).
-func WarnOpenShiftClusterSpec(spec *vmv1beta1.VMClusterSpec) []string {
+// of a VMClusterSpecBase (VMSelect, VMInsert, VMStorage, RequestsLoadBalancer).
+func WarnOpenShiftClusterSpec(spec *vmv1beta1.VMClusterSpecBase) []string {
 	var w []string
 	if c := spec.VMSelect; c != nil {
 		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
@@ -77,6 +80,29 @@ func WarnOpenShiftClusterSpec(spec *vmv1beta1.VMClusterSpec) []string {
 		w = append(w, WarnOpenShiftSecurityContext(spec.RequestsLoadBalancer.Spec.SecurityContext)...)
 	}
 	return w
+}
+
+// WarnOpenShiftClusterPools returns OpenShift security context warnings for each pool's
+// resolved vmstorage and vminsert.
+func WarnOpenShiftClusterPools(cr *vmv1beta1.VMCluster) ([]string, error) {
+	var w []string
+	var errs []error
+	for i := range cr.Spec.Pools {
+		pool := &cr.Spec.Pools[i]
+		storage, err := cr.ResolvePoolVMStorage(pool)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("pool %q: cannot resolve vmstorage: %w", pool.Name, err))
+		} else if storage != nil {
+			w = append(w, WarnOpenShiftSecurityContext(storage.SecurityContext)...)
+		}
+		insert, err := cr.ResolvePoolVMInsert(pool)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("pool %q: cannot resolve vminsert: %w", pool.Name, err))
+		} else if insert != nil {
+			w = append(w, WarnOpenShiftSecurityContext(insert.SecurityContext)...)
+		}
+	}
+	return w, errors.Join(errs...)
 }
 
 // WarnOpenShiftVLClusterSpec returns OpenShift security context warnings for all sub-components

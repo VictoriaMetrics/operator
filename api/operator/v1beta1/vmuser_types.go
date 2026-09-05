@@ -231,6 +231,10 @@ type NamespacedName struct {
 	// (created via spec.serviceSpec) over the default service when building the target URL.
 	// +optional
 	UseExtraService bool `json:"useExtraService,omitempty"`
+	// Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared
+	// (non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds.
+	// +optional
+	Pool string `json:"pool,omitempty"`
 }
 
 // CRDRef describe CRD target reference.
@@ -247,7 +251,7 @@ type CRDRef struct {
 
 // AsKey returns unique key for object
 func (cr *CRDRef) AsKey(nsn NamespacedName) string {
-	return fmt.Sprintf("%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name)
+	return fmt.Sprintf("%s/%s/%s/%s", cr.Kind, nsn.Namespace, nsn.Name, nsn.Pool)
 }
 
 // StaticRef - user-defined routing host address.

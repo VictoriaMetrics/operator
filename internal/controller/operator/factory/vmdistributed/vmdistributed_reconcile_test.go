@@ -127,7 +127,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					{
 						Name: zoneName,
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -194,7 +194,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					{
 						Name: zoneName,
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -252,7 +252,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					{
 						Name: zoneName,
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -326,7 +326,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 					{
 						Name: zoneName,
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								RetentionPeriod: "1",
 								VMStorage: &vmv1beta1.VMStorage{
 									CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -401,7 +401,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	})
 
 	zoneSpec := vmv1alpha1.VMDistributedZoneCluster{
-		Spec: vmv1beta1.VMClusterSpec{
+		Spec: vmv1beta1.VMClusterSpecBase{
 			RetentionPeriod: "1",
 			VMStorage: &vmv1beta1.VMStorage{
 				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
@@ -584,7 +584,7 @@ func Test_CreateOrUpdate_Paused(t *testing.T) {
 				{
 					Name: "zone-1",
 					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-						Spec: vmv1beta1.VMClusterSpec{
+						Spec: vmv1beta1.VMClusterSpecBase{
 							RetentionPeriod: "1",
 							VMStorage: &vmv1beta1.VMStorage{
 								CommonAppsParams: vmv1beta1.CommonAppsParams{

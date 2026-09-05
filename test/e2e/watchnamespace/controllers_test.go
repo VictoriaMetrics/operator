@@ -39,7 +39,9 @@ var _ = Describe("Controllers", func() {
 					Namespace: namespace,
 					Name:      "test-vmcluster",
 				},
-				Spec: vmv1beta1.VMClusterSpec{RetentionPeriod: "1"},
+				Spec: vmv1beta1.VMClusterSpec{
+					VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{RetentionPeriod: "1"},
+				},
 			},
 			&vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{

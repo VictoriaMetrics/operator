@@ -1,7 +1,7 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"testing"
 
@@ -91,9 +91,10 @@ func TestStringOrArrayMarshal(t *testing.T) {
 		assert.Equal(t, expected, string(got))
 	}
 
-	f(&StringOrArray{"1", "2", "3"}, json.Marshal, `["1","2","3"]`)
-	f(&StringOrArray{"1"}, json.Marshal, `"1"`)
-	f(&StringOrArray{}, json.Marshal, `""`)
+	jsonMarshal := func(v any) ([]byte, error) { return json.Marshal(v) }
+	f(&StringOrArray{"1", "2", "3"}, jsonMarshal, `["1","2","3"]`)
+	f(&StringOrArray{"1"}, jsonMarshal, `"1"`)
+	f(&StringOrArray{}, jsonMarshal, `""`)
 	f(&StringOrArray{"1", "2", "3"}, yaml.Marshal, `- "1"
 - "2"
 - "3"
@@ -112,9 +113,10 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 		assert.NoError(t, unmarshalF([]byte(src), &got))
 		assert.Equal(t, expected, got)
 	}
-	f(`["1","2","3"]`, json.Unmarshal, StringOrArray{"1", "2", "3"})
-	f(`"1"`, json.Unmarshal, StringOrArray{"1"})
-	f(`""`, json.Unmarshal, StringOrArray{""})
+	jsonUnmarshal := func(data []byte, v any) error { return json.Unmarshal(data, v) }
+	f(`["1","2","3"]`, jsonUnmarshal, StringOrArray{"1", "2", "3"})
+	f(`"1"`, jsonUnmarshal, StringOrArray{"1"})
+	f(`""`, jsonUnmarshal, StringOrArray{""})
 	f(`- "1"
 - "2"
 - "3"

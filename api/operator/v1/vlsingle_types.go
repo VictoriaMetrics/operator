@@ -17,7 +17,8 @@ limitations under the License.
 package v1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -41,7 +42,7 @@ type VLSingleSpec struct {
 	// created by operator for the given CustomResource
 	ManagedMetadata *vmv1beta1.ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 
 	// LogLevel for VictoriaLogs to be configured with.
 	// +optional
@@ -183,7 +184,7 @@ func (cr *VLSingle) UnmarshalJSON(src []byte) error {
 	type pcr VLSingle
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

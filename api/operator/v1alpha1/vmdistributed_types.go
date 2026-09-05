@@ -17,7 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -283,7 +284,7 @@ type VMDistributedZoneAgentSpec struct {
 	// +optional
 	HPA *vmv1beta1.EmbeddedHPA `json:"hpa,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 func (s *VMDistributedZoneAgentSpec) ToVMAgentSpec() (*vmv1beta1.VMAgentSpec, error) {
@@ -490,7 +491,7 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 	type pcr VMDistributed
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

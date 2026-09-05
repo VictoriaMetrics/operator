@@ -1,7 +1,8 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -136,7 +137,7 @@ type TargetRef struct {
 	Paths []string `json:"paths,omitempty"`
 	Hosts []string `json:"hosts,omitempty"`
 
-	URLMapCommon `json:",omitempty"`
+	URLMapCommon `json:",inline"`
 
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.
@@ -386,7 +387,7 @@ func (cr *VMUser) UnmarshalJSON(src []byte) error {
 	type pcr VMUser
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

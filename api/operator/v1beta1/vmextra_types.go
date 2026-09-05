@@ -1,8 +1,8 @@
 package v1beta1
 
 import (
-	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"path"
@@ -332,7 +332,7 @@ type HTTPAuth struct {
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// +optional
-	*BearerAuth `json:",inline,omitempty"`
+	*BearerAuth `json:",inline"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
 	// e.g.
@@ -1059,7 +1059,7 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 		*m = match
 		return nil
 	default:
-		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
+		return &json.SemanticError{JSONValue: jsontext.Value(data), GoType: rawType}
 	}
 }
 
@@ -1177,32 +1177,29 @@ func (c *TLSConfig) appendForbiddenProperties(props []string) []string {
 	return props
 }
 
-// UnmarshalSpecStrict decodes spec JSON into v and rejects unknown fields.
-// A lenient pass runs first so real parse errors (type mismatches, syntax)
-// are returned before unknown-field errors can hide them.
-func UnmarshalSpecStrict(data []byte, v any) error {
-	if err := json.Unmarshal(data, v); err != nil {
-		return err
-	}
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.DisallowUnknownFields()
-	return d.Decode(v)
-}
-
 // HasUnknownFields reports whether a ParsingSpecError was caused by unknown spec fields.
 // Webhook ValidateUpdate uses this to allow updates to CRs that contain fields unknown to
 // the current operator version (e.g. after a downgrade), while ValidateCreate still rejects them.
 func HasUnknownFields(parsingSpecErr string) bool {
-	return strings.Contains(parsingSpecErr, "json: unknown field")
+	return strings.Contains(parsingSpecErr, "unknown object member name") || strings.Contains(parsingSpecErr, "json: unknown field")
+}
+
+// UnmarshalSpecStrict unmarshals src into spec using case-insensitive field name matching. It
+// first attempts a lenient parse (case-insensitive only, unknown members allowed) so a genuine
+// type/syntax error is returned before a stricter "unknown member" error could mask it, then
+// re-parses with unknown members rejected so those are still reported when nothing more
+// fundamental is wrong.
+func UnmarshalSpecStrict(src []byte, spec any) error {
+	if err := json.Unmarshal(src, spec, json.MatchCaseInsensitiveNames(true)); err != nil {
+		return err
+	}
+	return json.Unmarshal(src, spec, json.MatchCaseInsensitiveNames(true), json.RejectUnknownMembers(true))
 }
 
 // UnmarshalJSON implements json.Unmarshaller interface
 func (c *TLSConfig) UnmarshalJSON(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-
 	type pc TLSConfig
-	if err := decoder.Decode((*pc)(c)); err != nil {
+	if err := UnmarshalSpecStrict(data, (*pc)(c)); err != nil {
 		return err
 	}
 

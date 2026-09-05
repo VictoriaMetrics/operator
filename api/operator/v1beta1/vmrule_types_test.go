@@ -1,7 +1,7 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"

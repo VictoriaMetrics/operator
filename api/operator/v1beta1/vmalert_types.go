@@ -1,7 +1,8 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"strings"
@@ -165,8 +166,8 @@ type VMAlertSpec struct {
 	// +optional
 	ComponentVersion string `json:"componentVersion,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams `json:",inline"`
+	CommonAppsParams           `json:",inline"`
 }
 
 // GetReloadURL implements reloadable interface
@@ -194,7 +195,7 @@ func (cr *VMAlert) UnmarshalJSON(src []byte) error {
 	type pcr VMAlert
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {
@@ -214,7 +215,7 @@ type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
 	URL string `json:"url"`
 	// HTTPAuth generic auth methods
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
@@ -229,7 +230,7 @@ type VMAlertNotifierSpec struct {
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
 
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 func (ns *VMAlertNotifierSpec) validate() error {
@@ -256,7 +257,7 @@ type VMAlertRemoteReadSpec struct {
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
 
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -278,7 +279,7 @@ type VMAlertRemoteWriteSpec struct {
 	// +optional
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 	// HTTPAuth generic auth methods
-	HTTPAuth `json:",inline,omitempty"`
+	HTTPAuth `json:",inline"`
 }
 
 // VMAlertStatus defines the observed state of VMAlert

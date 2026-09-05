@@ -34,7 +34,7 @@ type syncEvent struct {
 	obj *corev1.Secret
 }
 
-func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k8sWatcher, error) {
+func newKubernetesWatcher(secretName, namespace string) (*k8sWatcher, error) {
 	lr := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(lr, &clientcmd.ConfigOverrides{})
@@ -47,7 +47,7 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 		return nil, fmt.Errorf("cannot start watch for secret: %w", err)
 	}
 	inf := cache.NewSharedIndexInformer(&cache.ListWatch{
-		ListWithContextFunc: func(_ context.Context, options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			var s corev1.SecretList
 			listOpts := &client.ListOptions{
 				Namespace:     namespace,
@@ -61,7 +61,7 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 
 			return &s, nil
 		},
-		WatchFuncWithContext: func(_ context.Context, options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOpts := &client.ListOptions{
 				Namespace:     namespace,
 				FieldSelector: fields.OneTermEqualSelector("metadata.name", secretName),

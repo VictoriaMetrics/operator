@@ -1,7 +1,8 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -149,10 +150,10 @@ type VMAgentSpec struct {
 	// +optional
 	VPA *EmbeddedVPA `json:"vpa,omitempty"`
 
-	CommonRelabelParams        `json:",inline,omitempty"`
-	CommonScrapeParams         `json:",inline,omitempty"`
-	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	CommonRelabelParams        `json:",inline"`
+	CommonScrapeParams         `json:",inline"`
+	CommonConfigReloaderParams `json:",inline"`
+	CommonAppsParams           `json:",inline"`
 }
 
 func (cr *VMAgent) Validate() error {
@@ -310,7 +311,7 @@ func (cr *VMAgent) UnmarshalJSON(src []byte) error {
 	type pcr VMAgent
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

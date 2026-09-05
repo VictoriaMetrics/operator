@@ -102,6 +102,13 @@ func TestStringOrArrayMarshal(t *testing.T) {
 `)
 	f(&StringOrArray{}, yaml.Marshal, `""
 `)
+	got, err := json.Marshal(struct {
+		Match StringOrArray `json:"match"`
+	}{
+		Match: StringOrArray{"1"},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, `{"match":"1"}`, string(got))
 
 }
 

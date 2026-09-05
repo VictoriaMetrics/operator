@@ -175,6 +175,7 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 		VolumeMounts:             volumeMounts,
 		Resources:                cr.Spec.Resources,
 		Env:                      envs,
+		EnvFrom:                  cr.Spec.ExtraEnvsFrom,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	build.Probe(&container, cr, &cr.Spec.CommonAppsParams)

@@ -387,7 +387,17 @@ type reloadable interface {
 	AutomountServiceAccountToken() bool
 }
 
-func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeMount, ss *corev1.SecretKeySelector) corev1.Container {
+// ConfigReloaderOpts controls how ConfigReloaderContainer builds the reloader's container.
+type ConfigReloaderOpts struct {
+	CR                reloadable
+	Mounts            []corev1.VolumeMount
+	SecretKeySelector *corev1.SecretKeySelector
+	// IsInit builds the one-shot init-container variant (--only-init-config).
+	IsInit bool
+}
+
+func ConfigReloaderContainer(opts ConfigReloaderOpts) corev1.Container {
+	cr, mounts, ss := opts.CR, opts.Mounts, opts.SecretKeySelector
 	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", cr.GetReloadURL(config.GetLocalhost())),
@@ -412,12 +422,12 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 			fmt.Sprintf("--config-secret-name=%s/%s", cr.GetNamespace(), ss.Name),
 			fmt.Sprintf("--config-secret-key=%s.gz", ss.Key))
 	}
-	if isInit {
+	if opts.IsInit {
 		args = append(args, "--only-init-config")
 	} else {
 		for _, m := range mounts {
 			if m.Name != outVolumeName {
-				args = append(args, fmt.Sprintf("--watched-dir=%s", m.MountPath))
+				args = append(args, fmt.Sprintf("--watched-dir=%s", m.MountPath), "--target-dir=")
 			}
 		}
 	}
@@ -450,7 +460,7 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 	if ss != nil {
 		AddServiceAccountTokenVolumeMount(&c, cr.AutomountServiceAccountToken())
 	}
-	if !isInit {
+	if !opts.IsInit {
 		c.Name = "config-reloader"
 		c.TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
 		addPortProbesToConfigReloaderContainer(&c)

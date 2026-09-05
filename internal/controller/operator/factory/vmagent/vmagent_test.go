@@ -2717,6 +2717,7 @@ containers:
       image: vmcustom:config-reloader-v0.35.0
       args:
         - --reload-url=http://127.0.0.1:8425/-/reload
+        - --target-dir=
         - --watched-dir=/etc/vm/relabeling
         - --webhook-method=POST
       ports:
@@ -3347,4 +3348,68 @@ containers:
 serviceaccountname: vmagent-agent
 `,
 	})
+}
+
+// relabeling configs combined with extra scrape config secrets, see #2583.
+// extraConfigSecretCount is derived from the real createOrUpdateScrapeConfig computation, not
+// hardcoded.
+func TestMakeSpecForAgentOk_WatchTargetDirPairing(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				ServiceScrapeSelector:          &metav1.LabelSelector{},
+				ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+			},
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "localhost:8429",
+					InlineUrlRelabelConfig: []*vmv1beta1.RelabelConfig{
+						{TargetLabel: "rw-1", Replacement: ptr.To("present")},
+					},
+				},
+			},
+		},
+	}
+
+	predefinedObjects := []runtime.Object{
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+	}
+	for i := 0; i < 20; i++ {
+		predefinedObjects = append(predefinedObjects, &vmv1beta1.VMServiceScrape{
+			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("scrape-%02d", i), Namespace: "default"},
+			Spec: vmv1beta1.VMServiceScrapeSpec{
+				Selector: metav1.LabelSelector{},
+				Endpoints: []vmv1beta1.Endpoint{
+					{Port: fmt.Sprintf("808%d", i), EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{Path: fmt.Sprintf("/metrics-%d", i)}},
+				},
+			},
+		})
+	}
+	fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	cfg := config.MustGetBaseConfig()
+	origBudget := cfg.ConfigDataBudgetBytes
+	cfg.ConfigDataBudgetBytes = 500
+	defer func() { cfg.ConfigDataBudgetBytes = origBudget }()
+
+	ac := getAssetsCache(ctx, fclient, cr)
+	extraConfigSecretCount, err := createOrUpdateScrapeConfig(ctx, fclient, cr, nil, nil, ac, cfg)
+	assert.NoError(t, err)
+	assert.NoError(t, createOrUpdateRelabelConfigsAssets(ctx, fclient, cr, nil, ac))
+	if !assert.Greater(t, extraConfigSecretCount, 0, "test setup must actually force extra scrape config secrets") {
+		return
+	}
+
+	got, err := newPodSpec(cr, ac, extraConfigSecretCount)
+	assert.NoError(t, err)
+
+	want := map[string]string{"/etc/vm/relabeling": ""}
+	for i := 1; i <= extraConfigSecretCount; i++ {
+		want[fmt.Sprintf("/etc/vm/sc-raw-%d", i)] = fmt.Sprintf("/etc/vm/sc-files/sc-raw-%d", i)
+	}
+	k8stools.AssertConfigReloaderWatchTargetDirs(t, got.Containers, want)
 }

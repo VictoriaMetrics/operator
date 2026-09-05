@@ -792,7 +792,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				MountPath: path.Join("/cm-dir", cm),
 			})
 		}
-		got := ConfigReloaderContainer(false, o.cr, extraMounts, nil)
+		got := ConfigReloaderContainer(ConfigReloaderOpts{
+			CR:     o.cr,
+			Mounts: extraMounts,
+		})
 		assert.Equal(t, o.expectedContainer, got)
 	}
 
@@ -820,6 +823,8 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Args: []string{
 				"--enableTCP6",
 				"--reload-url=http://localhost:/-/reload?authKey=test",
+				"--target-dir=",
+				"--target-dir=",
 				"--watched-dir=/cm-dir/cm-0",
 				"--watched-dir=/cm-dir/cm-1",
 				"--webhook-method=POST",
@@ -883,6 +888,7 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Name: "config-reloader",
 			Args: []string{
 				"--reload-url=http://127.0.0.1:/-/reload",
+				"--target-dir=",
 				"--watched-dir=/cm-dir/cm-0",
 				"--webhook-method=POST",
 			},
@@ -948,6 +954,9 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Name: "config-reloader",
 			Args: []string{
 				"--reload-url=http://127.0.0.1:/-/reload",
+				"--target-dir=",
+				"--target-dir=",
+				"--target-dir=",
 				"--watched-dir=/cm-dir/cm-0",
 				"--watched-dir=/etc/vm/configs/extra-template-1",
 				"--watched-dir=/etc/vm/configs/extra-template-2",

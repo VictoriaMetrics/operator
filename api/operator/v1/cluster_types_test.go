@@ -19,8 +19,10 @@ func TestVTCluster_AvailableStorageNodeIDs(t *testing.T) {
 	cr := &VTCluster{
 		Spec: VTClusterSpec{
 			Storage: &VTStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(5)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(5)),
+					},
 				},
 				MaintenanceSelectNodeIDs: []int32{1, 3},
 				MaintenanceInsertNodeIDs: []int32{0, 4},
@@ -38,7 +40,9 @@ func TestVTCluster_AvailableStorageNodeIDs(t *testing.T) {
 	f(&VTCluster{
 		Spec: VTClusterSpec{
 			Storage: &VTStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				},
 			},
 		},
 	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
@@ -54,8 +58,10 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 	cr := &VLCluster{
 		Spec: VLClusterSpec{
 			VLStorage: &VLStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(5)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(5)),
+					},
 				},
 				MaintenanceSelectNodeIDs: []int32{1, 3},
 				MaintenanceInsertNodeIDs: []int32{0, 4},
@@ -73,7 +79,9 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 	f(&VLCluster{
 		Spec: VLClusterSpec{
 			VLStorage: &VLStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				},
 			},
 		},
 	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})

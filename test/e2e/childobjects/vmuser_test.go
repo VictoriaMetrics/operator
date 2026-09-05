@@ -89,9 +89,11 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 						},
 						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								Image: vmv1beta1.Image{
-									Tag: "v1.108.0",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									Image: vmv1beta1.Image{
+										Tag: "v1.108.0",
+									},
 								},
 							},
 						},
@@ -139,9 +141,11 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 						},
 						Spec: vmv1beta1.VMAuthSpec{
 							SelectAllByDefault: true,
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								Image: vmv1beta1.Image{
-									Tag: "v1.108.0",
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									Image: vmv1beta1.Image{
+										Tag: "v1.108.0",
+									},
 								},
 							},
 						},

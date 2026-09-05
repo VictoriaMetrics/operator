@@ -107,8 +107,8 @@ type VTAgentSpec struct {
 
 	// Configures vertical pod autoscaling.
 	// +optional
-	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	VPA                          *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 }
 
 // Validate performs syntax validation
@@ -142,7 +142,7 @@ func (cr *VTAgent) Validate() error {
 	if specPort == "" {
 		specPort = "10429"
 	}
-	if err := cr.Spec.GRPCSpec.Validate(specPort); err != nil {
+	if err := cr.Spec.GRPCSpec.Validate(specPort, cr.Spec.HTTPListeners); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {
@@ -153,7 +153,7 @@ func (cr *VTAgent) Validate() error {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VTAgent) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
+	return cr.Spec.UseProxyProtocol()
 }
 
 // VTAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
@@ -393,7 +393,7 @@ func (cr *VTAgent) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VTAgent) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
+	return cr.Spec.UseTLS()
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
@@ -419,14 +419,17 @@ func (cr *VTAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces
+func (cr *VTAgent) Params() *vmv1beta1.StandardAppsParams {
+	return &cr.Spec.StandardAppsParams
+}
+
 // AsURL - returns url for http access
-func (cr *VTAgent) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "10429"
+func (cr *VTAgent) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	if nsn.ListenerName != "" && cr.Spec.ByName(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VTAgent=%q httpListeners", nsn.ListenerName, cr.Name)
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // ProbePath implements build.probeCRD interface
@@ -436,12 +439,17 @@ func (cr *VTAgent) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VTAgent) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(cr.Spec.Proto())
 }
 
 // ProbePort implements build.probeCRD interface
 func (cr *VTAgent) ProbePort() string {
-	return cr.Spec.Port
+	return cr.Spec.PrimaryPort(cr.Spec.Port)
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VTAgent) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
 }
 
 // ProbeNeedLiveness implements build.probeCRD interface

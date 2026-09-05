@@ -107,8 +107,8 @@ type VLAgentSpec struct {
 	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 	// Configures vertical pod autoscaling.
 	// +optional
-	VPA                        *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	VPA                          *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 }
 
 type VLAgentK8sCollector struct {
@@ -171,6 +171,9 @@ func (cr *VLAgent) Validate() error {
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
+	if err := cr.Spec.SyslogSpec.ValidateNoListenerNameCollision(cr.Spec.HTTPListeners); err != nil {
+		return err
+	}
 	if len(cr.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
 	}
@@ -209,7 +212,7 @@ func (cr *VLAgent) Validate() error {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VLAgent) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.Spec.ExtraArgs)
+	return cr.Spec.UseProxyProtocol()
 }
 
 // VLAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
@@ -460,7 +463,12 @@ func (cr *VLAgent) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VLAgent) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.Spec.ExtraArgs)
+	return cr.Spec.UseTLS()
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VLAgent) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -486,14 +494,17 @@ func (cr *VLAgent) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces
+func (cr *VLAgent) Params() *vmv1beta1.StandardAppsParams {
+	return &cr.Spec.StandardAppsParams
+}
+
 // AsURL - returns url for http access
-func (cr *VLAgent) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "9429"
+func (cr *VLAgent) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	if nsn.ListenerName != "" && cr.Spec.ByName(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VLAgent=%q httpListeners", nsn.ListenerName, cr.Name)
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // ProbePath implements build.probeCRD interface
@@ -503,12 +514,12 @@ func (cr *VLAgent) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VLAgent) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(cr.Spec.Proto())
 }
 
 // ProbePort implements build.probeCRD interface
 func (cr *VLAgent) ProbePort() string {
-	return cr.Spec.Port
+	return cr.Spec.PrimaryPort(cr.Spec.Port)
 }
 
 func (cr *VLAgent) GetRBACName() string {

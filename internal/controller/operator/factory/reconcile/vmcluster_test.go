@@ -112,7 +112,11 @@ func TestVMClusterReconcile(t *testing.T) {
 	// vmselect configmaps added
 	f(opts{
 		new: getVMCluster(func(v *vmv1beta1.VMCluster) {
-			v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+			v.Spec.VMSelect = &vmv1beta1.VMSelect{
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}},
+				},
+			}
 		}),
 		prev: getVMCluster(),
 		predefinedObjects: []runtime.Object{
@@ -134,11 +138,19 @@ func TestVMClusterReconcile(t *testing.T) {
 			v.Spec.VMSelect = &vmv1beta1.VMSelect{}
 		}),
 		prev: getVMCluster(func(v *vmv1beta1.VMCluster) {
-			v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+			v.Spec.VMSelect = &vmv1beta1.VMSelect{
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}},
+				},
+			}
 		}),
 		predefinedObjects: []runtime.Object{
 			getVMCluster(func(v *vmv1beta1.VMCluster) {
-				v.Spec.VMSelect = &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}}}
+				v.Spec.VMSelect = &vmv1beta1.VMSelect{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ConfigMaps: []string{"cm1"}},
+					},
+				}
 				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
 				v.Status.ObservedGeneration = v.Generation
 			}),

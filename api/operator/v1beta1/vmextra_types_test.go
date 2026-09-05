@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 )
@@ -127,13 +128,22 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 
 }
 
+func getStandardAppsParams(listeners []HTTPListener, args map[string]string) *StandardAppsParams {
+	return &StandardAppsParams{
+		CommonAppsParams: CommonAppsParams{ExtraArgs: args},
+		HTTPListeners:    listeners,
+	}
+}
+
 func TestUseProxyProtocol(t *testing.T) {
 	type opts struct {
-		args     map[string]string
-		expected bool
+		listeners []HTTPListener
+		args      map[string]string
+		expected  bool
 	}
 	f := func(o opts) {
-		assert.Equal(t, o.expected, UseProxyProtocol(o.args))
+		t.Helper()
+		assert.Equal(t, o.expected, getStandardAppsParams(o.listeners, o.args).UseProxyProtocol())
 	}
 
 	// no args set
@@ -146,21 +156,21 @@ func TestUseProxyProtocol(t *testing.T) {
 		},
 	})
 
-	// proxy protocol set to false
+	// proxy protocol set to false via ExtraArgs
 	f(opts{
 		args: map[string]string{
 			httpUseProxyProtocolFlag: "false",
 		},
 	})
 
-	// first proxy protocol value is false
+	// first proxy protocol value is false via ExtraArgs
 	f(opts{
 		args: map[string]string{
 			httpUseProxyProtocolFlag: "false,true,true",
 		},
 	})
 
-	// proxy protocol is true
+	// proxy protocol is true via ExtraArgs
 	f(opts{
 		args: map[string]string{
 			httpUseProxyProtocolFlag: "true",
@@ -168,7 +178,7 @@ func TestUseProxyProtocol(t *testing.T) {
 		expected: true,
 	})
 
-	// only first value is true
+	// only first ExtraArgs value is true
 	f(opts{
 		args: map[string]string{
 			httpUseProxyProtocolFlag: "true,false,false",
@@ -176,6 +186,103 @@ func TestUseProxyProtocol(t *testing.T) {
 		expected: true,
 	})
 
+	// primary listener enables proxy protocol
+	f(opts{
+		listeners: []HTTPListener{
+			{Addr: ":8428", Primary: true, UseProxyProtocol: ptr.To(true)},
+		},
+		expected: true,
+	})
+
+	// primary listener disables proxy protocol, ExtraArgs says true — listener wins
+	f(opts{
+		listeners: []HTTPListener{
+			{Addr: ":8428", Primary: true, UseProxyProtocol: ptr.To(false)},
+		},
+		args:     map[string]string{httpUseProxyProtocolFlag: "true"},
+		expected: false,
+	})
+
+	// listener without explicit UseProxyProtocol falls through to ExtraArgs
+	f(opts{
+		listeners: []HTTPListener{
+			{Addr: ":8428"},
+		},
+		args:     map[string]string{httpUseProxyProtocolFlag: "true"},
+		expected: true,
+	})
+
+	// first listener is implicitly primary when none has Primary:true
+	f(opts{
+		listeners: []HTTPListener{
+			{Addr: ":8428", UseProxyProtocol: ptr.To(true)},
+			{Addr: ":8429", UseProxyProtocol: ptr.To(false)},
+		},
+		expected: true,
+	})
+}
+
+func TestPrimaryListener(t *testing.T) {
+	assert.Nil(t, getStandardAppsParams(nil, nil).Primary())
+	assert.Nil(t, getStandardAppsParams([]HTTPListener{}, nil).Primary())
+
+	got := getStandardAppsParams([]HTTPListener{
+		{Addr: ":8428", Name: "first"},
+		{Addr: ":8429", Name: "second", Primary: true},
+	}, nil).Primary()
+	assert.Equal(t, "second", got.Name)
+
+	// no Primary flag set — returns first
+	got2 := getStandardAppsParams([]HTTPListener{
+		{Addr: ":8428", Name: "a"},
+		{Addr: ":8429", Name: "b"},
+	}, nil).Primary()
+	assert.Equal(t, "a", got2.Name)
+}
+
+func TestHTTPProto(t *testing.T) {
+	// no listeners, no ExtraArgs
+	assert.Equal(t, "http", getStandardAppsParams(nil, nil).Proto())
+
+	// ExtraArgs TLS enabled
+	assert.Equal(t, "https", getStandardAppsParams(nil, map[string]string{tlsFlag: "true"}).Proto())
+
+	// primary listener with TLS=true overrides ExtraArgs
+	assert.Equal(t, "https", getStandardAppsParams([]HTTPListener{{Addr: ":8428", Primary: true, TLS: ptr.To(true)}}, nil).Proto())
+
+	// primary listener with TLS=false overrides ExtraArgs tls flag
+	assert.Equal(t, "http", getStandardAppsParams([]HTTPListener{{Addr: ":8428", Primary: true, TLS: ptr.To(false)}}, map[string]string{tlsFlag: "true"}).Proto())
+
+	// listener without TLS set falls through to ExtraArgs
+	assert.Equal(t, "https", getStandardAppsParams([]HTTPListener{{Addr: ":8428"}}, map[string]string{tlsFlag: "true"}).Proto())
+}
+
+func TestListenerAddrPort(t *testing.T) {
+	cases := []struct {
+		addr string
+		want string
+	}{
+		{":8428", "8428"},
+		{"0.0.0.0:9090", "9090"},
+		{"[::]:8080", "8080"},
+	}
+	for _, c := range cases {
+		l := &HTTPListener{Addr: c.addr}
+		assert.Equal(t, c.want, l.AddrPort(), "addr=%s", c.addr)
+	}
+}
+
+func TestListenerByName(t *testing.T) {
+	p := getStandardAppsParams([]HTTPListener{
+		{Name: "a", Addr: ":8428"},
+		{Name: "b", Addr: ":8429"},
+	}, nil)
+	got := p.ByName("b")
+	assert.NotNil(t, got)
+	assert.Equal(t, ":8429", got.Addr)
+
+	assert.Nil(t, p.ByName("missing"))
+	assert.Nil(t, getStandardAppsParams(nil, nil).ByName("a"))
 }
 
 func TestEmbeddedVPAValidation(t *testing.T) {
@@ -345,6 +452,96 @@ func TestCommonAppsParamsValidate(t *testing.T) {
 		PreStopSleepSeconds:           ptr.To[int32](30),
 		TerminationGracePeriodSeconds: ptr.To[int64](15),
 	}, true)
+}
+
+func TestHTTPListenerValidate(t *testing.T) {
+	f := func(l HTTPListener, wantErr bool) {
+		t.Helper()
+		err := l.Validate()
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+	f(HTTPListener{Name: "http", Addr: ":8428"}, false)
+	f(HTTPListener{Name: "http", Addr: "bad-addr"}, true)
+	f(HTTPListener{Name: "http", Addr: ":not-a-number"}, true)
+	f(HTTPListener{Name: "http", Addr: ":0"}, true)
+	f(HTTPListener{Name: "http", Addr: ":65536"}, true)
+	f(HTTPListener{Name: "http", Addr: ":65535"}, false)
+	f(HTTPListener{Addr: ":8428"}, true)
+	f(HTTPListener{Name: "not valid!", Addr: ":8428"}, true)
+	f(HTTPListener{Name: "http", Addr: ":8428", TLSCertFile: "/tls.crt", TLSCertSecret: &corev1.SecretKeySelector{}}, true)
+	f(HTTPListener{Name: "http", Addr: ":8428", TLSKeyFile: "/tls.key", TLSKeySecret: &corev1.SecretKeySelector{}}, true)
+	f(HTTPListener{Name: "http", Addr: ":8428", MTLSCAFile: "/ca.crt", MTLSCASecret: &corev1.SecretKeySelector{}}, true)
+}
+
+func TestStandardAppsParamsValidate_HTTPListenersConflict(t *testing.T) {
+	f := func(p StandardAppsParams, wantErr bool) {
+		t.Helper()
+		err := p.Validate()
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+	// no listeners, no conflict
+	f(StandardAppsParams{}, false)
+	// listeners without extraArgs override
+	f(StandardAppsParams{HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8428"}}}, false)
+	// httpListenAddr override without listeners
+	f(StandardAppsParams{CommonAppsParams: CommonAppsParams{ExtraArgs: map[string]string{httpListenAddrFlag: ":8429"}}}, false)
+	// both set - conflict
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8428"}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraArgs: map[string]string{httpListenAddrFlag: ":8429"},
+		},
+	}, true)
+	// single listener synthesized by defaulting to mirror the override - no conflict
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8429"}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraArgs: map[string]string{httpListenAddrFlag: ":8429"},
+		},
+	}, false)
+	// duplicate listener names
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{
+			{Name: "http", Addr: ":8428"},
+			{Name: "http", Addr: ":8429"},
+		},
+	}, true)
+	// more than one listener marked primary
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{
+			{Name: "http", Addr: ":8428", Primary: true},
+			{Name: "mtls", Addr: ":8429", Primary: true},
+		},
+	}, true)
+	// listener's explicit TLS conflicts with extraArgs tls
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8428", TLS: ptr.To(false)}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraArgs: map[string]string{tlsFlag: "true"},
+		},
+	}, true)
+	// listener's explicit UseProxyProtocol conflicts with extraArgs
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8428", UseProxyProtocol: ptr.To(false)}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraArgs: map[string]string{httpUseProxyProtocolFlag: "true"},
+		},
+	}, true)
+	// extraArgs tls with no explicit per-listener TLS - no conflict (legacy fallback)
+	f(StandardAppsParams{
+		HTTPListeners: []HTTPListener{{Name: "http", Addr: ":8428"}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraArgs: map[string]string{tlsFlag: "true"},
+		},
+	}, false)
 }
 
 func TestVLogs_PrefixedName(t *testing.T) {

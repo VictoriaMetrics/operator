@@ -31,15 +31,16 @@ import (
 )
 
 const (
-	confDir               = "/etc/vm/config"
-	confOutDir            = "/etc/vm/config_out"
-	tlsAssetsDir          = "/etc/vm-tls/certs"
-	dataDir               = "/victoria-metrics-data"
-	dataVolumeName        = "data"
-	streamAggrSecretKey   = "config.yaml"
-	relabelingName        = "relabeling.yaml"
-	scrapeGzippedFilename = "scrape.yaml.gz"
-	configFilename        = "scrape.yaml"
+	confDir                  = "/etc/vm/config"
+	confOutDir               = "/etc/vm/config_out"
+	tlsAssetsDir             = "/etc/vm-tls/certs"
+	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
+	dataDir                  = "/victoria-metrics-data"
+	dataVolumeName           = "data"
+	streamAggrSecretKey      = "config.yaml"
+	relabelingName           = "relabeling.yaml"
+	scrapeGzippedFilename    = "scrape.yaml.gz"
+	configFilename           = "scrape.yaml"
 )
 
 func isStorageEmpty(pvc *corev1.PersistentVolumeClaimSpec) bool {
@@ -233,7 +234,6 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	}
 
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -245,8 +245,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
-	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports := build.AddHTTPListenerPortsTo(nil, cr.Spec.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var crMounts []corev1.VolumeMount
@@ -398,6 +397,8 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	volumes, vmMounts = build.LicenseVolumeTo(volumes, vmMounts, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 	volumes, vmMounts = build.OpenShiftServiceCAVolumeTo(volumes, vmMounts)
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
@@ -464,7 +465,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	}
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, commonMounts, cr.Spec.ExtraArgs, false, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr, storagePath, commonMounts, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -524,17 +525,19 @@ func buildScrape(cr *vmv1beta1.VMSingle, svc *corev1.Service) *vmv1beta1.VMServi
 }
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMSingle) error {
-	addExtraPorts := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
-		if cr.Spec.Port != "8428" {
+	addExtraPorts := func(svc *corev1.Service, r *vmv1beta1.VMSingle) {
+		primaryPort := r.Spec.PrimaryPort(r.Spec.Port)
+		if primaryPort != "8428" {
 			// conditionally add 8428 port to be compatible with binary port
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
 				Name:       "http-alias",
 				Protocol:   "TCP",
 				Port:       8428,
-				TargetPort: intstr.Parse(cr.Spec.Port),
+				TargetPort: intstr.Parse(primaryPort),
 			})
 		}
 
+		vmb := r.Spec.VMBackup
 		if vmb != nil {
 			parsedPort := intstr.Parse(vmb.Port)
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
@@ -546,14 +549,16 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		}
 	}
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
-		addExtraPorts(svc, cr.Spec.VMBackup)
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
+		addExtraPorts(svc, cr)
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
-			addExtraPorts(svc, prevCR.Spec.VMBackup)
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
+			addExtraPorts(svc, prevCR)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)

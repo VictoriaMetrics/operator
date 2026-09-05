@@ -70,8 +70,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				Storage: &vmv1beta1.StorageSpec{
 					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
@@ -128,8 +130,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
@@ -220,8 +224,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 				{URL: "http://remote-write"},
 			},
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				ReplicaCount: ptr.To(int32(0)),
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
 			},
 			PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 				MinAvailable: ptr.To(intstr.FromInt32(1)),
@@ -265,8 +271,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 				Storage: &vmv1beta1.StorageSpec{
 					VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
@@ -323,8 +331,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -377,8 +387,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -436,9 +448,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
-					Secrets:      []string{"shared-secret"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+						Secrets:      []string{"shared-secret"},
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -501,8 +515,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -565,8 +581,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(0)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(0)),
+					},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -659,9 +677,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{URL: "http://remote-write"},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount:                  ptr.To(int32(1)),
-					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount:                  ptr.To(int32(1)),
+						TerminationGracePeriodSeconds: ptr.To[int64](60),
+					},
 				},
 			},
 		},
@@ -1272,22 +1292,24 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 	f(&vmv1.VTAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VTAgentSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				Image: vmv1beta1.Image{
-					Repository: "vt-repo",
-					Tag:        "v0.11.0",
-				},
-				Resources: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
-						corev1.ResourceMemory: resource.MustParse("10Mi"),
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Repository: "vt-repo",
+						Tag:        "v0.11.0",
 					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
-						corev1.ResourceMemory: resource.MustParse("10Mi"),
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("10Mi"),
+						},
 					},
+					Port: "10429",
 				},
-				Port: "10429",
 			},
 		},
 	}, []runtime.Object{}, `
@@ -1350,12 +1372,14 @@ serviceaccountname: vtagent-agent
 	f(&vmv1.VTAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VTAgentSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				Image: vmv1beta1.Image{
-					Tag: "v0.11.0",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v0.11.0",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "10429",
 				},
-				UseDefaultResources: ptr.To(false),
-				Port:                "10429",
 			},
 		},
 	}, []runtime.Object{}, `
@@ -1407,12 +1431,14 @@ serviceaccountname: vtagent-agent
 	f(&vmv1.VTAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VTAgentSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				Image: vmv1beta1.Image{
-					Tag: "v0.11.0",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v0.11.0",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "10429",
 				},
-				UseDefaultResources: ptr.To(false),
-				Port:                "10429",
 			},
 			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 				{
@@ -1480,12 +1506,14 @@ serviceaccountname: vtagent-agent
 	f(&vmv1.VTAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 		Spec: vmv1.VTAgentSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				Image: vmv1beta1.Image{
-					Tag: "v0.11.0",
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{
+						Tag: "v0.11.0",
+					},
+					UseDefaultResources: ptr.To(false),
+					Port:                "10429",
 				},
-				UseDefaultResources: ptr.To(false),
-				Port:                "10429",
 			},
 			GRPCSpec: &vmv1.OTLPGRPCSpec{
 				ListenPort: 4317,
@@ -1522,7 +1550,7 @@ containers:
     volumemounts:
       - name: tmp-data
         mountpath: /vtagent-data
-      - name: secret-tls-tls
+      - name: tls-tls
         mountpath: /etc/vt/tls-server-secrets/tls
     livenessprobe:
       probehandler:
@@ -1553,7 +1581,7 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
     imagepullpolicy: IfNotPresent
 volumes:
-  - name: secret-tls-tls
+  - name: tls-tls
     volumesource:
       secret:
         secretname: tls
@@ -1572,9 +1600,11 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 				{URL: "http://remote-write"},
 			},
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				ReplicaCount: ptr.To(int32(1)),
-				Paused:       true,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					Paused:       true,
+				},
 			},
 		},
 	}
@@ -1632,7 +1662,9 @@ func TestCreateOrUpdateService(t *testing.T) {
 		cr: &vmv1.VTAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10429"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10429"},
+				},
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 					UseAsDefault: true,
 					Spec: corev1.ServiceSpec{
@@ -1663,7 +1695,9 @@ func TestCreateOrUpdateService(t *testing.T) {
 		cr: &vmv1.VTAgent{
 			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
 			Spec: vmv1.VTAgentSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10429"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10429"},
+				},
 				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vtagent-extra"},
 					Spec: corev1.ServiceSpec{

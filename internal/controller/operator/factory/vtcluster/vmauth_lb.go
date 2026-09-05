@@ -64,11 +64,11 @@ func createOrUpdateVMAuthLB(ctx context.Context, rclient client.Client, cr, prev
 		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 		np := build.NetworkPolicy(b, cr.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
 		var prevNP *networkingv1.NetworkPolicy
 		if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 			prevNP = build.NetworkPolicy(b, prevCR.Spec.RequestsLoadBalancer.Spec.NetworkPolicy)
 		}
 		owner := cr.AsOwner()
@@ -86,7 +86,7 @@ func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.RequestsLoadBalancer.Spec.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -95,7 +95,7 @@ func createOrUpdateVMAuthLBHPA(ctx context.Context, rclient client.Client, cr, p
 	newHPA := build.HPA(b, targetRef, cr.Spec.RequestsLoadBalancer.Spec.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.RequestsLoadBalancer.Spec.HPA)
 	}
 	owner := cr.AsOwner()
@@ -122,13 +122,13 @@ func buildVMauthLBSecret(cr *vmv1.VTCluster) *corev1.Secret {
 	insertProto := "http"
 	selectProto := "http"
 	if cr.Spec.Select != nil {
-		selectPort = cr.Spec.Select.Port
+		selectPort = cr.Spec.Select.PrimaryPort(cr.Spec.Select.Port)
 		if cr.Spec.Select.UseTLS() {
 			selectProto = "https"
 		}
 	}
 	if cr.Spec.Insert != nil {
-		insertPort = cr.Spec.Insert.Port
+		insertPort = cr.Spec.Insert.PrimaryPort(cr.Spec.Insert.Port)
 		if cr.Spec.Insert.UseTLS() {
 			insertProto = "https"
 		}
@@ -285,8 +285,8 @@ func buildVMAuthScrape(cr *vmv1.VTCluster, svc *corev1.Service) *vmv1beta1.VMSer
 }
 
 func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	builder := func(r *vmv1.VTCluster) *build.ChildBuilder {
-		b := build.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
+	builder := func(r *vmv1.VTCluster) *vmv1beta1.ChildBuilder {
+		b := vmv1beta1.NewChildBuilder(r, vmv1beta1.ClusterComponentBalancer)
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: "vmauth",
 		}))
@@ -314,11 +314,11 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 }
 
 func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentBalancer)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.RequestsLoadBalancer.Spec.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -327,8 +327,8 @@ func createOrUpdatePodDisruptionBudgetForVMAuthLB(ctx context.Context, rclient c
 
 // createOrUpdateLBProxyService builds vtinsert and vtselect external services to expose vtcluster components for access by vmauth
 func createOrUpdateLBProxyService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VTCluster, kind vmv1beta1.ClusterComponent, port, prevPort string) error {
-	builder := func(r *vmv1.VTCluster) *build.ChildBuilder {
-		b := build.NewChildBuilder(r, kind)
+	builder := func(r *vmv1.VTCluster) *vmv1beta1.ChildBuilder {
+		b := vmv1beta1.NewChildBuilder(r, kind)
 		b.SetFinalLabels(labels.Merge(b.FinalLabels(), map[string]string{
 			vmv1beta1.VMAuthLBServiceProxyTargetLabel: string(kind),
 		}))

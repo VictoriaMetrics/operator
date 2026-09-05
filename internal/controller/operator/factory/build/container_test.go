@@ -502,10 +502,39 @@ func TestAddOTLPGRPCTLSConfigToVolumes(t *testing.T) {
 	volumes, mounts = AddOTLPGRPCTLSConfigToVolumes(nil, nil, grpcSpec, "/etc/vt/tls-server-secrets")
 	require.Len(t, volumes, 1)
 	require.Len(t, mounts, 1)
-	assert.Equal(t, "secret-tls-tls", volumes[0].Name)
+	assert.Equal(t, "tls-tls", volumes[0].Name)
 	assert.Equal(t, "tls", volumes[0].Secret.SecretName)
-	assert.Equal(t, "secret-tls-tls", mounts[0].Name)
+	assert.Equal(t, "tls-tls", mounts[0].Name)
 	assert.Equal(t, "/etc/vt/tls-server-secrets/tls", mounts[0].MountPath)
+}
+
+func TestAddTLSSecretVolume_SharedAcrossListenerKinds(t *testing.T) {
+	const tlsMountPath = "/etc/tls-secrets"
+	secretRef := &corev1.SecretKeySelector{
+		Key:                  "CERT",
+		LocalObjectReference: corev1.LocalObjectReference{Name: "shared"},
+	}
+
+	var volumes []corev1.Volume
+	var mounts []corev1.VolumeMount
+
+	listeners := []vmv1beta1.HTTPListener{{Name: "https", Addr: ":8443", TLSCertSecret: secretRef}}
+	volumes, mounts = AddHTTPListenerTLSToVolumes(volumes, mounts, listeners, tlsMountPath)
+
+	syslogSpec := &vmv1.SyslogServerSpec{
+		TCPListeners: []*vmv1.SyslogTCPListener{
+			{TLSConfig: &vmv1.TLSServerConfig{CertSecret: secretRef}},
+		},
+	}
+	volumes, mounts = AddSyslogTLSConfigToVolumes(volumes, mounts, syslogSpec, tlsMountPath)
+
+	grpcSpec := &vmv1.OTLPGRPCSpec{TLSConfig: &vmv1.TLSServerConfig{CertSecret: secretRef}}
+	volumes, mounts = AddOTLPGRPCTLSConfigToVolumes(volumes, mounts, grpcSpec, tlsMountPath)
+
+	require.Len(t, volumes, 1)
+	require.Len(t, mounts, 1)
+	assert.Equal(t, "shared", volumes[0].Secret.SecretName)
+	assert.Equal(t, tlsMountPath+"/shared", mounts[0].MountPath)
 }
 
 func TestStorageVolumeMountsTo(t *testing.T) {
@@ -804,9 +833,11 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ExtraArgs: map[string]string{
-						"reloadAuthKey": "test",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ExtraArgs: map[string]string{
+							"reloadAuthKey": "test",
+						},
 					},
 				},
 			},
@@ -938,8 +969,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				Name:      "base",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ConfigMaps: []string{"extra-template-1", "extra-template-2"},
+					},
 				},
 			},
 		},

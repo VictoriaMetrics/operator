@@ -152,7 +152,7 @@ type VMAgentSpec struct {
 	CommonRelabelParams        `json:",inline,omitempty"`
 	CommonScrapeParams         `json:",inline,omitempty"`
 	CommonConfigReloaderParams `json:",inline,omitempty"`
-	CommonAppsParams           `json:",inline,omitempty"`
+	StandardAppsParams         `json:",inline"`
 }
 
 func (cr *VMAgent) Validate() error {
@@ -161,6 +161,9 @@ func (cr *VMAgent) Validate() error {
 	}
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
+	}
+	if err := cr.Spec.InsertPorts.ValidateNoListenerNameCollision(cr.Spec.HTTPListeners); err != nil {
+		return err
 	}
 	if len(cr.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
@@ -287,7 +290,7 @@ func (cr *VMAgent) ExternalLabels() map[string]string {
 
 // GetReloadURL implements reloadable interface
 func (cr *VMAgent) GetReloadURL(host string) string {
-	return BuildLocalURL(reloadAuthKeyFlag, host, cr.Spec.Port, reloadPath, cr.Spec.ExtraArgs)
+	return cr.Spec.BuildLocalURL(reloadAuthKeyFlag, host, reloadPath)
 }
 
 // GetReloaderParams implements reloadable interface
@@ -297,7 +300,7 @@ func (cr *VMAgent) GetReloaderParams() *CommonConfigReloaderParams {
 
 // UseProxyProtocol implements build.probeCRD interface
 func (cr *VMAgent) UseProxyProtocol() bool {
-	return UseProxyProtocol(cr.Spec.ExtraArgs)
+	return cr.Spec.UseProxyProtocol()
 }
 
 // AutomountServiceAccountToken implements reloadable interface
@@ -586,7 +589,12 @@ func (cr *VMAgent) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VMAgent) UseTLS() bool {
-	return UseTLS(cr.Spec.ExtraArgs)
+	return cr.Spec.UseTLS()
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VMAgent) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
 }
 
 // ExtraArgs returns additionally configured command-line arguments
@@ -615,14 +623,17 @@ func (cr *VMAgent) GetRBACName() string {
 	return fmt.Sprintf("monitoring:%s:%s", cr.Namespace, cr.PrefixedName())
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces
+func (cr *VMAgent) Params() *StandardAppsParams {
+	return &cr.Spec.StandardAppsParams
+}
+
 // AsURL - returns url for http access
-func (cr *VMAgent) AsURL(isExtra bool) string {
-	specPort := cr.Spec.Port
-	if specPort == "" {
-		specPort = "8429"
+func (cr *VMAgent) AsURL(nsn NamespacedName) (string, error) {
+	if nsn.ListenerName != "" && cr.Spec.ByName(nsn.ListenerName) == nil {
+		return "", fmt.Errorf("listenerName=%q not found at VMAgent=%q httpListeners", nsn.ListenerName, cr.Name)
 	}
-	svcName, port := ResolveServiceURL(cr.PrefixedName(), specPort, "http", cr.Spec.ServiceSpec, isExtra)
-	return fmt.Sprintf("%s://%s.%s.svc:%s", HTTPProtoFromFlags(cr.Spec.ExtraArgs), svcName, cr.Namespace, port)
+	return BuildServiceURL(cr, nsn)
 }
 
 func (cr *VMAgent) ProbePath() string {
@@ -630,11 +641,11 @@ func (cr *VMAgent) ProbePath() string {
 }
 
 func (cr *VMAgent) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+	return strings.ToUpper(cr.Spec.Proto())
 }
 
 func (cr *VMAgent) ProbePort() string {
-	return cr.Spec.Port
+	return cr.Spec.PrimaryPort(cr.Spec.Port)
 }
 
 func (*VMAgent) ProbeNeedLiveness() bool {

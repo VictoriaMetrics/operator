@@ -67,8 +67,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -98,9 +100,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					Port:         "10435",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						Port:         "10435",
+					},
 				},
 			},
 		},
@@ -130,9 +134,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1.VTSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					Port:         "10435",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						Port:         "10435",
+					},
 				},
 			},
 		},
@@ -252,7 +258,9 @@ func TestMakePodSpec_GRPC(t *testing.T) {
 	cr := &vmv1.VTSingle{
 		ObjectMeta: metav1.ObjectMeta{Name: "traces-1", Namespace: "default"},
 		Spec: vmv1.VTSingleSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "10428"},
+			},
 			GRPCSpec: &vmv1.OTLPGRPCSpec{
 				ListenPort: 4317,
 				TLSConfig: &vmv1.TLSServerConfig{
@@ -280,12 +288,12 @@ func TestMakePodSpec_GRPC(t *testing.T) {
 
 	var found bool
 	for _, m := range c.VolumeMounts {
-		if m.Name == "secret-tls-tls" {
+		if m.Name == "tls-tls" {
 			found = true
 			assert.Equal(t, "/etc/vm/tls-server-secrets/tls", m.MountPath)
 		}
 	}
-	assert.True(t, found, "expected secret-tls-tls volume mount")
+	assert.True(t, found, "expected tls-tls volume mount")
 }
 
 func TestCreateOrUpdateService(t *testing.T) {

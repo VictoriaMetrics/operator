@@ -13,7 +13,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,11 +34,11 @@ func createOrUpdateVLInsert(ctx context.Context, rclient client.Client, cr, prev
 		return err
 	}
 	if cr.Spec.VLInsert.NetworkPolicy != nil {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+		b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 		np := build.NetworkPolicy(b, cr.Spec.VLInsert.NetworkPolicy)
 		var prevNP *networkingv1.NetworkPolicy
 		if prevCR != nil && prevCR.Spec.VLInsert != nil && prevCR.Spec.VLInsert.NetworkPolicy != nil {
-			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+			b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 			prevNP = build.NetworkPolicy(b, prevCR.Spec.VLInsert.NetworkPolicy)
 		}
 		owner := cr.AsOwner()
@@ -63,11 +62,11 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 	if cr.Spec.VLInsert.PodDisruptionBudget == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VLInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
 	if prevCR != nil && prevCR.Spec.VLInsert.PodDisruptionBudget != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLInsert.PodDisruptionBudget)
 	}
 	owner := cr.AsOwner()
@@ -140,7 +139,6 @@ func buildVLInsertDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	cfg := config.MustGetBaseConfig()
 	args := []string{
-		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VLInsert.Port),
 		"-internalselect.disable=true",
 	}
 	if cfg.EnableTCP6 {
@@ -157,7 +155,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	storageNodeIds := cr.AvailableStorageNodeIDs(vmv1beta1.ClusterComponentInsert)
 	for idx, i := range storageNodeIds {
 		// TODO: introduce TLS webserver config for storage nodes
-		storageNodeFlag.Add(vmv1beta1.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.Port, cr.Spec.ClusterDomainName), idx)
+		storageNodeFlag.Add(vmv1beta1.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, cr.Spec.VLStorage.PrimaryPort(cr.Spec.VLStorage.Port), cr.Spec.ClusterDomainName), idx)
 	}
 	totalNodes := len(storageNodeIds)
 	args = build.AppendFlagsToArgs(args, totalNodes, storageNodeFlag)
@@ -169,20 +167,16 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 
 	envs = append(envs, cr.Spec.VLInsert.ExtraEnvs...)
 
-	ports := []corev1.ContainerPort{
-		{
-			Name:          "http",
-			Protocol:      "TCP",
-			ContainerPort: intstr.Parse(cr.Spec.VLInsert.Port).IntVal,
-		},
-	}
-
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VLInsert.Volumes...)
 
 	vmMounts := make([]corev1.VolumeMount, 0)
 	vmMounts = append(vmMounts, cr.Spec.VLInsert.VolumeMounts...)
 
+	var ports []corev1.ContainerPort
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.VLInsert.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.VLInsert.HTTPListeners, tlsServerConfigMountPath)
+	ports = build.AddHTTPListenerPortsTo(ports, cr.Spec.VLInsert.HTTPListeners)
 	if cr.Spec.VLInsert.SyslogSpec != nil && !cr.Spec.RequestsLoadBalancer.Enabled {
 		ports = build.AddSyslogPortsTo(ports, cr.Spec.VLInsert.SyslogSpec)
 		args = build.AddSyslogArgsTo(args, cr.Spec.VLInsert.SyslogSpec, tlsServerConfigMountPath)
@@ -285,11 +279,11 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	newHPA := build.HPA(b, targetRef, cr.Spec.VLInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VLInsert.HPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLInsert.HPA)
 	}
 	owner := cr.AsOwner()
@@ -300,7 +294,7 @@ func createOrUpdateVLInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	if cr.Spec.VLInsert.VPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -309,7 +303,7 @@ func createOrUpdateVLInsertVPA(ctx context.Context, rclient client.Client, cr, p
 	newVPA := build.VPA(b, targetRef, cr.Spec.VLInsert.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VLInsert != nil && prevCR.Spec.VLInsert.VPA != nil {
-		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
+		b = vmv1beta1.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevVPA = build.VPA(b, targetRef, prevCR.Spec.VLInsert.VPA)
 	}
 	owner := cr.AsOwner()
@@ -360,10 +354,10 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {
 		var prevPort string
 		if prevCR != nil && prevCR.Spec.VLInsert != nil {
-			prevPort = prevCR.Spec.VLInsert.Port
+			prevPort = prevCR.Spec.VLInsert.PrimaryPort(prevCR.Spec.VLInsert.Port)
 		}
 		kind := vmv1beta1.ClusterComponentInsert
-		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VLInsert.Port, prevPort); err != nil {
+		if err := createOrUpdateLBProxyService(ctx, rclient, cr, prevCR, kind, cr.Spec.VLInsert.PrimaryPort(cr.Spec.VLInsert.Port), prevPort); err != nil {
 			return fmt.Errorf("cannot create lb svc for insert: %w", err)
 		}
 	}
@@ -380,8 +374,9 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 }
 
 func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	svc := build.Service(b, cr.Spec.VLInsert.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.VLInsert.HTTPListeners)
 		syslogSpec := cr.Spec.VLInsert.SyslogSpec
 		if syslogSpec == nil || cr.Spec.RequestsLoadBalancer.Enabled {
 			// fast path

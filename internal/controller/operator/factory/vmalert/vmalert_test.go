@@ -741,9 +741,11 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{
 					URL: "http://vmsingle-url",
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ExtraArgs: map[string]string{
-						"notifier.url": "http://test",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ExtraArgs: map[string]string{
+							"notifier.url": "http://test",
+						},
 					},
 				},
 			},
@@ -771,9 +773,11 @@ func Test_buildVMAlertArgs(t *testing.T) {
 						},
 					},
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ExtraArgs: map[string]string{
-						"notifier.url": "http://test",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ExtraArgs: map[string]string{
+							"notifier.url": "http://test",
+						},
 					},
 				},
 			},

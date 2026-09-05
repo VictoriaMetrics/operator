@@ -148,6 +148,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 			}
 		}
+		rclient.Scheme().Default(&vmAgent)
 		vmAgentCustomSpec, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.VMAgent.Spec, &z.VMAgent.Spec, z.Name)
 		if err != nil {
 			return nil, fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
@@ -219,6 +220,7 @@ func buildVMClusterBackend(ctx context.Context, rclient client.Client, cr *vmv1a
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		}
 	}
+	rclient.Scheme().Default(&vmCluster)
 	vmClusterSpec, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.VMCluster.Spec, &z.VMCluster.Spec, z.Name)
 	if err != nil {
 		return vmBackend{}, false, fmt.Errorf("vmcluster.spec: %w", err)
@@ -253,6 +255,7 @@ func buildVMSingleBackend(ctx context.Context, rclient client.Client, cr *vmv1al
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		}
 	}
+	rclient.Scheme().Default(&vmSingle)
 	var commonSpec *vmv1beta1.VMSingleSpec
 	if cr.Spec.ZoneCommon.VMSingle != nil {
 		commonSpec = cr.Spec.ZoneCommon.VMSingle.Spec

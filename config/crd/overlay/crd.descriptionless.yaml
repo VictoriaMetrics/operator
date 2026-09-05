@@ -332,6 +332,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               image:
                 properties:
                   pullPolicy:
@@ -1771,6 +1844,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -2567,6 +2713,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -3614,6 +3833,79 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -4485,6 +4777,8 @@ spec:
                                   - VTSingle
                                   - VMAnomaly
                                   type: string
+                                listenerName:
+                                  type: string
                                 name:
                                   type: string
                                 namespace:
@@ -4492,6 +4786,8 @@ spec:
                                 objects:
                                   items:
                                     properties:
+                                      listenerName:
+                                        type: string
                                       name:
                                         type: string
                                       namespace:
@@ -5052,6 +5348,79 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        items:
+                          properties:
+                            addr:
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                            mtlsCASecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            name:
+                              type: string
+                            primary:
+                              type: boolean
+                            tls:
+                              type: boolean
+                            tlsAutocertCacheDir:
+                              type: string
+                            tlsAutocertEmail:
+                              type: string
+                            tlsAutocertHosts:
+                              type: string
+                            tlsCertFile:
+                              type: string
+                            tlsCertSecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            tlsKeyFile:
+                              type: string
+                            tlsKeySecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            tlsMinVersion:
+                              type: string
+                            useProxyProtocol:
+                              type: boolean
+                          required:
+                          - addr
+                          - name
+                          type: object
+                        type: array
                       httpRoute:
                         properties:
                           annotations:
@@ -5744,6 +6113,8 @@ spec:
                                       - VTSingle
                                       - VMAnomaly
                                       type: string
+                                    listenerName:
+                                      type: string
                                     name:
                                       type: string
                                     namespace:
@@ -5751,6 +6122,8 @@ spec:
                                     objects:
                                       items:
                                         properties:
+                                          listenerName:
+                                            type: string
                                           name:
                                             type: string
                                           namespace:
@@ -6549,6 +6922,79 @@ spec:
                             type: array
                           hostNetwork:
                             type: boolean
+                          httpListeners:
+                            items:
+                              properties:
+                                addr:
+                                  type: string
+                                mtls:
+                                  type: boolean
+                                mtlsCAFile:
+                                  type: string
+                                mtlsCASecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                name:
+                                  type: string
+                                primary:
+                                  type: boolean
+                                tls:
+                                  type: boolean
+                                tlsAutocertCacheDir:
+                                  type: string
+                                tlsAutocertEmail:
+                                  type: string
+                                tlsAutocertHosts:
+                                  type: string
+                                tlsCertFile:
+                                  type: string
+                                tlsCertSecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                tlsKeyFile:
+                                  type: string
+                                tlsKeySecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                tlsMinVersion:
+                                  type: string
+                                useProxyProtocol:
+                                  type: boolean
+                              required:
+                              - addr
+                              - name
+                              type: object
+                            type: array
                           image:
                             properties:
                               pullPolicy:
@@ -7522,6 +7968,79 @@ spec:
                               type: array
                             hostNetwork:
                               type: boolean
+                            httpListeners:
+                              items:
+                                properties:
+                                  addr:
+                                    type: string
+                                  mtls:
+                                    type: boolean
+                                  mtlsCAFile:
+                                    type: string
+                                  mtlsCASecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  name:
+                                    type: string
+                                  primary:
+                                    type: boolean
+                                  tls:
+                                    type: boolean
+                                  tlsAutocertCacheDir:
+                                    type: string
+                                  tlsAutocertEmail:
+                                    type: string
+                                  tlsAutocertHosts:
+                                    type: string
+                                  tlsCertFile:
+                                    type: string
+                                  tlsCertSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  tlsKeyFile:
+                                    type: string
+                                  tlsKeySecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  tlsMinVersion:
+                                    type: string
+                                  useProxyProtocol:
+                                    type: boolean
+                                required:
+                                - addr
+                                - name
+                                type: object
+                              type: array
                             image:
                               properties:
                                 pullPolicy:
@@ -8482,6 +9001,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               image:
                 properties:
                   pullPolicy:
@@ -10332,6 +10924,79 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               ignoreNamespaceSelectors:
                 type: boolean
               image:
@@ -17600,6 +18265,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               image:
                 properties:
                   pullPolicy:
@@ -20763,6 +21501,8 @@ spec:
                           - VTSingle
                           - VMAnomaly
                           type: string
+                        listenerName:
+                          type: string
                         name:
                           type: string
                         namespace:
@@ -20770,6 +21510,8 @@ spec:
                         objects:
                           items:
                             properties:
+                              listenerName:
+                                type: string
                               name:
                                 type: string
                               namespace:
@@ -21330,6 +22072,79 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               httpRoute:
                 properties:
                   annotations:
@@ -22022,6 +22837,8 @@ spec:
                               - VTSingle
                               - VMAnomaly
                               type: string
+                            listenerName:
+                              type: string
                             name:
                               type: string
                             namespace:
@@ -22029,6 +22846,8 @@ spec:
                             objects:
                               items:
                                 properties:
+                                  listenerName:
+                                    type: string
                                   name:
                                     type: string
                                   namespace:
@@ -22855,6 +23674,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -23594,6 +24486,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -24857,6 +25822,79 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -25980,6 +27018,8 @@ spec:
                                   - VTSingle
                                   - VMAnomaly
                                   type: string
+                                listenerName:
+                                  type: string
                                 name:
                                   type: string
                                 namespace:
@@ -25987,6 +27027,8 @@ spec:
                                 objects:
                                   items:
                                     properties:
+                                      listenerName:
+                                        type: string
                                       name:
                                         type: string
                                       namespace:
@@ -26547,6 +27589,79 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        items:
+                          properties:
+                            addr:
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                            mtlsCASecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            name:
+                              type: string
+                            primary:
+                              type: boolean
+                            tls:
+                              type: boolean
+                            tlsAutocertCacheDir:
+                              type: string
+                            tlsAutocertEmail:
+                              type: string
+                            tlsAutocertHosts:
+                              type: string
+                            tlsCertFile:
+                              type: string
+                            tlsCertSecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            tlsKeyFile:
+                              type: string
+                            tlsKeySecret:
+                              properties:
+                                key:
+                                  type: string
+                                name:
+                                  default: ""
+                                  type: string
+                                optional:
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            tlsMinVersion:
+                              type: string
+                            useProxyProtocol:
+                              type: boolean
+                          required:
+                          - addr
+                          - name
+                          type: object
+                        type: array
                       httpRoute:
                         properties:
                           annotations:
@@ -27239,6 +28354,8 @@ spec:
                                       - VTSingle
                                       - VMAnomaly
                                       type: string
+                                    listenerName:
+                                      type: string
                                     name:
                                       type: string
                                     namespace:
@@ -27246,6 +28363,8 @@ spec:
                                     objects:
                                       items:
                                         properties:
+                                          listenerName:
+                                            type: string
                                           name:
                                             type: string
                                           namespace:
@@ -28388,6 +29507,79 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
+                          httpListeners:
+                            items:
+                              properties:
+                                addr:
+                                  type: string
+                                mtls:
+                                  type: boolean
+                                mtlsCAFile:
+                                  type: string
+                                mtlsCASecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                name:
+                                  type: string
+                                primary:
+                                  type: boolean
+                                tls:
+                                  type: boolean
+                                tlsAutocertCacheDir:
+                                  type: string
+                                tlsAutocertEmail:
+                                  type: string
+                                tlsAutocertHosts:
+                                  type: string
+                                tlsCertFile:
+                                  type: string
+                                tlsCertSecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                tlsKeyFile:
+                                  type: string
+                                tlsKeySecret:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                tlsMinVersion:
+                                  type: string
+                                useProxyProtocol:
+                                  type: boolean
+                              required:
+                              - addr
+                              - name
+                              type: object
+                            type: array
                           image:
                             properties:
                               pullPolicy:
@@ -29599,6 +30791,79 @@ spec:
                                   format: int32
                                   type: integer
                               type: object
+                            httpListeners:
+                              items:
+                                properties:
+                                  addr:
+                                    type: string
+                                  mtls:
+                                    type: boolean
+                                  mtlsCAFile:
+                                    type: string
+                                  mtlsCASecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  name:
+                                    type: string
+                                  primary:
+                                    type: boolean
+                                  tls:
+                                    type: boolean
+                                  tlsAutocertCacheDir:
+                                    type: string
+                                  tlsAutocertEmail:
+                                    type: string
+                                  tlsAutocertHosts:
+                                    type: string
+                                  tlsCertFile:
+                                    type: string
+                                  tlsCertSecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  tlsKeyFile:
+                                    type: string
+                                  tlsKeySecret:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        default: ""
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  tlsMinVersion:
+                                    type: string
+                                  useProxyProtocol:
+                                    type: boolean
+                                required:
+                                - addr
+                                - name
+                                type: object
+                              type: array
                             image:
                               properties:
                                 pullPolicy:
@@ -40455,6 +41720,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               ignoreNamespaceSelectors:
                 type: boolean
               image:
@@ -43361,6 +44699,8 @@ spec:
                           - VTSingle
                           - VMAnomaly
                           type: string
+                        listenerName:
+                          type: string
                         name:
                           type: string
                         namespace:
@@ -43368,6 +44708,8 @@ spec:
                         objects:
                           items:
                             properties:
+                              listenerName:
+                                type: string
                               name:
                                 type: string
                               namespace:
@@ -44030,6 +45372,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               image:
                 properties:
                   pullPolicy:
@@ -45882,6 +47297,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -46614,6 +48102,79 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -47663,6 +49224,79 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        addr:
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                        mtlsCASecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        name:
+                          type: string
+                        primary:
+                          type: boolean
+                        tls:
+                          type: boolean
+                        tlsAutocertCacheDir:
+                          type: string
+                        tlsAutocertEmail:
+                          type: string
+                        tlsAutocertHosts:
+                          type: string
+                        tlsCertFile:
+                          type: string
+                        tlsCertSecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsKeyFile:
+                          type: string
+                        tlsKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        tlsMinVersion:
+                          type: string
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - addr
+                      - name
+                      type: object
+                    type: array
                   image:
                     properties:
                       pullPolicy:
@@ -48547,6 +50181,79 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    addr:
+                      type: string
+                    mtls:
+                      type: boolean
+                    mtlsCAFile:
+                      type: string
+                    mtlsCASecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      type: string
+                    primary:
+                      type: boolean
+                    tls:
+                      type: boolean
+                    tlsAutocertCacheDir:
+                      type: string
+                    tlsAutocertEmail:
+                      type: string
+                    tlsAutocertHosts:
+                      type: string
+                    tlsCertFile:
+                      type: string
+                    tlsCertSecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsKeyFile:
+                      type: string
+                    tlsKeySecret:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          default: ""
+                          type: string
+                        optional:
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    tlsMinVersion:
+                      type: string
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - addr
+                  - name
+                  type: object
+                type: array
               image:
                 properties:
                   pullPolicy:

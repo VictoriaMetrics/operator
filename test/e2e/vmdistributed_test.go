@@ -31,13 +31,19 @@ func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) vmv1beta1.VMCluste
 
 	s := vmv1beta1.VMClusterSpec{
 		VMSelect: &vmv1beta1.VMSelect{
-			CommonAppsParams: commonAppsParams,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: commonAppsParams,
+			},
 		},
 		VMInsert: &vmv1beta1.VMInsert{
-			CommonAppsParams: noReplicas,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: noReplicas,
+			},
 		},
 		VMStorage: &vmv1beta1.VMStorage{
-			CommonAppsParams: commonAppsParams,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: commonAppsParams,
+			},
 		},
 	}
 	for _, opt := range opts {
@@ -65,8 +71,10 @@ func createVMClusters(ctx context.Context, wg *sync.WaitGroup, k8sClient client.
 
 func genVMAgentSpec() vmv1beta1.VMAgentSpec {
 	return vmv1beta1.VMAgentSpec{
-		CommonAppsParams: vmv1beta1.CommonAppsParams{
-			ReplicaCount: ptr.To[int32](1),
+		StandardAppsParams: vmv1beta1.StandardAppsParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ReplicaCount: ptr.To[int32](1),
+			},
 		},
 		RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 			{URL: "http://localhost"},
@@ -154,8 +162,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
 						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
 							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To[int32](2),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To[int32](2),
+									},
 								},
 							},
 						},
@@ -331,8 +341,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},
@@ -683,8 +695,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMInsert: cr.Spec.Zones[0].VMCluster.Spec.VMInsert,
 					VMSelect: cr.Spec.Zones[0].VMCluster.Spec.VMSelect,
 					VMStorage: &vmv1beta1.VMStorage{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{
-							ReplicaCount: ptr.To[int32](initialReplicas + 1),
+						StandardAppsParams: vmv1beta1.StandardAppsParams{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount: ptr.To[int32](initialReplicas + 1),
+							},
 						},
 					},
 				}
@@ -891,9 +905,25 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			zonesCount := 2
 			clusterSpec := vmv1beta1.VMClusterSpec{
-				VMSelect:  &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VMInsert:  &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				VMSelect: &vmv1beta1.VMSelect{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
+				VMInsert: &vmv1beta1.VMInsert{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)},
+					},
+				},
+				VMStorage: &vmv1beta1.VMStorage{
+					StandardAppsParams: vmv1beta1.StandardAppsParams{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+					},
+				},
 			}
 
 			zs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
@@ -1071,8 +1101,10 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					VMAuth: vmv1alpha1.VMDistributedAuth{
 						Name: nsn.Name,
 						Spec: vmv1beta1.VMAuthSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
+							StandardAppsParams: vmv1beta1.StandardAppsParams{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
 							},
 						},
 					},

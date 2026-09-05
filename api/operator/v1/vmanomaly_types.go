@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -501,7 +500,7 @@ func (cr *VMAnomaly) ProbePath() string {
 
 // ProbeScheme implements build.probeCRD interface
 func (cr *VMAnomaly) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
+	return vmv1beta1.ProbeSchemeFromTLS(cr.Spec.ExtraArgs)
 }
 
 // ProbePort implements build.probeCRD interface
@@ -517,11 +516,21 @@ func (*VMAnomaly) ProbeNeedLiveness() bool {
 	return true
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces. HTTPListeners stays
+// empty: Spec.Monitoring.Pull.Port (metrics) differs from Spec.Server.Port here, so
+// build.VMPodScrape's caller-supplied default port must win, not a synthesized listener.
+func (cr *VMAnomaly) Params() *vmv1beta1.StandardAppsParams {
+	return &vmv1beta1.StandardAppsParams{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{
+			Port:      cr.Port(),
+			ExtraArgs: cr.Spec.ExtraArgs,
+		},
+	}
+}
+
 // AsURL returns url for http access to the first replica.
-// Returns empty string if spec.server.port is not configured.
-func (cr *VMAnomaly) AsURL(isExtra bool) string {
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), cr.Port(), "http", nil, isExtra)
-	return fmt.Sprintf("http://%s.%s.svc:%s", svcName, cr.Namespace, port)
+func (cr *VMAnomaly) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // Validate performs semantic validation for component

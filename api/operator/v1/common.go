@@ -7,11 +7,15 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 const (
 	healthPath  = "/health"
 	metricsPath = "/metrics"
+	// OTLPGRPCPortName is the Service/container port name generated for the OTLP gRPC listener.
+	OTLPGRPCPortName = "otlp-grpc"
 )
 
 // TLSServerConfig defines VictoriaMetrics TLS configuration for the application's server
@@ -51,16 +55,38 @@ type OTLPGRPCSpec struct {
 	TLSConfig *TLSServerConfig `json:"tlsConfig,omitempty"`
 }
 
-// Validate checks that ListenPort doesn't collide with httpPort, the port already used for
-// the component's main HTTP listener.
-func (g *OTLPGRPCSpec) Validate(httpPort string) error {
+// Validate checks that ListenPort doesn't collide with httpPort or any configured HTTPListener,
+// and that no HTTPListener is named OTLPGRPCPortName.
+func (g *OTLPGRPCSpec) Validate(httpPort string, listeners []vmv1beta1.HTTPListener) error {
 	if g == nil {
 		return nil
 	}
-	if strconv.Itoa(int(g.ListenPort)) == httpPort {
-		return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
+	if len(listeners) == 0 {
+		if portsEqual(strconv.Itoa(int(g.ListenPort)), httpPort) {
+			return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
+		}
+		return nil
+	}
+	for i := range listeners {
+		if listeners[i].Name == OTLPGRPCPortName {
+			return fmt.Errorf("httpListeners[%d].name cannot be %q while spec.grpcSpec is enabled, since it collides with the generated OTLP gRPC port name", i, OTLPGRPCPortName)
+		}
+		if port := listeners[i].AddrPort(); portsEqual(strconv.Itoa(int(g.ListenPort)), port) {
+			return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to httpListeners[%d].addr port=%s", g.ListenPort, i, port)
+		}
 	}
 	return nil
+}
+
+// portsEqual compares two port strings numerically when both parse as integers,
+// falling back to a plain string comparison otherwise.
+func portsEqual(a, b string) bool {
+	ai, aerr := strconv.Atoi(a)
+	bi, berr := strconv.Atoi(b)
+	if aerr != nil || berr != nil {
+		return a == b
+	}
+	return ai == bi
 }
 
 // OAuth2 defines OAuth2 configuration parameters

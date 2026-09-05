@@ -741,10 +741,20 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 				},
 				Key: configFilename,
 			}
-			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+			ic = append(ic, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+				CR:                cr,
+				Mounts:            crMounts,
+				SecretKeySelector: ss,
+				IsInit:            true,
+			}))
 			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
-		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+		configReloader := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:                cr,
+			Mounts:            crMounts,
+			SecretKeySelector: ss,
+			PadTargetDirs:     extraConfigSecretCount > 0,
+		})
 
 		// Per-bucket: source Secret volume (read-only) + sc-files-out write mount + paired
 		// --watched-dir/--target-dir args so the reloader decompresses on change.

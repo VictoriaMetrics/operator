@@ -792,7 +792,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				MountPath: path.Join("/cm-dir", cm),
 			})
 		}
-		got := ConfigReloaderContainer(false, o.cr, extraMounts, nil)
+		got := ConfigReloaderContainer(ConfigReloaderOpts{
+			CR:     o.cr,
+			Mounts: extraMounts,
+		})
 		assert.Equal(t, o.expectedContainer, got)
 	}
 

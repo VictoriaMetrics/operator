@@ -51,8 +51,10 @@ type VTSingleSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// StorageDataPath disables spec.storage option and overrides arg for victoria-traces binary --storageDataPath,
-	// its users responsibility to mount proper device into given path.
+	// StorageDataPath overrides the default mount path used for the `data` volume and the arg
+	// for victoria-traces binary --storageDataPath. If spec.storage is set, its PVC is mounted
+	// at this path instead of the default one; otherwise it's the user's responsibility to mount
+	// a proper device into the given path via spec.volumes and spec.volumeMounts.
 	// +optional
 	StorageDataPath string `json:"storageDataPath,omitempty"`
 	// Storage is the definition of how storage will be used by the VTSingle

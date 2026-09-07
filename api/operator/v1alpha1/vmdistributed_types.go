@@ -150,6 +150,18 @@ func (z *VMDistributedZone) VMAgentName(cr *VMDistributed) string {
 	}
 }
 
+// VMAgentEnabled returns false when the zone's (or zoneCommon's) VMAgent replicaCount is explicitly 0.
+func (z *VMDistributedZone) VMAgentEnabled(cr *VMDistributed) bool {
+	switch {
+	case z.VMAgent.Spec.ReplicaCount != nil:
+		return *z.VMAgent.Spec.ReplicaCount != 0
+	case cr.Spec.ZoneCommon.VMAgent.Spec.ReplicaCount != nil:
+		return *cr.Spec.ZoneCommon.VMAgent.Spec.ReplicaCount != 0
+	default:
+		return true
+	}
+}
+
 // VMClusterName return cluster name for zone
 func (z *VMDistributedZone) VMClusterName(cr *VMDistributed) string {
 	switch {
@@ -560,17 +572,19 @@ func (cr *VMDistributed) Validate() error {
 				return fmt.Errorf("either zoneCommon.vmcluster.spec.vmselect or spec.zones[%d].vmcluster.spec.vmselect is required", i)
 			}
 		}
-		agentName := zone.VMAgentName(cr)
-		if len(agentName) > 0 {
-			if agents.Has(agentName) {
-				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
+		if zone.VMAgentEnabled(cr) {
+			agentName := zone.VMAgentName(cr)
+			if len(agentName) > 0 {
+				if agents.Has(agentName) {
+					return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
+				}
+				agents.Insert(agentName)
 			}
-			agents.Insert(agentName)
-		}
-		if zone.VMAgent.Spec.StatefulMode {
-			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
-				if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
-					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
+			if zone.VMAgent.Spec.StatefulMode {
+				if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+					if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+						return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
+					}
 				}
 			}
 		}

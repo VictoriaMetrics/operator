@@ -147,6 +147,18 @@ func (z *VLDistributedZone) VLAgentName(cr *VLDistributed) string {
 	}
 }
 
+// VLAgentEnabled returns false when the zone's (or zoneCommon's) VLAgent replicaCount is explicitly 0.
+func (z *VLDistributedZone) VLAgentEnabled(cr *VLDistributed) bool {
+	switch {
+	case z.VLAgent.Spec.ReplicaCount != nil:
+		return *z.VLAgent.Spec.ReplicaCount != 0
+	case cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount != nil:
+		return *cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount != 0
+	default:
+		return true
+	}
+}
+
 // VLClusterName return cluster name for zone
 func (z *VLDistributedZone) VLClusterName(cr *VLDistributed) string {
 	switch {
@@ -524,12 +536,14 @@ func (cr *VLDistributed) Validate() error {
 				return fmt.Errorf("either zoneCommon.vlcluster.spec.vlselect or spec.zones[%d].vlcluster.spec.vlselect is required", i)
 			}
 		}
-		agentName := zone.VLAgentName(cr)
-		if len(agentName) > 0 {
-			if agents.Has(agentName) {
-				return fmt.Errorf("spec.zones[%d].vlagent.name=%s is already added in a different zone", i, agentName)
+		if zone.VLAgentEnabled(cr) {
+			agentName := zone.VLAgentName(cr)
+			if len(agentName) > 0 {
+				if agents.Has(agentName) {
+					return fmt.Errorf("spec.zones[%d].vlagent.name=%s is already added in a different zone", i, agentName)
+				}
+				agents.Insert(agentName)
 			}
-			agents.Insert(agentName)
 		}
 	}
 	return nil

@@ -198,6 +198,52 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
+
+	// zone with VMAgent disabled has no VMAgent built, but its backend still
+	// receives replicated writes from the other zone's VMAgent
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+					{
+						Name: "zone-b",
+					},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			singles := zs.singleObjects()
+			var zoneAIdx, zoneBIdx int
+			if singles[0].Name == "dist-zone-a" {
+				zoneAIdx, zoneBIdx = 0, 1
+			} else {
+				zoneAIdx, zoneBIdx = 1, 0
+			}
+			assert.Nil(t, zs.vmagents[zoneAIdx], "disabled zone must not have a VMAgent built")
+			assert.NotNil(t, zs.vmagents[zoneBIdx], "enabled zone must have a VMAgent built")
+			assert.Contains(t, remoteWriteURLs(zs.vmagents[zoneBIdx]), singles[zoneAIdx].GetRemoteWriteURL(),
+				"other zone's VMAgent must still replicate writes into the disabled zone's backend")
+		},
+	})
+}
+
+func remoteWriteURLs(vmAgent *vmv1beta1.VMAgent) []string {
+	urls := make([]string, len(vmAgent.Spec.RemoteWrite))
+	for i, rw := range vmAgent.Spec.RemoteWrite {
+		urls[i] = rw.URL
+	}
+	return urls
 }
 
 // A VMAgent whose shardCount was server-defaulted must not be perpetually reported as changed.

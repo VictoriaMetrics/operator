@@ -131,6 +131,9 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
+		if !z.VLAgentEnabled(cr) {
+			continue
+		}
 		vlAgentName := z.VLAgentName(cr)
 		nsn := types.NamespacedName{
 			Name:      vlAgentName,
@@ -287,15 +290,16 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
-	// backend or vlagent have been created
-	needsLBUpdate := backendCreated && !vlAgent.CreationTimestamp.IsZero()
+	// backend or vlagent have been created; a disabled VLAgent counts as already created
+	agentCreated := vlAgent == nil || !vlAgent.CreationTimestamp.IsZero()
+	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vlagent spec changes required
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts {
+		if backend.prevAccepts && vlAgent != nil {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -325,10 +329,12 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	}
 
-	// reconcile VLAgent
-	nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
-	if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
-		return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
+	// reconcile VLAgent, if enabled for this zone
+	if vlAgent != nil {
+		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
+		if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
+		}
 	}
 
 	mode := zs.trafficModes[i]
@@ -339,7 +345,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	case *vmv1.VLSingle:
 		newAcceptsWrites = mode != vmv1alpha1.VLDistributedTrafficModeReadOnly && mode != vmv1alpha1.VLDistributedTrafficModeMaintenance
 	}
-	if newAcceptsWrites {
+	if newAcceptsWrites && vlAgent != nil {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -409,7 +415,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var wg sync.WaitGroup
 	for i := range zs.vlagents {
 		vlAgent := zs.vlagents[i]
-		if vlAgent.CreationTimestamp.IsZero() {
+		if vlAgent == nil || vlAgent.CreationTimestamp.IsZero() {
 			continue
 		}
 		nsn := types.NamespacedName{

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -221,7 +221,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 	// object is guaranteed to have identity here: the early return above already filtered out objects without one.
 	errEvent := &corev1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "victoria-metrics-operator-" + uuid.New().String(),
+			Name:      "victoria-metrics-operator-" + uuid.NewV4().String(),
 			Namespace: object.GetNamespace(),
 			Annotations: map[string]string{
 				"operator.victoriametrics.com/controller": controllerNameFromObject(object),
@@ -324,7 +324,7 @@ type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC]
 func createGenericEventForObject(ctx context.Context, c client.Client, object client.Object, message string) error {
 	ev := &corev1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "victoria-metrics-operator-" + uuid.New().String(),
+			Name:      "victoria-metrics-operator-" + uuid.NewV4().String(),
 			Namespace: object.GetNamespace(),
 		},
 		Type:    corev1.EventTypeNormal,

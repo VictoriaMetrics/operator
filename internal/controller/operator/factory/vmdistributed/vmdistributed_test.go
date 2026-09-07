@@ -498,6 +498,35 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// VMAgent disabled for one zone: that zone's VMAgent is excluded from the
+	// write targetRef, but the read targetRef (backends) is unaffected and no
+	// nil-pointer panic occurs while building VMAuth.
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.Zones[0].VMAgent.Spec.ReplicaCount = ptr.To(int32(0))
+		},
+		validate: func(ctx context.Context, rclient client.Client, d *testData) {
+			zs, err := getZones(ctx, rclient, d.cr)
+			assert.NoError(t, err)
+			assert.Nil(t, zs.vmagents[0], "disabled zone must not have a VMAgent built")
+
+			vmAuth := buildVMAuthLB(d.cr, zs)
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
+
+			var got vmv1beta1.VMAuth
+			nsn := types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			writeRef := got.Spec.DefaultTargetRefs[0]
+			assert.Equal(t, "write", writeRef.Name)
+			assert.Len(t, writeRef.CRD.Objects, 2, "only enabled zones' VMAgents should be targeted")
+			for _, obj := range writeRef.CRD.Objects {
+				assert.NotEqual(t, "vmcluster-1", obj.Name, "disabled zone's VMAgent must be excluded from write targetRef")
+			}
+		},
+	})
+
 	// should adopt existing VMAuth if owner reference is missing
 	f(opts{
 		prepare: func(d *testData) {

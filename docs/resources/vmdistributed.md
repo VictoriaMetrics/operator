@@ -44,7 +44,7 @@ Each entry in the `zones` array includes:
 *   `name` defines name of zone, which is used as for default per zone resource name or can be used in `zoneCommon` template using `%ZONE%` placeholder.
 *   `vmcluster` defines `VMDistributedZoneCluster`, that allows either reference an existing `VMCluster` resource or creates a new one. Only used when `spec.backendType: VMCluster`.
 *   `vmsingle` defines `VMDistributedZoneSingle`, that allows either reference an existing `VMSingle` resource or creates a new one. Only used when `spec.backendType: VMSingle`.
-*   `vmagent` defines `VMDistributedZoneAgent`, that allows either reference an existing `VMAgent` resource or creates a one. It receives write traffic from `vmauth` and sends to `VMCluster` or `VMSingle` instances.
+*   `vmagent` defines `VMDistributedZoneAgent`, that allows either reference an existing `VMAgent` resource or creates a one. It receives write traffic from `vmauth` and sends to `VMCluster` or `VMSingle` instances. Set `vmagent.spec.replicaCount: 0` (or `zoneCommon.vmagent.spec.replicaCount: 0` for all zones) to skip creating a `VMAgent` for the zone; the zone's backend still receives writes replicated from other zones' `VMAgent` instances, so it stays part of the distributed setup without running its own agent.
 
 ### `VMDistributedZoneCluster`
 
@@ -211,6 +211,7 @@ VMDistributed creates or becomes an owner of existing VMAuth, VMAgent, VMCluster
 - `VMAgent`, `VMCluster` and `VMSingle` names must be unique across zones within one `VMDistributed` resource.
 - All zones must use the same backend type (controlled by `spec.backendType`); mixing `VMCluster` and `VMSingle` zones in one `VMDistributed` is not supported.
 - `VMCluster` read targets use `vmselect` API paths (`/select/...`); `VMSingle` read targets use single-node API paths (`/api/v1/...`). Both are exposed as a `read` backend.
+- Setting `vmagent.spec.replicaCount: 0` for **all** zones leaves the `write` backend without any target; writes through `VMAuth` will fail. Custom writes would have to bypass `VMAuth` and target a backend directly.
 
 ### Authorization
 By default VMDistributed provides no access to read/write endpoints. Instead it provides preconfigured named backends `read` and `write`, which can be referenced in `spec.vmauth.spec.unauthorizedUserAccessSpec` section for provide unauthorized access or in VMUser spec for authorized access.

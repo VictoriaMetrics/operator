@@ -132,6 +132,9 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
+		if !z.VMAgentEnabled(cr) {
+			continue
+		}
 		vmAgentName := z.VMAgentName(cr)
 		nsn := types.NamespacedName{
 			Name:      vmAgentName,
@@ -294,15 +297,16 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
-	// backend or vmAgent have been created
-	needsLBUpdate := backendCreated && !vmAgent.CreationTimestamp.IsZero()
+	// backend or vmAgent have been created; a disabled VMAgent counts as already created
+	agentCreated := vmAgent == nil || !vmAgent.CreationTimestamp.IsZero()
+	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vmagent spec changes required
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts {
+		if backend.prevAccepts && vmAgent != nil {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -336,13 +340,15 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	}
 
-	// reconcile VMAgent
-	nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
-	if err := reconcile.VMAgent(ctx, rclient, vmAgent, nil, &owner); err != nil {
-		return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
+	// reconcile VMAgent, if enabled for this zone
+	if vmAgent != nil {
+		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
+		if err := reconcile.VMAgent(ctx, rclient, vmAgent, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
+		}
 	}
 
-	if newAcceptsWrites {
+	if newAcceptsWrites && vmAgent != nil {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -407,7 +413,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var wg sync.WaitGroup
 	for i := range zs.vmagents {
 		vmAgent := zs.vmagents[i]
-		if vmAgent.CreationTimestamp.IsZero() {
+		if vmAgent == nil || vmAgent.CreationTimestamp.IsZero() {
 			continue
 		}
 		nsn := types.NamespacedName{

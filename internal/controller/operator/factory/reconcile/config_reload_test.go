@@ -29,10 +29,10 @@ func TestConfigReloaderMetricsURL(t *testing.T) {
 func TestConfigReloaderPortFromPod(t *testing.T) {
 	assert.Equal(t, build.ConfigReloaderDefaultPort, configReloaderPortFromPod(&corev1.Pod{}))
 
-	pod := &corev1.Pod{
+	namedOnOtherContainer := &corev1.Pod{
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
-				Name: "config-reloader",
+				Name: "sidecar",
 				Ports: []corev1.ContainerPort{{
 					Name:          build.ConfigReloaderPortName,
 					ContainerPort: 8436,
@@ -40,7 +40,33 @@ func TestConfigReloaderPortFromPod(t *testing.T) {
 			}},
 		},
 	}
-	assert.Equal(t, 8436, configReloaderPortFromPod(pod))
+	assert.Equal(t, 8436, configReloaderPortFromPod(namedOnOtherContainer))
+
+	namedAfterExtraPort := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "sidecar",
+				Ports: []corev1.ContainerPort{
+					{Name: "extra", ContainerPort: 9999},
+					{Name: build.ConfigReloaderPortName, ContainerPort: 8436},
+				},
+			}},
+		},
+	}
+	assert.Equal(t, 8436, configReloaderPortFromPod(namedAfterExtraPort))
+
+	noNamedPort := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "sidecar",
+				Ports: []corev1.ContainerPort{{
+					Name:          "extra",
+					ContainerPort: 9999,
+				}},
+			}},
+		},
+	}
+	assert.Equal(t, build.ConfigReloaderDefaultPort, configReloaderPortFromPod(noNamedPort))
 }
 
 func TestWaitForConfigReloadHash_NoPodsIsNoop(t *testing.T) {
@@ -58,15 +84,6 @@ func TestWaitForConfigReloadHash_NoPodsIsNoop(t *testing.T) {
 func readyPod(name, namespace, ip string, labels map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{{
-				Name: "config-reloader",
-				Ports: []corev1.ContainerPort{{
-					Name:          build.ConfigReloaderPortName,
-					ContainerPort: int32(build.ConfigReloaderDefaultPort),
-				}},
-			}},
-		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			PodIP: ip,
@@ -83,8 +100,8 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
 
-// withConfigReloaderMetricsResponse stubs the sidecar /metrics HTTP response in-process
-// (avoids httptest, which is unreliable when loopback is broken in the test environment).
+// withConfigReloaderMetricsResponse stubs the sidecar /metrics body in-process. httptest is
+// unreliable here when loopback is broken, so the wait tests drive an injected Transport.
 func withConfigReloaderMetricsResponse(t *testing.T, body string) {
 	t.Helper()
 	origURL := configReloaderMetricsURL
@@ -111,8 +128,8 @@ func TestWaitForConfigReloadHash(t *testing.T) {
 	cr := &vmv1beta1.VMAuth{
 		ObjectMeta: metav1.ObjectMeta{Name: "vmauth", Namespace: "default"},
 	}
-	sel := cr.SelectorLabels()
-	pod := readyPod("vmauth-0", cr.Namespace, "10.0.0.1", sel)
+	labels := cr.SelectorLabels()
+	pod := readyPod("vmauth-0", cr.Namespace, "10.0.0.1", labels)
 
 	// exact hash match succeeds immediately.
 	t.Run("match succeeds", func(t *testing.T) {

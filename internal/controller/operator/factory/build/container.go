@@ -353,16 +353,6 @@ func configReloaderHTTPPort(extraArgs map[string]string) int32 {
 	return int32(port)
 }
 
-func configReloaderProbeHandler(port int32) corev1.ProbeHandler {
-	return corev1.ProbeHandler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Path:   "/health",
-			Scheme: "HTTP",
-			Port:   intstr.FromInt32(port),
-		},
-	}
-}
-
 func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
 	return vmv1beta1.EndpointRelabelings{
 		RelabelConfigs: []*vmv1beta1.RelabelConfig{
@@ -483,7 +473,13 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 // addPortProbesToConfigReloaderContainer adds readiness/liveness probes and the reloader-http
 // container port, using the resolved HTTP listen port from configReloaderExtraArgs.
 func addPortProbesToConfigReloaderContainer(crContainer *corev1.Container, port int32) {
-	probe := configReloaderProbeHandler(port)
+	probe := corev1.ProbeHandler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Path:   "/health",
+			Scheme: "HTTP",
+			Port:   intstr.FromInt32(port),
+		},
+	}
 	crContainer.Ports = append(crContainer.Ports, corev1.ContainerPort{
 		ContainerPort: port,
 		Name:          ConfigReloaderPortName,

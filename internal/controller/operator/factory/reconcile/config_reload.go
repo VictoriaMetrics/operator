@@ -37,20 +37,12 @@ var (
 	}
 )
 
-// configReloaderPortFromPod returns the config-reloader HTTP port from the pod's container ports,
-// preferring the named reloader-http port. Falls back to ConfigReloaderDefaultPort.
+// configReloaderPortFromPod returns the HTTP port named reloader-http from any container in the
+// pod. Falls back to ConfigReloaderDefaultPort when that named port is absent.
 func configReloaderPortFromPod(pod *corev1.Pod) int {
 	for _, c := range pod.Spec.Containers {
-		if c.Name != "config-reloader" {
-			continue
-		}
 		for _, p := range c.Ports {
 			if p.Name == build.ConfigReloaderPortName && p.ContainerPort > 0 {
-				return int(p.ContainerPort)
-			}
-		}
-		for _, p := range c.Ports {
-			if p.ContainerPort > 0 {
 				return int(p.ContainerPort)
 			}
 		}

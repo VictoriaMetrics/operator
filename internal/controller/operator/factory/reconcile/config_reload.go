@@ -32,9 +32,6 @@ var (
 	configReloaderMetricsURL = func(podIP string, port int) string {
 		return fmt.Sprintf("http://%s/metrics", net.JoinHostPort(podIP, strconv.Itoa(port)))
 	}
-	configReloadNewHTTPClient = func() *http.Client {
-		return &http.Client{Timeout: configReloadHTTPTimeout}
-	}
 )
 
 // configReloaderPortFromPod returns the HTTP port named reloader-http from any container in the
@@ -59,7 +56,7 @@ const (
 // confirmed applying content matching hash, an exact CRC32 match rather than a wall-clock
 // heuristic. Skipped rather than blocking if a pod's sidecar predates this metric.
 func WaitForConfigReloadHash(ctx context.Context, rclient client.Client, cr configReloadWaitable, hash uint32) error {
-	httpClient := configReloadNewHTTPClient()
+	httpClient := &http.Client{Timeout: configReloadHTTPTimeout}
 	selector := labels.SelectorFromSet(cr.SelectorLabels())
 	listOpts := &client.ListOptions{
 		LabelSelector: selector,

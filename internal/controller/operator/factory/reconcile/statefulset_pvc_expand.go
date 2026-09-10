@@ -158,12 +158,29 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		prevMeta = &prevObj.ObjectMeta
 	}
 	direction := newSize.Cmp(*existingSize)
+	vacChanged := !ptr.Equal(existingObj.Spec.VolumeAttributesClassName, newObj.Spec.VolumeAttributesClassName)
 	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner, true)
 	if err != nil {
 		return false, err
 	}
-	if !metaChanged && direction == 0 {
+
+	changed := metaChanged || vacChanged
+	if !changed && direction == 0 {
 		return false, nil
+	}
+	l := logger.WithContext(ctx)
+	if vacChanged {
+		// k8s permits reset only after CSI marks volume attribute change infeasible.
+		if existingObj.Status.CurrentVolumeAttributesClassName != nil &&
+			newObj.Spec.VolumeAttributesClassName == nil &&
+			(existingObj.Status.ModifyVolumeStatus == nil || existingObj.Status.ModifyVolumeStatus.Status != corev1.PersistentVolumeClaimModifyVolumeInfeasible) {
+			err := fmt.Errorf("cannot remove volumeAttributesClassName from PVC=%s, it's immutable once set", newObj.Name)
+			l.Error(err, "declined volumeAttributesClassName removal")
+			return false, err
+		}
+		l.Info(fmt.Sprintf("updating volumeAttributesClassName for pvc=%s from=%s to=%s",
+			newObj.Name, ptr.Deref(existingObj.Spec.VolumeAttributesClassName, "<none>"), ptr.Deref(newObj.Spec.VolumeAttributesClassName, "<none>")))
+		existingObj.Spec.VolumeAttributesClassName = newObj.Spec.VolumeAttributesClassName
 	}
 	if direction != 0 {
 		// do not perform any checks if user set annotation explicitly.
@@ -172,7 +189,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		if ok {
 			switch strings.ToLower(v) {
 			case "false":
-				return metaChanged, nil
+				return changed, nil
 			case "true":
 				expandable = true
 			default:
@@ -180,12 +197,11 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 			}
 		}
 
-		l := logger.WithContext(ctx)
 		if direction < 0 {
 			err := fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration: %w",
 				existingObj.Name, existingSize.String(), newSize.String(), ErrDeclined)
 			l.Error(err, "declined PVC size decrease")
-			return metaChanged, err
+			return changed, err
 		}
 
 		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", existingObj.Name, existingSize, newSize))
@@ -207,7 +223,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 				` resize it manually or add annotation %s: "true" to the PVC: %w`,
 				existingObj.Name, existingSize.String(), newSize.String(), sc, vmv1beta1.PVCExpandableLabel, ErrDeclined)
 			l.Error(err, "declined PVC expansion")
-			return metaChanged, err
+			return changed, err
 		}
 		existingObj.Spec.Resources = *newObj.Spec.Resources.DeepCopy()
 	}

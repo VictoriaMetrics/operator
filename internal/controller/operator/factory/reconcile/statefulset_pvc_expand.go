@@ -154,12 +154,27 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		prevMeta = &prevObj.ObjectMeta
 	}
 	direction := newSize.Cmp(*existingSize)
+	vacChanged := !ptr.Equal(existingObj.Spec.VolumeAttributesClassName, newObj.Spec.VolumeAttributesClassName)
 	metaChanged, err := mergeMeta(existingObj, newObj, prevMeta, owner, true)
 	if err != nil {
 		return false, err
 	}
-	if !metaChanged && direction == 0 {
+
+	changed := metaChanged || vacChanged
+	if !changed && direction == 0 {
 		return false, nil
+	}
+	l := logger.WithContext(ctx)
+	if vacChanged {
+		// k8s forbids clearing volumeAttributesClassName once set, reject early
+		if existingObj.Spec.VolumeAttributesClassName != nil && newObj.Spec.VolumeAttributesClassName == nil {
+			err := fmt.Errorf("cannot remove volumeAttributesClassName from PVC=%s, it's immutable once set", newObj.Name)
+			l.Error(err, "declined volumeAttributesClassName removal")
+			return false, err
+		}
+		l.Info(fmt.Sprintf("updating volumeAttributesClassName for pvc=%s from=%s to=%s",
+			newObj.Name, ptr.Deref(existingObj.Spec.VolumeAttributesClassName, "<none>"), ptr.Deref(newObj.Spec.VolumeAttributesClassName, "<none>")))
+		existingObj.Spec.VolumeAttributesClassName = newObj.Spec.VolumeAttributesClassName
 	}
 	if direction != 0 {
 		// do not perform any checks if user set annotation explicitly.
@@ -168,7 +183,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 		if ok {
 			switch strings.ToLower(v) {
 			case "false":
-				return metaChanged, nil
+				return changed, nil
 			case "true":
 				expandable = true
 			default:
@@ -176,11 +191,10 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 			}
 		}
 
-		l := logger.WithContext(ctx)
 		if direction < 0 {
 			err := fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", newObj.Name, existingSize.String(), newSize.String())
 			l.Error(err, "declined PVC size decrease")
-			return metaChanged, err
+			return changed, err
 		}
 
 		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", newObj.Name, existingSize, newSize))
@@ -196,7 +210,7 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
 			sc := ptr.Deref(newObj.Spec.StorageClassName, "default")
 			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", sc, newObj.Name))
-			return metaChanged, nil
+			return changed, nil
 		}
 		existingObj.Spec.Resources = *newObj.Spec.Resources.DeepCopy()
 	}

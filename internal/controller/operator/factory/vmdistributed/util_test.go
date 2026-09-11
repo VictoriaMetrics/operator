@@ -22,43 +22,55 @@ func TestMergeSpecs(t *testing.T) {
 
 		// zone-specific retention period
 		f(&vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "1d",
-			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "1d",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		}, &vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "30d",
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "30d",
+			},
 		}, "zone-a", &vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "30d",
-			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "30d",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		})
 
 		// %ZONE% templating
 		f(&vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "1d",
-			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					NodeSelector: map[string]string{
-						"topology.kubernetes.io/zone": "%ZONE%",
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "1d",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						NodeSelector: map[string]string{
+							"topology.kubernetes.io/zone": "%ZONE%",
+						},
 					},
 				},
 			},
 		}, &vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "30d",
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "30d",
+			},
 		}, "zone-a", &vmv1beta1.VMClusterSpec{
-			RetentionPeriod: "30d",
-			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
-					NodeSelector: map[string]string{
-						"topology.kubernetes.io/zone": "zone-a",
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				RetentionPeriod: "30d",
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+						NodeSelector: map[string]string{
+							"topology.kubernetes.io/zone": "zone-a",
+						},
 					},
 				},
 			},

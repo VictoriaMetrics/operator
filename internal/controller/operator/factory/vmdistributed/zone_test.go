@@ -50,7 +50,7 @@ func TestGetZones(t *testing.T) {
 			Spec: vmv1alpha1.VMDistributedSpec{
 				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
 					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-						Spec: vmv1beta1.VMClusterSpec{
+						Spec: vmv1beta1.VMClusterSpecBase{
 							ClusterVersion: "v0.2.0",
 						},
 					},
@@ -64,7 +64,7 @@ func TestGetZones(t *testing.T) {
 					{
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 							Name: "inline",
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								ClusterVersion: "v0.1.0",
 							},
 						},
@@ -90,7 +90,7 @@ func TestGetZones(t *testing.T) {
 			Spec: vmv1alpha1.VMDistributedSpec{
 				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
 					VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-						Spec: vmv1beta1.VMClusterSpec{
+						Spec: vmv1beta1.VMClusterSpecBase{
 							ClusterVersion: "v0.2.0",
 							VMStorage: &vmv1beta1.VMStorage{
 								VMInsertPort: "9999",
@@ -107,7 +107,7 @@ func TestGetZones(t *testing.T) {
 					{
 						VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 							Name: "inline",
-							Spec: vmv1beta1.VMClusterSpec{
+							Spec: vmv1beta1.VMClusterSpecBase{
 								ClusterVersion: "v0.1.0",
 							},
 						},
@@ -240,7 +240,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 	// Pre-compute the expected backend URL for VMCluster named "test" in ns "default"
 	backendURL := (&vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
-		Spec:       vmv1beta1.VMClusterSpec{VMInsert: &vmv1beta1.VMInsert{}},
+		Spec:       vmv1beta1.VMClusterSpec{VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{VMInsert: &vmv1beta1.VMInsert{}}},
 	}).GetRemoteWriteURL()
 
 	type opts struct {
@@ -307,7 +307,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 
 		backend := &vmv1beta1.VMCluster{
 			ObjectMeta: objMeta,
-			Spec:       vmv1beta1.VMClusterSpec{VMInsert: &vmv1beta1.VMInsert{}},
+			Spec:       vmv1beta1.VMClusterSpec{VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{VMInsert: &vmv1beta1.VMInsert{}}},
 		}
 		zs := &zones{
 			httpClient: &http.Client{

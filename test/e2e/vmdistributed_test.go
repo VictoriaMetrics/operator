@@ -30,14 +30,16 @@ func genVMClusterSpec(opts ...func(*vmv1beta1.VMClusterSpec)) vmv1beta1.VMCluste
 	}
 
 	s := vmv1beta1.VMClusterSpec{
-		VMSelect: &vmv1beta1.VMSelect{
-			CommonAppsParams: commonAppsParams,
-		},
-		VMInsert: &vmv1beta1.VMInsert{
-			CommonAppsParams: noReplicas,
-		},
-		VMStorage: &vmv1beta1.VMStorage{
-			CommonAppsParams: commonAppsParams,
+		VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonAppsParams: commonAppsParams,
+			},
+			VMInsert: &vmv1beta1.VMInsert{
+				CommonAppsParams: noReplicas,
+			},
+			VMStorage: &vmv1beta1.VMStorage{
+				CommonAppsParams: commonAppsParams,
+			},
 		},
 	}
 	for _, opt := range opts {
@@ -126,7 +128,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -214,7 +216,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				zs[i].Name = objMeta.Name
 				vmClusterSpec := genVMClusterSpec(vmClusterFn[i])
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmAgents[i] = &vmv1beta1.VMAgent{
@@ -300,7 +302,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				zs[i].Name = objMeta.Name
 				vmClusterSpec := genVMClusterSpec()
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -381,7 +383,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      fmt.Sprintf("%s-%d", nsn.Name, i+1),
 				}
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = genVMClusterSpec(vmClusterFn[i])
+				zs[i].VMCluster.Spec = genVMClusterSpec(vmClusterFn[i]).VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -418,7 +420,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 							Name: "%ZONE%",
 							Spec: genVMClusterSpec(func(s *vmv1beta1.VMClusterSpec) {
 								s.RetentionPeriod = "60d"
-							}),
+							}).VMClusterSpecBase,
 						},
 					},
 					Zones: zs,
@@ -459,7 +461,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Name:      fmt.Sprintf("%s-%d", nsn.Name, i+1),
 				}
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = genVMClusterSpec()
+				zs[i].VMCluster.Spec = genVMClusterSpec().VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
 					ObjectMeta: objMeta,
@@ -536,7 +538,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					s.ClusterVersion = initialVersion
 				})
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -613,7 +615,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					s.ClusterVersion = initialVersion
 				})
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -679,7 +681,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				if err != nil {
 					return err
 				}
-				cr.Spec.Zones[0].VMCluster.Spec = vmv1beta1.VMClusterSpec{
+				cr.Spec.Zones[0].VMCluster.Spec = vmv1beta1.VMClusterSpecBase{
 					VMInsert: cr.Spec.Zones[0].VMCluster.Spec.VMInsert,
 					VMSelect: cr.Spec.Zones[0].VMCluster.Spec.VMSelect,
 					VMStorage: &vmv1beta1.VMStorage{
@@ -736,7 +738,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -829,7 +831,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -891,9 +893,11 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 
 			zonesCount := 2
 			clusterSpec := vmv1beta1.VMClusterSpec{
-				VMSelect:  &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VMInsert:  &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
-				VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+					VMSelect:  &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+					VMInsert:  &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+					VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](1)}},
+				},
 			}
 
 			zs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
@@ -906,7 +910,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				zs[i].Name = objMeta.Name
 				zs[i].VMCluster.Name = objMeta.Name
-				zs[i].VMCluster.Spec = clusterSpec
+				zs[i].VMCluster.Spec = clusterSpec.VMClusterSpecBase
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{ObjectMeta: objMeta, Spec: clusterSpec}
 				vmAgents[i] = &vmv1beta1.VMAgent{ObjectMeta: objMeta, Spec: genVMAgentSpec()}
@@ -1031,7 +1035,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 					Zones: []vmv1alpha1.VMDistributedZone{
 						{
 							VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-								Spec: genVMClusterSpec(),
+								Spec: genVMClusterSpec().VMClusterSpecBase,
 							},
 						},
 					},
@@ -1053,7 +1057,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 			}
@@ -1127,7 +1131,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{
@@ -1216,7 +1220,7 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 				}
 				vmClusterSpec := genVMClusterSpec()
 				zs[i].Name = objMeta.Name
-				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Spec = vmClusterSpec.VMClusterSpecBase
 				zs[i].VMCluster.Name = objMeta.Name
 				zs[i].VMAgent.Name = objMeta.Name
 				vmClusters[i] = &vmv1beta1.VMCluster{

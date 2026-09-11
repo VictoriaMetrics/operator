@@ -1655,6 +1655,19 @@ func TestMergeValues(t *testing.T) {
 	)
 }
 
+// TestMergeValues_LargeIntegerPrecision ensures integers beyond float64's exact range survive
+// both the base/override merge and the final decode without being rounded.
+func TestMergeValues_LargeIntegerPrecision(t *testing.T) {
+	got, err := MergeValues(
+		[]byte("nodeID: 9007199254740993\nkeep: 1\n"),
+		[]byte("replicaCount: 9223372036854775807\n"),
+	)
+	require.NoError(t, err)
+	s := string(got)
+	assert.Contains(t, s, "9007199254740993")
+	assert.Contains(t, s, "9223372036854775807")
+}
+
 // TestMergeValues_VMAlertDatasourceHeaders reproduces #2398: vmalert's default values.yaml
 // ships `server.datasource.headers: {}` (a map), which used to fail to unmarshal into the
 // operator's HTTPAuth.Headers []string field once merged with a user's override.

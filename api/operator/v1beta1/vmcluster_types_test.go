@@ -98,12 +98,14 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 
 	cr := &VMCluster{
 		Spec: VMClusterSpec{
-			VMStorage: &VMStorage{
-				CommonAppsParams: CommonAppsParams{
-					ReplicaCount: ptr.To(int32(5)),
+			VMClusterSpecBase: VMClusterSpecBase{
+				VMStorage: &VMStorage{
+					CommonAppsParams: CommonAppsParams{
+						ReplicaCount: ptr.To(int32(5)),
+					},
+					MaintenanceSelectNodeIDs: []int32{1, 3},
+					MaintenanceInsertNodeIDs: []int32{0, 4},
 				},
-				MaintenanceSelectNodeIDs: []int32{1, 3},
-				MaintenanceInsertNodeIDs: []int32{0, 4},
 			},
 		},
 	}
@@ -117,8 +119,10 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 	// no maintenance nodes
 	f(&VMCluster{
 		Spec: VMClusterSpec{
-			VMStorage: &VMStorage{
-				CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+			VMClusterSpecBase: VMClusterSpecBase{
+				VMStorage: &VMStorage{
+					CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				},
 			},
 		},
 	}, ClusterComponentSelect, []int32{0, 1, 2})
@@ -140,263 +144,325 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// downsampling without license
 	f(VMClusterSpec{
-		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			Downsampling: &DownsamplingConfig{
+				Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			},
 		},
 	}, true)
 
 	// downsampling with valid config
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			},
 		},
 	}, false)
 
 	// downsampling with filter and dedupInterval
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Filter: `{env="prod"}`, Periods: []DownsamplingPeriod{{Offset: "90d", Interval: "1h"}}}},
-			DedupInterval: "1m",
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules:         []DownsamplingRule{{Filter: `{env="prod"}`, Periods: []DownsamplingPeriod{{Offset: "90d", Interval: "1h"}}}},
+				DedupInterval: "1m",
+			},
 		},
 	}, false)
 
 	// downsampling - multiple periods per rule
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{
-				{Offset: "30d", Interval: "10m"},
-				{Offset: "180d", Interval: "1h"},
-			}}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{
+					{Offset: "30d", Interval: "10m"},
+					{Offset: "180d", Interval: "1h"},
+				}}},
+			},
 		},
 	}, false)
 
 	// downsampling - duplicate filter
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{
-				{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}},
-				{Periods: []DownsamplingPeriod{{Offset: "180d", Interval: "1h"}}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules: []DownsamplingRule{
+					{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}},
+					{Periods: []DownsamplingPeriod{{Offset: "180d", Interval: "1h"}}},
+				},
 			},
 		},
 	}, true)
 
 	// downsampling - offset not a multiple of interval
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "1d", Interval: "7m"}}}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "1d", Interval: "7m"}}}},
+			},
 		},
 	}, true)
 
 	// downsampling - period interval not a multiple of dedupInterval
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
-			DedupInterval: "7m",
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+				DedupInterval: "7m",
+			},
 		},
 	}, true)
 
 	// downsampling - period interval is a multiple of dedupInterval
 	f(VMClusterSpec{
-		License: testLicense,
-		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
-			DedupInterval: "5m",
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			Downsampling: &DownsamplingConfig{
+				Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+				DedupInterval: "5m",
+			},
 		},
 	}, false)
 
 	// retention filters without vmstorage section — no error (vmstorage is nil)
 	f(VMClusterSpec{
-		License: testLicense,
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+		},
 	}, false)
 
 	// retention filters without license
 	f(VMClusterSpec{
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+			},
 		},
 	}, true)
 
 	// retention filters with valid config
 	f(VMClusterSpec{
-		License:         testLicense,
-		RetentionPeriod: "30",
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:         testLicense,
+			RetentionPeriod: "30",
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "3d"}},
+			},
 		},
 	}, false)
 
 	// retention filters - invalid filter
 	f(VMClusterSpec{
-		License: testLicense,
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: "not-a-filter", Retention: "3d"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: "not-a-filter", Retention: "3d"}},
+			},
 		},
 	}, true)
 
 	// retention filters - invalid retention
 	f(VMClusterSpec{
-		License: testLicense,
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "bad"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License: testLicense,
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "bad"}},
+			},
 		},
 	}, true)
 
 	// retention filters - retention exceeds retentionPeriod
 	f(VMClusterSpec{
-		License:         testLicense,
-		RetentionPeriod: "30d",
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:         testLicense,
+			RetentionPeriod: "30d",
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+			},
 		},
 	}, true)
 
 	// retention filters - retention equal to retentionPeriod is ok
 	f(VMClusterSpec{
-		License:         testLicense,
-		RetentionPeriod: "1y",
-		VMStorage: &VMStorage{
-			RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:         testLicense,
+			RetentionPeriod: "1y",
+			VMStorage: &VMStorage{
+				RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
+			},
 		},
 	}, false)
 
 	// discovery without license
 	f(VMClusterSpec{
-		VMInsert:  &VMInsert{},
-		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert:  &VMInsert{},
+			Discovery: &VMClusterDiscovery{Enabled: true},
+		},
 	}, true)
 
 	// discovery with license
 	f(VMClusterSpec{
-		VMInsert:  &VMInsert{},
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert:  &VMInsert{},
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+		},
 	}, false)
 
 	// discovery with invalid filter regexp
 	f(VMClusterSpec{
-		VMInsert:  &VMInsert{},
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true, Filter: "[invalid"},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert:  &VMInsert{},
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true, Filter: "[invalid"},
+		},
 	}, true)
 
 	// discovery with valid filter regexp
 	f(VMClusterSpec{
-		VMInsert:  &VMInsert{},
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true, Filter: `vmstorage-test-[0-3]\.`},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert:  &VMInsert{},
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true, Filter: `vmstorage-test-[0-3]\.`},
+		},
 	}, false)
 
 	// global discovery + maintenanceInsertNodeIDs
 	f(VMClusterSpec{
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true},
-		VMInsert:  &VMInsert{},
-		VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{},
+			VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+		},
 	}, true)
 
 	// global discovery + maintenanceSelectNodeIDs
 	f(VMClusterSpec{
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true},
-		VMSelect:  &VMSelect{},
-		VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMSelect:  &VMSelect{},
+			VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+		},
 	}, true)
 
 	// component override disables vmselect discovery: maintenanceSelectNodeIDs is allowed
 	f(VMClusterSpec{
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true},
-		VMInsert:  &VMInsert{},
-		VMSelect:  &VMSelect{Discovery: &VMClusterDiscovery{Enabled: false}},
-		VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{},
+			VMSelect:  &VMSelect{Discovery: &VMClusterDiscovery{Enabled: false}},
+			VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+		},
 	}, false)
 
 	// component override disables vminsert discovery: maintenanceInsertNodeIDs is allowed
 	f(VMClusterSpec{
-		License:   testLicense,
-		Discovery: &VMClusterDiscovery{Enabled: true},
-		VMInsert:  &VMInsert{Discovery: &VMClusterDiscovery{Enabled: false}},
-		VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{Discovery: &VMClusterDiscovery{Enabled: false}},
+			VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+		},
 	}, false)
 
 	// component-level discovery enabled without global, requires license
 	f(VMClusterSpec{
-		VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+		},
 	}, true)
 
 	// component-level discovery enabled with license
 	f(VMClusterSpec{
-		License:  testLicense,
-		VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:  testLicense,
+			VMInsert: &VMInsert{Discovery: &VMClusterDiscovery{Enabled: true}},
+		},
 	}, false)
 
 	// extraStorageNodes with unique addresses
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ExtraStorageNodes: []VMStorageNode{
-				{Addr: "localhost:10101"},
-				{Addr: "localhost:10102"},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ExtraStorageNodes: []VMStorageNode{
+					{Addr: "localhost:10101"},
+					{Addr: "localhost:10102"},
+				},
 			},
 		},
 	}, false)
 
 	// extraStorageNodes with duplicate addresses
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ExtraStorageNodes: []VMStorageNode{
-				{Addr: "localhost:10101"},
-				{Addr: "localhost:10101"},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ExtraStorageNodes: []VMStorageNode{
+					{Addr: "localhost:10101"},
+					{Addr: "localhost:10101"},
+				},
 			},
 		},
 	}, true)
 
 	// extraStorageNodes duplicating extraArgs storageNode
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			CommonAppsParams: CommonAppsParams{
-				ExtraArgs: map[string]string{"storageNode": "localhost:10101"},
-			},
-			ExtraStorageNodes: []VMStorageNode{
-				{Addr: "localhost:10101"},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				CommonAppsParams: CommonAppsParams{
+					ExtraArgs: map[string]string{"storageNode": "localhost:10101"},
+				},
+				ExtraStorageNodes: []VMStorageNode{
+					{Addr: "localhost:10101"},
+				},
 			},
 		},
 	}, true)
 
 	// extraStorageNodes with an empty addr
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ExtraStorageNodes: []VMStorageNode{
-				{Addr: ""},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ExtraStorageNodes: []VMStorageNode{
+					{Addr: ""},
+				},
 			},
 		},
 	}, true)
 
 	// vmselect: useAsDefault with an explicit service type must be rejected (default service is headless)
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "1.1.1.1",
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.1.1.1",
+					},
 				},
 			},
 		},
 	}, true)
 
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: corev1.ClusterIPNone,
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: corev1.ClusterIPNone,
+					},
 				},
 			},
 		},
@@ -404,11 +470,13 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// vmselect: useAsDefault without an explicit type is allowed
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{{Name: "http", Port: 8481}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Name: "http", Port: 8481}},
+					},
 				},
 			},
 		},
@@ -416,21 +484,25 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// vmselect: explicit type without useAsDefault creates a separate service - allowed
 	f(VMClusterSpec{
-		VMSelect: &VMSelect{
-			ServiceSpec: &AdditionalServiceSpec{
-				Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMSelect: &VMSelect{
+				ServiceSpec: &AdditionalServiceSpec{
+					Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				},
 			},
 		},
 	}, false)
 
 	// vmstorage: useAsDefault with cluster IP set must be rejected (default service is headless)
 	f(VMClusterSpec{
-		VMStorage: &VMStorage{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: "1.1.1.1",
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.1.1.1",
+					},
 				},
 			},
 		},
@@ -438,12 +510,14 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// vmstorage: useAsDefault without cluster IP set must be allowed
 	f(VMClusterSpec{
-		VMStorage: &VMStorage{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Type:      corev1.ServiceTypeClusterIP,
-					ClusterIP: corev1.ClusterIPNone,
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: corev1.ClusterIPNone,
+					},
 				},
 			},
 		},
@@ -451,11 +525,13 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// vmstorage: useAsDefault without an explicit type is allowed
 	f(VMClusterSpec{
-		VMStorage: &VMStorage{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{{Name: "vminsert", Port: 8480}},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Name: "vminsert", Port: 8480}},
+					},
 				},
 			},
 		},
@@ -463,10 +539,12 @@ func TestVMCluster_Validate(t *testing.T) {
 
 	// vminsert: useAsDefault with an explicit type is allowed (default service is not headless)
 	f(VMClusterSpec{
-		VMInsert: &VMInsert{
-			ServiceSpec: &AdditionalServiceSpec{
-				UseAsDefault: true,
-				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMInsert: &VMInsert{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				},
 			},
 		},
 	}, false)
@@ -476,23 +554,148 @@ func TestVMCluster_Validate(t *testing.T) {
 		cr := &VMCluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "test"},
 			Spec: VMClusterSpec{
-				VMStorage: &VMStorage{
-					CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
-					VMSelectPort:     "8481",
+				VMClusterSpecBase: VMClusterSpecBase{
+					VMStorage: &VMStorage{
+						CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+						VMSelectPort:     "8481",
+					},
+					VMSelect: &VMSelect{},
 				},
-				VMSelect: &VMSelect{},
 			},
 		}
 		managedAddr := PodDNSAddress(cr.PrefixedName(ClusterComponentStorage), 0, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, cr.Spec.ClusterDomainName)
 		cr.Spec.VMSelect.ExtraStorageNodes = []VMStorageNode{{Addr: managedAddr}}
 		assert.Error(t, cr.Validate())
 	}
+
+	// pools: no pool defines vminsert — shared top-level vminsert covers all of them, valid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot"},
+			{Name: "cold"},
+		},
+	}, false)
+
+	// pools: every pool defines its own vminsert — valid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold", VMInsert: &VMInsert{}},
+		},
+	}, false)
+
+	// pools: only some pools define vminsert — the rest would have no ingestion path
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage: &VMStorage{},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold"},
+		},
+	}, true)
+
+	// pools: a pool with neither its own vmstorage nor a cluster-level one is invalid
+	f(VMClusterSpec{
+		Pools: []VMClusterPool{
+			{Name: "hot"},
+		},
+	}, true)
+
+	// pools: global vminsert discovery + a pool's merged maintenanceInsertNodeIDs is invalid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+		},
+		Pools: []VMClusterPool{
+			{
+				Name:      "hot",
+				VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+				VMInsert:  &VMInsert{},
+			},
+		},
+	}, true)
+
+	// pools: a pool using the shared vminsert with global vminsert discovery enabled and its
+	// own merged maintenanceInsertNodeIDs is invalid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{},
+		},
+		Pools: []VMClusterPool{
+			{
+				Name:      "hot",
+				VMStorage: &VMStorage{MaintenanceInsertNodeIDs: []int32{0}},
+			},
+		},
+	}, true)
+
+	// pools: global vmselect discovery + a pool's merged maintenanceSelectNodeIDs is invalid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			License:   testLicense,
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMSelect:  &VMSelect{},
+		},
+		Pools: []VMClusterPool{
+			{
+				Name:      "hot",
+				VMStorage: &VMStorage{MaintenanceSelectNodeIDs: []int32{1}},
+			},
+		},
+	}, true)
+
+	// pools: requestsLoadBalancer for vminsert with more than one dedicated-insert pool is invalid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage:            &VMStorage{},
+			RequestsLoadBalancer: VMAuthLoadBalancer{Enabled: true},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold", VMInsert: &VMInsert{}},
+		},
+	}, true)
+
+	// pools: requestsLoadBalancer for vminsert with a single dedicated-insert pool is valid
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage:            &VMStorage{},
+			RequestsLoadBalancer: VMAuthLoadBalancer{Enabled: true},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+		},
+	}, false)
+
+	// pools: requestsLoadBalancer with insert balancing disabled tolerates multiple dedicated-insert pools
+	f(VMClusterSpec{
+		VMClusterSpecBase: VMClusterSpecBase{
+			VMStorage:            &VMStorage{},
+			RequestsLoadBalancer: VMAuthLoadBalancer{Enabled: true, DisableInsertBalancing: true},
+		},
+		Pools: []VMClusterPool{
+			{Name: "hot", VMInsert: &VMInsert{}},
+			{Name: "cold", VMInsert: &VMInsert{}},
+		},
+	}, false)
 }
 
 func TestVMCluster_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, kind ClusterComponent, want string) {
 		t.Helper()
-		cr := &VMCluster{Spec: VMClusterSpec{UseLegacyNaming: omit}}
+		cr := &VMCluster{Spec: VMClusterSpec{
+			VMClusterSpecBase: VMClusterSpecBase{UseLegacyNaming: omit},
+		}}
 		cr.Name = name
 		assert.Equal(t, want, cr.PrefixedName(kind))
 	}
@@ -506,4 +709,81 @@ func TestVMCluster_PrefixedName(t *testing.T) {
 	f("myapp", true, ClusterComponentSelect, "myapp-vmselect")
 	f("myapp", true, ClusterComponentInsert, "myapp-vminsert")
 	f("myapp", true, ClusterComponentStorage, "myapp-vmstorage")
+}
+
+func TestVMCluster_AsURL(t *testing.T) {
+	newCR := func() *VMCluster {
+		return &VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster-1", Namespace: "default"},
+			Spec: VMClusterSpec{
+				VMClusterSpecBase: VMClusterSpecBase{
+					VMSelect:  &VMSelect{},
+					VMInsert:  &VMInsert{},
+					VMStorage: &VMStorage{},
+				},
+			},
+		}
+	}
+	fOK := func(cr *VMCluster, kind ClusterComponent, poolName string, wantHostPrefix string) {
+		t.Helper()
+		url, err := cr.AsURLForPool(kind, poolName, false)
+		assert.NoError(t, err)
+		assert.Contains(t, url, wantHostPrefix)
+	}
+	fErr := func(cr *VMCluster, kind ClusterComponent, poolName string) {
+		t.Helper()
+		_, err := cr.AsURLForPool(kind, poolName, false)
+		assert.Error(t, err)
+	}
+
+	// no pools: shared components resolve normally.
+	cr := newCR()
+	fOK(cr, ClusterComponentSelect, "", "vmselect-cluster-1.")
+	fOK(cr, ClusterComponentInsert, "", "vminsert-cluster-1.")
+	fOK(cr, ClusterComponentStorage, "", "vmstorage-cluster-1.")
+
+	// no pools: unset component errors instead of returning an empty/dangling URL.
+	cr = newCR()
+	cr.Spec.VMInsert = nil
+	fErr(cr, ClusterComponentInsert, "")
+
+	// select is never pool-scoped.
+	cr = newCR()
+	fErr(cr, ClusterComponentSelect, "hot")
+
+	// pools defined, none with a dedicated insert: shared insert still resolves for poolName="".
+	cr = newCR()
+	cr.Spec.Pools = []VMClusterPool{{Name: "hot"}, {Name: "cold"}}
+	fOK(cr, ClusterComponentInsert, "", "vminsert-cluster-1.")
+	// ...and also resolves when a pool without its own insert is named explicitly.
+	fOK(cr, ClusterComponentInsert, "hot", "vminsert-cluster-1.")
+	// top-level storage no longer exists once pools are defined.
+	fErr(cr, ClusterComponentStorage, "")
+	// but a named pool's own storage does.
+	fOK(cr, ClusterComponentStorage, "hot", "vmstorage-cluster-1-hot.")
+	// referencing an unknown pool is an error.
+	fErr(cr, ClusterComponentInsert, "unknown")
+	fErr(cr, ClusterComponentStorage, "unknown")
+
+	// pools defined, every pool has its own dedicated insert: shared insert is ambiguous.
+	cr = newCR()
+	cr.Spec.Pools = []VMClusterPool{
+		{Name: "hot", VMInsert: &VMInsert{}},
+		{Name: "cold", VMInsert: &VMInsert{}},
+	}
+	fErr(cr, ClusterComponentInsert, "")
+	fOK(cr, ClusterComponentInsert, "hot", "vminsert-cluster-1-hot.")
+	fOK(cr, ClusterComponentInsert, "cold", "vminsert-cluster-1-cold.")
+
+	// mixed: one pool has its own dedicated insert, another doesn't. The shared
+	// top-level insert is not deployed in this case (any pool insert disables it),
+	// so the pool without its own insert has nothing to route to.
+	cr = newCR()
+	cr.Spec.Pools = []VMClusterPool{
+		{Name: "hot", VMInsert: &VMInsert{}},
+		{Name: "cold"},
+	}
+	fOK(cr, ClusterComponentInsert, "hot", "vminsert-cluster-1-hot.")
+	fErr(cr, ClusterComponentInsert, "cold")
+	fErr(cr, ClusterComponentInsert, "")
 }

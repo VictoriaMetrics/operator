@@ -224,7 +224,7 @@ func buildVMClusterBackend(ctx context.Context, rclient client.Client, cr *vmv1a
 		return vmBackend{}, false, fmt.Errorf("vmcluster.spec: %w", err)
 	}
 	prevClusterSpec := vmCluster.Spec
-	vmCluster.Spec = *vmClusterSpec
+	vmCluster.Spec = vmv1beta1.VMClusterSpec{VMClusterSpecBase: *vmClusterSpec, Pools: prevClusterSpec.Pools}
 	rclient.Scheme().Default(&vmCluster)
 	// for maintenance and read-only modes setting VMInsert replicas down to 0 to enable VMAgent buffering
 	if (z.TrafficMode == vmv1alpha1.VMDistributedTrafficModeReadOnly || z.TrafficMode == vmv1alpha1.VMDistributedTrafficModeMaintenance) && vmCluster.Spec.VMInsert != nil {

@@ -1,7 +1,9 @@
 package converter
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +20,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 type VMSingleHelmValues struct {
@@ -584,15 +585,27 @@ func FetchChartDefaults(chart string) ([]byte, error) {
 	return data, nil
 }
 
+// unmarshalYAMLPreservingNumbers decodes YAML into v via its JSON representation, using
+// json.Number so large integers survive the round-trip instead of being rounded through float64.
+func unmarshalYAMLPreservingNumbers(data []byte, v any) error {
+	jsonBytes, err := k8syaml.YAMLToJSON(data)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
+	dec.UseNumber()
+	return dec.Decode(v)
+}
+
 // MergeValues deep-merges base and override YAML, with override taking precedence.
 func MergeValues(base, override []byte) ([]byte, error) {
 	var baseMap map[string]any
 	var overrideMap map[string]any
 
-	if err := k8syaml.Unmarshal(base, &baseMap); err != nil {
+	if err := unmarshalYAMLPreservingNumbers(base, &baseMap); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal base values: %w", err)
 	}
-	if err := k8syaml.Unmarshal(override, &overrideMap); err != nil {
+	if err := unmarshalYAMLPreservingNumbers(override, &overrideMap); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal override values: %w", err)
 	}
 
@@ -600,7 +613,7 @@ func MergeValues(base, override []byte) ([]byte, error) {
 		normalizeHeaderMaps(overrideMap)
 		return k8syaml.Marshal(overrideMap)
 	}
-	if err := build.MergeDeep(&baseMap, &overrideMap, false); err != nil {
+	if err := vmv1beta1.MergeDeep(&baseMap, &overrideMap, false); err != nil {
 		return nil, fmt.Errorf("cannot merge values: %w", err)
 	}
 	normalizeHeaderMaps(baseMap)

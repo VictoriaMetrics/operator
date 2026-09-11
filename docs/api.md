@@ -1726,7 +1726,7 @@ Appears in: [VMDistributedZone (v1alpha1)](#v1alpha1-vmdistributedzone), [VMDist
 | Field | Description |
 | --- | --- |
 | name<a href="#v1alpha1-vmdistributedzonecluster-name" id="v1alpha1-vmdistributedzonecluster-name">#</a><a id="vmdistributedzonecluster-name"></a><br/>_string_ | _(Optional)_<br/>Name specifies the static name to be used for the new VMCluster. |
-| spec<a href="#v1alpha1-vmdistributedzonecluster-spec" id="v1alpha1-vmdistributedzonecluster-spec">#</a><a id="vmdistributedzonecluster-spec"></a><br/>_[VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMCluster. |
+| spec<a href="#v1alpha1-vmdistributedzonecluster-spec" id="v1alpha1-vmdistributedzonecluster-spec">#</a><a id="vmdistributedzonecluster-spec"></a><br/>_[VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase)_ | _(Optional)_<br/>Spec defines the desired state of a new or update spec for existing VMCluster. |
 
 #### VMDistributedZoneCommon {#v1alpha1-vmdistributedzonecommon}
 <a id="vmdistributedzonecommon"></a>
@@ -1965,6 +1965,7 @@ Appears in: [TargetRef (v1beta1)](#v1beta1-targetref)
 | name<a href="#v1beta1-crdref-name" id="v1beta1-crdref-name">#</a><a id="crdref-name"></a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#v1beta1-crdref-namespace" id="v1beta1-crdref-namespace">#</a><a id="crdref-namespace"></a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
 | objects<a href="#v1beta1-crdref-objects" id="v1beta1-crdref-objects">#</a><a id="crdref-objects"></a><br/>_[NamespacedName (v1beta1)](#v1beta1-namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |
+| pool<a href="#v1beta1-crdref-pool" id="v1beta1-crdref-pool">#</a><a id="crdref-pool"></a><br/>_string_ | _(Optional)_<br/>Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared<br />(non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds. |
 | useExtraService<a href="#v1beta1-crdref-useextraservice" id="v1beta1-crdref-useextraservice">#</a><a id="crdref-useextraservice"></a><br/>_boolean_ | _(Optional)_<br/>UseExtraService instructs the operator to prefer the CR's additional service<br />(created via spec.serviceSpec) over the default service when building the target URL. |
 
 #### Certs {#v1beta1-certs}
@@ -2333,7 +2334,7 @@ DownsamplingConfig defines downsampling configuration for VMSingle and VMCluster
 Requires enterprise license.
 See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#downsampling
 
-Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec)
+Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -2970,7 +2971,7 @@ License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics corev1.94.0.
 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 
-Appears in: [VLAgentSpec (v1)](#v1-vlagentspec), [VLClusterSpec (v1)](#v1-vlclusterspec), [VLDistributedSpec (v1alpha1)](#v1alpha1-vldistributedspec), [VLDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vldistributedzoneagentspec), [VLSingleSpec (v1)](#v1-vlsinglespec), [VMAgentSpec (v1beta1)](#v1beta1-vmagentspec), [VMAlertSpec (v1beta1)](#v1beta1-vmalertspec), [VMAnomalySpec (v1)](#v1-vmanomalyspec), [VMAuthLoadBalancerSpec (v1beta1)](#v1beta1-vmauthloadbalancerspec), [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMDistributedSpec (v1alpha1)](#v1alpha1-vmdistributedspec), [VMDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vmdistributedzoneagentspec), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec)
+Appears in: [VLAgentSpec (v1)](#v1-vlagentspec), [VLClusterSpec (v1)](#v1-vlclusterspec), [VLDistributedSpec (v1alpha1)](#v1alpha1-vldistributedspec), [VLDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vldistributedzoneagentspec), [VLSingleSpec (v1)](#v1-vlsinglespec), [VMAgentSpec (v1beta1)](#v1beta1-vmagentspec), [VMAlertSpec (v1beta1)](#v1beta1-vmalertspec), [VMAnomalySpec (v1)](#v1-vmanomalyspec), [VMAuthLoadBalancerSpec (v1beta1)](#v1beta1-vmauthloadbalancerspec), [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase), [VMDistributedSpec (v1alpha1)](#v1alpha1-vmdistributedspec), [VMDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vmdistributedzoneagentspec), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -3030,7 +3031,7 @@ Appears in: [Receiver (v1beta1)](#v1beta1-receiver)
 
 ManagedObjectsMetadata contains Labels and Annotations
 
-Appears in: [VLAgentSpec (v1)](#v1-vlagentspec), [VLClusterSpec (v1)](#v1-vlclusterspec), [VLDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vldistributedzoneagentspec), [VLSingleSpec (v1)](#v1-vlsinglespec), [VLogsSpec (v1beta1)](#v1beta1-vlogsspec), [VMAgentSpec (v1beta1)](#v1beta1-vmagentspec), [VMAlertSpec (v1beta1)](#v1beta1-vmalertspec), [VMAlertmanagerSpec (v1beta1)](#v1beta1-vmalertmanagerspec), [VMAnomalySpec (v1)](#v1-vmanomalyspec), [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vmdistributedzoneagentspec), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec), [VMUserSpec (v1beta1)](#v1beta1-vmuserspec), [VTAgentSpec (v1)](#v1-vtagentspec), [VTClusterSpec (v1)](#v1-vtclusterspec), [VTSingleSpec (v1)](#v1-vtsinglespec)
+Appears in: [VLAgentSpec (v1)](#v1-vlagentspec), [VLClusterSpec (v1)](#v1-vlclusterspec), [VLDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vldistributedzoneagentspec), [VLSingleSpec (v1)](#v1-vlsinglespec), [VLogsSpec (v1beta1)](#v1beta1-vlogsspec), [VMAgentSpec (v1beta1)](#v1beta1-vmagentspec), [VMAlertSpec (v1beta1)](#v1beta1-vmalertspec), [VMAlertmanagerSpec (v1beta1)](#v1beta1-vmalertmanagerspec), [VMAnomalySpec (v1)](#v1-vmanomalyspec), [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase), [VMDistributedZoneAgentSpec (v1alpha1)](#v1alpha1-vmdistributedzoneagentspec), [VMSingleSpec (v1beta1)](#v1beta1-vmsinglespec), [VMUserSpec (v1beta1)](#v1beta1-vmuserspec), [VTAgentSpec (v1)](#v1-vtagentspec), [VTClusterSpec (v1)](#v1-vtclusterspec), [VTSingleSpec (v1)](#v1-vtsinglespec)
 
 | Field | Description |
 | --- | --- |
@@ -3168,6 +3169,7 @@ Appears in: [CRDRef (v1beta1)](#v1beta1-crdref)
 | --- | --- |
 | name<a href="#v1beta1-namespacedname-name" id="v1beta1-namespacedname-name">#</a><a id="namespacedname-name"></a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#v1beta1-namespacedname-namespace" id="v1beta1-namespacedname-namespace">#</a><a id="namespacedname-namespace"></a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
+| pool<a href="#v1beta1-namespacedname-pool" id="v1beta1-namespacedname-pool">#</a><a id="namespacedname-pool"></a><br/>_string_ | _(Optional)_<br/>Pool selects a specific named pool from a VMCluster's spec.pools instead of its shared<br />(non-pool) endpoint. Only valid for VMCluster/vminsert and VMCluster/vmstorage kinds. |
 | useExtraService<a href="#v1beta1-namespacedname-useextraservice" id="v1beta1-namespacedname-useextraservice">#</a><a id="namespacedname-useextraservice"></a><br/>_boolean_ | _(Optional)_<br/>UseExtraService instructs the operator to prefer the CR's additional service<br />(created via spec.serviceSpec) over the default service when building the target URL. |
 
 #### NomadSDConfig {#v1beta1-nomadsdconfig}
@@ -4792,7 +4794,7 @@ VMAuth is the Schema for the vmauths API
 VMAuthLoadBalancer configures vmauth as a load balancer
 for the requests
 
-Appears in: [VLClusterSpec (v1)](#v1-vlclusterspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VTClusterSpec (v1)](#v1-vtclusterspec)
+Appears in: [VLClusterSpec (v1)](#v1-vlclusterspec), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase), [VTClusterSpec (v1)](#v1-vtclusterspec)
 
 | Field | Description |
 | --- | --- |
@@ -5039,7 +5041,7 @@ Cluster version with
 VMClusterDiscovery configures automatic vmstorage node discovery for vminsert and vmselect.
 It maps to the -storageNode.discoveryInterval and -storageNode.filter flags.
 
-Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMInsert (v1beta1)](#v1beta1-vminsert), [VMSelect (v1beta1)](#v1beta1-vmselect)
+Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase), [VMInsert (v1beta1)](#v1beta1-vminsert), [VMSelect (v1beta1)](#v1beta1-vmselect)
 
 | Field | Description |
 | --- | --- |
@@ -5047,12 +5049,27 @@ Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMInsert (v1beta
 | filter<a href="#v1beta1-vmclusterdiscovery-filter" id="v1beta1-vmclusterdiscovery-filter">#</a><a id="vmclusterdiscovery-filter"></a><br/>_string_ | _(Optional)_<br/>Filter is an optional regexp filter applied to discovered vmstorage addresses.<br />Only addresses matching the filter are used; non-matching addresses are ignored. |
 | interval<a href="#v1beta1-vmclusterdiscovery-interval" id="v1beta1-vmclusterdiscovery-interval">#</a><a id="vmclusterdiscovery-interval"></a><br/>_string_ | _(Optional)_<br/>Interval is the interval for refreshing the vmstorage node list resolved from DNS SRV records.<br />The minimum supported value is 1s.<br />Defaults to 2s if not set. |
 
+#### VMClusterPool {#v1beta1-vmclusterpool}
+<a id="vmclusterpool"></a>
+
+VMClusterPool defines a named group of vmstorage (and optionally vminsert) components
+within a VMCluster. Each pool gets its own StatefulSet and headless Service.
+
+Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)
+
+| Field | Description |
+| --- | --- |
+| name<a href="#v1beta1-vmclusterpool-name" id="v1beta1-vmclusterpool-name">#</a><a id="vmclusterpool-name"></a><br/>_string_ | _(Required)_<br/>Name is the unique identifier for this pool within the cluster.<br />Used as a suffix for generated resource names (e.g. vmstorage-<cluster>-<pool>) and as a<br />storage group name in vmselect. Kept short since the cluster name itself isn't length-limited,<br />and generated StatefulSet/Deployment names must still fit Kubernetes' 63-character limit.<br />Must be a lowercase alphanumeric DNS label; hyphens allowed in the interior. |
+| replicationFactor<a href="#v1beta1-vmclusterpool-replicationfactor" id="v1beta1-vmclusterpool-replicationfactor">#</a><a id="vmclusterpool-replicationfactor"></a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor overrides the cluster-level replicationFactor for this pool's storage<br />group at vmselect, rendered as -replicationFactor=<name>:<replicationFactor>. Pools<br />without an override use the cluster-level ReplicationFactor, if set. |
+| vminsert<a href="#v1beta1-vmclusterpool-vminsert" id="v1beta1-vmclusterpool-vminsert">#</a><a id="vmclusterpool-vminsert"></a><br/>_[VMInsert (v1beta1)](#v1beta1-vminsert)_ | _(Optional)_<br/>VMInsert defines a dedicated vminsert for this pool.<br />Each field overrides the corresponding field in the top-level vminsert spec.<br />When nil, the top-level shared vminsert writes to this pool's storage nodes as well. |
+| vmstorage<a href="#v1beta1-vmclusterpool-vmstorage" id="v1beta1-vmclusterpool-vmstorage">#</a><a id="vmclusterpool-vmstorage"></a><br/>_[VMStorage (v1beta1)](#v1beta1-vmstorage)_ | _(Optional)_<br/>VMStorage defines pool-specific vmstorage configuration.<br />Each field overrides the corresponding field in the top-level vmstorage spec.<br />Fields absent here inherit from the top-level vmstorage.<br />RetentionPeriod on VMStorage overrides the cluster-level retentionPeriod for this pool. |
+
 #### VMClusterSpec {#v1beta1-vmclusterspec}
 <a id="vmclusterspec"></a>
 
 VMClusterSpec defines the desired state of VMCluster
 
-Appears in: [VMCluster (v1beta1)](#v1beta1-vmcluster), [VMDistributedZoneCluster (v1alpha1)](#v1alpha1-vmdistributedzonecluster)
+Appears in: [VMCluster (v1beta1)](#v1beta1-vmcluster)
 
 | Field | Description |
 | --- | --- |
@@ -5060,10 +5077,12 @@ Appears in: [VMCluster (v1beta1)](#v1beta1-vmcluster), [VMDistributedZoneCluster
 | clusterVersion<a href="#v1beta1-vmclusterspec-clusterversion" id="v1beta1-vmclusterspec-clusterversion">#</a><a id="vmclusterspec-clusterversion"></a><br/>_string_ | _(Optional)_<br/>ClusterVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
 | discovery<a href="#v1beta1-vmclusterspec-discovery" id="v1beta1-vmclusterspec-discovery">#</a><a id="vmclusterspec-discovery"></a><br/>_[VMClusterDiscovery (v1beta1)](#v1beta1-vmclusterdiscovery)_ | _(Optional)_<br/>Discovery configures automatic vmstorage node discovery for vminsert and vmselect.<br />This is an enterprise feature and requires a valid license key.<br />See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery |
 | downsampling<a href="#v1beta1-vmclusterspec-downsampling" id="v1beta1-vmclusterspec-downsampling">#</a><a id="vmclusterspec-downsampling"></a><br/>_[DownsamplingConfig (v1beta1)](#v1beta1-downsamplingconfig)_ | _(Optional)_<br/>Downsampling defines downsampling rules applied to vmselect and vmstorage components.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling |
+| globalReplicationFactor<a href="#v1beta1-vmclusterspec-globalreplicationfactor" id="v1beta1-vmclusterspec-globalreplicationfactor">#</a><a id="vmclusterspec-globalreplicationfactor"></a><br/>_integer_ | _(Optional)_<br/>GlobalReplicationFactor sets vmselect's -globalReplicationFactor, i.e. how many copies of<br />every ingested sample are available across distinct storage groups (see Pools). vmselect<br />continues returning full responses when up to GlobalReplicationFactor-1 groups are<br />temporarily unavailable. Only meaningful when Pools is set and samples are actually<br />replicated across pools (e.g. via a remote-write fan-out upstream of the cluster).<br />See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#vmstorage-groups-at-vmselect |
 | imagePullSecrets<a href="#v1beta1-vmclusterspec-imagepullsecrets" id="v1beta1-vmclusterspec-imagepullsecrets">#</a><a id="vmclusterspec-imagepullsecrets"></a><br/>_[LocalObjectReference (v1)](#v1-localobjectreference) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod |
 | license<a href="#v1beta1-vmclusterspec-license" id="v1beta1-vmclusterspec-license">#</a><a id="vmclusterspec-license"></a><br/>_[License (v1beta1)](#v1beta1-license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
 | managedMetadata<a href="#v1beta1-vmclusterspec-managedmetadata" id="v1beta1-vmclusterspec-managedmetadata">#</a><a id="vmclusterspec-managedmetadata"></a><br/>_[ManagedObjectsMetadata (v1beta1)](#v1beta1-managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
 | paused<a href="#v1beta1-vmclusterspec-paused" id="v1beta1-vmclusterspec-paused">#</a><a id="vmclusterspec-paused"></a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| pools<a href="#v1beta1-vmclusterspec-pools" id="v1beta1-vmclusterspec-pools">#</a><a id="vmclusterspec-pools"></a><br/>_[VMClusterPool (v1beta1)](#v1beta1-vmclusterpool) array_ | _(Optional)_<br/>Pools defines named groups of vmstorage (and optionally vminsert) components.<br />Each pool gets its own StatefulSet and headless Service named <component>-<cluster>-<pool>.<br />Top-level vmstorage and vminsert specs act as defaults; pool specs override them field-by-field.<br />vmselect queries all pools using the pool name as a storage group name (-storageNode=<pool>/<addr>).<br />When pools are defined the top-level vmstorage is not deployed; pools replace it entirely.<br />The top-level vminsert is deployed as a shared insert group across all pools only when no pool<br />defines its own vminsert; as soon as any pool has a dedicated vminsert the top-level one is skipped. |
 | replicationFactor<a href="#v1beta1-vmclusterspec-replicationfactor" id="v1beta1-vmclusterspec-replicationfactor">#</a><a id="vmclusterspec-replicationfactor"></a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor defines how many copies of data make among<br />distinct storage nodes |
 | requestsLoadBalancer<a href="#v1beta1-vmclusterspec-requestsloadbalancer" id="v1beta1-vmclusterspec-requestsloadbalancer">#</a><a id="vmclusterspec-requestsloadbalancer"></a><br/>_[VMAuthLoadBalancer (v1beta1)](#v1beta1-vmauthloadbalancer)_ | _(Required)_<br/>RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests.<br />It helps to evenly spread load across pods.<br />Usually it's not possible with Kubernetes TCP-based services.<br />See more [here](https://docs.victoriametrics.com/operator/resources/vmcluster/#requests-load-balancing) |
 | retentionPeriod<a href="#v1beta1-vmclusterspec-retentionperiod" id="v1beta1-vmclusterspec-retentionperiod">#</a><a id="vmclusterspec-retentionperiod"></a><br/>_string_ | _(Optional)_<br/>RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").<br />Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.<br />The default value is 1 (one month).<br />See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details. |
@@ -5074,10 +5093,38 @@ Appears in: [VMCluster (v1beta1)](#v1beta1-vmcluster), [VMDistributedZoneCluster
 | vmselect<a href="#v1beta1-vmclusterspec-vmselect" id="v1beta1-vmclusterspec-vmselect">#</a><a id="vmclusterspec-vmselect"></a><br/>_[VMSelect (v1beta1)](#v1beta1-vmselect)_ | _(Optional)_<br/> |
 | vmstorage<a href="#v1beta1-vmclusterspec-vmstorage" id="v1beta1-vmclusterspec-vmstorage">#</a><a id="vmclusterspec-vmstorage"></a><br/>_[VMStorage (v1beta1)](#v1beta1-vmstorage)_ | _(Optional)_<br/> |
 
+#### VMClusterSpecBase {#v1beta1-vmclusterspecbase}
+<a id="vmclusterspecbase"></a>
+
+VMClusterSpecBase defines the desired state of VMCluster, excluding Pools.
+
+Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMDistributedZoneCluster (v1alpha1)](#v1alpha1-vmdistributedzonecluster)
+
+| Field | Description |
+| --- | --- |
+| clusterDomainName<a href="#v1beta1-vmclusterspecbase-clusterdomainname" id="v1beta1-vmclusterspecbase-clusterdomainname">#</a><a id="vmclusterspecbase-clusterdomainname"></a><br/>_string_ | _(Optional)_<br/>ClusterDomainName defines domain name suffix for in-cluster dns addresses<br />aka .cluster.local<br />used by vminsert and vmselect to build vmstorage address |
+| clusterVersion<a href="#v1beta1-vmclusterspecbase-clusterversion" id="v1beta1-vmclusterspecbase-clusterversion">#</a><a id="vmclusterspecbase-clusterversion"></a><br/>_string_ | _(Optional)_<br/>ClusterVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. |
+| discovery<a href="#v1beta1-vmclusterspecbase-discovery" id="v1beta1-vmclusterspecbase-discovery">#</a><a id="vmclusterspecbase-discovery"></a><br/>_[VMClusterDiscovery (v1beta1)](#v1beta1-vmclusterdiscovery)_ | _(Optional)_<br/>Discovery configures automatic vmstorage node discovery for vminsert and vmselect.<br />This is an enterprise feature and requires a valid license key.<br />See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery |
+| downsampling<a href="#v1beta1-vmclusterspecbase-downsampling" id="v1beta1-vmclusterspecbase-downsampling">#</a><a id="vmclusterspecbase-downsampling"></a><br/>_[DownsamplingConfig (v1beta1)](#v1beta1-downsamplingconfig)_ | _(Optional)_<br/>Downsampling defines downsampling rules applied to vmselect and vmstorage components.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#downsampling |
+| globalReplicationFactor<a href="#v1beta1-vmclusterspecbase-globalreplicationfactor" id="v1beta1-vmclusterspecbase-globalreplicationfactor">#</a><a id="vmclusterspecbase-globalreplicationfactor"></a><br/>_integer_ | _(Optional)_<br/>GlobalReplicationFactor sets vmselect's -globalReplicationFactor, i.e. how many copies of<br />every ingested sample are available across distinct storage groups (see Pools). vmselect<br />continues returning full responses when up to GlobalReplicationFactor-1 groups are<br />temporarily unavailable. Only meaningful when Pools is set and samples are actually<br />replicated across pools (e.g. via a remote-write fan-out upstream of the cluster).<br />See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#vmstorage-groups-at-vmselect |
+| imagePullSecrets<a href="#v1beta1-vmclusterspecbase-imagepullsecrets" id="v1beta1-vmclusterspecbase-imagepullsecrets">#</a><a id="vmclusterspecbase-imagepullsecrets"></a><br/>_[LocalObjectReference (v1)](#v1-localobjectreference) array_ | _(Optional)_<br/>ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod |
+| license<a href="#v1beta1-vmclusterspecbase-license" id="v1beta1-vmclusterspecbase-license">#</a><a id="vmclusterspecbase-license"></a><br/>_[License (v1beta1)](#v1beta1-license)_ | _(Optional)_<br/>License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/) |
+| managedMetadata<a href="#v1beta1-vmclusterspecbase-managedmetadata" id="v1beta1-vmclusterspecbase-managedmetadata">#</a><a id="vmclusterspecbase-managedmetadata"></a><br/>_[ManagedObjectsMetadata (v1beta1)](#v1beta1-managedobjectsmetadata)_ | _(Required)_<br/>ManagedMetadata defines metadata that will be added to the all objects<br />created by operator for the given CustomResource |
+| paused<a href="#v1beta1-vmclusterspecbase-paused" id="v1beta1-vmclusterspecbase-paused">#</a><a id="vmclusterspecbase-paused"></a><br/>_boolean_ | _(Optional)_<br/>Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. |
+| replicationFactor<a href="#v1beta1-vmclusterspecbase-replicationfactor" id="v1beta1-vmclusterspecbase-replicationfactor">#</a><a id="vmclusterspecbase-replicationfactor"></a><br/>_integer_ | _(Optional)_<br/>ReplicationFactor defines how many copies of data make among<br />distinct storage nodes |
+| requestsLoadBalancer<a href="#v1beta1-vmclusterspecbase-requestsloadbalancer" id="v1beta1-vmclusterspecbase-requestsloadbalancer">#</a><a id="vmclusterspecbase-requestsloadbalancer"></a><br/>_[VMAuthLoadBalancer (v1beta1)](#v1beta1-vmauthloadbalancer)_ | _(Required)_<br/>RequestsLoadBalancer configures load-balancing for vminsert and vmselect requests.<br />It helps to evenly spread load across pods.<br />Usually it's not possible with Kubernetes TCP-based services.<br />See more [here](https://docs.victoriametrics.com/operator/resources/vmcluster/#requests-load-balancing) |
+| retentionPeriod<a href="#v1beta1-vmclusterspecbase-retentionperiod" id="v1beta1-vmclusterspecbase-retentionperiod">#</a><a id="vmclusterspecbase-retentionperiod"></a><br/>_string_ | _(Optional)_<br/>RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").<br />Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.<br />The default value is 1 (one month).<br />See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details. |
+| serviceAccountName<a href="#v1beta1-vmclusterspecbase-serviceaccountname" id="v1beta1-vmclusterspecbase-serviceaccountname">#</a><a id="vmclusterspecbase-serviceaccountname"></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the<br />VMSelect, VMStorage and VMInsert Pods. |
+| useLegacyNaming<a href="#v1beta1-vmclusterspecbase-uselegacynaming" id="v1beta1-vmclusterspecbase-uselegacynaming">#</a><a id="vmclusterspecbase-uselegacynaming"></a><br/>_boolean_ | _(Optional)_<br/>UseLegacyNaming switches component resource naming from the default prefix convention<br />(<component>-<name>, e.g. "vmselect-myapp") to a suffix convention (<name>-<component>,<br />e.g. "myapp-vmselect"). Useful when migrating from standalone Helm charts.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0730">v0.73.0</a> |
+| useStrictSecurity<a href="#v1beta1-vmclusterspecbase-usestrictsecurity" id="v1beta1-vmclusterspecbase-usestrictsecurity">#</a><a id="vmclusterspecbase-usestrictsecurity"></a><br/>_boolean_ | _(Optional)_<br/>UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions |
+| vminsert<a href="#v1beta1-vmclusterspecbase-vminsert" id="v1beta1-vmclusterspecbase-vminsert">#</a><a id="vmclusterspecbase-vminsert"></a><br/>_[VMInsert (v1beta1)](#v1beta1-vminsert)_ | _(Optional)_<br/> |
+| vmselect<a href="#v1beta1-vmclusterspecbase-vmselect" id="v1beta1-vmclusterspecbase-vmselect">#</a><a id="vmclusterspecbase-vmselect"></a><br/>_[VMSelect (v1beta1)](#v1beta1-vmselect)_ | _(Optional)_<br/> |
+| vmstorage<a href="#v1beta1-vmclusterspecbase-vmstorage" id="v1beta1-vmclusterspecbase-vmstorage">#</a><a id="vmclusterspecbase-vmstorage"></a><br/>_[VMStorage (v1beta1)](#v1beta1-vmstorage)_ | _(Optional)_<br/> |
+
 #### VMInsert {#v1beta1-vminsert}
 <a id="vminsert"></a>
 
-Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)
+Appears in: [VMClusterPool (v1beta1)](#v1beta1-vmclusterpool), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase)
 
 | Field | Description |
 | --- | --- |
@@ -5463,7 +5510,7 @@ Appears in: [Endpoint (v1beta1)](#v1beta1-endpoint), [EndpointScrapeParams (v1be
 
 VMSelect defines configuration section for vmselect components of the victoria-metrics cluster
 
-Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)
+Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase)
 
 | Field | Description |
 | --- | --- |
@@ -5727,7 +5774,7 @@ Appears in: [VMStaticScrape (v1beta1)](#v1beta1-vmstaticscrape)
 #### VMStorage {#v1beta1-vmstorage}
 <a id="vmstorage"></a>
 
-Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)
+Appears in: [VMClusterPool (v1beta1)](#v1beta1-vmclusterpool), [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec), [VMClusterSpecBase (v1beta1)](#v1beta1-vmclusterspecbase)
 
 | Field | Description |
 | --- | --- |
@@ -5771,6 +5818,7 @@ Appears in: [VMClusterSpec (v1beta1)](#v1beta1-vmclusterspec)
 | replicaCount<a href="#v1beta1-vmstorage-replicacount" id="v1beta1-vmstorage-replicacount">#</a><a id="vmstorage-replicacount"></a><br/>_integer_ | _(Optional)_<br/>ReplicaCount is the expected size of the Application. |
 | resources<a href="#v1beta1-vmstorage-resources" id="v1beta1-vmstorage-resources">#</a><a id="vmstorage-resources"></a><br/>_[ResourceRequirements (v1)](#v1-resourcerequirements)_ | _(Optional)_<br/>Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used |
 | retentionFilters<a href="#v1beta1-vmstorage-retentionfilters" id="v1beta1-vmstorage-retentionfilters">#</a><a id="vmstorage-retentionfilters"></a><br/>_[RetentionFiltersConfig (v1beta1)](#v1beta1-retentionfiltersconfig)_ | _(Optional)_<br/>RetentionFilters defines per-series retention filters for vmstorage.<br />Requires enterprise license. See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#retention-filters |
+| retentionPeriod<a href="#v1beta1-vmstorage-retentionperiod" id="v1beta1-vmstorage-retentionperiod">#</a><a id="vmstorage-retentionperiod"></a><br/>_string_ | _(Optional)_<br/>RetentionPeriod overrides the cluster-level retentionPeriod for this storage instance.<br />Useful when using Pools to implement multi-retention setups. |
 | revisionHistoryLimitCount<a href="#v1beta1-vmstorage-revisionhistorylimitcount" id="v1beta1-vmstorage-revisionhistorylimitcount">#</a><a id="vmstorage-revisionhistorylimitcount"></a><br/>_integer_ | _(Optional)_<br/>The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the Deployment revision history.<br />Has no effect at StatefulSets<br />Defaults to 10. |
 | rollingUpdateStrategy<a href="#v1beta1-vmstorage-rollingupdatestrategy" id="v1beta1-vmstorage-rollingupdatestrategy">#</a><a id="vmstorage-rollingupdatestrategy"></a><br/>_[StatefulSetUpdateStrategyType (v1)](#v1-statefulsetupdatestrategytype)_ | _(Optional)_<br/>RollingUpdateStrategy defines strategy for application updates<br />Default is OnDelete, in this case operator handles update process<br />Can be changed for RollingUpdate |
 | rollingUpdateStrategyBehavior<a href="#v1beta1-vmstorage-rollingupdatestrategybehavior" id="v1beta1-vmstorage-rollingupdatestrategybehavior">#</a><a id="vmstorage-rollingupdatestrategybehavior"></a><br/>_[StatefulSetUpdateStrategyBehavior (v1beta1)](#v1beta1-statefulsetupdatestrategybehavior)_ | _(Optional)_<br/>RollingUpdateStrategyBehavior defines customized behavior for rolling updates.<br />It applies if the RollingUpdateStrategy is set to OnDelete, which is the default. |

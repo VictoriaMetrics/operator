@@ -47,20 +47,22 @@ func newVMCluster(name, namespace, version string, owner metav1.OwnerReference) 
 			OwnerReferences:   []metav1.OwnerReference{owner},
 		},
 		Spec: vmv1beta1.VMClusterSpec{
-			ClusterVersion: version,
-			VMSelect: &vmv1beta1.VMSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+			VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+				ClusterVersion: version,
+				VMSelect: &vmv1beta1.VMSelect{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
-			},
-			VMInsert: &vmv1beta1.VMInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				VMInsert: &vmv1beta1.VMInsert{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
-			},
-			VMStorage: &vmv1beta1.VMStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				VMStorage: &vmv1beta1.VMStorage{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -131,7 +133,7 @@ func beforeEach(o opts) *testData {
 			Name: name,
 			VMCluster: vmv1alpha1.VMDistributedZoneCluster{
 				Name: name,
-				Spec: vmCluster.Spec,
+				Spec: vmCluster.Spec.VMClusterSpecBase,
 			},
 			VMAgent: vmv1alpha1.VMDistributedZoneAgent{
 				Name: name,

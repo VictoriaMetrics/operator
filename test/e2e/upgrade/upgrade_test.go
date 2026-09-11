@@ -280,7 +280,7 @@ var (
 		},
 	}
 	vmcluster = &vmv1beta1.VMCluster{
-		Spec: vmv1beta1.VMClusterSpec{
+		Spec: vmv1beta1.VMClusterSpec{VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
 			RetentionPeriod: "1",
 			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
 				Spec: vmv1beta1.VMAuthLoadBalancerSpec{
@@ -324,7 +324,7 @@ var (
 					TerminationGracePeriodSeconds: ptr.To(int64(1)),
 				},
 			},
-		},
+		}},
 	}
 	vmalertmanager = &vmv1beta1.VMAlertmanager{
 		Spec: vmv1beta1.VMAlertmanagerSpec{
@@ -371,7 +371,7 @@ var (
 				ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
 				UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
 				VMCluster: vmv1alpha1.VMDistributedZoneCluster{
-					Spec: vmv1beta1.VMClusterSpec{
+					Spec: vmv1beta1.VMClusterSpecBase{
 						RetentionPeriod: "1",
 						VMSelect: &vmv1beta1.VMSelect{
 							CommonAppsParams: vmv1beta1.CommonAppsParams{

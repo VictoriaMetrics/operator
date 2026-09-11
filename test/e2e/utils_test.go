@@ -125,10 +125,11 @@ func getRevisionHistoryLimit(ctx context.Context, rclient client.Client, name ty
 }
 
 type httpRequestOpts struct {
-	dstURL       string
-	method       string
-	expectedCode int
-	payload      string
+	dstURL               string
+	method               string
+	expectedCode         int
+	payload              string
+	expectedBodyContains string
 }
 
 func expectHTTPRequestToSucceed(ctx context.Context, opts httpRequestOpts) {
@@ -163,9 +164,15 @@ func expectHTTPRequestToSucceed(ctx context.Context, opts httpRequestOpts) {
 			return err
 		}
 		defer resp.Body.Close()
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
 		if resp.StatusCode != opts.expectedCode {
-			b, _ := io.ReadAll(resp.Body)
 			return fmt.Errorf("unexpected status code: got %d, want %d, body: %s", resp.StatusCode, opts.expectedCode, b)
+		}
+		if opts.expectedBodyContains != "" && !strings.Contains(string(b), opts.expectedBodyContains) {
+			return fmt.Errorf("response body does not contain %q, body: %s", opts.expectedBodyContains, b)
 		}
 		return nil
 	}, 60*time.Second).ShouldNot(HaveOccurred())

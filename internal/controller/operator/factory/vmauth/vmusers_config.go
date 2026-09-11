@@ -47,12 +47,18 @@ func updateCRDObjURLs(ctx context.Context, rclient client.Client, crd *vmv1beta1
 		if _, ok := objURLs[key]; ok {
 			continue
 		}
-		crdObj, ok := crdNameToObject[crd.Kind]
+		newCrdObj, ok := crdNameToObject[crd.Kind]
 		if !ok {
 			return fmt.Errorf("unsupported kind=%q", crd.Kind)
 		}
+		crdObj := newCrdObj()
 		crdObj.SetName(nsn.Name)
 		crdObj.SetNamespace(nsn.Namespace)
+		if cw, ok := crdObj.(*clusterWithURL); ok {
+			cw.pool = nsn.Pool
+		} else if nsn.Pool != "" {
+			return fmt.Errorf("pool=%q is not supported for kind=%q", nsn.Pool, crd.Kind)
+		}
 		url, err := getAsURLObject(ctx, rclient, crdObj, nsn.UseExtraService)
 		if err != nil {
 			if !build.IsNotFound(err) {
@@ -79,7 +85,7 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 				backends[ref.Name] = ref
 			} else {
 				if r, ok := backends[ref.Name]; ok {
-					if err := build.MergeDeep(ref, r, true); err != nil {
+					if err := vmv1beta1.MergeDeep(ref, r, true); err != nil {
 						return fmt.Errorf("failed to merge target refs: %w", err)
 					}
 				} else {
@@ -176,6 +182,10 @@ type objectWithURL interface {
 	AsURL(isExtra bool) string
 }
 
+type urlErrorer interface {
+	URLError() error
+}
+
 func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL, isExtra bool) (string, error) {
 	obj := objT.(client.Object)
 	// dirty hack to restore original type of vmcluster or vlcluster
@@ -191,7 +201,13 @@ func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithU
 		}
 		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return objT.AsURL(isExtra), nil
+	url := objT.AsURL(isExtra)
+	if ue, ok := objT.(urlErrorer); ok {
+		if err := ue.URLError(); err != nil {
+			return "", err
+		}
+	}
+	return url, nil
 }
 
 func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
@@ -307,27 +323,26 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 	return needUpdate
 }
 
-var crdNameToObject = map[string]objectWithURL{
-	"VMAgent":  &vmv1beta1.VMAgent{},
-	"VMAlert":  &vmv1beta1.VMAlert{},
-	"VMSingle": &vmv1beta1.VMSingle{},
-	"VLogs":    &vmv1beta1.VLogs{},
-	// keep both variants for backward-compatibility
-	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
-	"VMAlertManager":      &vmv1beta1.VMAlertmanager{},
-	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
-	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
-	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
-	"VMAnomaly":           &vmv1.VMAnomaly{},
-	"VLSingle":            &vmv1.VLSingle{},
-	"VLCluster/vlselect":  newClusterWithURL("vlselect"),
-	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),
-	"VLCluster/vlstorage": newClusterWithURL("vlstorage"),
-	"VLAgent":             &vmv1.VLAgent{},
-	"VTSingle":            &vmv1.VTSingle{},
-	"VTCluster/vtselect":  newClusterWithURL("vtselect"),
-	"VTCluster/vtinsert":  newClusterWithURL("vtinsert"),
-	"VTCluster/vtstorage": newClusterWithURL("vtstorage"),
+var crdNameToObject = map[string]func() objectWithURL{
+	"VMAgent":             func() objectWithURL { return &vmv1beta1.VMAgent{} },
+	"VMAlert":             func() objectWithURL { return &vmv1beta1.VMAlert{} },
+	"VMSingle":            func() objectWithURL { return &vmv1beta1.VMSingle{} },
+	"VLogs":               func() objectWithURL { return &vmv1beta1.VLogs{} },
+	"VMAlertmanager":      func() objectWithURL { return &vmv1beta1.VMAlertmanager{} },
+	"VMAlertManager":      func() objectWithURL { return &vmv1beta1.VMAlertmanager{} },
+	"VMCluster/vmselect":  func() objectWithURL { return newClusterWithURL("vmselect") },
+	"VMCluster/vminsert":  func() objectWithURL { return newClusterWithURL("vminsert") },
+	"VMCluster/vmstorage": func() objectWithURL { return newClusterWithURL("vmstorage") },
+	"VMAnomaly":           func() objectWithURL { return &vmv1.VMAnomaly{} },
+	"VLSingle":            func() objectWithURL { return &vmv1.VLSingle{} },
+	"VLCluster/vlselect":  func() objectWithURL { return newClusterWithURL("vlselect") },
+	"VLCluster/vlinsert":  func() objectWithURL { return newClusterWithURL("vlinsert") },
+	"VLCluster/vlstorage": func() objectWithURL { return newClusterWithURL("vlstorage") },
+	"VLAgent":             func() objectWithURL { return &vmv1.VLAgent{} },
+	"VTSingle":            func() objectWithURL { return &vmv1.VTSingle{} },
+	"VTCluster/vtselect":  func() objectWithURL { return newClusterWithURL("vtselect") },
+	"VTCluster/vtinsert":  func() objectWithURL { return newClusterWithURL("vtinsert") },
+	"VTCluster/vtstorage": func() objectWithURL { return newClusterWithURL("vtstorage") },
 }
 
 // helper interface to restore VMCluster type
@@ -335,40 +350,53 @@ type unwrapObject interface {
 	origin() client.Object
 }
 
-var clusterComponentToURL = map[string]func(obj client.Object, isExtra bool) string{
-	"vminsert": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
+// rejectPool wraps a pool-unaware cluster AsURL so its kind rejects a non-empty pool instead of
+// silently ignoring it - only VMCluster currently supports spec.pools.
+func rejectPool(kind string, f func(obj client.Object, isExtra bool) (string, error)) func(obj client.Object, poolName string, isExtra bool) (string, error) {
+	return func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		if poolName != "" {
+			return "", fmt.Errorf("pool=%q is not supported for kind=%q", poolName, kind)
+		}
+		return f(obj, isExtra)
+	}
+}
+
+var clusterComponentToURL = map[string]func(obj client.Object, poolName string, isExtra bool) (string, error){
+	"vminsert": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURLForPool(vmv1beta1.ClusterComponentInsert, poolName, isExtra)
 	},
-	"vmselect": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
+	"vmselect": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURLForPool(vmv1beta1.ClusterComponentSelect, poolName, isExtra)
 	},
-	"vmstorage": func(obj client.Object, isExtra bool) string {
-		return obj.(*vmv1beta1.VMCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
+	"vmstorage": func(obj client.Object, poolName string, isExtra bool) (string, error) {
+		return obj.(*vmv1beta1.VMCluster).AsURLForPool(vmv1beta1.ClusterComponentStorage, poolName, isExtra)
 	},
-	"vlinsert": func(obj client.Object, isExtra bool) string {
+	"vlinsert": rejectPool("VLCluster/vlinsert", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
-	},
-	"vlselect": func(obj client.Object, isExtra bool) string {
+	}),
+	"vlselect": rejectPool("VLCluster/vlselect", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
-	},
-	"vlstorage": func(obj client.Object, isExtra bool) string {
+	}),
+	"vlstorage": rejectPool("VLCluster/vlstorage", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VLCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
-	},
-	"vtinsert": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtinsert": rejectPool("VTCluster/vtinsert", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentInsert, isExtra)
-	},
-	"vtselect": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtselect": rejectPool("VTCluster/vtselect", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentSelect, isExtra)
-	},
-	"vtstorage": func(obj client.Object, isExtra bool) string {
+	}),
+	"vtstorage": rejectPool("VTCluster/vtstorage", func(obj client.Object, isExtra bool) (string, error) {
 		return obj.(*vmv1.VTCluster).AsURL(vmv1beta1.ClusterComponentStorage, isExtra)
-	},
+	}),
 }
 
 type clusterWithURL struct {
 	client.Object
 	originObj client.Object
 	component string
+	pool      string
+	err       error
 }
 
 func newClusterWithURL(component string) *clusterWithURL {
@@ -383,20 +411,25 @@ func newClusterWithURL(component string) *clusterWithURL {
 	default:
 		panic(fmt.Sprintf("BUG: unexpected component name: %q", component))
 	}
-	return &clusterWithURL{clusterObj, clusterObj, component}
+	return &clusterWithURL{Object: clusterObj, originObj: clusterObj, component: component}
 }
 
 func (c *clusterWithURL) origin() client.Object {
 	return c.originObj
 }
 
-// AsURL implements AsURL interface
 func (c *clusterWithURL) AsURL(isExtra bool) string {
 	builder, ok := clusterComponentToURL[c.component]
 	if !ok {
 		panic(fmt.Sprintf("BUG: not expected component=%q for clusterWithURL object", c.component))
 	}
-	return builder(c.Object, isExtra)
+	url, err := builder(c.Object, c.pool, isExtra)
+	c.err = err
+	return url
+}
+
+func (c *clusterWithURL) URLError() error {
+	return c.err
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.

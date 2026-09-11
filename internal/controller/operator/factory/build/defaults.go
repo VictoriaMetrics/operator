@@ -501,6 +501,65 @@ func addRequestsLoadBalancerDefaults(lb *vmv1beta1.VMAuthLoadBalancer, cp *commo
 	}
 }
 
+func addVMClusterStorageDefaults(vms *vmv1beta1.VMStorage, c *config.BaseOperatorConf, cp commonParams) {
+	if vms == nil {
+		return
+	}
+	if vms.StorageDataPath == "" {
+		vms.StorageDataPath = vmStorageDefaultDBPath
+	}
+	if vms.VMInsertPort == "" {
+		vms.VMInsertPort = c.VMCluster.Storage.VMInsertPort
+	}
+	if vms.VMSelectPort == "" {
+		vms.VMSelectPort = c.VMCluster.Storage.VMSelectPort
+	}
+	cv := config.ApplicationDefaults(c.VMCluster.Storage.Common)
+	cpStorage := cp
+	cpStorage.tag = setTag(vms.ComponentVersion, cp.tag)
+	addDefaultsToCommonParams(&vms.CommonAppsParams, &cpStorage, &cv)
+	vms.PreStopSleepSeconds = nil
+
+	bv := config.ApplicationDefaults(c.VMBackup)
+	useBackupDefaultResources := c.VMBackup.UseDefaultResources
+	if vms.UseDefaultResources != nil {
+		useBackupDefaultResources = *vms.UseDefaultResources
+	}
+	addDefaultsToVMBackup(vms.VMBackup, useBackupDefaultResources, &bv)
+}
+
+func addVMClusterInsertDefaults(vmi *vmv1beta1.VMInsert, c *config.BaseOperatorConf, cp commonParams) {
+	if vmi == nil {
+		return
+	}
+	cv := config.ApplicationDefaults(c.VMCluster.Insert)
+	cpInsert := cp
+	cpInsert.tag = setTag(vmi.ComponentVersion, cp.tag)
+	addDefaultsToCommonParams(&vmi.CommonAppsParams, &cpInsert, &cv)
+}
+
+func DefaultPoolVMStorage(vms *vmv1beta1.VMStorage, cr *vmv1beta1.VMCluster) {
+	c := getCfg()
+	cp := commonParams{
+		useStrictSecurity: cr.Spec.UseStrictSecurity,
+		tag:               cr.Spec.ClusterVersion,
+		license:           cr.Spec.License,
+		imagePullSecrets:  cr.Spec.ImagePullSecrets,
+	}
+	addVMClusterStorageDefaults(vms, c, cp)
+}
+
+func DefaultPoolVMInsert(vmi *vmv1beta1.VMInsert, cr *vmv1beta1.VMCluster) {
+	c := getCfg()
+	cp := commonParams{
+		useStrictSecurity: cr.Spec.UseStrictSecurity,
+		tag:               cr.Spec.ClusterVersion,
+		license:           cr.Spec.License,
+		imagePullSecrets:  cr.Spec.ImagePullSecrets,
+	}
+	addVMClusterInsertDefaults(vmi, c, cp)
+}
+
 func addVMClusterDefaults(objI any) {
 	cr := objI.(*vmv1beta1.VMCluster)
 	c := getCfg()
@@ -514,35 +573,8 @@ func addVMClusterDefaults(objI any) {
 		license:           cr.Spec.License,
 		imagePullSecrets:  cr.Spec.ImagePullSecrets,
 	}
-	if cr.Spec.VMStorage != nil {
-		if cr.Spec.VMStorage.StorageDataPath == "" {
-			cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
-		}
-		if cr.Spec.VMStorage.VMInsertPort == "" {
-			cr.Spec.VMStorage.VMInsertPort = c.VMCluster.Storage.VMInsertPort
-		}
-		if cr.Spec.VMStorage.VMSelectPort == "" {
-			cr.Spec.VMStorage.VMSelectPort = c.VMCluster.Storage.VMSelectPort
-		}
-		cv := config.ApplicationDefaults(c.VMCluster.Storage.Common)
-		cpStorage := cp
-		cpStorage.tag = setTag(cr.Spec.VMStorage.ComponentVersion, cp.tag)
-		addDefaultsToCommonParams(&cr.Spec.VMStorage.CommonAppsParams, &cpStorage, &cv)
-		cr.Spec.VMStorage.PreStopSleepSeconds = nil
-
-		bv := config.ApplicationDefaults(c.VMBackup)
-		useBackupDefaultResources := c.VMBackup.UseDefaultResources
-		if cr.Spec.VMStorage.UseDefaultResources != nil {
-			useBackupDefaultResources = *cr.Spec.VMStorage.UseDefaultResources
-		}
-		addDefaultsToVMBackup(cr.Spec.VMStorage.VMBackup, useBackupDefaultResources, &bv)
-	}
-	if cr.Spec.VMInsert != nil {
-		cv := config.ApplicationDefaults(c.VMCluster.Insert)
-		cpInsert := cp
-		cpInsert.tag = setTag(cr.Spec.VMInsert.ComponentVersion, cp.tag)
-		addDefaultsToCommonParams(&cr.Spec.VMInsert.CommonAppsParams, &cpInsert, &cv)
-	}
+	addVMClusterStorageDefaults(cr.Spec.VMStorage, c, cp)
+	addVMClusterInsertDefaults(cr.Spec.VMInsert, c, cp)
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.CacheMountPath == "" {
 			cr.Spec.VMSelect.CacheMountPath = "/cache"

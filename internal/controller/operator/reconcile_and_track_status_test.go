@@ -224,7 +224,9 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 // in Expanding status when PVC resize is still in progress (waitForPVCReady
 // returns a retryable wait.Interrupted error).
 func TestVMClusterRemainsExpandingDuringPVCResize(t *testing.T) {
-	clusterSpec := vmv1beta1.VMClusterSpec{RetentionPeriod: "1d"}
+	clusterSpec := vmv1beta1.VMClusterSpec{
+		VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{RetentionPeriod: "1d"},
+	}
 	cluster := &vmv1beta1.VMCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-vmcluster", Namespace: "default"},
 		Spec:       clusterSpec,

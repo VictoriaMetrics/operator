@@ -27,7 +27,9 @@ func TestVMClusterReconcile(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMClusterSpec{
-				RetentionPeriod: "1d",
+				VMClusterSpecBase: vmv1beta1.VMClusterSpecBase{
+					RetentionPeriod: "1d",
+				},
 			},
 		}
 		for _, fn := range fns {

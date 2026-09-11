@@ -14,15 +14,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func TestChildConditionType_NameWithDots(t *testing.T) {
+	var got string
+	assert.NotPanics(t, func() {
+		got = childConditionType("my.alert.ns.vmalert")
+	})
+	assert.Equal(t, "my.alert.ns.vmalert"+vmv1beta1.ConditionDomainTypeAppliedSuffix, got)
+}
 
 func TestWriteAggregatedStatus(t *testing.T) {
 	f := func(conditions []vmv1beta1.Condition, expectedStatus vmv1beta1.UpdateStatus, expectedReasonContains string) {
 		t.Helper()
 		stm := &vmv1beta1.StatusMetadata{Conditions: conditions}
-		writeAggregatedStatus(stm, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		writeAggregatedStatus(stm)
 		assert.Equal(t, expectedStatus, stm.UpdateStatus)
 		if expectedReasonContains == "" {
 			assert.Empty(t, stm.Reason)
@@ -211,4 +220,127 @@ func TestStatusForChildObjects_FallsBackWithoutIndexedClient(t *testing.T) {
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
 	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus)
 	assert.Empty(t, got.Status.Conditions)
+}
+
+func TestSyncAggregatedChildStatus(t *testing.T) {
+	ctx := context.Background()
+	scrape := &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: "scrape", Namespace: "ns"}}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{scrape})
+
+	// no parent ever wrote a condition for it: must become Ignored
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, scrape))
+	var got vmv1beta1.VMServiceScrape
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "scrape"}, &got))
+	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus)
+
+	// a parent selects it and applies it successfully
+	require.NoError(t, StatusForChildObjects(ctx, rclient, "vmagent1.ns.vmagent", []*vmv1beta1.VMServiceScrape{scrape}))
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, scrape))
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "scrape"}, &got))
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
+
+	// dropped by that same parent again: back to Ignored
+	require.NoError(t, StatusForChildObjects(ctx, rclient, "vmagent1.ns.vmagent", []*vmv1beta1.VMServiceScrape{}))
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, scrape))
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "scrape"}, &got))
+	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus)
+
+	// object gone: not found is not an error
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, &vmv1beta1.VMServiceScrape{
+		ObjectMeta: metav1.ObjectMeta{Name: "missing", Namespace: "ns"},
+	}))
+}
+
+// assertSyncAggregatedChildStatusRoundTrip exercises the same Ignored -> Operational -> Ignored
+// cycle as TestSyncAggregatedChildStatus against a concrete child kind, to guard each controller
+// that actually calls SyncAggregatedChildStatus (VMRule, VMUser, VMAlertmanagerConfig,
+// VMAnomalyConfig, and the scrape kinds tested below).
+func assertSyncAggregatedChildStatusRoundTrip[T any, PT interface {
+	*T
+	objectWithStatus
+}](t *testing.T, obj PT, parent string) {
+	t.Helper()
+	ctx := context.Background()
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{obj})
+	nsn := types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
+
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, obj))
+	got := PT(new(T))
+	require.NoError(t, rclient.Get(ctx, nsn, got))
+	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.GetStatusMetadata().UpdateStatus)
+
+	require.NoError(t, StatusForChildObjects(ctx, rclient, parent, []PT{obj}))
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, obj))
+	got = PT(new(T))
+	require.NoError(t, rclient.Get(ctx, nsn, got))
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.GetStatusMetadata().UpdateStatus)
+
+	corrupted := PT(new(T))
+	require.NoError(t, rclient.Get(ctx, nsn, corrupted))
+	corrupted.GetStatusMetadata().UpdateStatus = vmv1beta1.UpdateStatusFailed
+	require.NoError(t, rclient.Status().Update(ctx, corrupted))
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, obj))
+	got = PT(new(T))
+	require.NoError(t, rclient.Get(ctx, nsn, got))
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.GetStatusMetadata().UpdateStatus)
+
+	require.NoError(t, StatusForChildObjects(ctx, rclient, parent, []PT{}))
+	require.NoError(t, SyncAggregatedChildStatus(ctx, rclient, obj))
+	got = PT(new(T))
+	require.NoError(t, rclient.Get(ctx, nsn, got))
+	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.GetStatusMetadata().UpdateStatus)
+}
+
+func TestSyncAggregatedChildStatus_VMRule(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMRule](t,
+		&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "rule", Namespace: "ns"}},
+		"vmalert1.ns.vmalert")
+}
+
+func TestSyncAggregatedChildStatus_VMUser(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMUser](t,
+		&vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user", Namespace: "ns"}},
+		"vmauth1.ns.vmauth")
+}
+
+func TestSyncAggregatedChildStatus_VMAlertmanagerConfig(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMAlertmanagerConfig](t,
+		&vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "cfg", Namespace: "ns"}},
+		"vmalertmanager1.ns.vmalertmanager")
+}
+
+func TestSyncAggregatedChildStatus_VMAnomalyConfig(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1.VMAnomalyConfig](t,
+		&vmv1.VMAnomalyConfig{ObjectMeta: metav1.ObjectMeta{Name: "cfg", Namespace: "ns"}},
+		"vmanomaly1.ns.vmanomaly")
+}
+
+func TestSyncAggregatedChildStatus_VMNodeScrape(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMNodeScrape](t,
+		&vmv1beta1.VMNodeScrape{ObjectMeta: metav1.ObjectMeta{Name: "scrape", Namespace: "ns"}},
+		"vmagent1.ns.vmagent")
+}
+
+func TestSyncAggregatedChildStatus_VMPodScrape(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMPodScrape](t,
+		&vmv1beta1.VMPodScrape{ObjectMeta: metav1.ObjectMeta{Name: "scrape", Namespace: "ns"}},
+		"vmagent1.ns.vmagent")
+}
+
+func TestSyncAggregatedChildStatus_VMProbe(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMProbe](t,
+		&vmv1beta1.VMProbe{ObjectMeta: metav1.ObjectMeta{Name: "probe", Namespace: "ns"}},
+		"vmagent1.ns.vmagent")
+}
+
+func TestSyncAggregatedChildStatus_VMScrapeConfig(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMScrapeConfig](t,
+		&vmv1beta1.VMScrapeConfig{ObjectMeta: metav1.ObjectMeta{Name: "scrapeconfig", Namespace: "ns"}},
+		"vmagent1.ns.vmagent")
+}
+
+func TestSyncAggregatedChildStatus_VMStaticScrape(t *testing.T) {
+	assertSyncAggregatedChildStatusRoundTrip[vmv1beta1.VMStaticScrape](t,
+		&vmv1beta1.VMStaticScrape{ObjectMeta: metav1.ObjectMeta{Name: "scrape", Namespace: "ns"}},
+		"vmagent1.ns.vmagent")
 }

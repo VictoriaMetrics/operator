@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -36,6 +37,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmauth"
 )
 
@@ -97,6 +99,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	if authReconcileLimit.Throttle() {
+		err = reconcile.SyncAggregatedChildStatus(ctx, r.Client, &instance)
 		return
 	}
 
@@ -149,6 +152,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		})
 	}
 	err = g.Wait()
+	err = errors.Join(err, reconcile.SyncAggregatedChildStatus(ctx, r.Client, &instance))
 	return
 }
 

@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -31,9 +32,11 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmalert"
 )
 
@@ -87,15 +90,23 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		alertSync.Lock()
+		defer alertSync.Unlock()
+		if !build.IsControllerDisabled("VMRule") {
+			parentObject := fmt.Sprintf("%s.%s.vmalert", instance.Name, instance.Namespace)
+			if err = reconcile.StatusForChildObjects(ctx, r.Client, parentObject, []*vmv1beta1.VMRule(nil)); err != nil {
+				return
+			}
+		}
+		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged() {
 		alertSync.RLock()
 		defer alertSync.RUnlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

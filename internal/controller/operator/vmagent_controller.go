@@ -98,15 +98,21 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		agentSync.Lock()
+		defer agentSync.Unlock()
+		parentObject := fmt.Sprintf("%s.%s.vmagent", instance.Name, instance.Namespace)
+		if err = releaseScrapeChildStatuses(ctx, r.Client, parentObject); err != nil {
+			return
+		}
+		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged(nil) {
 		agentSync.RLock()
 		defer agentSync.RUnlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -32,9 +33,11 @@ import (
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmanomaly"
 )
 
@@ -88,15 +91,23 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		anomalySync.Lock()
+		defer anomalySync.Unlock()
+		if !build.IsControllerDisabled("VMAnomalyConfig") {
+			parentObject := fmt.Sprintf("%s.%s.vmanomaly", instance.Name, instance.Namespace)
+			if err = reconcile.StatusForChildObjects(ctx, r.Client, parentObject, []*vmv1.VMAnomalyConfig(nil)); err != nil {
+				return
+			}
+		}
+		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged() {
 		anomalySync.Lock()
 		defer anomalySync.Unlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

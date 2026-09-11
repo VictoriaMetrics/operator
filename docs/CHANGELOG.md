@@ -40,6 +40,7 @@ aliases:
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): a `VolumeClaimTemplate` size decrease, which Kubernetes cannot apply in-place to a bound `PersistentVolumeClaim`, was only logged and otherwise reported as a fully successful, `operational` reconcile. It now surfaces as a failed reconcile with the decline reason in `status.reason`, so the divergence between spec and actual PVC size is queryable and can be alerted on. See [#2512](https://github.com/VictoriaMetrics/operator/issues/2512).
 * BUGFIX:  [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix propagation of `spec.extraEnvsFrom` to anomaly pods, previously it was omitted. See [#2567](https://github.com/VictoriaMetrics/operator/issues/2567).
 * BUGFIX:  [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fix propagation of `spec.extraEnvsFrom` to vmalertmanager pod, previously it was omitted. See [#2582](https://github.com/VictoriaMetrics/operator/issues/2582).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix HTTPRoute `extraRules` inheriting fields from previous rules. See [#2605](https://github.com/VictoriaMetrics/operator/issues/2605).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

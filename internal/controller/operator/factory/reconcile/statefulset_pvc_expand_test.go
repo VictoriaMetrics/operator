@@ -1004,4 +1004,122 @@ func Test_updateSTSPVC(t *testing.T) {
 			},
 		},
 	})
+
+	// volumeAttributesClassName change is propagated to the existing PVC
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "data"},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeAttributesClassName: ptr.To("silver"),
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		preRun: func(c client.Client) {
+			assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "data-vmselect-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					VolumeAttributesClassName: ptr.To("bronze"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}))
+		},
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "data-vmselect-0",
+					Namespace:       "default",
+					Labels:          map[string]string{"app": "vmselect"},
+					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					VolumeAttributesClassName: ptr.To("silver"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		},
+	})
+
+	// removing volumeAttributesClassName from VolumeClaimTemplate is declined, since k8s forbids clearing it once set
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "data"},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		preRun: func(c client.Client) {
+			assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "data-vmselect-0",
+					Namespace: "default",
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					VolumeAttributesClassName: ptr.To("bronze"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}))
+		},
+		wantErr: true,
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "data-vmselect-0",
+					Namespace:       "default",
+					Labels:          map[string]string{"app": "vmselect"},
+					ResourceVersion: "2",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					VolumeAttributesClassName: ptr.To("bronze"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		},
+	})
 }

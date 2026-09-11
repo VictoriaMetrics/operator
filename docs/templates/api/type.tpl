@@ -34,13 +34,15 @@
 {{- end -}}
 
 {{- define "typeLink" -}}
-{{- $t := . }}
+{{- $ctx := . }}
+{{- $t := $ctx.type }}
+{{- $locals := $ctx.locals }}
 {{- $leaf := $t }}
 {{- if and $t (eq (toJson $t.Kind) "\"POINTER\"") -}}
   {{- $leaf = $t.UnderlyingType -}}
 {{- end -}}
 {{- if not $leaf -}}
-{{- else if markdownShouldRenderType $leaf -}}
+{{- else if index $locals (printf "%s.%s" $leaf.Package $leaf.Name) -}}
   {{- $version := $leaf.Package | splitList "/" | last -}}
   {{- printf "[%s (%s)](#%s)" $leaf.Name $version (lower (printf "%s-%s" $version $leaf.Name)) -}}
 {{- else -}}
@@ -49,13 +51,15 @@
 {{- end -}}
 
 {{- define "memberType" -}}
-{{- $t := . -}}
+{{- $ctx := . -}}
+{{- $t := $ctx.type -}}
+{{- $locals := $ctx.locals -}}
 {{- if eq (toJson $t.Kind) "\"MAP\"" -}}
-object (keys:{{ template "typeLink" $t.KeyType }}, values:{{ template "typeLink" $t.ValueType }})
+object (keys:{{ template "typeLink" (dict "type" $t.KeyType "locals" $locals) }}, values:{{ template "typeLink" (dict "type" $t.ValueType "locals" $locals) }})
 {{- else if eq (toJson $t.Kind) "\"SLICE\"" -}}
-{{ template "typeLink" $t.UnderlyingType }} array
+{{ template "typeLink" (dict "type" $t.UnderlyingType "locals" $locals) }} array
 {{- else -}}
-{{ template "typeLink" $t }}
+{{ template "typeLink" (dict "type" $t "locals" $locals) }}
 {{- end -}}
 {{- end -}}
 
@@ -64,6 +68,7 @@ object (keys:{{ template "typeLink" $t.KeyType }}, values:{{ template "typeLink"
 {{- $ctx := . -}}
 {{- $type := $ctx.type -}}
 {{- $aliases := $ctx.aliases -}}
+{{- $locals := $ctx.locals -}}
 {{- if markdownShouldRenderType $type }}
 {{- $version := $type.Package | splitList "/" | last }}
 {{- $aliasKey := lower $type.Name }}
@@ -75,7 +80,7 @@ object (keys:{{ template "typeLink" $t.KeyType }}, values:{{ template "typeLink"
 {{- end }}
 {{- if $type.IsAlias }}
 
-_Underlying type:_ _{{ template "typeLink" $type.UnderlyingType }}_
+_Underlying type:_ _{{ template "typeLink" (dict "type" $type.UnderlyingType "locals" $locals) }}_
 {{- end }}
 {{- if $type.Doc }}
 
@@ -90,7 +95,7 @@ _Validation:_
 {{- end }}
 {{- if $type.References }}
 
-Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ template "typeLink" $ref }}{{- end }}
+Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}{{ template "typeLink" (dict "type" $ref "locals" $locals) }}{{- end }}
 {{- end }}
 {{- if $type.Members }}
 
@@ -109,7 +114,7 @@ Appears in: {{ range $i, $ref := $type.SortedReferences }}{{ if $i }}, {{ end }}
 {{- $member := index $members . }}
 {{- $id := lower (printf "%s-%s-%s" $version $type.Name $member.Name) }}
 {{- $oldId := lower (printf "%s-%s" $type.Name $member.Name) }}
-| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a>{{- if $isAliasOwner }}<a id="{{ $oldId }}"></a>{{- end }}<br/>_{{ template "memberType" $member.Type }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "notes" (dict "member" $member "type" $type.Name) }} |
+| {{ $member.Name }}<a href="#{{ $id }}" id="{{ $id }}">#</a>{{- if $isAliasOwner }}<a id="{{ $oldId }}"></a>{{- end }}<br/>_{{ template "memberType" (dict "type" $member.Type "locals" $locals) }}_ | {{ if $member.Markers.optional }}_(Optional)_<br/>{{else}}_(Required)_<br/>{{ end }}{{ template "type_members" $member }}{{ template "notes" (dict "member" $member "type" $type.Name) }} |
 {{- end }}
 {{- end }}
 {{- end }}

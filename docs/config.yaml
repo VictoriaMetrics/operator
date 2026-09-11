@@ -7,6 +7,15 @@ render:
     - name: PodUpdatePolicy
       package: k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
       link: https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#podupdatepolicy
+    - name: VerticalPodAutoscalerRecommenderSelector
+      package: k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1
+      link: https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/api.md#verticalpodautoscalerrecommenderselector
+    - name: Hostname
+      package: sigs.k8s.io/gateway-api/apis/v1
+      link: https://gateway-api.sigs.k8s.io/reference/api-spec/main/spec/#hostname
+    - name: ParentReference
+      package: sigs.k8s.io/gateway-api/apis/v1
+      link: https://gateway-api.sigs.k8s.io/reference/api-spec/main/spec/#parentreference
     - name: Values
       package: net/url
       link: https://pkg.go.dev/net/url#Values

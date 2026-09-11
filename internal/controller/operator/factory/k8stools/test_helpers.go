@@ -1,10 +1,13 @@
 package k8stools
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -196,6 +199,35 @@ func CompareObjectMeta(t *testing.T, got, want metav1.ObjectMeta) {
 	assert.Equal(t, got.Annotations, want.Annotations)
 	assert.Equal(t, got.Name, want.Name)
 	assert.Equal(t, got.Namespace, want.Namespace)
+}
+
+// AssertConfigReloaderWatchTargetDirs asserts the "config-reloader" container's
+// --watched-dir/--target-dir flags pair up exactly as want maps them (empty string for a
+// watch-only directory).
+func AssertConfigReloaderWatchTargetDirs(t *testing.T, containers []corev1.Container, want map[string]string) {
+	t.Helper()
+	for _, cnt := range containers {
+		if cnt.Name != "config-reloader" {
+			continue
+		}
+		var watched, targets []string
+		for _, a := range cnt.Args {
+			switch {
+			case strings.HasPrefix(a, "--watched-dir="):
+				watched = append(watched, strings.TrimPrefix(a, "--watched-dir="))
+			case strings.HasPrefix(a, "--target-dir="):
+				targets = append(targets, strings.TrimPrefix(a, "--target-dir="))
+			}
+		}
+		require.Equal(t, len(watched), len(targets), "watched-dir and target-dir counts must match")
+		got := make(map[string]string, len(watched))
+		for i, w := range watched {
+			got[w] = targets[i]
+		}
+		assert.Equal(t, want, got)
+		return
+	}
+	require.Fail(t, "config-reloader container must be present")
 }
 
 // NewReadyDeployment returns a new deployment with ready status condition

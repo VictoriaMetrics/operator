@@ -335,9 +335,18 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 			},
 			Key: vmAuthConfigName,
 		}
-		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+		configReloader := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:                cr,
+			Mounts:            crMounts,
+			SecretKeySelector: ss,
+		})
 		operatorContainers = append(operatorContainers, configReloader)
-		initContainers = append(initContainers, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+		initContainers = append(initContainers, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:                cr,
+			Mounts:            crMounts,
+			SecretKeySelector: ss,
+			IsInit:            true,
+		}))
 		build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
 	}
 	ic, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)

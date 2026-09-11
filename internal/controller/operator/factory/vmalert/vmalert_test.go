@@ -74,6 +74,37 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
+	// spec.configMaps combined with rule configmaps, see #2583
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "with-configmaps",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				SelectAllByDefault: true,
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://some-vm-datasource",
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ConfigMaps: []string{"my-templates"},
+				},
+			},
+		},
+		cmNames: []string{"vm-with-configmaps-rulefiles-0"},
+		predefinedObjects: []runtime.Object{
+			k8stools.NewReadyDeployment("vmalert-with-configmaps", "default"),
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var d appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &d))
+			k8stools.AssertConfigReloaderWatchTargetDirs(t, d.Spec.Template.Spec.Containers, map[string]string{
+				"/etc/vm/configs/my-templates": "",
+				"/etc/vmalert/rules-src-0":     "/etc/vmalert/rules-out/rules-src-0",
+			})
+		},
+	})
+
 	// base-spec-gen with externalLabels
 	f(opts{
 		cr: &vmv1beta1.VMAlert{

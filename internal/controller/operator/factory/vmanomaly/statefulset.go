@@ -38,7 +38,7 @@ func buildScrape(cr *vmv1.VMAnomaly) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	return build.VMPodScrape(cr, "monitoring-http")
+	return build.VMPodScrape(cr)
 }
 
 // CreateOrUpdate creates vmanomaly and builds config for it

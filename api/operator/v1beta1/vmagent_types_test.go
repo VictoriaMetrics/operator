@@ -149,7 +149,15 @@ func TestVMAgent_DefaultStatusFields(t *testing.T) {
 	f(&VMAgent{Spec: VMAgentSpec{ShardCount: ptr.To(int32(3)), DaemonSetMode: true}}, 1, 0)
 
 	// replicaCount is tracked independently
-	f(&VMAgent{Spec: VMAgentSpec{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(2))}}}, 1, 2)
+	f(&VMAgent{
+		Spec: VMAgentSpec{
+			StandardAppsParams: StandardAppsParams{
+				CommonAppsParams: CommonAppsParams{
+					ReplicaCount: ptr.To(int32(2)),
+				},
+			},
+		},
+	}, 1, 2)
 }
 
 func TestVMAgent_PrefixedName(t *testing.T) {

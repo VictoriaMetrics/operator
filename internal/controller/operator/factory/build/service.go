@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"net"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -207,9 +208,34 @@ func AddOTLPGRPCPortToService(svc *corev1.Service, grpcSpec *vmv1.OTLPGRPCSpec) 
 		return
 	}
 	svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-		Name:       "otlp-grpc",
+		Name:       vmv1.OTLPGRPCPortName,
 		Protocol:   corev1.ProtocolTCP,
 		Port:       grpcSpec.ListenPort,
 		TargetPort: intstr.FromInt32(grpcSpec.ListenPort),
 	})
+}
+
+// AddHTTPListenerPortsToService replaces the default "http" service port with ports
+// derived from listeners. No-op when listeners is empty (preserves existing "http" port).
+func AddHTTPListenerPortsToService(svc *corev1.Service, listeners []vmv1beta1.HTTPListener) {
+	if len(listeners) == 0 {
+		return
+	}
+	filtered := svc.Spec.Ports[:0]
+	for _, p := range svc.Spec.Ports {
+		if p.Name != "http" {
+			filtered = append(filtered, p)
+		}
+	}
+	svc.Spec.Ports = filtered
+	for _, hl := range listeners {
+		_, portStr, _ := net.SplitHostPort(hl.Addr)
+		port := intstr.Parse(portStr)
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       hl.Name,
+			Protocol:   corev1.ProtocolTCP,
+			Port:       port.IntVal,
+			TargetPort: port,
+		})
+	}
 }

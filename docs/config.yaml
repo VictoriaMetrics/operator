@@ -18,6 +18,8 @@ processor:
     - "StatusMetadata"
     - "Condition"
     - "SubRoute"
+    - "ParentOpts"
+    - "ClusterComponent"
   ignoreFields:
     - "status$"
     - "TypeMeta$"

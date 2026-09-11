@@ -142,7 +142,7 @@ type VMAuthSpec struct {
 	WaitForConfigReload *bool `json:"waitForConfigReload,omitempty"`
 
 	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
-	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
+	StandardAppsParams         `json:",inline,omitempty" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v1.111.0 vmauth version
 	// related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
@@ -152,6 +152,7 @@ type VMAuthSpec struct {
 
 	// UseProxyProtocol enables proxy protocol for vmauth
 	// https://www.haproxy.org/download/2.3/doc/proxy-protocol.txt
+	// +notes={deprecated_in: "v0.74.0", replacements: {httpListeners}}
 	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
@@ -454,6 +455,11 @@ func (cr *VMAuth) Validate() error {
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
+	if len(cr.Spec.InternalListenPort) > 0 {
+		if l := cr.Spec.ByName("internal"); l != nil {
+			return fmt.Errorf("httpListeners name %q collides with the name generated for spec.internalListenPort", l.Name)
+		}
+	}
 	if cr.Spec.Ingress != nil {
 		// check ingress
 		// TlsHosts and TlsSecretName are both needed if one of them is used
@@ -643,17 +649,6 @@ func (cr *VMAuth) ProbePath() string {
 	return BuildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (cr *VMAuth) ProbeScheme() string {
-	return strings.ToUpper(HTTPProtoFromFlags(cr.Spec.ExtraArgs))
-}
-
-func (cr *VMAuth) ProbePort() string {
-	if len(cr.Spec.InternalListenPort) > 0 {
-		return cr.Spec.InternalListenPort
-	}
-	return cr.Spec.Port
-}
-
 func (*VMAuth) ProbeNeedLiveness() bool {
 	return true
 }
@@ -748,7 +743,33 @@ func (cr *VMAuth) GetMetricsPath() string {
 
 // UseTLS returns true if TLS is enabled
 func (cr *VMAuth) UseTLS() bool {
-	return UseTLS(cr.Spec.ExtraArgs)
+	if len(cr.Spec.InternalListenPort) > 0 {
+		return UseTLS(cr.Spec.ExtraArgs)
+	}
+	return cr.Spec.UseTLS()
+}
+
+// PrimaryPortName returns the Service port name generated for the primary listener.
+func (cr *VMAuth) PrimaryPortName() string {
+	return cr.Spec.PrimaryPortName()
+}
+
+// GetListener implements AppsParams interface
+func (cr *VMAuth) GetListener(name string) *HTTPListener {
+	return cr.Spec.GetListener(name)
+}
+
+// Params implements build.scrapeBuilder and urlBuilder interfaces. For ScrapeParamsKind, it
+// prefers InternalListenPort like ProbePort does; for ServiceParamsKind (externally-facing
+// URLs), the internal-only listener must never be selected, so the real spec is used as-is.
+func (cr *VMAuth) Params(pk ParamsKind) *StandardAppsParams {
+	if pk == ScrapeParamsKind && len(cr.Spec.InternalListenPort) > 0 {
+		return &StandardAppsParams{
+			CommonAppsParams: CommonAppsParams{ExtraArgs: cr.Spec.ExtraArgs},
+			HTTPListeners:    []HTTPListener{{Name: "internal", Addr: ":" + cr.Spec.InternalListenPort}},
+		}
+	}
+	return &cr.Spec.StandardAppsParams
 }
 
 // GetExtraArgs returns additionally configured command-line arguments
@@ -785,16 +806,16 @@ func (cr *VMAuth) IsUnmanaged() bool {
 
 // GetReloadURL implements reloadable interface
 func (cr *VMAuth) GetReloadURL(host string) string {
-	return BuildLocalURL(reloadAuthKeyFlag, host, cr.metricsPort(), reloadPath, cr.Spec.ExtraArgs)
-}
-
-// metricsPort returns the port vmauth serves /metrics (and other internal
-// routes) on: the internal port if configured, else the main port.
-func (cr *VMAuth) metricsPort() string {
 	if len(cr.Spec.InternalListenPort) > 0 {
-		return cr.Spec.InternalListenPort
+		sp := &StandardAppsParams{
+			CommonAppsParams: CommonAppsParams{
+				Port:      cr.Spec.InternalListenPort,
+				ExtraArgs: cr.Spec.ExtraArgs,
+			},
+		}
+		return sp.BuildLocalURL(reloadAuthKeyFlag, host, reloadPath)
 	}
-	return cr.Spec.Port
+	return cr.Spec.BuildLocalURL(reloadAuthKeyFlag, host, reloadPath)
 }
 
 // GetReloaderParams implements reloadable interface
@@ -814,7 +835,7 @@ func (cr *VMAuth) UseProxyProtocol() bool {
 	if cr.Spec.UseProxyProtocol {
 		return hasInternalPorts
 	}
-	if UseProxyProtocol(cr.Spec.ExtraArgs) {
+	if cr.Spec.StandardAppsParams.UseProxyProtocol() {
 		return hasInternalPorts
 	}
 	return false

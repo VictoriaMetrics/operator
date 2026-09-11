@@ -9,85 +9,28 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func TestVMBackup_SnapshotDeletePathWithFlags(t *testing.T) {
-	type opts struct {
-		host      string
-		port      string
-		extraArgs map[string]string
-		want      string
-	}
-	f := func(o opts) {
-		t.Helper()
-		cr := VMBackup{}
-		got := cr.SnapshotDeletePathWithFlags(o.host, o.port, o.extraArgs)
-		assert.Equal(t, o.want, got)
-	}
+func TestVMCluster_Backup(t *testing.T) {
+	// nil VMStorage
+	cr := VMCluster{}
+	assert.Nil(t, cr.Backup())
+	assert.Equal(t, "", cr.SnapshotCreatePath("localhost"))
+	assert.Equal(t, "", cr.SnapshotDeletePath("localhost"))
 
-	// default delete path
-	f(opts{
-		host: "localhost",
-		port: "8428",
-		want: "http://localhost:8428/snapshot/delete",
-	})
-
-	// delete path with prefix
-	f(opts{
-		host:      "127.0.0.1",
-		port:      "8428",
-		extraArgs: map[string]string{httpPathPrefixFlag: "/pref-1", "other-flag": "other-value"},
-		want:      "http://127.0.0.1:8428/pref-1/snapshot/delete",
-	})
-
-	// delete path with auth key
-	f(opts{
-		host:      "127.0.0.1",
-		port:      "8428",
-		extraArgs: map[string]string{httpPathPrefixFlag: "/pref-1", "other-flag": "other-value", snapshotAuthKeyFlag: "test"},
-		want:      "http://127.0.0.1:8428/pref-1/snapshot/delete?authKey=test",
-	})
-}
-
-func TestVMBackup_SnapshotCreatePathWithFlags(t *testing.T) {
-	type opts struct {
-		host      string
-		port      string
-		extraArgs map[string]string
-		want      string
-	}
-	f := func(o opts) {
-		t.Helper()
-		cr := VMBackup{}
-		got := cr.SnapshotCreatePathWithFlags(o.host, o.port, o.extraArgs)
-		assert.Equal(t, o.want, got)
-	}
-
-	// base ok
-	f(opts{
-		host: "localhost",
-		port: "8429",
-		want: "http://localhost:8429/snapshot/create",
-	})
-
-	// with prefix
-	f(opts{
-		host: "127.0.0.1",
-		port: "8429",
-		extraArgs: map[string]string{
-			"http.pathPrefix": "/prefix/custom",
+	// with VMStorage and VMBackup configured
+	vmBackup := &VMBackup{}
+	cr = VMCluster{
+		Spec: VMClusterSpec{
+			VMStorage: &VMStorage{
+				StandardAppsParams: StandardAppsParams{
+					CommonAppsParams: CommonAppsParams{Port: "8482"},
+				},
+				VMBackup: vmBackup,
+			},
 		},
-		want: "http://127.0.0.1:8429/prefix/custom/snapshot/create",
-	})
-
-	// with prefix and auth key
-	f(opts{
-		host: "localhost",
-		port: "8429",
-		extraArgs: map[string]string{
-			"http.pathPrefix": "/prefix/custom",
-			"snapshotAuthKey": "some-auth-key",
-		},
-		want: "http://localhost:8429/prefix/custom/snapshot/create?authKey=some-auth-key",
-	})
+	}
+	assert.Same(t, vmBackup, cr.Backup())
+	assert.Equal(t, "http://localhost:8482/snapshot/create", cr.SnapshotCreatePath("localhost"))
+	assert.Equal(t, "http://localhost:8482/snapshot/delete", cr.SnapshotDeletePath("localhost"))
 }
 
 func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
@@ -99,8 +42,10 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 	cr := &VMCluster{
 		Spec: VMClusterSpec{
 			VMStorage: &VMStorage{
-				CommonAppsParams: CommonAppsParams{
-					ReplicaCount: ptr.To(int32(5)),
+				StandardAppsParams: StandardAppsParams{
+					CommonAppsParams: CommonAppsParams{
+						ReplicaCount: ptr.To(int32(5)),
+					},
 				},
 				MaintenanceSelectNodeIDs: []int32{1, 3},
 				MaintenanceInsertNodeIDs: []int32{0, 4},
@@ -118,7 +63,11 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 	f(&VMCluster{
 		Spec: VMClusterSpec{
 			VMStorage: &VMStorage{
-				CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(3))},
+				StandardAppsParams: StandardAppsParams{
+					CommonAppsParams: CommonAppsParams{
+						ReplicaCount: ptr.To(int32(3)),
+					},
+				},
 			},
 		},
 	}, ClusterComponentSelect, []int32{0, 1, 2})
@@ -141,7 +90,11 @@ func TestVMCluster_Validate(t *testing.T) {
 	// downsampling without license
 	f(VMClusterSpec{
 		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			Rules: []DownsamplingRule{{
+				Periods: []DownsamplingPeriod{
+					{Offset: "30d", Interval: "10m"},
+				},
+			}},
 		},
 	}, true)
 
@@ -149,7 +102,11 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			Rules: []DownsamplingRule{{
+				Periods: []DownsamplingPeriod{
+					{Offset: "30d", Interval: "10m"},
+				},
+			}},
 		},
 	}, false)
 
@@ -157,7 +114,12 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Filter: `{env="prod"}`, Periods: []DownsamplingPeriod{{Offset: "90d", Interval: "1h"}}}},
+			Rules: []DownsamplingRule{{
+				Filter: `{env="prod"}`,
+				Periods: []DownsamplingPeriod{
+					{Offset: "90d", Interval: "1h"},
+				},
+			}},
 			DedupInterval: "1m",
 		},
 	}, false)
@@ -166,10 +128,12 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{
-				{Offset: "30d", Interval: "10m"},
-				{Offset: "180d", Interval: "1h"},
-			}}},
+			Rules: []DownsamplingRule{{
+				Periods: []DownsamplingPeriod{
+					{Offset: "30d", Interval: "10m"},
+					{Offset: "180d", Interval: "1h"},
+				},
+			}},
 		},
 	}, false)
 
@@ -188,7 +152,9 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "1d", Interval: "7m"}}}},
+			Rules: []DownsamplingRule{
+				{Periods: []DownsamplingPeriod{{Offset: "1d", Interval: "7m"}}},
+			},
 		},
 	}, true)
 
@@ -196,7 +162,9 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			Rules: []DownsamplingRule{
+				{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}},
+			},
 			DedupInterval: "7m",
 		},
 	}, true)
@@ -205,7 +173,9 @@ func TestVMCluster_Validate(t *testing.T) {
 	f(VMClusterSpec{
 		License: testLicense,
 		Downsampling: &DownsamplingConfig{
-			Rules:         []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}},
+			Rules: []DownsamplingRule{
+				{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}},
+			},
 			DedupInterval: "5m",
 		},
 	}, false)
@@ -359,8 +329,10 @@ func TestVMCluster_Validate(t *testing.T) {
 	// extraStorageNodes duplicating extraArgs storageNode
 	f(VMClusterSpec{
 		VMSelect: &VMSelect{
-			CommonAppsParams: CommonAppsParams{
-				ExtraArgs: map[string]string{"storageNode": "localhost:10101"},
+			StandardAppsParams: StandardAppsParams{
+				CommonAppsParams: CommonAppsParams{
+					ExtraArgs: map[string]string{"storageNode": "localhost:10101"},
+				},
 			},
 			ExtraStorageNodes: []VMStorageNode{
 				{Addr: "localhost:10101"},
@@ -455,7 +427,7 @@ func TestVMCluster_Validate(t *testing.T) {
 			ServiceSpec: &AdditionalServiceSpec{
 				UseAsDefault: true,
 				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{{Name: "vminsert", Port: 8480}},
+					Ports: []corev1.ServicePort{{Name: "http", Port: 8482}},
 				},
 			},
 		},
@@ -477,8 +449,10 @@ func TestVMCluster_Validate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "test"},
 			Spec: VMClusterSpec{
 				VMStorage: &VMStorage{
-					CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
-					VMSelectPort:     "8481",
+					StandardAppsParams: StandardAppsParams{
+						CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+					},
+					VMSelectPort: "8481",
 				},
 				VMSelect: &VMSelect{},
 			},

@@ -122,19 +122,27 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	zoneSpec := vmv1alpha1.VLDistributedZoneCluster{
 		Spec: vmv1.VLClusterSpec{
 			VLStorage: &vmv1.VLStorage{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
 			},
 			VLSelect: &vmv1.VLSelect{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
 			},
 			VLInsert: &vmv1.VLInsert{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
 			},
 		},
 	}
 	vmAuthSpec := vmv1alpha1.VLDistributedAuth{
 		Spec: vmv1beta1.VMAuthSpec{
-			CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+			},
 		},
 	}
 
@@ -492,18 +500,24 @@ func Test_CreateOrUpdate_Paused(t *testing.T) {
 					VLCluster: vmv1alpha1.VLDistributedZoneCluster{
 						Spec: vmv1.VLClusterSpec{
 							VLStorage: &vmv1.VLStorage{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(1)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
 								},
 							},
 							VLSelect: &vmv1.VLSelect{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(1)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
 								},
 							},
 							VLInsert: &vmv1.VLInsert{
-								CommonAppsParams: vmv1beta1.CommonAppsParams{
-									ReplicaCount: ptr.To(int32(1)),
+								StandardAppsParams: vmv1beta1.StandardAppsParams{
+									CommonAppsParams: vmv1beta1.CommonAppsParams{
+										ReplicaCount: ptr.To(int32(1)),
+									},
 								},
 							},
 						},

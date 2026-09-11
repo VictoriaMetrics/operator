@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -499,12 +498,8 @@ func (cr *VMAnomaly) ProbePath() string {
 	return healthPath
 }
 
-// ProbeScheme implements build.probeCRD interface
-func (cr *VMAnomaly) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.Spec.ExtraArgs))
-}
-
-// ProbePort implements build.probeCRD interface
+// ProbePort returns the monitoring port used both for the ProbeListener built by Params and for
+// the anomaly config's own monitoring.pull.port.
 func (cr *VMAnomaly) ProbePort() string {
 	if cr == nil || cr.Spec.Monitoring == nil || cr.Spec.Monitoring.Pull == nil || len(cr.Spec.Monitoring.Pull.Port) == 0 {
 		return "8080"
@@ -517,11 +512,29 @@ func (*VMAnomaly) ProbeNeedLiveness() bool {
 	return true
 }
 
+// Params implements build.scrapeBuilder and urlBuilder interfaces. VMAnomaly is scraped on its
+// separate monitoring port rather than its main service port.
+func (cr *VMAnomaly) Params(pk vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams {
+	if pk == vmv1beta1.ScrapeParamsKind {
+		return &vmv1beta1.StandardAppsParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{ExtraArgs: cr.Spec.ExtraArgs},
+			HTTPListeners: []vmv1beta1.HTTPListener{{
+				Name: "monitoring-http",
+				Addr: ":" + cr.ProbePort(),
+			}},
+		}
+	}
+	return &vmv1beta1.StandardAppsParams{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{
+			Port:      cr.Port(),
+			ExtraArgs: cr.Spec.ExtraArgs,
+		},
+	}
+}
+
 // AsURL returns url for http access to the first replica.
-// Returns empty string if spec.server.port is not configured.
-func (cr *VMAnomaly) AsURL(isExtra bool) string {
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), cr.Port(), "http", nil, isExtra)
-	return fmt.Sprintf("http://%s.%s.svc:%s", svcName, cr.Namespace, port)
+func (cr *VMAnomaly) AsURL(nsn vmv1beta1.NamespacedName) (string, error) {
+	return vmv1beta1.BuildServiceURL(cr, nsn)
 }
 
 // Validate performs semantic validation for component

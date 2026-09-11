@@ -258,6 +258,30 @@ func hasVolumeMount(volumeMounts []corev1.VolumeMount, volumeMountName string) e
 	return fmt.Errorf("volumes mounts=%d with paths=%s; must have=%s", len(volumeMounts), strings.Join(existVolumes, ","), volumeMountName)
 }
 
+func checkContainerPort(ports []corev1.ContainerPort, name string, wantPort int32) {
+	GinkgoHelper()
+	var found bool
+	for _, p := range ports {
+		if p.Name == name {
+			found = true
+			Expect(p.ContainerPort).To(Equal(wantPort))
+		}
+	}
+	Expect(found).To(BeTrue(), "expected a container port named %q", name)
+}
+
+func checkServicePort(ports []corev1.ServicePort, name string, wantPort int32) {
+	GinkgoHelper()
+	var found bool
+	for _, p := range ports {
+		if p.Name == name {
+			found = true
+			Expect(p.Port).To(Equal(wantPort))
+		}
+	}
+	Expect(found).To(BeTrue(), "expected a service port named %q", name)
+}
+
 //nolint:dupl,lll
 func mustGetFirstPod(ctx context.Context, rclient client.Client, obj client.Object) *corev1.Pod {
 	GinkgoHelper()
@@ -342,8 +366,10 @@ func createVMAuth(ctx context.Context, wg *sync.WaitGroup, k8sClient client.Clie
 				Name:      name,
 			},
 			Spec: vmv1beta1.VMAuthSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To[int32](1),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
 				},
 				UserSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{

@@ -133,7 +133,11 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 
 	pausedSpec := vmv1beta1.VMAlertSpec{
 		SelectAllByDefault: true,
-		CommonAppsParams:   vmv1beta1.CommonAppsParams{Paused: true},
+		StandardAppsParams: vmv1beta1.StandardAppsParams{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Paused: true,
+			},
+		},
 	}
 	// object created as paused: callback not called, status set to paused
 	f(opts{

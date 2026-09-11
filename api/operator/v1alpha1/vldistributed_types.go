@@ -263,7 +263,7 @@ type VLDistributedZoneAgentSpec struct {
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.StandardAppsParams `json:",inline,omitempty"`
 }
 
 // ToVLAgentSpec converts VLDistributedZoneAgentSpec to vmv1.VLAgentSpec via JSON round-trip.
@@ -531,6 +531,12 @@ func (cr *VLDistributed) Validate() error {
 			}
 			agents.Insert(agentName)
 		}
+		if err := zone.VLAgent.Spec.Validate(); err != nil {
+			return fmt.Errorf("spec.zones[%d].vlagent.spec: %w", i, err)
+		}
+	}
+	if err := cr.Spec.ZoneCommon.VLAgent.Spec.Validate(); err != nil {
+		return fmt.Errorf("spec.zoneCommon.vlagent.spec: %w", err)
 	}
 	return nil
 }

@@ -117,8 +117,10 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			Spec: vmv1beta1.VMAlertSpec{
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
 				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -145,8 +147,10 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			Spec: vmv1beta1.VMAlertSpec{
 				Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
 				Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1)),
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
 				},
 			},
 		},
@@ -180,9 +184,11 @@ func TestCreateOrUpdate_Paused(t *testing.T) {
 		Spec: vmv1beta1.VMAlertSpec{
 			Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://datasource"},
 			Notifier:   &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
-			CommonAppsParams: vmv1beta1.CommonAppsParams{
-				ReplicaCount: ptr.To(int32(1)),
-				Paused:       true,
+			StandardAppsParams: vmv1beta1.StandardAppsParams{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(1)),
+					Paused:       true,
+				},
 			},
 		},
 	}

@@ -19,7 +19,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
@@ -45,38 +44,40 @@ const (
 	urlRelabelingName           = "url_relabeling-%d.yaml"
 	globalAggregationConfigName = "global_aggregation.yaml"
 
-	tlsAssetsDir          = "/etc/vmagent-tls/certs"
-	scrapeGzippedFilename = "vmagent.yaml.gz"
-	configFilename        = "vmagent.yaml"
-	defaultMaxDiskUsage   = "1073741824"
+	tlsAssetsDir             = "/etc/vmagent-tls/certs"
+	tlsServerConfigMountPath = "/etc/vm/tls-server-secrets"
+	scrapeGzippedFilename    = "vmagent.yaml.gz"
+	configFilename           = "vmagent.yaml"
+	defaultMaxDiskUsage      = "1073741824"
 )
 
 func buildVMAgentServiceScrape(cr *vmv1beta1.VMAgent, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	scrape := build.VMServiceScrape(svc, cr)
+	var sidecars []build.ScrapeBuilder
 	if cr.HasConfigReloader() {
-		scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
+		sidecars = append(sidecars, build.ConfigReloaderScrapeBuilder)
 	}
-	return scrape
+	return build.VMServiceScrape(svc, cr, sidecars...)
 }
 
 func buildVMAgentPodScrape(cr *vmv1beta1.VMAgent) *vmv1beta1.VMPodScrape {
 	if cr == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	scrape := build.VMPodScrape(cr, "http")
+	var sidecars []build.ScrapeBuilder
 	if cr.HasConfigReloader() {
-		scrape.Spec.PodMetricsEndpoints = append(scrape.Spec.PodMetricsEndpoints, build.ConfigReloaderPodScrapeEndpoint())
+		sidecars = append(sidecars, build.ConfigReloaderScrapeBuilder)
 	}
-	return scrape
+	return build.VMPodScrape(cr, sidecars...)
 }
 
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerPortsToService(svc, prevCR.Spec.HTTPListeners)
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
 			}
@@ -85,6 +86,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
 	}
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerPortsToService(svc, cr.Spec.HTTPListeners)
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
 		}
@@ -539,7 +541,6 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 	}
 
 	cfg := config.MustGetBaseConfig()
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if cfg.EnableTCP6 {
 		args = append(args, "-enableTCP6")
 	}
@@ -568,8 +569,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 		})
 	}
 
-	var ports []corev1.ContainerPort
-	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports := build.AddHTTPListenerPortsTo(nil, cr.Spec.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var crMounts []corev1.VolumeMount
@@ -708,6 +708,8 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 	args = build.StreamAggrArgsTo(args, "streamAggr", streamAggrKeys, streamAggrConfigs...)
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
+	args = build.AddHTTPListenerArgsTo(args, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
+	volumes, vmMounts = build.AddHTTPListenerTLSToVolumes(volumes, vmMounts, cr.Spec.HTTPListeners, tlsServerConfigMountPath)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 

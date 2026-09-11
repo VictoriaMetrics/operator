@@ -116,10 +116,7 @@ func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.V
 	if cr == nil || svc == nil || ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		return nil
 	}
-	scrape := build.VMServiceScrape(svc, cr)
-	// vmalertmanager always runs with a config-reloader sidecar
-	scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, build.ConfigReloaderVMServiceScrapeEndpoint())
-	return scrape
+	return build.VMServiceScrape(svc, cr, build.ConfigReloaderScrapeBuilder)
 }
 
 func createOrUpdateAlertManagerService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlertmanager) error {

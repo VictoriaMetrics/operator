@@ -20,6 +20,9 @@ func VMPodScrape(ctx context.Context, rclient client.Client, newObj, prevObj *vm
 	if build.IsControllerDisabled("VMPodScrape") {
 		return nil
 	}
+	if newObj == nil {
+		return nil
+	}
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	var prevMeta *metav1.ObjectMeta
 	if prevObj != nil {

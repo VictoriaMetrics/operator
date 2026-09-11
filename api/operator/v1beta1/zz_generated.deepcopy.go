@@ -3780,6 +3780,11 @@ func (in *SlackConfig) DeepCopyInto(out *SlackConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.PostUpdatesToThread != nil {
+		in, out := &in.PostUpdatesToThread, &out.PostUpdatesToThread
+		*out = new(bool)
+		**out = **in
+	}
 	if in.HTTPConfig != nil {
 		in, out := &in.HTTPConfig, &out.HTTPConfig
 		*out = new(HTTPConfig)

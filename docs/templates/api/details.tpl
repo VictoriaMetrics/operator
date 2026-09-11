@@ -2,6 +2,7 @@
 {{- $ctx := . }}
 {{- $gv := $ctx.gv }}
 {{- $aliases := $ctx.aliases }}
+{{- $locals := $ctx.locals }}
 
 ## {{ $gv.GroupVersionString }}
 
@@ -16,6 +17,6 @@
 {{- end }}
 {{- end }}
 {{- range $gv.SortedTypes }}
-{{- template "type" (dict "type" . "aliases" $aliases) }}
+{{- template "type" (dict "type" . "aliases" $aliases "locals" $locals) }}
 {{- end }}
 {{- end -}}

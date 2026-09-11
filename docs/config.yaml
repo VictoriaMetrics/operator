@@ -12,6 +12,9 @@ render:
       link: https://pkg.go.dev/net/url#Values
 
 processor:
+  caseIgnoreAliases:
+    - snake_case
+    - camelCase
   ignoreTypes:
     - ".*List$"
     - ".*Status$"

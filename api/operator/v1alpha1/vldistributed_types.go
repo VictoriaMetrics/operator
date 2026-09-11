@@ -17,7 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -263,7 +264,7 @@ type VLDistributedZoneAgentSpec struct {
 	// +optional
 	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
 
-	vmv1beta1.CommonAppsParams `json:",inline,omitempty"`
+	vmv1beta1.CommonAppsParams `json:",inline"`
 }
 
 // ToVLAgentSpec converts VLDistributedZoneAgentSpec to vmv1.VLAgentSpec via JSON round-trip.
@@ -454,7 +455,7 @@ func (cr *VLDistributed) UnmarshalJSON(src []byte) error {
 	type pcr VLDistributed
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

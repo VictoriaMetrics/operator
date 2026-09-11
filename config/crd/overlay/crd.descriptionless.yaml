@@ -9908,19 +9908,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               globalScrapeRelabelConfigs:
                 items:
@@ -9944,19 +9939,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               host_aliases:
                 items:
@@ -10383,19 +10373,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               inlineScrapeConfig:
                 type: string
@@ -10699,19 +10684,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nodeScrapeSelector:
                 properties:
@@ -10839,19 +10819,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podScrapeSelector:
                 properties:
@@ -10934,19 +10909,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               probeSelector:
                 properties:
@@ -11089,19 +11059,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     maxDiskUsage:
                       x-kubernetes-preserve-unknown-fields: true
@@ -11170,6 +11135,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     queues:
@@ -11256,19 +11222,14 @@ spec:
                                       type: string
                                     separator:
                                       type: string
-                                    source_labels:
-                                      items:
-                                        type: string
-                                      type: array
                                     sourceLabels:
                                       items:
                                         type: string
                                       type: array
-                                    target_label:
-                                      type: string
                                     targetLabel:
                                       type: string
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 type: array
                               interval:
                                 type: string
@@ -11300,19 +11261,14 @@ spec:
                                       type: string
                                     separator:
                                       type: string
-                                    source_labels:
-                                      items:
-                                        type: string
-                                      type: array
                                     sourceLabels:
                                       items:
                                         type: string
                                       type: array
-                                    target_label:
-                                      type: string
                                     targetLabel:
                                       type: string
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 type: array
                               outputs:
                                 items:
@@ -11616,19 +11572,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       minLength: 1
@@ -11698,6 +11649,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     relabelConfigs:
                       items:
                         properties:
@@ -11720,19 +11672,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     tlsConfig:
                       properties:
@@ -11821,6 +11768,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -11873,19 +11821,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               scrapeConfigSelector:
                 properties:
@@ -11978,19 +11921,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               serviceScrapeSelector:
                 properties:
@@ -12331,19 +12269,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               staticScrapeSelector:
                 properties:
@@ -12449,19 +12382,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         interval:
                           type: string
@@ -12493,19 +12421,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         outputs:
                           items:
@@ -12743,6 +12666,7 @@ spec:
             required:
             - remoteWrite
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -12866,6 +12790,7 @@ spec:
                         type: string
                       type: array
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               receivers:
                 items:
@@ -13043,6 +12968,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -13150,6 +13076,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             type: string
                           send_resolved:
@@ -13174,6 +13101,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     email_configs:
                       items:
@@ -13313,6 +13241,7 @@ spec:
                           to:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     incidentio_configs:
                       items:
@@ -13345,6 +13274,7 @@ spec:
                           url_file:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     jira_configs:
                       items:
@@ -13386,6 +13316,7 @@ spec:
                         - issue_type
                         - project
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     mattermost_configs:
                       items:
@@ -13413,6 +13344,7 @@ spec:
                                       value:
                                         type: string
                                     type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                   type: array
                                 footer:
                                   type: string
@@ -13431,6 +13363,7 @@ spec:
                                 title_link:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           channel:
                             type: string
@@ -13449,11 +13382,13 @@ spec:
                               requested_ack:
                                 type: boolean
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           props:
                             properties:
                               card:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           send_resolved:
                             type: boolean
                           text:
@@ -13478,6 +13413,7 @@ spec:
                         required:
                         - text
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     msteams_configs:
                       items:
@@ -13647,6 +13583,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -13754,6 +13691,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           send_resolved:
                             type: boolean
                           text:
@@ -13776,6 +13714,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     msteamsv2_configs:
                       items:
@@ -13804,6 +13743,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       minLength: 1
@@ -13860,6 +13800,7 @@ spec:
                               required:
                               - type
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           send_resolved:
                             type: boolean
@@ -13870,6 +13811,7 @@ spec:
                           update_alerts:
                             type: boolean
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     pagerduty_configs:
                       items:
@@ -13905,6 +13847,7 @@ spec:
                               required:
                               - source
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           links:
                             items:
@@ -13916,6 +13859,7 @@ spec:
                               required:
                               - href
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           routing_key:
                             properties:
@@ -13950,6 +13894,7 @@ spec:
                           url:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     pushover_configs:
                       items:
@@ -14004,6 +13949,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     rocketchat_configs:
                       items:
@@ -14020,6 +13966,7 @@ spec:
                                 url:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           api_url:
                             type: string
@@ -14039,6 +13986,7 @@ spec:
                                 value:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           http_config:
                             x-kubernetes-preserve-unknown-fields: true
@@ -14087,6 +14035,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     slack_configs:
                       items:
@@ -14108,6 +14057,7 @@ spec:
                                   required:
                                   - text
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 name:
                                   type: string
                                 style:
@@ -14126,6 +14076,7 @@ spec:
                               - text
                               - type
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           api_url:
                             properties:
@@ -14163,6 +14114,7 @@ spec:
                               - title
                               - value
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           footer:
                             type: string
@@ -14200,6 +14152,7 @@ spec:
                           username:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sns_configs:
                       items:
@@ -14375,6 +14328,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -14482,6 +14436,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             type: string
                           phone_number:
@@ -14525,6 +14480,7 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           subject:
                             type: string
                           target_arn:
@@ -14532,6 +14488,7 @@ spec:
                           topic_arn:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     telegram_configs:
                       items:
@@ -14570,6 +14527,7 @@ spec:
                         - bot_token
                         - chat_id
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     victorops_configs:
                       items:
@@ -14760,6 +14718,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -14867,6 +14826,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message_type:
                             type: string
                           monitoring_tool:
@@ -14880,6 +14840,7 @@ spec:
                         required:
                         - routing_key
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     webex_configs:
                       items:
@@ -15051,6 +15012,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -15158,6 +15120,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             type: string
                           room_id:
@@ -15167,6 +15130,7 @@ spec:
                         required:
                         - room_id
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     webhook_configs:
                       items:
@@ -15199,6 +15163,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     wechat_configs:
                       items:
@@ -15387,6 +15352,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -15494,6 +15460,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             type: string
                           message_type:
@@ -15507,10 +15474,12 @@ spec:
                           to_user:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               route:
                 properties:
@@ -15550,6 +15519,7 @@ spec:
                 required:
                 - receiver
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               time_intervals:
                 items:
                   properties:
@@ -15579,6 +15549,7 @@ spec:
                               - end_time
                               - start_time
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           weekdays:
                             items:
@@ -15589,13 +15560,16 @@ spec:
                               type: string
                             type: array
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                   required:
                   - name
                   - time_intervals
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -30357,19 +30331,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               oauth2:
                 properties:
@@ -30436,6 +30405,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               params:
                 additionalProperties:
                   items:
@@ -30470,19 +30440,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               sampleLimit:
                 type: integer
@@ -30761,9 +30726,11 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -30771,7 +30738,9 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -30994,19 +30963,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       properties:
@@ -31073,6 +31037,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -31112,19 +31077,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       type: integer
@@ -31376,9 +31336,11 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -31386,7 +31348,9 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podTargetLabels:
                 items:
@@ -31621,19 +31585,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               module:
                 type: string
@@ -31702,6 +31661,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               params:
                 additionalProperties:
                   items:
@@ -31764,19 +31724,14 @@ spec:
                               type: string
                             separator:
                               type: string
-                            source_labels:
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              type: string
                             targetLabel:
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       role:
                         enum:
@@ -31846,19 +31801,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         role:
                           enum:
@@ -31923,19 +31873,14 @@ spec:
                               type: string
                             separator:
                               type: string
-                            source_labels:
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              type: string
                             targetLabel:
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       targets:
                         items:
@@ -31972,19 +31917,14 @@ spec:
                               type: string
                             separator:
                               type: string
-                            source_labels:
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              type: string
                             targetLabel:
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       targets:
                         items:
@@ -32224,9 +32164,11 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -32234,6 +32176,7 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               vmProberSpec:
                 properties:
                   path:
@@ -32251,6 +32194,7 @@ spec:
             required:
             - vmProberSpec
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -32683,6 +32627,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -32820,9 +32765,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     resourceGroup:
@@ -33094,6 +33041,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -33228,9 +33176,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     scheme:
@@ -33482,6 +33432,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     partition:
                       type: string
                     proxy_client_config:
@@ -33618,9 +33569,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     scheme:
@@ -33865,6 +33818,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -34002,9 +33956,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     server:
@@ -34259,6 +34215,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -34396,9 +34353,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     tlsConfig:
@@ -34625,6 +34584,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -34762,9 +34722,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     role:
@@ -35035,6 +34997,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -35169,9 +35132,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     server:
@@ -35417,6 +35382,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -35554,9 +35520,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     role:
@@ -35779,6 +35747,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -35913,9 +35882,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     tlsConfig:
@@ -36151,6 +36122,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -36285,9 +36257,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     role:
@@ -36533,6 +36507,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -36667,9 +36642,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     server:
@@ -36884,6 +36861,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -37018,9 +36996,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     servers:
@@ -37141,19 +37121,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nomadSDConfigs:
                 items:
@@ -37280,6 +37255,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -37414,9 +37390,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     region:
@@ -37579,6 +37557,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               openstackSDConfigs:
                 items:
                   properties:
@@ -37891,6 +37870,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       properties:
                         authorization:
@@ -38025,9 +38005,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     service:
@@ -38261,6 +38243,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -38398,9 +38381,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     query:
@@ -38518,19 +38503,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               sampleLimit:
                 type: integer
@@ -38793,9 +38773,11 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -38803,6 +38785,7 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               vultrSDConfigs:
                 items:
                   properties:
@@ -38932,6 +38915,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       format: int32
                       type: integer
@@ -39069,9 +39053,11 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       type: string
                     region:
@@ -39279,6 +39265,7 @@ spec:
                   type: object
                 type: array
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -39495,19 +39482,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       properties:
@@ -39574,6 +39556,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -39608,19 +39591,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       type: integer
@@ -39872,9 +39850,11 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -39882,7 +39862,9 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               jobLabel:
                 type: string
@@ -40375,19 +40357,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               globalScrapeRelabelConfigs:
                 items:
@@ -40411,19 +40388,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               host_aliases:
                 items:
@@ -40506,19 +40478,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               inlineScrapeConfig:
                 type: string
@@ -40822,19 +40789,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nodeScrapeSelector:
                 properties:
@@ -40933,19 +40895,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podScrapeSelector:
                 properties:
@@ -41028,19 +40985,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               probeSelector:
                 properties:
@@ -41256,19 +41208,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       minLength: 1
@@ -41338,6 +41285,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     relabelConfigs:
                       items:
                         properties:
@@ -41360,19 +41308,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     tlsConfig:
                       properties:
@@ -41461,6 +41404,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -41513,19 +41457,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               scrapeConfigSelector:
                 properties:
@@ -41618,19 +41557,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               serviceScrapeSelector:
                 properties:
@@ -41735,19 +41669,14 @@ spec:
                       type: string
                     separator:
                       type: string
-                    source_labels:
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      type: string
                     targetLabel:
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               staticScrapeSelector:
                 properties:
@@ -41956,19 +41885,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         interval:
                           type: string
@@ -42000,19 +41924,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         outputs:
                           items:
@@ -42486,6 +42405,7 @@ spec:
                     type: object
                 type: object
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             properties:
               conditions:
@@ -42695,19 +42615,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       properties:
@@ -42774,6 +42689,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -42806,19 +42722,14 @@ spec:
                             type: string
                           separator:
                             type: string
-                          source_labels:
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            type: string
                           targetLabel:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       type: integer
@@ -43070,9 +42981,11 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -43080,9 +42993,11 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   required:
                   - targets
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             required:
             - targetEndpoints
@@ -44702,19 +44617,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         oauth2:
                           properties:
@@ -44781,6 +44691,7 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         params:
                           additionalProperties:
                             items:
@@ -44815,19 +44726,14 @@ spec:
                                 type: string
                               separator:
                                 type: string
-                              source_labels:
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                type: string
                               targetLabel:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         sampleLimit:
                           type: integer
@@ -45079,9 +44985,11 @@ spec:
                                   - client_id
                                   - token_url
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 tls_config:
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             scrape_align_interval:
                               type: string
                             scrape_offset:
@@ -45089,7 +44997,9 @@ spec:
                             stream_parse:
                               type: boolean
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     type: array
                   jobLabel:
                     type: string

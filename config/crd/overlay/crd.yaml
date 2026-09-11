@@ -20020,15 +20020,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -20037,19 +20028,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               globalScrapeRelabelConfigs:
                 description: GlobalScrapeRelabelConfigs is a global relabel configuration,
@@ -20098,15 +20083,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -20115,19 +20091,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               host_aliases:
                 description: |-
@@ -20914,15 +20884,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -20931,19 +20892,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               inlineScrapeConfig:
                 description: |-
@@ -21564,15 +21519,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -21581,19 +21527,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nodeScrapeSelector:
                 description: |-
@@ -21858,15 +21798,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -21875,19 +21806,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podScrapeSelector:
                 description: |-
@@ -22051,15 +21976,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -22068,19 +21984,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               probeSelector:
                 description: |-
@@ -22366,15 +22276,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -22383,19 +22284,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     maxDiskUsage:
                       description: |-
@@ -22516,6 +22411,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: 'ProxyURL for -remoteWrite.url. Supported proxies:
                         http, https, socks5. Example: socks5://proxy:1234'
@@ -22691,15 +22587,6 @@ spec:
                                       description: Separator placed between concatenated
                                         source label values. default is ';'.
                                       type: string
-                                    source_labels:
-                                      description: |-
-                                        UnderScoreSourceLabels - additional form of source labels source_labels
-                                        for compatibility with original relabel config.
-                                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                                      items:
-                                        type: string
-                                      type: array
                                     sourceLabels:
                                       description: |-
                                         The source labels select values from existing labels. Their content is concatenated
@@ -22708,19 +22595,13 @@ spec:
                                       items:
                                         type: string
                                       type: array
-                                    target_label:
-                                      description: |-
-                                        UnderScoreTargetLabel - additional form of target label - target_label
-                                        for compatibility with original relabel config.
-                                        if set both targetLabel and target_label, targetLabel has priority.
-                                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                                      type: string
                                     targetLabel:
                                       description: |-
                                         Label to which the resulting value is written in a replace action.
                                         It is mandatory for replace actions. Regex capture groups are available.
                                       type: string
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 type: array
                               interval:
                                 description: Interval is the interval between aggregations.
@@ -22788,15 +22669,6 @@ spec:
                                       description: Separator placed between concatenated
                                         source label values. default is ';'.
                                       type: string
-                                    source_labels:
-                                      description: |-
-                                        UnderScoreSourceLabels - additional form of source labels source_labels
-                                        for compatibility with original relabel config.
-                                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                                      items:
-                                        type: string
-                                      type: array
                                     sourceLabels:
                                       description: |-
                                         The source labels select values from existing labels. Their content is concatenated
@@ -22805,19 +22677,13 @@ spec:
                                       items:
                                         type: string
                                       type: array
-                                    target_label:
-                                      description: |-
-                                        UnderScoreTargetLabel - additional form of target label - target_label
-                                        for compatibility with original relabel config.
-                                        if set both targetLabel and target_label, targetLabel has priority.
-                                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                                      type: string
                                     targetLabel:
                                       description: |-
                                         Label to which the resulting value is written in a replace action.
                                         It is mandatory for replace actions. Regex capture groups are available.
                                       type: string
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 type: array
                               outputs:
                                 description: |-
@@ -23427,15 +23293,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -23444,19 +23301,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       description: name of the scrape class.
@@ -23576,6 +23427,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     relabelConfigs:
                       description: RelabelConfigs to apply to samples during service
                         discovery.
@@ -23622,15 +23474,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -23639,19 +23482,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
@@ -23814,6 +23651,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -23916,15 +23754,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -23933,19 +23762,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               scrapeConfigSelector:
                 description: |-
@@ -24126,15 +23949,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -24143,19 +23957,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               serviceScrapeSelector:
                 description: |-
@@ -24920,15 +24728,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -24937,19 +24736,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               staticScrapeSelector:
                 description: |-
@@ -25159,15 +24952,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -25176,19 +24960,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         interval:
                           description: Interval is the interval between aggregations.
@@ -25255,15 +25033,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -25272,19 +25041,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         outputs:
                           description: |-
@@ -25765,6 +25528,7 @@ spec:
             required:
             - remoteWrite
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: VMAgentStatus defines the observed state of VMAgent
             properties:
@@ -25954,6 +25718,7 @@ spec:
                         type: string
                       type: array
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               receivers:
                 description: Receivers defines alert receivers
@@ -26289,6 +26054,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -26493,6 +26259,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             description: The message body template
                             type: string
@@ -26541,6 +26308,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     email_configs:
                       description: EmailConfigs defines email notification configurations.
@@ -26802,13 +26570,15 @@ spec:
                             description: The email address to send notifications to.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     incidentio_configs:
                       items:
                         description: |-
                           IncidentioConfig configures notifications via incident.io.
                           https://prometheus.io/docs/alerting/latest/configuration/#incidentio_config
-                          Available from v0.29.0 alertmanager version
+                          available from v0.66.0 operator version
+                          and v0.29.0 alertmanager version
                         properties:
                           alert_source_token:
                             description: |-
@@ -26867,13 +26637,15 @@ spec:
                               Mutually exclusive with URL.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     jira_configs:
                       items:
                         description: |-
                           JiraConfig represent alertmanager's jira_config entry
                           https://prometheus.io/docs/alerting/latest/configuration/#jira_config
-                          Available from v0.28.0 alertmanager version
+                          available from v0.55.0 operator version
+                          and v0.28.0 alertmanager version
                         properties:
                           api_url:
                             description: |-
@@ -26943,6 +26715,7 @@ spec:
                         - issue_type
                         - project
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     mattermost_configs:
                       description: MattermostConfigs defines Mattermost notification
@@ -26975,6 +26748,7 @@ spec:
                                       value:
                                         type: string
                                     type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                   type: array
                                 footer:
                                   type: string
@@ -26993,6 +26767,7 @@ spec:
                                 title_link:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           channel:
                             description: Channel overrides the channel the message
@@ -27017,11 +26792,13 @@ spec:
                               requested_ack:
                                 type: boolean
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           props:
                             properties:
                               card:
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           send_resolved:
                             description: SendResolved controls notify about resolved
                               alerts.
@@ -27069,6 +26846,7 @@ spec:
                         required:
                         - text
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     msteams_configs:
                       items:
@@ -27388,6 +27166,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -27592,6 +27371,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           send_resolved:
                             description: SendResolved controls notify about resolved
                               alerts.
@@ -27635,13 +27415,15 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     msteamsv2_configs:
                       items:
                         description: |-
                           MSTeamsV2Config sends notifications using the new message format with adaptive cards as required by flows.
                           https://support.microsoft.com/en-gb/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498
-                          Available from v0.28.0 alertmanager version
+                          available from v0.55.0 operator version
+                          and v0.28.0 alertmanager version
                         properties:
                           http_config:
                             x-kubernetes-preserve-unknown-fields: true
@@ -27688,6 +27470,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       description: Name of the receiver. Must be unique across all
@@ -27786,6 +27569,7 @@ spec:
                               required:
                               - type
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           send_resolved:
                             description: SendResolved controls notify about resolved
@@ -27804,6 +27588,7 @@ spec:
                               By default, the alert is never updated in OpsGenie, the new message only appears in activity log.
                             type: boolean
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     pagerduty_configs:
                       description: PagerDutyConfigs defines pager duty notification
@@ -27859,6 +27644,7 @@ spec:
                               required:
                               - source
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           links:
                             description: Links to attach to the incident.
@@ -27875,6 +27661,7 @@ spec:
                               required:
                               - href
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           routing_key:
                             description: |-
@@ -27942,6 +27729,7 @@ spec:
                             description: The URL to send requests to.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     pushover_configs:
                       description: PushoverConfigs defines push over notification
@@ -28047,13 +27835,15 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     rocketchat_configs:
                       items:
                         description: |-
                           RocketchatConfig configures notifications via Rocketchat.
                           https://prometheus.io/docs/alerting/latest/configuration/#rocketchat_config
-                          Available from v0.28.0 alertmanager version
+                          available from v0.55.0 operator version
+                          and v0.28.0 alertmanager version
                         properties:
                           actions:
                             items:
@@ -28070,6 +27860,7 @@ spec:
                                 url:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           api_url:
                             type: string
@@ -28094,6 +27885,7 @@ spec:
                                 value:
                                   type: string
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           http_config:
                             x-kubernetes-preserve-unknown-fields: true
@@ -28168,6 +27960,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     slack_configs:
                       description: SlackConfigs defines slack notification configurations.
@@ -28206,6 +27999,7 @@ spec:
                                   required:
                                   - text
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 name:
                                   type: string
                                 style:
@@ -28224,6 +28018,7 @@ spec:
                               - text
                               - type
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           api_url:
                             description: |-
@@ -28282,6 +28077,7 @@ spec:
                               - title
                               - value
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           footer:
                             type: string
@@ -28326,6 +28122,7 @@ spec:
                           username:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sns_configs:
                       items:
@@ -28653,6 +28450,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -28857,6 +28655,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             description: The message content of the SNS notification.
                             type: string
@@ -28940,6 +28739,7 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           subject:
                             description: The subject line if message is delivered
                               to an email endpoint.
@@ -28954,6 +28754,7 @@ spec:
                               or target_arn
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     telegram_configs:
                       items:
@@ -29021,6 +28822,7 @@ spec:
                         - bot_token
                         - chat_id
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     victorops_configs:
                       description: VictorOpsConfigs defines victor ops notification
@@ -29385,6 +29187,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -29589,6 +29392,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message_type:
                             description: Describes the behavior of the alert (CRITICAL,
                               WARNING, INFO).
@@ -29611,6 +29415,7 @@ spec:
                         required:
                         - routing_key
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     webex_configs:
                       items:
@@ -29935,6 +29740,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -30139,6 +29945,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             description: The message body template
                             type: string
@@ -30153,6 +29960,7 @@ spec:
                         required:
                         - room_id
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     webhook_configs:
                       description: WebhookConfigs defines webhook notification configurations.
@@ -30214,6 +30022,7 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     wechat_configs:
                       description: WechatConfigs defines wechat notification configurations.
@@ -30576,6 +30385,7 @@ spec:
                                 - client_id
                                 - token_url
                                 type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               proxyConnectHeader:
                                 additionalProperties:
                                   items:
@@ -30780,6 +30590,7 @@ spec:
                                     type: string
                                 type: object
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           message:
                             description: API request data as defined by the WeChat
                               API.
@@ -30797,10 +30608,12 @@ spec:
                           to_user:
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               route:
                 description: Route definition for alertmanager, may include nested
@@ -30862,6 +30675,7 @@ spec:
                 required:
                 - receiver
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               time_intervals:
                 description: |-
                   TimeIntervals defines named interval for active/mute notifications interval
@@ -30911,6 +30725,7 @@ spec:
                               - end_time
                               - start_time
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           weekdays:
                             description: Weekdays defines list of days of the week,
@@ -30926,13 +30741,16 @@ spec:
                               type: string
                             type: array
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                   required:
                   - name
                   - time_intervals
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: VMAlertmanagerConfigStatus defines the observed state of
               VMAlertmanagerConfig
@@ -60508,15 +60326,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -60525,19 +60334,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               oauth2:
                 description: OAuth2 defines auth configuration
@@ -60651,6 +60454,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               params:
                 additionalProperties:
                   items:
@@ -60713,15 +60517,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -60730,19 +60525,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
@@ -61250,11 +61039,13 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         description: TLSConfig configuration to use when scraping
                           the endpoint
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -61262,7 +61053,9 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
@@ -61652,15 +61445,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -61669,19 +61453,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       description: OAuth2 defines auth configuration
@@ -61797,6 +61575,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -61867,15 +61646,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -61884,19 +61654,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
@@ -62365,11 +62129,13 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               description: TLSConfig configuration to use when scraping
                                 the endpoint
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -62377,7 +62143,9 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podTargetLabels:
                 description: PodTargetLabels transfers labels on the Kubernetes Pod
@@ -62776,15 +62544,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -62793,19 +62552,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               module:
                 description: |-
@@ -62925,6 +62678,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               params:
                 additionalProperties:
                   items:
@@ -63035,15 +62789,6 @@ spec:
                               description: Separator placed between concatenated source
                                 label values. default is ';'.
                               type: string
-                            source_labels:
-                              description: |-
-                                UnderScoreSourceLabels - additional form of source labels source_labels
-                                for compatibility with original relabel config.
-                                if set both sourceLabels and source_labels, sourceLabels has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               description: |-
                                 The source labels select values from existing labels. Their content is concatenated
@@ -63052,19 +62797,13 @@ spec:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              description: |-
-                                UnderScoreTargetLabel - additional form of target label - target_label
-                                for compatibility with original relabel config.
-                                if set both targetLabel and target_label, targetLabel has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              type: string
                             targetLabel:
                               description: |-
                                 Label to which the resulting value is written in a replace action.
                                 It is mandatory for replace actions. Regex capture groups are available.
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       role:
                         description: Role defines k8s role name
@@ -63188,15 +62927,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -63205,19 +62935,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         role:
                           description: Role defines k8s role name
@@ -63331,15 +63055,6 @@ spec:
                               description: Separator placed between concatenated source
                                 label values. default is ';'.
                               type: string
-                            source_labels:
-                              description: |-
-                                UnderScoreSourceLabels - additional form of source labels source_labels
-                                for compatibility with original relabel config.
-                                if set both sourceLabels and source_labels, sourceLabels has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               description: |-
                                 The source labels select values from existing labels. Their content is concatenated
@@ -63348,19 +63063,13 @@ spec:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              description: |-
-                                UnderScoreTargetLabel - additional form of target label - target_label
-                                for compatibility with original relabel config.
-                                if set both targetLabel and target_label, targetLabel has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              type: string
                             targetLabel:
                               description: |-
                                 Label to which the resulting value is written in a replace action.
                                 It is mandatory for replace actions. Regex capture groups are available.
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       targets:
                         description: Targets is a list of URLs to probe using the
@@ -63427,15 +63136,6 @@ spec:
                               description: Separator placed between concatenated source
                                 label values. default is ';'.
                               type: string
-                            source_labels:
-                              description: |-
-                                UnderScoreSourceLabels - additional form of source labels source_labels
-                                for compatibility with original relabel config.
-                                if set both sourceLabels and source_labels, sourceLabels has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              items:
-                                type: string
-                              type: array
                             sourceLabels:
                               description: |-
                                 The source labels select values from existing labels. Their content is concatenated
@@ -63444,19 +63144,13 @@ spec:
                               items:
                                 type: string
                               type: array
-                            target_label:
-                              description: |-
-                                UnderScoreTargetLabel - additional form of target label - target_label
-                                for compatibility with original relabel config.
-                                if set both targetLabel and target_label, targetLabel has priority.
-                                for details https://github.com/VictoriaMetrics/operator/issues/131
-                              type: string
                             targetLabel:
                               description: |-
                                 Label to which the resulting value is written in a replace action.
                                 It is mandatory for replace actions. Regex capture groups are available.
                               type: string
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         type: array
                       targets:
                         description: Targets is a list of URLs to probe using the
@@ -63894,11 +63588,13 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         description: TLSConfig configuration to use when scraping
                           the endpoint
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -63906,6 +63602,7 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               vmProberSpec:
                 description: |-
                   Specification for the prober to use for probing targets.
@@ -63933,6 +63630,7 @@ spec:
             required:
             - vmProberSpec
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
@@ -64654,6 +64352,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: |-
                         The port to scrape metrics from. If using the public IP address, this must
@@ -64910,11 +64609,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -65417,6 +65118,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -65667,11 +65369,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -66128,6 +65832,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     partition:
                       description: Admin Partitions are only supported in Consul Enterprise.
                       type: string
@@ -66381,11 +66086,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -66828,6 +66535,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: The port to scrape metrics from.
                       format: int32
@@ -67082,11 +66790,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -67542,6 +67252,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: Port to scrape metrics from, when containers expose
                         multiple ports.
@@ -67797,11 +67508,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -68210,6 +67923,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: Port to scrape metrics from, when containers expose
                         multiple ports.
@@ -68465,11 +68179,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -68957,6 +68673,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -69207,11 +68924,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -69665,6 +69384,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: Port is an optional port to scrape metrics from
                       format: int32
@@ -69919,11 +69639,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -70327,6 +70049,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -70577,11 +70300,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -71015,6 +70740,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -71265,11 +70991,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -71698,6 +71426,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -71948,11 +71677,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -72344,6 +72075,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -72594,11 +72326,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -72820,15 +72554,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -72837,19 +72562,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nomadSDConfigs:
                 description: NomadSDConfigs defines a list of Nomad service discovery
@@ -73080,6 +72799,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -73330,11 +73050,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -73625,6 +73347,7 @@ spec:
                 - client_id
                 - token_url
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               openstackSDConfigs:
                 description: OpenStackSDConfigs defines a list of OpenStack service
                   discovery configurations.
@@ -74199,6 +73922,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
@@ -74449,11 +74173,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -74869,6 +74595,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: Port defines port to scrape metrics from
                       format: int32
@@ -75123,11 +74850,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -75346,15 +75075,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -75363,19 +75083,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
@@ -75853,11 +75567,13 @@ spec:
                         - client_id
                         - token_url
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       tls_config:
                         description: TLSConfig configuration to use when scraping
                           the endpoint
                         x-kubernetes-preserve-unknown-fields: true
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -75865,6 +75581,7 @@ spec:
                   stream_parse:
                     type: boolean
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               vultrSDConfigs:
                 description: VultrSDConfigs defines a list of Vultr service discovery
                   configurations.
@@ -76102,6 +75819,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     port:
                       description: Port is an optional port to scrape metrics from.
                       format: int32
@@ -76356,11 +76074,13 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         tls_config:
                           description: TLSConfig configuration to use when scraping
                             the endpoint
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -76740,6 +76460,7 @@ spec:
                   type: object
                 type: array
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: ScrapeObjectStatus defines the observed state of ScrapeObjects
             properties:
@@ -77118,15 +76839,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -77135,19 +76847,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       description: OAuth2 defines auth configuration
@@ -77263,6 +76969,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -77326,15 +77033,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -77343,19 +77041,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
@@ -77824,11 +77516,13 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               description: TLSConfig configuration to use when scraping
                                 the endpoint
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -77836,7 +77530,9 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               jobLabel:
                 description: The label to use to retrieve the job name from.
@@ -78745,15 +78441,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -78762,19 +78449,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               globalScrapeRelabelConfigs:
                 description: GlobalScrapeRelabelConfigs is a global relabel configuration,
@@ -78823,15 +78504,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -78840,19 +78512,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               host_aliases:
                 description: |-
@@ -79018,15 +78684,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -79035,19 +78692,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               inlineScrapeConfig:
                 description: |-
@@ -79667,15 +79318,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -79684,19 +79326,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               nodeScrapeSelector:
                 description: |-
@@ -79899,15 +79535,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -79916,19 +79543,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               podScrapeSelector:
                 description: |-
@@ -80092,15 +79713,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -80109,19 +79721,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               probeSelector:
                 description: |-
@@ -80546,15 +80152,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -80563,19 +80160,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     name:
                       description: name of the scrape class.
@@ -80695,6 +80286,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     relabelConfigs:
                       description: RelabelConfigs to apply to samples during service
                         discovery.
@@ -80741,15 +80333,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -80758,19 +80341,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
@@ -80933,6 +80510,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -81035,15 +80613,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -81052,19 +80621,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               scrapeConfigSelector:
                 description: |-
@@ -81245,15 +80808,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -81262,19 +80816,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               serviceScrapeSelector:
                 description: |-
@@ -81483,15 +81031,6 @@ spec:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
-                    source_labels:
-                      description: |-
-                        UnderScoreSourceLabels - additional form of source labels source_labels
-                        for compatibility with original relabel config.
-                        if set both sourceLabels and source_labels, sourceLabels has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      items:
-                        type: string
-                      type: array
                     sourceLabels:
                       description: |-
                         The source labels select values from existing labels. Their content is concatenated
@@ -81500,19 +81039,13 @@ spec:
                       items:
                         type: string
                       type: array
-                    target_label:
-                      description: |-
-                        UnderScoreTargetLabel - additional form of target label - target_label
-                        for compatibility with original relabel config.
-                        if set both targetLabel and target_label, targetLabel has priority.
-                        for details https://github.com/VictoriaMetrics/operator/issues/131
-                      type: string
                     targetLabel:
                       description: |-
                         Label to which the resulting value is written in a replace action.
                         It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               staticScrapeSelector:
                 description: |-
@@ -81957,15 +81490,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -81974,19 +81498,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         interval:
                           description: Interval is the interval between aggregations.
@@ -82053,15 +81571,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -82070,19 +81579,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         outputs:
                           description: |-
@@ -83029,6 +82532,7 @@ spec:
                     type: object
                 type: object
             type: object
+            x-kubernetes-preserve-unknown-fields: true
           status:
             description: VMSingleStatus defines the observed state of VMSingle
             properties:
@@ -83382,15 +82886,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -83399,19 +82894,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     oauth2:
                       description: OAuth2 defines auth configuration
@@ -83527,6 +83016,7 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     params:
                       additionalProperties:
                         items:
@@ -83587,15 +83077,6 @@ spec:
                             description: Separator placed between concatenated source
                               label values. default is ';'.
                             type: string
-                          source_labels:
-                            description: |-
-                              UnderScoreSourceLabels - additional form of source labels source_labels
-                              for compatibility with original relabel config.
-                              if set both sourceLabels and source_labels, sourceLabels has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            items:
-                              type: string
-                            type: array
                           sourceLabels:
                             description: |-
                               The source labels select values from existing labels. Their content is concatenated
@@ -83604,19 +83085,13 @@ spec:
                             items:
                               type: string
                             type: array
-                          target_label:
-                            description: |-
-                              UnderScoreTargetLabel - additional form of target label - target_label
-                              for compatibility with original relabel config.
-                              if set both targetLabel and target_label, targetLabel has priority.
-                              for details https://github.com/VictoriaMetrics/operator/issues/131
-                            type: string
                           targetLabel:
                             description: |-
                               Label to which the resulting value is written in a replace action.
                               It is mandatory for replace actions. Regex capture groups are available.
                             type: string
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: array
                     sampleLimit:
                       description: SampleLimit defines per-scrape limit on number
@@ -84083,11 +83558,13 @@ spec:
                               - client_id
                               - token_url
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             tls_config:
                               description: TLSConfig configuration to use when scraping
                                 the endpoint
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -84095,9 +83572,11 @@ spec:
                         stream_parse:
                           type: boolean
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                   required:
                   - targets
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             required:
             - targetEndpoints
@@ -87167,15 +86646,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -87184,19 +86654,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         oauth2:
                           description: OAuth2 defines auth configuration
@@ -87314,6 +86778,7 @@ spec:
                           - client_id
                           - token_url
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                         params:
                           additionalProperties:
                             items:
@@ -87377,15 +86842,6 @@ spec:
                                 description: Separator placed between concatenated
                                   source label values. default is ';'.
                                 type: string
-                              source_labels:
-                                description: |-
-                                  UnderScoreSourceLabels - additional form of source labels source_labels
-                                  for compatibility with original relabel config.
-                                  if set both sourceLabels and source_labels, sourceLabels has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                items:
-                                  type: string
-                                type: array
                               sourceLabels:
                                 description: |-
                                   The source labels select values from existing labels. Their content is concatenated
@@ -87394,19 +86850,13 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                              target_label:
-                                description: |-
-                                  UnderScoreTargetLabel - additional form of target label - target_label
-                                  for compatibility with original relabel config.
-                                  if set both targetLabel and target_label, targetLabel has priority.
-                                  for details https://github.com/VictoriaMetrics/operator/issues/131
-                                type: string
                               targetLabel:
                                 description: |-
                                   Label to which the resulting value is written in a replace action.
                                   It is mandatory for replace actions. Regex capture groups are available.
                                 type: string
                             type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           type: array
                         sampleLimit:
                           description: SampleLimit defines per-scrape limit on number
@@ -87881,11 +87331,13 @@ spec:
                                   - client_id
                                   - token_url
                                   type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                                 tls_config:
                                   description: TLSConfig configuration to use when
                                     scraping the endpoint
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             scrape_align_interval:
                               type: string
                             scrape_offset:
@@ -87893,7 +87345,9 @@ spec:
                             stream_parse:
                               type: boolean
                           type: object
+                          x-kubernetes-preserve-unknown-fields: true
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     type: array
                   jobLabel:
                     description: The label to use to retrieve the job name from.

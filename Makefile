@@ -165,13 +165,17 @@ test: manifests generate fmt vet envtest ## Run tests.
 lint: golangci-lint ## Run golangci-lint linter
 	cd api && $(GOLANGCI_LINT) run operator/... & P1=$$!; \
 	$(GOLANGCI_LINT) run & P2=$$!; \
-	wait $$P1; wait $$P2
+	wait $$P1; S1=$$?; \
+	wait $$P2; S2=$$?; \
+	[ $$S1 -eq 0 ] && [ $$S2 -eq 0 ]
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 	cd api && $(GOLANGCI_LINT) run --fix operator/... & P1=$$!; \
 	$(GOLANGCI_LINT) run --fix & P2=$$!; \
-	wait $$P1; wait $$P2
+	wait $$P1; S1=$$?; \
+	wait $$P2; S2=$$?; \
+	[ $$S1 -eq 0 ] && [ $$S2 -eq 0 ]
 
 ##@ Build
 
@@ -357,7 +361,7 @@ COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.22.0
-ENVTEST_VERSION ?= release-0.23
+ENVTEST_VERSION ?= release-0.24
 GOLANGCI_LINT_VERSION ?= v2.13.2
 CODEGENERATOR_VERSION ?= v0.37.0
 OLM_VERSION ?= 0.46.0

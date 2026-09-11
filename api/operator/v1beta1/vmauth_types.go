@@ -1,7 +1,8 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -141,8 +142,8 @@ type VMAuthSpec struct {
 	// +notes={available_from: "v0.74.0"}
 	WaitForConfigReload *bool `json:"waitForConfigReload,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
-	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams `json:",inline" yaml:",inline"`
+	CommonAppsParams           `json:",inline" yaml:",inline"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v1.111.0 vmauth version
 	// related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
@@ -247,7 +248,7 @@ type UnauthorizedAccessConfigURLMap struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 
-	URLMapCommon `json:",omitempty" yaml:",inline"`
+	URLMapCommon `json:",inline" yaml:",inline"`
 }
 
 // Validate performs syntax logic validation
@@ -625,7 +626,7 @@ func (cr *VMAuth) UnmarshalJSON(src []byte) error {
 	type pcr VMAuth
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

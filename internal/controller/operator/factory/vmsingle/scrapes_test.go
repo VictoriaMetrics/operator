@@ -866,12 +866,12 @@ scrape_configs:
 					},
 					GlobalScrapeRelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
-							UnderScoreSourceLabels: []string{"test2"},
+							SourceLabels: []string{"test2"},
 						},
 					},
 					GlobalScrapeMetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
-							UnderScoreSourceLabels: []string{"test1"},
+							SourceLabels: []string{"test1"},
 						},
 					},
 				},

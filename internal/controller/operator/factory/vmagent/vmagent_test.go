@@ -2372,7 +2372,10 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   without:
   - pod
   output_relabel_configs:
-  - regex: (.+):.+
+  - source_labels:
+    - __name__
+    target_label: metric
+    regex: (.+):.+
 `
 			assert.Equal(t, wantRemote, remoteData)
 		},
@@ -2427,7 +2430,10 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   - pod
   ignore_first_sample_interval: 20m
   output_relabel_configs:
-  - regex:
+  - source_labels:
+    - __name__
+    target_label: metric
+    regex:
     - vmagent
     - vmalert
     - vmauth

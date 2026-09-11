@@ -1,7 +1,8 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -116,9 +117,9 @@ type VMSingleSpec struct {
 	// NetworkPolicy defines network access rules for pods created by this CR.
 	// +optional
 	NetworkPolicy              *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
-	CommonRelabelParams        `json:",inline,omitempty"`
-	CommonScrapeParams         `json:",inline,omitempty"`
-	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonRelabelParams        `json:",inline"`
+	CommonScrapeParams         `json:",inline"`
+	CommonConfigReloaderParams `json:",inline"`
 	CommonAppsParams           `json:",inline"`
 }
 
@@ -239,7 +240,7 @@ func (cr *VMSingle) UnmarshalJSON(src []byte) error {
 	type pcr VMSingle
 	type shadow struct {
 		*pcr
-		Spec json.RawMessage `json:"spec"`
+		Spec jsontext.Value `json:"spec"`
 	}
 	s := shadow{pcr: (*pcr)(cr)}
 	if err := json.Unmarshal(src, &s); err != nil {

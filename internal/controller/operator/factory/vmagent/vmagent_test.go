@@ -2122,7 +2122,7 @@ func TestBuildVMAgentServiceScrapeConfigReloaderPort(t *testing.T) {
 
 	hasReloaderEndpoint := func(scrape *vmv1beta1.VMServiceScrape) bool {
 		for _, ep := range scrape.Spec.Endpoints {
-			if ep.TargetPort != nil && ep.TargetPort.IntValue() == build.ConfigReloaderDefaultPort {
+			if ep.TargetPort != nil && ep.TargetPort.StrVal == build.ConfigReloaderPortName {
 				return true
 			}
 		}

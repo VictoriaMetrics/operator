@@ -63,11 +63,11 @@ func httpRouteRule(cr builderOpts, port string, httpRoute *vmv1beta1.EmbeddedHTT
 
 	var rules []gwapiv1.HTTPRouteRule
 	if httpRoute.ExtraRules != nil {
-		var r gwapiv1.HTTPRouteRule
 		for _, ext := range httpRoute.ExtraRules {
 			if len(ext.Raw) == 0 {
 				continue
 			}
+			var r gwapiv1.HTTPRouteRule
 			if err := json.Unmarshal(ext.Raw, &r); err != nil {
 				return nil, fmt.Errorf("failed to decode extraRule: %w", err)
 			}

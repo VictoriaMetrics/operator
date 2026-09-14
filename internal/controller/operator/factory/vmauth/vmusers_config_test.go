@@ -38,6 +38,7 @@ func Test_genUserCfg(t *testing.T) {
 		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, cr)
+		assert.NoError(t, injectBackendAuthHeader(o.user, ac))
 		got, err := genUserCfg(o.user, o.objURLs, cr, ac)
 		assert.NoError(t, err)
 		szd, err := yaml.Marshal(got)
@@ -561,13 +562,13 @@ password: pass
   - http://vminsert
   src_paths:
   - /insert/0/prometheus
+  headers:
+  - H1:V1
+  - H2:V2
+  response_headers:
+  - RH1:V3
+  - RH2:V4
 name: user1
-headers:
-- H1:V1
-- H2:V2
-response_headers:
-- RH1:V3
-- RH2:V4
 retry_status_codes:
 - 502
 - 503
@@ -890,6 +891,101 @@ jwt:
     - team=dev
 `,
 	})
+}
+
+// Test_inheritUserHeaders reproduces https://github.com/VictoriaMetrics/operator/issues/2611.
+func Test_inheritUserHeaders(t *testing.T) {
+	f := func(targetRefs []vmv1beta1.TargetRef, userHeaders, userResponseHeaders []string, want []vmv1beta1.TargetRef) {
+		t.Helper()
+		got := inheritUserHeaders(targetRefs, userHeaders, userResponseHeaders)
+		assert.Equal(t, want, got)
+	}
+
+	// no user-level headers: targetRefs are returned unchanged
+	f(
+		[]vmv1beta1.TargetRef{{Paths: []string{"/a"}}},
+		nil, nil,
+		[]vmv1beta1.TargetRef{{Paths: []string{"/a"}}},
+	)
+
+	// a targetRef with no headers of its own inherits both request and response headers
+	f(
+		[]vmv1beta1.TargetRef{{Paths: []string{"/a"}}},
+		[]string{"AccountID: 1"}, []string{"X-Server: a"},
+		[]vmv1beta1.TargetRef{{
+			Paths: []string{"/a"},
+			URLMapCommon: vmv1beta1.URLMapCommon{
+				RequestHeaders:  []string{"AccountID: 1"},
+				ResponseHeaders: []string{"X-Server: a"},
+			},
+		}},
+	)
+
+	// a targetRef with its own headers keeps them instead of inheriting
+	f(
+		[]vmv1beta1.TargetRef{{
+			Paths:        []string{"/a"},
+			URLMapCommon: vmv1beta1.URLMapCommon{RequestHeaders: []string{"AccountID: 2"}},
+		}},
+		[]string{"AccountID: 1"}, []string{"X-Server: a"},
+		[]vmv1beta1.TargetRef{{
+			Paths: []string{"/a"},
+			URLMapCommon: vmv1beta1.URLMapCommon{
+				RequestHeaders:  []string{"AccountID: 2"},
+				ResponseHeaders: []string{"X-Server: a"},
+			},
+		}},
+	)
+
+	// mixed: one ref inherits, the sibling's own headers are left alone
+	f(
+		[]vmv1beta1.TargetRef{
+			{Paths: []string{"/a"}, URLMapCommon: vmv1beta1.URLMapCommon{RequestHeaders: []string{"AccountID: 2"}}},
+			{Paths: []string{"/b"}},
+		},
+		[]string{"AccountID: 1"}, nil,
+		[]vmv1beta1.TargetRef{
+			{Paths: []string{"/a"}, URLMapCommon: vmv1beta1.URLMapCommon{RequestHeaders: []string{"AccountID: 2"}}},
+			{Paths: []string{"/b"}, URLMapCommon: vmv1beta1.URLMapCommon{RequestHeaders: []string{"AccountID: 1"}}},
+		},
+	)
+}
+
+// Test_injectBackendAuthHeader_InheritsUserHeaders verifies a targetRef with TargetRefBasicAuth
+// still inherits the user's top-level headers.
+func Test_injectBackendAuthHeader_InheritsUserHeaders(t *testing.T) {
+	ctx := context.TODO()
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster-auth", Namespace: "default"},
+			Data: map[string][]byte{
+				"username": []byte("some-1"),
+				"password": []byte("some-2"),
+			},
+		},
+	})
+	cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"}}
+	ac := getAssetsCache(ctx, fclient, cr)
+
+	user := &vmv1beta1.VMUser{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: vmv1beta1.VMUserSpec{
+			VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+				Headers: []string{"AccountID: 1"},
+			},
+			TargetRefs: []vmv1beta1.TargetRef{{
+				Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+				Paths:  []string{"/select/.*"},
+				TargetRefBasicAuth: &vmv1beta1.TargetRefBasicAuth{
+					Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-auth"}, Key: "username"},
+					Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "cluster-auth"}, Key: "password"},
+				},
+			}},
+		},
+	}
+
+	assert.NoError(t, injectBackendAuthHeader(user, ac))
+	assert.Equal(t, []string{"AccountID: 1", "Authorization: Basic c29tZS0xOnNvbWUtMg=="}, user.Spec.TargetRefs[0].RequestHeaders)
 }
 
 func Test_genPassword(t *testing.T) {
@@ -2561,13 +2657,19 @@ unauthorized_user:
     - /select/.*
     - /admin/.*
     headers:
+    - 'X-Scope-OrgID: cba'
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
+    response_headers:
+    - 'X-Server-Hostname: b'
   - url_prefix:
     - http://vminsert-main-cluster.default.svc:8480
     src_paths:
     - /insert/.*
     headers:
+    - 'X-Scope-OrgID: cba'
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
+    response_headers:
+    - 'X-Server-Hostname: b'
   name: user1
   default_url:
   - https://default1:8888/unsupported_url_handler
@@ -2582,10 +2684,6 @@ unauthorized_user:
     - 192.168.0.1/24
     deny_list:
     - 10.0.0.43
-  headers:
-  - 'X-Scope-OrgID: cba'
-  response_headers:
-  - 'X-Server-Hostname: b'
   discover_backend_ips: false
   retry_status_codes:
   - 503

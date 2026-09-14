@@ -244,6 +244,7 @@ func (pos *parsedObjects) addAuthCredentialsBuildSecrets(ac *build.AssetsCache) 
 }
 
 func injectBackendAuthHeader(user *vmv1beta1.VMUser, ac *build.AssetsCache) error {
+	user.Spec.TargetRefs = inheritUserHeaders(user.Spec.TargetRefs, user.Spec.Headers, user.Spec.ResponseHeaders)
 	for j := range user.Spec.TargetRefs {
 		ref := &user.Spec.TargetRefs[j]
 		if ref.TargetRefBasicAuth != nil {
@@ -479,13 +480,18 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac
 			})
 		}
 		var err error
+		optForYaml := uua.VMUserConfigOptions
 		if resultLen == len(result) && len(uua.TargetRefs) > 0 {
-			result, err = genURLMaps("unauthorized_user", uua.TargetRefs, result, objURLs)
+			targetRefs := inheritUserHeaders(uua.TargetRefs, uua.Headers, uua.ResponseHeaders)
+			result, err = genURLMaps("unauthorized_user", targetRefs, result, objURLs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 			}
+			// already folded into each targetRef above.
+			optForYaml.Headers = nil
+			optForYaml.ResponseHeaders = nil
 		}
-		result, err = addUserConfigOptionToYaml(result, uua.VMUserConfigOptions, cr, ac)
+		result, err = addUserConfigOptionToYaml(result, optForYaml, cr, ac)
 		if err != nil {
 			return nil, err
 		}
@@ -640,6 +646,25 @@ func addIPFiltersToYaml(dst yaml.MapSlice, ipf vmv1beta1.VMUserIPFilters) yaml.M
 		dst = append(dst, yaml.MapItem{Key: "ip_filters", Value: ipFilters})
 	}
 	return dst
+}
+
+// inheritUserHeaders returns targetRefs with userHeaders/userResponseHeaders folded into any ref
+// that doesn't already define its own.
+func inheritUserHeaders(targetRefs []vmv1beta1.TargetRef, userHeaders, userResponseHeaders []string) []vmv1beta1.TargetRef {
+	if len(userHeaders) == 0 && len(userResponseHeaders) == 0 {
+		return targetRefs
+	}
+	refs := make([]vmv1beta1.TargetRef, len(targetRefs))
+	for i, ref := range targetRefs {
+		if len(ref.RequestHeaders) == 0 {
+			ref.RequestHeaders = append([]string(nil), userHeaders...)
+		}
+		if len(ref.ResponseHeaders) == 0 {
+			ref.ResponseHeaders = userResponseHeaders
+		}
+		refs[i] = ref
+	}
+	return refs
 }
 
 // generates routing config for given target refs
@@ -896,7 +921,11 @@ func genUserCfg(user *vmv1beta1.VMUser, objURLs map[string]string, cr *vmv1beta1
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	r, err = addUserConfigOptionToYaml(r, user.Spec.VMUserConfigOptions, cr, ac)
+	// already folded into each targetRef by injectBackendAuthHeader.
+	optForYaml := user.Spec.VMUserConfigOptions
+	optForYaml.Headers = nil
+	optForYaml.ResponseHeaders = nil
+	r, err = addUserConfigOptionToYaml(r, optForYaml, cr, ac)
 	if err != nil {
 		return nil, err
 	}

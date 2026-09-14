@@ -6,7 +6,7 @@ go 1.26.6
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.151.0
-	github.com/VictoriaMetrics/metricsql v0.87.3
+	github.com/VictoriaMetrics/metricsql v0.87.4
 	github.com/prometheus/alertmanager v0.34.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/net v0.59.0
@@ -17,7 +17,7 @@ require (
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.7.1
 	k8s.io/client-go v0.37.0
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
-	sigs.k8s.io/controller-runtime v0.25.0
+	sigs.k8s.io/controller-runtime v0.25.1
 	sigs.k8s.io/gateway-api v1.6.2
 )
 

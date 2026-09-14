@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig/): add `post_updates_to_thread` field to `SlackConfig`. This allows alertmanager to post subsequent notifications for an alert group as replies in the thread of the initial Slack message; combined with `update_message`, the initial message is updated in-place and a reply is also posted to its thread. Requires alertmanager with [prometheus/alertmanager#5540](https://github.com/prometheus/alertmanager/pull/5540) (targeting v0.35.0). See [#2580](https://github.com/VictoriaMetrics/operator/pull/2580).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.151.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.151.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.30.4](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1304) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.11.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.11.0) version

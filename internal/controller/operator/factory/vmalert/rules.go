@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"sort"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -33,13 +34,14 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, rclient client.Client, cr
 }
 
 func reconcileConfigsData(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([]string, error) {
-	newConfigMaps, err := makeRulesConfigMaps(cr, groups)
+	prevAssignment, maxKnownIndex, err := loadPreviousBucketAssignment(ctx, rclient, cr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot load previous rule configmaps for vmalert: %w", err)
+	}
+	newConfigMaps, err := makeRulesConfigMaps(cr, groups, prevAssignment, maxKnownIndex)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build rule configmaps for vmalert: %w", err)
 	}
-	sort.Slice(newConfigMaps, func(i, j int) bool {
-		return newConfigMaps[i].Name < newConfigMaps[j].Name
-	})
 	var needReload bool
 	var newConfigMapNames []string
 	owner := cr.AsOwner()
@@ -172,63 +174,195 @@ func dropAlertingRules(rules []vmv1beta1.Rule) []vmv1beta1.Rule {
 // rulesFilename is the single BinaryData key in each rule ConfigMap bucket.
 const rulesFilename = "rules.yaml"
 
+// loadPreviousBucketAssignment reads the group-name -> bucket-index assignment out of the
+// currently-deployed rule ConfigMaps for cr, plus the highest bucket index seen (-1 if none exist).
+func loadPreviousBucketAssignment(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string][]int, int, error) {
+	var cmList corev1.ConfigMapList
+	if err := rclient.List(ctx, &cmList, client.InNamespace(cr.Namespace), client.MatchingLabels(cr.SelectorLabels())); err != nil {
+		return nil, -1, fmt.Errorf("cannot list rule configmaps: %w", err)
+	}
+	assignment := make(map[string][]int)
+	maxIndex := -1
+	for _, cm := range cmList.Items {
+		idx, ok := ruleBucketIndex(cr, cm.Name)
+		if !ok {
+			continue
+		}
+		if idx > maxIndex {
+			maxIndex = idx
+		}
+		names, err := groupNamesFromConfigMap(cm)
+		if err != nil {
+			logger.WithContext(ctx).Error(err, "cannot parse existing rule configmap, its groups will be treated as new", "configmap", cm.Name)
+			continue
+		}
+		for _, name := range names {
+			assignment[name] = append(assignment[name], idx)
+		}
+	}
+	return assignment, maxIndex, nil
+}
+
+func groupNamesFromConfigMap(cm corev1.ConfigMap) ([]string, error) {
+	data, ok := cm.BinaryData[rulesFilename]
+	if !ok {
+		return nil, nil
+	}
+	decompressed, err := build.GunzipConfig(data)
+	if err != nil {
+		return nil, fmt.Errorf("cannot gunzip %s: %w", rulesFilename, err)
+	}
+	var spec vmv1beta1.VMRuleSpec
+	if err := yaml.Unmarshal(decompressed, &spec); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal %s: %w", rulesFilename, err)
+	}
+	names := make([]string, 0, len(spec.Groups))
+	for _, g := range spec.Groups {
+		names = append(names, g.Name)
+	}
+	return names, nil
+}
+
+// ruleBucket is one gzip-compressed ConfigMap's worth of rule groups, keyed by its stable index
+// (the ConfigMap name suffix). Indices are not necessarily dense.
+type ruleBucket struct {
+	index  int
+	groups []vmv1beta1.RuleGroup
+}
+
 // packRuleGroups packs groups into buckets that each fit within limit bytes when gzip-compressed.
-// Groups with the same name must not appear in the same bucket (vmalert requires unique group names
-// within a single file). The algorithm first assigns groups to name-unique batches via greedy
-// first-fit, then splits any oversized batch further with build.PackItems (subsets preserve
-// name-uniqueness).
-func packRuleGroups(groups []vmv1beta1.RuleGroup, limit int) ([][]vmv1beta1.RuleGroup, error) {
-	// Phase 1: greedy first-fit into name-unique batches.
-	var batches [][]vmv1beta1.RuleGroup
-	batchNames := []sets.Set[string]{}
+// Groups with the same name must not appear in the same bucket. Each group keeps its previous
+// bucket (from prevAssignment) whenever it still fits there; only a new or displaced group gets
+// relocated, via first-fit over known buckets and otherwise a fresh index above maxKnownIndex. An
+// emptied bucket is dropped from the result rather than compacted into a neighbor.
+func packRuleGroups(groups []vmv1beta1.RuleGroup, limit int, prevAssignment map[string][]int, maxKnownIndex int) ([]ruleBucket, error) {
+	type bucketState struct {
+		index  int
+		groups []vmv1beta1.RuleGroup
+		names  sets.Set[string]
+	}
+	byIndex := make(map[int]*bucketState)
+	for _, indices := range prevAssignment {
+		for _, idx := range indices {
+			if _, ok := byIndex[idx]; !ok {
+				byIndex[idx] = &bucketState{index: idx, names: sets.New[string]()}
+			}
+		}
+	}
+
+	fits := func(b *bucketState, g vmv1beta1.RuleGroup) (bool, error) {
+		if b.names.Has(g.Name) {
+			return false, nil
+		}
+		candidate := append(append([]vmv1beta1.RuleGroup{}, b.groups...), g)
+		size, err := packedGroupsSize(candidate)
+		if err != nil {
+			return false, err
+		}
+		return size <= limit, nil
+	}
+	place := func(b *bucketState, g vmv1beta1.RuleGroup) {
+		b.groups = append(b.groups, g)
+		b.names.Insert(g.Name)
+	}
+
+	// Pass 1: every group claims its own previous bucket first, before first-fit runs.
+	claimed := make(map[string]int)
+	var unplaced []vmv1beta1.RuleGroup
 	for _, g := range groups {
+		candidates := prevAssignment[g.Name]
+		if claimed[g.Name] >= len(candidates) {
+			unplaced = append(unplaced, g)
+			continue
+		}
+		idx := candidates[claimed[g.Name]]
+		claimed[g.Name]++
+		if ok, err := fits(byIndex[idx], g); err != nil {
+			return nil, err
+		} else if ok {
+			place(byIndex[idx], g)
+		} else {
+			unplaced = append(unplaced, g)
+		}
+	}
+
+	// Pass 2: first-fit over known buckets, else a fresh index.
+	nextIndex := maxKnownIndex + 1
+	for _, g := range unplaced {
 		placed := false
-		for i := range batches {
-			if !batchNames[i].Has(g.Name) {
-				batches[i] = append(batches[i], g)
-				batchNames[i].Insert(g.Name)
+		indices := make([]int, 0, len(byIndex))
+		for idx := range byIndex {
+			indices = append(indices, idx)
+		}
+		sort.Ints(indices)
+		for _, idx := range indices {
+			if ok, err := fits(byIndex[idx], g); err != nil {
+				return nil, err
+			} else if ok {
+				place(byIndex[idx], g)
 				placed = true
 				break
 			}
 		}
+
 		if !placed {
-			batches = append(batches, []vmv1beta1.RuleGroup{g})
-			batchNames = append(batchNames, sets.New(g.Name))
+			size, err := packedGroupsSize([]vmv1beta1.RuleGroup{g})
+			if err != nil {
+				return nil, err
+			}
+			if size > limit {
+				return nil, fmt.Errorf("single item compressed size %d exceeds limit %d", size, limit)
+			}
+			b := &bucketState{index: nextIndex, names: sets.New[string]()}
+			byIndex[nextIndex] = b
+			nextIndex++
+			place(b, g)
 		}
 	}
-	// Phase 2: split any oversized batch by size; subsets of a name-unique batch are also name-unique.
-	var result [][]vmv1beta1.RuleGroup
-	for _, batch := range batches {
-		sub, err := build.PackItems(batch, limit, 150)
-		if err != nil {
-			return nil, err
+
+	result := make([]ruleBucket, 0, len(byIndex))
+	for _, b := range byIndex {
+		if len(b.groups) == 0 {
+			continue
 		}
-		result = append(result, sub...)
+		result = append(result, ruleBucket{index: b.index, groups: b.groups})
 	}
+	sort.Slice(result, func(i, j int) bool { return result[i].index < result[j].index })
 	return result, nil
 }
 
-// makeRulesConfigMaps packs rule groups into gzip-compressed ConfigMap buckets using
-// build.PackItems with 50% headroom. Each bucket is stored as one "rules.yaml" BinaryData entry.
-// Always returns at least one ConfigMap so VMAlert has a valid mount target.
-func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([]corev1.ConfigMap, error) {
-	buckets, err := packRuleGroups(groups, config.MustGetBaseConfig().ConfigDataBudgetBytes)
+func packedGroupsSize(groups []vmv1beta1.RuleGroup) (int, error) {
+	data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: groups})
+	if err != nil {
+		return 0, fmt.Errorf("yaml marshal: %w", err)
+	}
+	compressed, err := build.GzipConfig(data)
+	if err != nil {
+		return 0, fmt.Errorf("gzip: %w", err)
+	}
+	return len(compressed), nil
+}
+
+// makeRulesConfigMaps packs rule groups into gzip-compressed ConfigMap buckets via packRuleGroups.
+// Each bucket is stored as one "rules.yaml" BinaryData entry, named by its stable bucket index.
+func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup, prevAssignment map[string][]int, maxKnownIndex int) ([]corev1.ConfigMap, error) {
+	buckets, err := packRuleGroups(groups, config.MustGetBaseConfig().ConfigDataBudgetBytes, prevAssignment, maxKnownIndex)
 	if err != nil {
 		return nil, fmt.Errorf("cannot pack rule groups into configmap buckets: %w", err)
 	}
 	cms := make([]corev1.ConfigMap, 0, len(buckets))
-	for i, bucket := range buckets {
-		data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: bucket})
+	for _, bucket := range buckets {
+		data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: bucket.groups})
 		if err != nil {
-			return nil, fmt.Errorf("cannot marshal rule groups for configmap %d: %w", i, err)
+			return nil, fmt.Errorf("cannot marshal rule groups for configmap %d: %w", bucket.index, err)
 		}
 		compressed, err := build.GzipConfig(data)
 		if err != nil {
-			return nil, fmt.Errorf("cannot compress rule groups for configmap %d: %w", i, err)
+			return nil, fmt.Errorf("cannot compress rule groups for configmap %d: %w", bucket.index, err)
 		}
 		cms = append(cms, corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            ruleConfigMapName(cr.Name) + "-" + strconv.Itoa(i),
+				Name:            ruleConfigMapName(cr.Name) + "-" + strconv.Itoa(bucket.index),
 				Namespace:       cr.Namespace,
 				Labels:          cr.FinalLabels(),
 				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
@@ -241,6 +375,20 @@ func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([
 
 func ruleConfigMapName(vmName string) string {
 	return "vm-" + vmName + "-rulefiles"
+}
+
+// ruleBucketIndex extracts the stable bucket index from a rule ConfigMap name built by
+// makeRulesConfigMaps.
+func ruleBucketIndex(cr *vmv1beta1.VMAlert, cmName string) (int, bool) {
+	idxStr, ok := strings.CutPrefix(cmName, ruleConfigMapName(cr.Name)+"-")
+	if !ok {
+		return 0, false
+	}
+	idx, err := strconv.Atoi(idxStr)
+	if err != nil {
+		return 0, false
+	}
+	return idx, true
 }
 
 // deduplicateRules - takes list of vmRules and modifies it

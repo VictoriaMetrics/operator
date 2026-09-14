@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"testing/synctest"
 
@@ -21,6 +25,16 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+// fillerContent returns n bytes of deterministic, high-entropy filler keyed by seed.
+func fillerContent(seed string, n int) string {
+	var b strings.Builder
+	for b.Len() < n {
+		h := sha256.Sum256([]byte(seed + b.String()))
+		b.WriteString(hex.EncodeToString(h[:]))
+	}
+	return b.String()[:n]
+}
 
 // groupNamesFromCM decompresses and unmarshals the rules.yaml BinaryData entry,
 // returning the contained group names for easy assertion.
@@ -47,6 +61,15 @@ func groupNamesFromCM(t *testing.T, cm corev1.ConfigMap) []string {
 		names = append(names, g.Name)
 	}
 	return names
+}
+
+func groupsCompressedSize(t *testing.T, groups []vmv1beta1.RuleGroup) int {
+	t.Helper()
+	data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: groups})
+	assert.NoError(t, err)
+	compressed, err := build.GzipConfig(data)
+	assert.NoError(t, err)
+	return len(compressed)
 }
 
 func TestSelectRules(t *testing.T) {
@@ -351,13 +374,13 @@ func TestRuleRebalance(t *testing.T) {
 			Spec: vmv1beta1.VMRuleSpec{
 				Groups: []vmv1beta1.RuleGroup{{
 					Name:  name,
-					Rules: []vmv1beta1.Rule{{Record: recordName, Expr: "vector(1)"}},
+					Rules: []vmv1beta1.Rule{{Record: recordName, Expr: "vector(1)", Labels: map[string]string{"filler": fillerContent(name, 200)}}},
 				}},
 			},
 		}
 	}
 
-	singleGroupData, err := yaml.Marshal([]vmv1beta1.RuleGroup{mkRule("default", "rule-x", "job:x:total").Spec.Groups[0]})
+	singleGroupData, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: []vmv1beta1.RuleGroup{mkRule("default", "rule-x", "job:x:total").Spec.Groups[0]}})
 	assert.NoError(t, err)
 	singleGroupCompressed, err := build.GzipConfig(singleGroupData)
 	assert.NoError(t, err)
@@ -388,8 +411,7 @@ func TestRuleRebalance(t *testing.T) {
 	assert.Contains(t, cm0.BinaryData, rulesFilename, "cm-0 must have rules.yaml")
 	assert.Equal(t, []string{"rule-b"}, groupNamesFromCM(t, cm0))
 
-	// adding a second rule forces a split; VMRules are sorted by key so rule-a goes into cm-0
-	// and rule-b spills into cm-1
+	// adding a second rule forces a split; rule-b stays in cm-0, rule-a gets the new cm-1.
 	ruleA := mkRule(ns, "rule-a", "job:a:total")
 	assert.NoError(t, fclient.Create(ctx, ruleA))
 
@@ -400,8 +422,8 @@ func TestRuleRebalance(t *testing.T) {
 	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: firstRuleCM, Namespace: ns}, &cm0))
 	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: secondRuleCM, Namespace: ns}, &cm1))
 
-	assert.Equal(t, []string{"rule-a"}, groupNamesFromCM(t, cm0), "rule-a must be in cm-0 after split")
-	assert.Equal(t, []string{"rule-b"}, groupNamesFromCM(t, cm1), "rule-b must be in cm-1 after split")
+	assert.Equal(t, []string{"rule-b"}, groupNamesFromCM(t, cm0), "rule-b must stay in cm-0")
+	assert.Equal(t, []string{"rule-a"}, groupNamesFromCM(t, cm1), "new rule-a gets cm-1")
 
 	// two VMRules sharing the same group name must land in separate ConfigMaps even if both fit
 	// within the size limit, because group names must be unique within a single rules.yaml file.
@@ -427,6 +449,142 @@ func TestRuleRebalance(t *testing.T) {
 	g1 := groupNamesFromCM(t, cm1c)
 	assert.Equal(t, []string{"rule-a"}, g0)
 	assert.Equal(t, []string{"rule-a"}, g1)
+}
+
+func bucketAssignment(buckets []ruleBucket) map[string][]int {
+	assignment := make(map[string][]int)
+	for _, b := range buckets {
+		for _, g := range b.groups {
+			assignment[g.Name] = append(assignment[g.Name], b.index)
+		}
+	}
+	return assignment
+}
+
+func maxBucketIndex(buckets []ruleBucket) int {
+	max := -1
+	for _, b := range buckets {
+		if b.index > max {
+			max = b.index
+		}
+	}
+	return max
+}
+
+func groupNames(groups []vmv1beta1.RuleGroup) []string {
+	names := make([]string, 0, len(groups))
+	for _, g := range groups {
+		names = append(names, g.Name)
+	}
+	return names
+}
+
+// fourEvenBuckets builds 12 equally-sized rule groups and a limit that packs them into 4 buckets
+// of 3, then returns the fresh (no prior state) packing to use as prevAssignment in later calls.
+func fourEvenBuckets(t *testing.T) (groups []vmv1beta1.RuleGroup, limit int, before []ruleBucket) {
+	t.Helper()
+	mkGroup := func(i int) vmv1beta1.RuleGroup {
+		name := fmt.Sprintf("group-%02d", i)
+		return vmv1beta1.RuleGroup{
+			Name:  name,
+			Rules: []vmv1beta1.Rule{{Record: name, Expr: "vector(1)", Labels: map[string]string{"filler": fillerContent(name, 200)}}},
+		}
+	}
+	groups = make([]vmv1beta1.RuleGroup, 12)
+	for i := range groups {
+		groups[i] = mkGroup(i)
+	}
+
+	maxSize3, minSize4 := 0, -1
+	for i := 0; i+3 <= len(groups); i++ {
+		sz := groupsCompressedSize(t, groups[i:i+3])
+		if sz > maxSize3 {
+			maxSize3 = sz
+		}
+	}
+	for i := 0; i+4 <= len(groups); i++ {
+		sz := groupsCompressedSize(t, groups[i:i+4])
+		if minSize4 == -1 || sz < minSize4 {
+			minSize4 = sz
+		}
+	}
+	if !assert.Less(t, maxSize3, minSize4, "test data must allow a limit that fits any 3 groups but not 4") {
+		return
+	}
+	limit = maxSize3
+
+	before, err := packRuleGroups(groups, limit, nil, -1)
+	if !assert.NoError(t, err) {
+		return
+	}
+	if !assert.Len(t, before, 4, "12 equally-sized groups must fill 4 buckets of 3") {
+		return
+	}
+	for _, bucket := range before {
+		if !assert.Len(t, bucket.groups, 3) {
+			return
+		}
+	}
+	return groups, limit, before
+}
+
+// TestPackRuleGroups_StableOnRemoval reproduces
+// https://github.com/VictoriaMetrics/operator/issues/2610: removing one rule group must not
+// reshuffle buckets that didn't need to change, regardless of where the removed group sits.
+func TestPackRuleGroups_StableOnRemoval(t *testing.T) {
+	groups, limit, before := fourEvenBuckets(t)
+	prevAssignment, maxIndex := bucketAssignment(before), maxBucketIndex(before)
+
+	tail, err := packRuleGroups(groups[:len(groups)-1], limit, prevAssignment, maxIndex)
+	assert.NoError(t, err)
+	if assert.Len(t, tail, 4) {
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, before[i], tail[i], "bucket %d must stay untouched", i)
+		}
+		assert.Len(t, tail[3].groups, 2, "last bucket loses the removed group, nothing else")
+	}
+
+	var mid []vmv1beta1.RuleGroup
+	for _, g := range groups {
+		if g.Name != "group-04" {
+			mid = append(mid, g)
+		}
+	}
+	midResult, err := packRuleGroups(mid, limit, prevAssignment, maxIndex)
+	assert.NoError(t, err)
+	if assert.Len(t, midResult, 4) {
+		assert.Equal(t, before[0], midResult[0], "bucket 0 must stay untouched")
+		assert.Equal(t, before[2], midResult[2], "bucket 2 must stay untouched")
+		assert.Equal(t, before[3], midResult[3], "bucket 3 must stay untouched")
+		assert.Equal(t, 1, midResult[1].index)
+		assert.ElementsMatch(t, []string{"group-03", "group-05"}, groupNames(midResult[1].groups), "bucket 1 keeps its other two survivors")
+	}
+}
+
+// TestPackRuleGroups_SparseIndicesOnEmptyBucket reproduces the second half of
+// https://github.com/VictoriaMetrics/operator/issues/2610: emptying a whole bucket must drop it
+// from the result rather than getting compacted into a neighbor.
+func TestPackRuleGroups_SparseIndicesOnEmptyBucket(t *testing.T) {
+	groups, limit, before := fourEvenBuckets(t)
+	prevAssignment, maxIndex := bucketAssignment(before), maxBucketIndex(before)
+
+	var shrunk []vmv1beta1.RuleGroup
+	for _, g := range groups {
+		switch g.Name {
+		case "group-06", "group-07", "group-08":
+			continue
+		default:
+			shrunk = append(shrunk, g)
+		}
+	}
+
+	result, err := packRuleGroups(shrunk, limit, prevAssignment, maxIndex)
+	assert.NoError(t, err)
+	if assert.Len(t, result, 3, "bucket 2 disappears instead of being compacted away") {
+		assert.Equal(t, before[0], result[0])
+		assert.Equal(t, before[1], result[1])
+		assert.Equal(t, before[3], result[2], "surviving bucket 3 keeps index 3, not renumbered to 2")
+	}
 }
 
 func Test_deduplicateRules(t *testing.T) {

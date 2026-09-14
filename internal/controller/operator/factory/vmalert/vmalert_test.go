@@ -748,7 +748,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				},
 			},
 		},
-		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+		ruleConfigMapNames: []string{"vm-base-rulefiles-0"},
 		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
 	})
 
@@ -778,7 +778,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				},
 			},
 		},
-		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+		ruleConfigMapNames: []string{"vm-base-rulefiles-0"},
 		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
 	})
 

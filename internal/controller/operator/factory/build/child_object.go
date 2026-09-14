@@ -172,40 +172,68 @@ func (co *ChildObjects[T]) forEachCollectSkipOn(apply func(s T) error, shouldIgn
 	return nil
 }
 
-// PackItems recursively splits items into gzip-compressed YAML buckets within limit bytes each.
-// headroom is an integer percentage applied to the compressed size when estimating bucket count
-// (100 = exact, 150 = 50% extra slack for when subgroup compression may yield a worse ratio
-// than the full set). Returns an error if a single indivisible item exceeds the limit.
-// Recursion terminates because each chunk is strictly smaller than the input.
-func PackItems[T any](items []T, limit, headroom int) ([][]T, error) {
-	data, err := yaml.Marshal(items)
-	if err != nil {
-		return nil, fmt.Errorf("yaml marshal: %w", err)
-	}
-	compressed, err := GzipConfig(data)
-	if err != nil {
-		return nil, fmt.Errorf("gzip: %w", err)
-	}
-	n := len(compressed)
-	if n <= limit {
-		return [][]T{items}, nil
-	}
-	if len(items) == 1 {
-		return nil, fmt.Errorf("single item compressed size %d exceeds limit %d", n, limit)
-	}
-	numBuckets := (n*headroom + 100*limit - 1) / (100 * limit)
-	itemsPerBucket := (len(items) + numBuckets - 1) / numBuckets
-	var result [][]T
-	for i := 0; i < len(items); i += itemsPerBucket {
-		end := i + itemsPerBucket
-		if end > len(items) {
-			end = len(items)
-		}
-		sub, err := PackItems(items[i:end], limit, headroom)
+// PackedBucket is one bucket produced by PackItems, with its gzip-compressed YAML bytes.
+type PackedBucket[T any] struct {
+	Items      []T
+	Compressed []byte
+}
+
+// PackItems packs items in order into buckets whose gzip-compressed YAML stays under limit
+// bytes each.
+func PackItems[T any](items []T, limit int) ([]PackedBucket[T], error) {
+	return PackItemsFunc(items, limit, func(v []T) ([]byte, error) { return yaml.Marshal(v) })
+}
+
+// PackItemsFunc is like PackItems, but marshals each candidate bucket via marshal instead of
+// yaml.Marshal.
+func PackItemsFunc[T any](items []T, limit int, marshal func([]T) ([]byte, error)) ([]PackedBucket[T], error) {
+	if len(items) == 0 {
+		compressed, err := packedItemsCompressed(items, marshal)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, sub...)
+		if len(compressed) > limit {
+			return nil, fmt.Errorf("base content compressed size %d exceeds limit %d", len(compressed), limit)
+		}
+		return []PackedBucket[T]{{Items: items, Compressed: compressed}}, nil
+	}
+	var result []PackedBucket[T]
+	var current []T
+	var currentCompressed []byte
+	for _, item := range items {
+		candidate := append(append([]T{}, current...), item)
+		compressed, err := packedItemsCompressed(candidate, marshal)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case len(compressed) <= limit:
+			current = candidate
+			currentCompressed = compressed
+		case len(current) == 0:
+			return nil, fmt.Errorf("single item compressed size %d exceeds limit %d", len(compressed), limit)
+		default:
+			result = append(result, PackedBucket[T]{Items: current, Compressed: currentCompressed})
+			current = []T{item}
+			currentCompressed, err = packedItemsCompressed(current, marshal)
+			if err != nil {
+				return nil, err
+			}
+			if len(currentCompressed) > limit {
+				return nil, fmt.Errorf("single item compressed size %d exceeds limit %d", len(currentCompressed), limit)
+			}
+		}
+	}
+	if len(current) > 0 {
+		result = append(result, PackedBucket[T]{Items: current, Compressed: currentCompressed})
 	}
 	return result, nil
+}
+
+func packedItemsCompressed[T any](items []T, marshal func([]T) ([]byte, error)) ([]byte, error) {
+	data, err := marshal(items)
+	if err != nil {
+		return nil, fmt.Errorf("marshal: %w", err)
+	}
+	return GzipConfig(data)
 }

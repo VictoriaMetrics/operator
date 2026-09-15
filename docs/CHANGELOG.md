@@ -41,6 +41,7 @@ aliases:
 * BUGFIX:  [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix propagation of `spec.extraEnvsFrom` to anomaly pods, previously it was omitted. See [#2567](https://github.com/VictoriaMetrics/operator/issues/2567).
 * BUGFIX:  [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fix propagation of `spec.extraEnvsFrom` to vmalertmanager pod, previously it was omitted. See [#2582](https://github.com/VictoriaMetrics/operator/issues/2582).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix HTTPRoute `extraRules` inheriting fields from previous rules. See [#2605](https://github.com/VictoriaMetrics/operator/issues/2605).
+* BUGFIX: [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule/): drop a leftover `+kubebuilder:default=""` on `record`/`alert`, which made the apiserver inject an empty counterpart field into every stored `VMRule`, causing diff-based GitOps tooling (e.g. Argo CD) to report it as permanently `OutOfSync`. The default was needed only for a `+listMapKey` requirement added in [#2258](https://github.com/VictoriaMetrics/operator/pull/2258) and removed in [#2379](https://github.com/VictoriaMetrics/operator/pull/2379). See [#2622](https://github.com/VictoriaMetrics/operator/issues/2622).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

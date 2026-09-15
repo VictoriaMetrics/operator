@@ -556,8 +556,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -3408,8 +3406,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -4969,8 +4965,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -6385,8 +6379,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -19853,8 +19845,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -31838,8 +31828,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -37787,8 +37775,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -45069,8 +45055,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -46522,8 +46506,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -48479,8 +48461,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -85606,8 +85586,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -89216,8 +89194,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -90750,8 +90726,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -92171,8 +92145,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:

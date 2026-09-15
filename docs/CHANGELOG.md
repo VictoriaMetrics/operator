@@ -41,6 +41,7 @@ aliases:
 * BUGFIX:  [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): fix propagation of `spec.extraEnvsFrom` to anomaly pods, previously it was omitted. See [#2567](https://github.com/VictoriaMetrics/operator/issues/2567).
 * BUGFIX:  [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/): fix propagation of `spec.extraEnvsFrom` to vmalertmanager pod, previously it was omitted. See [#2582](https://github.com/VictoriaMetrics/operator/issues/2582).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): fix HTTPRoute `extraRules` inheriting fields from previous rules. See [#2605](https://github.com/VictoriaMetrics/operator/issues/2605).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): remove the invalid `items` key under `dnsConfig` in the `VMAgent`, `VMAlertmanager`, `VMAnomaly`, `VMCluster`, `VLAgent`, `VLCluster`, `VTAgent` and `VTCluster` CRDs. Previously, while Kubernetes itself ignored this key, it could fail validation in strict JSON Schema consumers such as KubeVela. See [#2618](https://github.com/VictoriaMetrics/operator/issues/2618).
 
 ## [v0.74.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.74.1)
 **Release date:** 04 Aug 2026

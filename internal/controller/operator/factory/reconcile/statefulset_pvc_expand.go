@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -125,18 +126,21 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		prevVCT := getPVCByName(prevVCTs, stsClaimName)
 		nsnPvc := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 		// update PVC size and metadata if it's needed, retrying on conflict
+		var appliedSize resource.Quantity
 		if err := retryOnConflict(func() error {
 			var currentPVC corev1.PersistentVolumeClaim
 			if err := rclient.Get(ctx, nsnPvc, &currentPVC); err != nil {
 				return err
 			}
-			return updatePVC(ctx, rclient, &currentPVC, &stsClaim, prevVCT, nil)
+			err := updatePVC(ctx, rclient, &currentPVC, &stsClaim, prevVCT, nil)
+			// a declined resize keeps the current size, so the below waitForPVCReady will not waste time waiting for the resize to happen
+			appliedSize = currentPVC.Spec.Resources.Requests[corev1.ResourceStorage]
+			return err
 		}); err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		size := stsClaim.Spec.Resources.Requests[corev1.ResourceStorage]
-		if err := waitForPVCReady(ctx, rclient, nsnPvc, size); err != nil {
+		if err := waitForPVCReady(ctx, rclient, nsnPvc, appliedSize); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -178,25 +182,32 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 
 		l := logger.WithContext(ctx)
 		if direction < 0 {
-			err := fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration", newObj.Name, existingSize.String(), newSize.String())
+			err := fmt.Errorf("cannot decrease PVC=%s size from=%s to=%s, please check VolumeClaimTemplate configuration: %w",
+				existingObj.Name, existingSize.String(), newSize.String(), ErrDeclined)
 			l.Error(err, "declined PVC size decrease")
 			return metaChanged, err
 		}
 
-		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", newObj.Name, existingSize, newSize))
+		l.Info(fmt.Sprintf("need to expand pvc=%s size from=%s to=%s", existingObj.Name, existingSize, newSize))
 		if !expandable {
 			// check if storage class is expandable
 			var err error
 			expandable, err = isStorageClassExpandable(ctx, rclient, existingObj)
 			if err != nil {
-				return false, fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", newObj.Name, err)
+				return false, fmt.Errorf("failed to check storageClass expandability for PVC=%s: %v", existingObj.Name, err)
 			}
 		}
 		if !expandable {
-			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			sc := ptr.Deref(newObj.Spec.StorageClassName, "default")
-			l.Info(fmt.Sprintf("storage class=%s for PVC=%s doesn't support live resizing", sc, newObj.Name))
-			return metaChanged, nil
+			// report the StorageClass isStorageClassExpandable actually checked
+			sc := pvcStorageClassName(existingObj)
+			if sc == "" {
+				sc = "default"
+			}
+			err := fmt.Errorf("cannot expand PVC=%s size from=%s to=%s, storageClass=%s doesn't support live resizing,"+
+				` resize it manually or add annotation %s: "true" to the PVC: %w`,
+				existingObj.Name, existingSize.String(), newSize.String(), sc, vmv1beta1.PVCExpandableLabel, ErrDeclined)
+			l.Error(err, "declined PVC expansion")
+			return metaChanged, err
 		}
 		existingObj.Spec.Resources = *newObj.Spec.Resources.DeepCopy()
 	}
@@ -204,17 +215,27 @@ func modifyPVC(ctx context.Context, rclient client.Client, existingObj, newObj, 
 }
 
 func updatePVC(ctx context.Context, rclient client.Client, existingObj, newObj, prevObj *corev1.PersistentVolumeClaim, owner *metav1.OwnerReference) error {
-	modified, err := modifyPVC(ctx, rclient, existingObj, newObj, prevObj, owner)
-	if err != nil {
-		return err
+	// modifyPVC may decline a resize due to unexpandable sc, but can still apply metadata changes
+	modified, modifyErr := modifyPVC(ctx, rclient, existingObj, newObj, prevObj, owner)
+	if modified {
+		if err := rclient.Update(ctx, existingObj); err != nil {
+			return fmt.Errorf("failed to update pvc %s: %w", newObj.Name, err)
+		}
 	}
-	if !modified {
-		return nil
+	return modifyErr
+}
+
+// pvcStorageClassName returns the StorageClass name pvc is bound to.
+// An empty value means the cluster default StorageClass.
+func pvcStorageClassName(pvc *corev1.PersistentVolumeClaim) string {
+	var className string
+	if pvc.Spec.StorageClassName != nil {
+		className = *pvc.Spec.StorageClassName
 	}
-	if err := rclient.Update(ctx, existingObj); err != nil {
-		return fmt.Errorf("failed to expand size for pvc %s: %v", newObj.Name, err)
+	if name, ok := pvc.Annotations["volume.beta.kubernetes.io/storage-class"]; ok {
+		className = name
 	}
-	return nil
+	return className
 }
 
 // isStorageClassExpandable check is it possible to update size of given pvc
@@ -231,13 +252,7 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	if err := rclient.List(ctx, &storageClasses); err != nil {
 		return false, fmt.Errorf("cannot list storageClass: %w", err)
 	}
-	var className string
-	if pvc.Spec.StorageClassName != nil {
-		className = *pvc.Spec.StorageClassName
-	}
-	if name, ok := pvc.Annotations["volume.beta.kubernetes.io/storage-class"]; ok {
-		className = name
-	}
+	className := pvcStorageClassName(pvc)
 	for i := range storageClasses.Items {
 		class := &storageClasses.Items[i]
 		if len(className) > 0 {

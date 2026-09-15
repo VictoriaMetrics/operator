@@ -174,6 +174,16 @@ func (e *errRecreate) Error() string {
 	return e.msg
 }
 
+// ErrDeclined marks a change that the operator refuses to apply and cannot fix by retrying,
+// such as a PersistentVolumeClaim size decrease. It must be reported at the object status,
+// but must not requeue the reconcile, since only a user action can resolve it.
+var ErrDeclined = errors.New("declined by the operator")
+
+// IsDeclined determines an error for a change declined by the operator
+func IsDeclined(err error) bool {
+	return errors.Is(err, ErrDeclined)
+}
+
 // IsRetryable determines one of errors:
 // * error which indicates that timeout for app transition into Ready state reached and should be continued at the next reconcile loop
 // * k8s conflict error

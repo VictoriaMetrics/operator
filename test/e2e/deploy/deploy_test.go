@@ -1,7 +1,9 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
@@ -10,8 +12,28 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 	"github.com/VictoriaMetrics/operator/test/utils"
 )
+
+// overlappingProcessMetrics: labelless go_*/process_* metrics emitted by both controller-runtime's default collectors and vmMetricsFilterProvider's vmmetrics.WritePrometheus; each must appear exactly once per scrape.
+var overlappingProcessMetrics = []string{
+	"go_goroutines",
+	"go_threads",
+	"go_info",
+	"process_cpu_seconds_total",
+	"process_resident_memory_bytes",
+	"process_virtual_memory_bytes",
+	"process_start_time_seconds",
+}
+
+// vmOnlyMetrics: names emitted only by vmmetrics.WritePrometheus, asserting VM enrichment actually ran, not just that nothing is duplicated.
+var vmOnlyMetrics = []string{
+	"process_io_read_bytes_total",
+	"process_cpu_seconds_system_total",
+	"go_cpu_count",
+	"go_info_ext",
+}
 
 var (
 	_ = Describe("operator in-cluster deployment", Ordered, func() {
@@ -121,6 +143,58 @@ var (
 					return nil
 				}
 				EventuallyWithOffset(1, verifyControllerUp, 3*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			})
+
+			It("should not expose duplicate metric families on /metrics", func() {
+				By("locating the operator pod's IP")
+				var podIP string
+				EventuallyWithOffset(1, func() error {
+					cmd := exec.Command("kubectl", "get", "pods",
+						"-l", "control-plane=vm-operator",
+						"-n", ns,
+						"-o", "jsonpath={.items[0].status.podIP}",
+					)
+					out, err := utils.Run(cmd)
+					if err != nil {
+						return err
+					}
+					podIP = strings.TrimSpace(string(out))
+					if podIP == "" {
+						return fmt.Errorf("operator pod has no IP assigned yet")
+					}
+					return nil
+				}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+				// empty Dimension requests every sample regardless of labels, so a duplicate surfaces as len(values[name]) > 1.
+				By("scraping the operator's own /metrics endpoint and checking for duplicates")
+				queries := make([]podutil.MetricQuery, 0, len(overlappingProcessMetrics)+len(vmOnlyMetrics))
+				for _, name := range overlappingProcessMetrics {
+					queries = append(queries, podutil.MetricQuery{Name: name})
+				}
+				for _, name := range vmOnlyMetrics {
+					queries = append(queries, podutil.MetricQuery{Name: name})
+				}
+
+				metricsURL := fmt.Sprintf("http://%s:8080/metrics", podIP)
+				var values map[string]map[string]float64
+				EventuallyWithOffset(1, func() error {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					var err error
+					values, err = podutil.FetchMetricsValues(ctx, http.DefaultClient, metricsURL, queries)
+					return err
+				}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+				for _, name := range overlappingProcessMetrics {
+					ExpectWithOffset(1, values[name]).To(HaveLen(1),
+						"metric %q is duplicated: controller-runtime's default collector and VictoriaMetrics/metrics both emitting it", name)
+				}
+
+				// vmOnlyMetrics can't pass vacuously if VM enrichment stops being appended entirely.
+				By("checking that VictoriaMetrics' own metrics are present, not just non-duplicated")
+				for _, name := range vmOnlyMetrics {
+					ExpectWithOffset(1, values[name]).ToNot(BeEmpty(), "expected VM metric %q missing from /metrics", name)
+				}
 			})
 		})
 	})

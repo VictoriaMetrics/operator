@@ -253,8 +253,6 @@ spec:
               disableSelfServiceScrape:
                 type: boolean
               dnsConfig:
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -1689,8 +1687,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -2476,8 +2472,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -3188,8 +3182,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -9827,8 +9819,6 @@ spec:
               disableSelfServiceScrape:
                 type: boolean
               dnsConfig:
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -16038,8 +16028,6 @@ spec:
               disableSelfServiceScrape:
                 type: boolean
               dnsConfig:
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -19037,8 +19025,6 @@ spec:
               disableSelfServiceScrape:
                 type: boolean
               dnsConfig:
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -22773,8 +22759,6 @@ spec:
                     - enabled
                     type: object
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -23502,8 +23486,6 @@ spec:
                     - enabled
                     type: object
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -24434,8 +24416,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -32385,7 +32365,6 @@ spec:
                       items:
                         properties:
                           alert:
-                            default: ""
                             type: string
                           annotations:
                             additionalProperties:
@@ -32404,7 +32383,6 @@ spec:
                               type: string
                             type: object
                           record:
-                            default: ""
                             type: string
                           update_entries_limit:
                             type: integer
@@ -43899,8 +43877,6 @@ spec:
               disableSelfServiceScrape:
                 type: boolean
               dnsConfig:
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -45748,8 +45724,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -46523,8 +46497,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -47237,8 +47209,6 @@ spec:
                   disableSelfServiceScrape:
                     type: boolean
                   dnsConfig:
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:

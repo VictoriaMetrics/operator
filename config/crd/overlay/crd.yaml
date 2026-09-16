@@ -556,8 +556,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -3408,8 +3406,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -4969,8 +4965,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -6385,8 +6379,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -18119,8 +18111,10 @@ spec:
                 type: object
               storageDataPath:
                 description: |-
-                  StorageDataPath disables spec.storage option and overrides arg for victoria-logs binary --storageDataPath,
-                  its users responsibility to mount proper device into given path.
+                  StorageDataPath overrides the default mount path used for the `data` volume and the arg
+                  for victoria-logs binary --storageDataPath. If spec.storage is set, its PVC is mounted
+                  at this path instead of the default one; otherwise it's the user's responsibility to mount
+                  a proper device into the given path via spec.volumes and spec.volumeMounts.
                 type: string
               storageMetadata:
                 description: StorageMeta defines annotations and labels attached to
@@ -19851,8 +19845,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -31836,8 +31828,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -37785,8 +37775,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -45067,8 +45055,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -46520,8 +46506,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -48477,8 +48461,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -64148,14 +64130,11 @@ spec:
                         rule request
                       type: object
                     rules:
-                      description: |-
-                        Rules list of alert rules.
-                        Rules are merged by record and alert fields.
+                      description: Rules list of alert rules.
                       items:
                         description: Rule describes an alerting or recording rule.
                         properties:
                           alert:
-                            default: ""
                             description: Alert is a name for alert
                             type: string
                           annotations:
@@ -64189,7 +64168,6 @@ spec:
                             description: Labels will be added to rule configuration
                             type: object
                           record:
-                            default: ""
                             description: Record represents a query, that will be recorded
                               to dataSource
                             type: string
@@ -81569,7 +81547,6 @@ spec:
                 description: |-
                   Storage is the definition of how storage will be used by the VMSingle
                   by default it`s empty dir
-                  this option is ignored if storageDataPath is set
                 properties:
                   accessModes:
                     description: |-
@@ -81764,8 +81741,10 @@ spec:
                 type: object
               storageDataPath:
                 description: |-
-                  StorageDataPath disables spec.storage option and overrides arg for victoria-metrics binary --storageDataPath,
-                  its users responsibility to mount proper device into given path.
+                  StorageDataPath overrides the default mount path used for the `data` volume and the arg
+                  for victoria-metrics binary --storageDataPath. If spec.storage is set, its PVC is mounted
+                  at this path instead of the default one; otherwise it's the user's responsibility to mount
+                  a proper device into the given path via spec.volumes and spec.volumeMounts.
                   It requires to provide spec.volumes and spec.volumeMounts with at least 1 value
                 type: string
               storageMetadata:
@@ -85603,8 +85582,6 @@ spec:
                   Specifies the DNS parameters of a pod.
                   Parameters specified here will be merged to the generated DNS
                   configuration based on DNSPolicy.
-                items:
-                  x-kubernetes-preserve-unknown-fields: true
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               dnsPolicy:
@@ -89213,8 +89190,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -90747,8 +90722,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -92168,8 +92141,6 @@ spec:
                       Specifies the DNS parameters of a pod.
                       Parameters specified here will be merged to the generated DNS
                       configuration based on DNSPolicy.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   dnsPolicy:
@@ -95619,8 +95590,10 @@ spec:
                 type: object
               storageDataPath:
                 description: |-
-                  StorageDataPath disables spec.storage option and overrides arg for victoria-traces binary --storageDataPath,
-                  its users responsibility to mount proper device into given path.
+                  StorageDataPath overrides the default mount path used for the `data` volume and the arg
+                  for victoria-traces binary --storageDataPath. If spec.storage is set, its PVC is mounted
+                  at this path instead of the default one; otherwise it's the user's responsibility to mount
+                  a proper device into the given path via spec.volumes and spec.volumeMounts.
                 type: string
               storageMetadata:
                 description: StorageMeta defines annotations and labels attached to

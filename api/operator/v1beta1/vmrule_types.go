@@ -37,7 +37,6 @@ type RuleGroup struct {
 	// +optional
 	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
 	// Rules list of alert rules.
-	// Rules are merged by record and alert fields.
 	Rules []Rule `json:"rules"`
 	// Limit the number of alerts an alerting rule and series a recording
 	// rule can produce
@@ -98,11 +97,9 @@ type RuleGroup struct {
 type Rule struct {
 	// Record represents a query, that will be recorded to dataSource
 	// +optional
-	// +kubebuilder:default=""
 	Record string `json:"record,omitempty" yaml:"record,omitempty"`
 	// Alert is a name for alert
 	// +optional
-	// +kubebuilder:default=""
 	Alert string `json:"alert,omitempty" yaml:"alert,omitempty"`
 	// Expr is query, that will be evaluated at dataSource
 	// +optional

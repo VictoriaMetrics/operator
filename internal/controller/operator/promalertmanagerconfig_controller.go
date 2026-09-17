@@ -61,7 +61,7 @@ func (r *PromAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs,verbs=get;list;watch
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=alertmanagerconfigs/finalizers,verbs=update
 
 func (r *PromAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

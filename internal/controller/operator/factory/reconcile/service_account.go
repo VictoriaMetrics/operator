@@ -13,6 +13,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=serviceaccounts/finalizers,verbs=patch
+
 // ServiceAccount creates service account or updates exist one
 func ServiceAccount(ctx context.Context, rclient client.Client, newObj, prevObj *corev1.ServiceAccount, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

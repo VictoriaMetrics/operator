@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -41,6 +43,33 @@ type TLSServerConfig struct {
 	CipherSuites []string `json:"cipherSuites,omitempty"`
 }
 
+// Validate checks that CipherSuites contains only cipher suite names supported by the application.
+func (tc *TLSServerConfig) Validate() error {
+	if tc == nil || len(tc.CipherSuites) == 0 {
+		return nil
+	}
+	// the application resolves cipher suites by a case-insensitive name or by an ID
+	supported := tls.CipherSuites()
+	byName := make(map[string]struct{}, len(supported))
+	byID := make(map[uint16]struct{}, len(supported))
+	for _, cs := range supported {
+		byName[strings.ToLower(cs.Name)] = struct{}{}
+		byID[cs.ID] = struct{}{}
+	}
+	for idx, name := range tc.CipherSuites {
+		if _, ok := byName[strings.ToLower(name)]; ok {
+			continue
+		}
+		if id, err := strconv.ParseUint(name, 0, 16); err == nil {
+			if _, ok := byID[uint16(id)]; ok {
+				continue
+			}
+		}
+		return fmt.Errorf("tlsConfig.cipherSuites[%d]=%q is not supported, see the list of supported cipher suites at https://pkg.go.dev/crypto/tls#pkg-constants", idx, name)
+	}
+	return nil
+}
+
 // OTLPGRPCSpec defines OTLP gRPC ingestion server configuration
 type OTLPGRPCSpec struct {
 	// ListenPort defines listen port for OTLP gRPC requests
@@ -59,6 +88,9 @@ func (g *OTLPGRPCSpec) Validate(httpPort string) error {
 	}
 	if strconv.Itoa(int(g.ListenPort)) == httpPort {
 		return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
+	}
+	if err := g.TLSConfig.Validate(); err != nil {
+		return fmt.Errorf("spec.grpcSpec: %w", err)
 	}
 	return nil
 }

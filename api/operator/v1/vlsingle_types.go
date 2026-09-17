@@ -319,6 +319,9 @@ func (cr *VLSingle) Validate() error {
 			return err
 		}
 	}
+	if err := cr.Spec.SyslogSpec.Validate(); err != nil {
+		return err
+	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}

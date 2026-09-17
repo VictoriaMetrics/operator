@@ -629,9 +629,11 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 	tlsEnabled := NewEmptyFlag("-syslog.tls")
 	tlsCertFile := NewEmptyFlag("-syslog.tlsCertFile")
 	tlsKeyFile := NewEmptyFlag("-syslog.tlsKeyFile")
-	tlsCipherSuites := NewEmptyFlag("-syslog.tlsCipherSuites")
 
 	var value, tlsMinVersion string
+	// application accepts a single list of cipher suites and a single min version for all -syslog.listenAddr.tcp listeners
+	var tlsCipherSuites []string
+	seenCipherSuites := make(map[string]struct{})
 
 	for idx, sTCP := range syslogSpec.TCPListeners {
 		tcpListenAddr.Add(fmt.Sprintf(":%d", sTCP.ListenPort), idx)
@@ -660,19 +662,22 @@ func AddSyslogArgsTo(dst []string, syslogSpec *vmv1.SyslogServerSpec, tlsServerC
 				value = fmt.Sprintf("%s/%s/%s", tlsServerConfigMountPath, tlsC.KeySecret.Name, tlsC.KeySecret.Key)
 			}
 			tlsKeyFile.Add(value, idx)
-			if len(tlsC.CipherSuites) > 0 {
-				cs := strings.ReplaceAll(strings.Join(tlsC.CipherSuites, ","), `\`, `\\`)
-				cs = strings.ReplaceAll(cs, "'", `\'`)
-				tlsCipherSuites.Add(fmt.Sprintf("'%s'", cs), idx)
-			} else {
-				tlsCipherSuites.Add("", idx)
+			for _, cs := range tlsC.CipherSuites {
+				if _, ok := seenCipherSuites[cs]; ok {
+					continue
+				}
+				seenCipherSuites[cs] = struct{}{}
+				tlsCipherSuites = append(tlsCipherSuites, cs)
 			}
 			if tlsMinVersion == "" && tlsC.MinVersion != "" {
 				tlsMinVersion = tlsC.MinVersion
 			}
 		}
 	}
-	dst = AppendFlagsToArgs(dst, len(syslogSpec.TCPListeners), tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile, tlsCipherSuites)
+	dst = AppendFlagsToArgs(dst, len(syslogSpec.TCPListeners), tcpListenAddr, tcpStreamFields, tcpIgnoreFields, tcpDecolorizedFields, tcpTenantID, tcpCompress, tlsEnabled, tlsCertFile, tlsKeyFile)
+	if len(tlsCipherSuites) > 0 {
+		dst = append(dst, fmt.Sprintf("-syslog.tlsCipherSuites=%s", strings.Join(tlsCipherSuites, ",")))
+	}
 	if tlsMinVersion != "" {
 		dst = append(dst, fmt.Sprintf("-syslog.tlsMinVersion=%s", tlsMinVersion))
 	}

@@ -395,7 +395,7 @@ func TestAddSyslogArgsTo(t *testing.T) {
 					},
 					KeyFile:      "/etc/vm/secrets/tls/key",
 					MinVersion:   "TLS12",
-					CipherSuites: []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"},
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
 				},
 			},
 		},
@@ -413,10 +413,42 @@ func TestAddSyslogArgsTo(t *testing.T) {
 		"-syslog.tls=,true",
 		"-syslog.tlsCertFile=,/etc/vm/tls-server-secrets/tls/CERT",
 		"-syslog.tlsKeyFile=,/etc/vm/secrets/tls/key",
-		"-syslog.tlsCipherSuites=,'TLS_AES_128_GCM_SHA256,TLS_CHACHA20_POLY1305_SHA256'",
+		"-syslog.tlsCipherSuites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256",
 		"-syslog.tlsMinVersion=TLS12",
 		"-syslog.listenAddr.udp=:3001",
 		"-syslog.compressMethod.udp=zstd",
+	}
+	f(&spec, expected)
+
+	spec = vmv1.SyslogServerSpec{
+		TCPListeners: []*vmv1.SyslogTCPListener{
+			{
+				ListenPort: 3001,
+				TLSConfig: &vmv1.TLSServerConfig{
+					CertFile:     "/etc/vm/secrets/tls/cert",
+					KeyFile:      "/etc/vm/secrets/tls/key",
+					MinVersion:   "TLS12",
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+				},
+			},
+			{
+				ListenPort: 3002,
+				TLSConfig: &vmv1.TLSServerConfig{
+					CertFile:     "/etc/vm/secrets/tls/cert2",
+					KeyFile:      "/etc/vm/secrets/tls/key2",
+					MinVersion:   "TLS12",
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+				},
+			},
+		},
+	}
+	expected = []string{
+		"-syslog.listenAddr.tcp=:3001,:3002",
+		"-syslog.tls=true,true",
+		"-syslog.tlsCertFile=/etc/vm/secrets/tls/cert,/etc/vm/secrets/tls/cert2",
+		"-syslog.tlsKeyFile=/etc/vm/secrets/tls/key,/etc/vm/secrets/tls/key2",
+		"-syslog.tlsCipherSuites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256",
+		"-syslog.tlsMinVersion=TLS12",
 	}
 	f(&spec, expected)
 }

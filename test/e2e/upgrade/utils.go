@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -330,7 +331,35 @@ func getRolloutDiff(ctx context.Context, k8sClient client.Client, expectedPodSpe
 	case *appsv1.DaemonSet:
 		got = v.Spec.Template.Spec.DeepCopy()
 	}
+	normalizeConfigReloaderArgs(expectedPodSpec)
+	normalizeConfigReloaderArgs(got)
 	return cmp.Diff(expectedPodSpec, got)
+}
+
+var configReloaderContainerNames = []string{"config-reloader", "config-init"}
+
+// normalizeConfigReloaderArgs makes config-reloader args comparable across operator versions.
+func normalizeConfigReloaderArgs(spec *corev1.PodSpec) {
+	if spec == nil {
+		return
+	}
+	for _, containers := range [][]corev1.Container{spec.Containers, spec.InitContainers} {
+		for i := range containers {
+			c := &containers[i]
+			if !slices.Contains(configReloaderContainerNames, c.Name) {
+				continue
+			}
+			args := make([]string, 0, len(c.Args))
+			for _, arg := range c.Args {
+				if arg == "--target-dir=" {
+					continue
+				}
+				args = append(args, arg)
+			}
+			slices.Sort(args)
+			c.Args = args
+		}
+	}
 }
 
 func getApplications(objs ...client.Object) []client.Object {

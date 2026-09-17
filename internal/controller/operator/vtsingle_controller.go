@@ -59,8 +59,7 @@ func (r *VTSingleReconciler) Init(name string, rclient client.Client, l logr.Log
 // move the current state of the cluster closer to the desired state.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtsingles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtsingles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtsingles/finalizers,verbs=update
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtsingles/finalizers,verbs=patch
 
 func (r *VTSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

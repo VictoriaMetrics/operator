@@ -14,6 +14,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=patch
+
 // Ingress creates or updates Ingress object
 func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.Ingress, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

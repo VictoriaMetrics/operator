@@ -58,8 +58,7 @@ func (r *VTClusterReconciler) Init(name string, rclient client.Client, l logr.Lo
 // Reconcile is part of the main kubernetes reconciliation loop
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters/finalizers,verbs=update
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vtclusters/finalizers,verbs=patch
 
 func (r *VTClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

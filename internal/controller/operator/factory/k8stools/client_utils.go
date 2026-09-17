@@ -81,6 +81,8 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 	return out, nil
 }
 
+// +kubebuilder:rbac:groups="",resources=pods,verbs=list;watch;patch
+
 // UpdatePodAnnotations - updates configmap-sync-time annotation
 // it triggers config rules reload for vmalert
 func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector map[string]string, ns string) error {

@@ -17,6 +17,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers,verbs=patch
+
 // DaemonSet performs an update or create operator for daemonset and waits until it finishes update rollout
 func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.DaemonSet, owner *metav1.OwnerReference) error {
 	var prevMeta *metav1.ObjectMeta

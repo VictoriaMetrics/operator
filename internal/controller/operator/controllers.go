@@ -84,6 +84,7 @@ const (
 	reasonCancelContext = "cancel_context"
 	reasonConflict      = "conflict"
 	reasonOther         = "other"
+	reasonDeclined      = "declined"
 )
 
 var legacyCounters = map[string]*prometheus.CounterVec{
@@ -214,6 +215,8 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 		incControllerError(object, reasonConflict)
 		originResult.RequeueAfter = time.Second * 5
 		return originResult, nil
+	case reconcile.IsDeclined(err):
+		incControllerError(object, reasonDeclined)
 	default:
 		incControllerError(object, reasonOther)
 	}
@@ -244,6 +247,11 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 	}
 	if err := rclient.Create(ctx, errEvent); err != nil {
 		logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
+	}
+	if reconcile.IsDeclined(err) {
+		// the reason is recorded at the object status and reported with an event,
+		// a requeue cannot change the outcome, only a user action can
+		return originResult, nil
 	}
 	return originResult, err
 }

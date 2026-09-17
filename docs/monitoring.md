@@ -33,7 +33,7 @@ In addition to the standard [controller-runtime](https://pkg.go.dev/sigs.k8s.io/
 
 ### Reconciliation and errors
 
-- `operator_controller_errors_total{controller, namespace, name, reason}` - reconcile failures by controller and `reason` (`get_object`, `parse_object`, `cancel_context`, `conflict`, `other`).
+- `operator_controller_errors_total{controller, namespace, name, reason}` - reconcile failures by controller and `reason` (`get_object`, `parse_object`, `cancel_context`, `conflict`, `declined`, `other`).
 - `operator_reconcile_throttled_events_total{controller}` - number of reconcile events dropped by the per-controller rate limiter.
 - `operator_log_messages_total{level}` - count of log messages emitted by the operator, by level.
 - `operator_fetch_errors_total{object, key}` - user-defined objects (e.g. `VMAgent`, `VMAlert`) referencing a missing `Secret`/`ConfigMap` key.

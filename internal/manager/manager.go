@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
+	vmmetrics "github.com/VictoriaMetrics/metrics"
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
@@ -211,12 +212,13 @@ func RunManager(ctx context.Context) error {
 	})
 
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   *metricsAddr,
-		SecureServing: *tlsEnable,
-		CertDir:       *tlsCertDir,
-		CertName:      *tlsCertName,
-		KeyName:       *tlsCertKey,
-		TLSOpts:       metricServerTLSOpts,
+		BindAddress:    *metricsAddr,
+		SecureServing:  *tlsEnable,
+		CertDir:        *tlsCertDir,
+		CertName:       *tlsCertName,
+		KeyName:        *tlsCertKey,
+		TLSOpts:        metricServerTLSOpts,
+		FilterProvider: vmMetricsFilterProvider,
 	}
 
 	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, buildinfo.ShortVersion()))
@@ -532,6 +534,18 @@ func mustAddRestClientMetrics(r metrics.RegistererGatherer) {
 	// replace global go-client RequestLatency metric
 	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
 	r.MustRegister(restClientLatency)
+}
+
+// vmMetricsFilterProvider appends standard VM process/go metrics (e.g. process_cpu_cores_available) to "/metrics".
+func vmMetricsFilterProvider(*rest.Config, *http.Client) (metricsserver.Filter, error) {
+	return func(_ logr.Logger, handler http.Handler) (http.Handler, error) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// drop Accept-Encoding so promhttp responds uncompressed and WritePrometheus output can be appended as plain text
+			r.Header.Del("Accept-Encoding")
+			handler.ServeHTTP(w, r)
+			vmmetrics.WritePrometheus(w, true)
+		}), nil
+	}, nil
 }
 
 type crdController interface {

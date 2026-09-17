@@ -154,7 +154,6 @@ func Test_updateSTSPVC(t *testing.T) {
 	type opts struct {
 		sts         *appsv1.StatefulSet
 		prevVCTs    []corev1.PersistentVolumeClaim
-		wantErr     bool
 		wantErrText string
 		preRun      func(c client.Client)
 		expected    []corev1.PersistentVolumeClaim
@@ -170,12 +169,9 @@ func Test_updateSTSPVC(t *testing.T) {
 		}
 		synctest.Test(t, func(t *testing.T) {
 			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
-			switch {
-			case o.wantErrText != "":
+			if o.wantErrText != "" {
 				assert.ErrorContains(t, err, o.wantErrText)
-			case o.wantErr:
-				assert.Error(t, err)
-			default:
+			} else {
 				assert.NoError(t, err)
 			}
 			if o.actions != nil {

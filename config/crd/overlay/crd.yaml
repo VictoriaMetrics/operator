@@ -40714,6 +40714,9 @@ spec:
               reason:
                 description: Reason defines human readable error reason
                 type: string
+              selector:
+                description: Selector string form of label value set for autoscaling
+                type: string
               shards:
                 description: Shards represents total number of vmanomaly statefulsets
                   with uniq scrape targets

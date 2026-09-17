@@ -245,7 +245,9 @@ type VMAnomalyReadersSpec struct {
 // +k8s:openapi-gen=true
 type VMAnomalyStatus struct {
 	// Shards represents total number of vmanomaly statefulsets with uniq scrape targets
-	Shards                   int32 `json:"shards,omitempty"`
+	Shards int32 `json:"shards,omitempty"`
+	// Selector string form of label value set for autoscaling
+	Selector                 string `json:"selector,omitempty"`
 	vmv1beta1.StatusMetadata `json:",inline"`
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -374,6 +376,7 @@ func (cr *VMAnomaly) GetStatus() *VMAnomalyStatus {
 // DefaultStatusFields implements reconcile.ObjectWithDeepCopyAndStatus interface
 func (cr *VMAnomaly) DefaultStatusFields(vs *VMAnomalyStatus) {
 	vs.Shards = cr.GetShardCount()
+	vs.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

@@ -10,9 +10,13 @@ import (
 func TestVMAnomaly_DefaultStatusFields(t *testing.T) {
 	f := func(cr *VMAnomaly, wantShards int32) {
 		t.Helper()
+		cr.Name = "test"
 		var status VMAnomalyStatus
 		cr.DefaultStatusFields(&status)
-		assert.Equal(t, wantShards, status.Shards)
+		assert.Equal(t, wantShards, status.Shards, "shards")
+		assert.Equal(t,
+			"app.kubernetes.io/component=monitoring,app.kubernetes.io/instance=test,app.kubernetes.io/name=vmanomaly,managed-by=vm-operator",
+			status.Selector, "selector")
 	}
 
 	// no shardCount set: must report 1 so VPA scale subresource gets a non-zero statusReplicasPath

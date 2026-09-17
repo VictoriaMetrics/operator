@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/), [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): the `config-reloader` sidecar now gets an extra `--target-dir=` argument per watched directory, which changes the pod spec. All `VMAlertmanager` pods, and every `VMAgent`, `VMAlert` or `VMSingle` pod whose reloader watches a directory (`spec.configMaps`, relabeling or stream aggregation configs, rule ConfigMaps), will be rolled out once during this upgrade.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.152.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.152.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VMAnomaly to [v1.30.5](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1305) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.11.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.11.0) version

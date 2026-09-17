@@ -355,7 +355,6 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
 			)
 		}
-		sort.Strings(crc.Args)
 
 		// Init container populates rules-out before vmalert starts.
 		initCRC := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
@@ -377,7 +376,6 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
 			)
 		}
-		sort.Strings(initCRC.Args)
 		initContainers = append(initContainers, initCRC)
 		vmalertContainers = append(vmalertContainers, crc)
 	}

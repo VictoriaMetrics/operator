@@ -2717,9 +2717,9 @@ containers:
       image: vmcustom:config-reloader-v0.35.0
       args:
         - --reload-url=http://127.0.0.1:8425/-/reload
-        - --target-dir=
-        - --watched-dir=/etc/vm/relabeling
         - --webhook-method=POST
+        - --watched-dir=/etc/vm/relabeling
+        - --target-dir=
       ports:
         - name: reloader-http
           containerport: 8435
@@ -3362,6 +3362,11 @@ func TestMakeSpecForAgentOk_WatchTargetDirPairing(t *testing.T) {
 				ServiceScrapeSelector:          &metav1.LabelSelector{},
 				ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
 			},
+			StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+				Rules: []vmv1beta1.StreamAggrRule{
+					{Match: []string{"foo"}, Interval: "1m", Outputs: []string{"total"}},
+				},
+			},
 			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 				{
 					URL: "localhost:8429",
@@ -3407,7 +3412,10 @@ func TestMakeSpecForAgentOk_WatchTargetDirPairing(t *testing.T) {
 	got, err := newPodSpec(cr, ac, extraConfigSecretCount)
 	assert.NoError(t, err)
 
-	want := map[string]string{"/etc/vm/relabeling": ""}
+	want := map[string]string{
+		"/etc/vm/relabeling":  "",
+		"/etc/vm/stream-aggr": "",
+	}
 	for i := 1; i <= extraConfigSecretCount; i++ {
 		want[fmt.Sprintf("/etc/vm/sc-raw-%d", i)] = fmt.Sprintf("/etc/vm/sc-files/sc-raw-%d", i)
 	}

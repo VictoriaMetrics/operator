@@ -458,15 +458,11 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 						},
 					},
 				})
-				configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{
+				build.AddWatchTargetDir(&configReloader, corev1.VolumeMount{
 					Name:      rawBasename,
 					MountPath: rawDir,
 					ReadOnly:  true,
-				})
-				configReloader.Args = append(configReloader.Args,
-					fmt.Sprintf("--watched-dir=%s", rawDir),
-					fmt.Sprintf("--target-dir=%s", path.Join(vmscrapes.ExtraConfigOutDir, rawBasename)),
-				)
+				}, path.Join(vmscrapes.ExtraConfigOutDir, rawBasename))
 			}
 		}
 		containers = append(containers, configReloader)

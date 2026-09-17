@@ -216,6 +216,9 @@ func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, groups []vmv1beta1.RuleGroup) ([
 	if err != nil {
 		return nil, fmt.Errorf("cannot pack rule groups into configmap buckets: %w", err)
 	}
+	if len(buckets) == 0 {
+		buckets = [][]vmv1beta1.RuleGroup{{}}
+	}
 	cms := make([]corev1.ConfigMap, 0, len(buckets))
 	for i, bucket := range buckets {
 		data, err := yaml.Marshal(vmv1beta1.VMRuleSpec{Groups: bucket})

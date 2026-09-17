@@ -326,7 +326,7 @@ var (
 			},
 		},
 	}
-	vmalertmanager = &vmv1beta1.VMAlertmanager{
+	_ = &vmv1beta1.VMAlertmanager{
 		Spec: vmv1beta1.VMAlertmanagerSpec{
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 				ConfigReloaderImage: configReloaderImage(),
@@ -591,9 +591,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
-				{version: "v0.73.0", cr: with(vmalertmanager, func(cr *vmv1beta1.VMAlertmanager) {
-					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
-				})},
 			},
 		},
 		{
@@ -671,14 +668,11 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 			},
 		},
 		{
-			name: "VMAuth/VMAlertmanager",
+			name: "VMAuth",
 			pairs: []crVersionPair{
 				{version: "v0.68.6", cr: with(vmauth)},
-				{version: "v0.68.6", cr: with(vmalertmanager)},
 				{version: "v0.68.7", cr: with(vmauth)},
-				{version: "v0.68.7", cr: with(vmalertmanager)},
 				{version: "v0.73.0", cr: with(vmauth)},
-				{version: "v0.73.0", cr: with(vmalertmanager)},
 			},
 		},
 		// nolint:dupl

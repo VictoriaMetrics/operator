@@ -387,7 +387,17 @@ type reloadable interface {
 	AutomountServiceAccountToken() bool
 }
 
-func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeMount, ss *corev1.SecretKeySelector) corev1.Container {
+// ConfigReloaderOpts controls how ConfigReloaderContainer builds the reloader's container.
+type ConfigReloaderOpts struct {
+	CR                reloadable
+	Mounts            []corev1.VolumeMount
+	SecretKeySelector *corev1.SecretKeySelector
+	// IsInit builds the one-shot init-container variant (--only-init-config).
+	IsInit bool
+}
+
+func ConfigReloaderContainer(opts ConfigReloaderOpts) corev1.Container {
+	cr, mounts, ss := opts.CR, opts.Mounts, opts.SecretKeySelector
 	cfg := config.MustGetBaseConfig()
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", cr.GetReloadURL(config.GetLocalhost())),
@@ -412,12 +422,14 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 			fmt.Sprintf("--config-secret-name=%s/%s", cr.GetNamespace(), ss.Name),
 			fmt.Sprintf("--config-secret-key=%s.gz", ss.Key))
 	}
-	if isInit {
+	var dirPairs []watchTargetPair
+	if opts.IsInit {
 		args = append(args, "--only-init-config")
 	} else {
 		for _, m := range mounts {
+			// skip for the config-out volume, which is the write side and must never be watched.
 			if m.Name != outVolumeName {
-				args = append(args, fmt.Sprintf("--watched-dir=%s", m.MountPath))
+				dirPairs = append(dirPairs, watchTargetPair{watchedDir: m.MountPath})
 			}
 		}
 	}
@@ -432,11 +444,15 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 			}
 		}
 		for k, v := range p.ConfigReloaderExtraArgs {
+			if _, ok := managedDirFlags[k]; ok {
+				continue
+			}
 			newArgs = append(newArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
 		args = newArgs
 	}
 	sort.Strings(args)
+	args = appendWatchTargetArgs(args, dirPairs)
 	sort.Slice(mounts, func(i, j int) bool {
 		return mounts[i].Name < mounts[j].Name
 	})
@@ -450,7 +466,7 @@ func ConfigReloaderContainer(isInit bool, cr reloadable, mounts []corev1.VolumeM
 	if ss != nil {
 		AddServiceAccountTokenVolumeMount(&c, cr.AutomountServiceAccountToken())
 	}
-	if !isInit {
+	if !opts.IsInit {
 		c.Name = "config-reloader"
 		c.TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
 		addPortProbesToConfigReloaderContainer(&c)
@@ -519,9 +535,37 @@ func AddConfigReloadAuthKeyToApp(container *corev1.Container, extraArgs map[stri
 	})
 }
 
-// AddWatchTargetDir mounts srcMount into c and appends the matching --watched-dir / --target-dir
-// flag pair atomically. It is a no-op if srcMount.MountPath is already present in c.VolumeMounts,
-// preventing duplicate mounts when the same directory appears in both crMounts and the rule dirs.
+// watchTargetPair is a single --watched-dir / --target-dir argument pair.
+type watchTargetPair struct {
+	watchedDir string
+	// targetDir is empty for a watch-only directory. config-reloader then only triggers an
+	// application reload on change and copies nothing, see dirPair.sync.
+	targetDir string
+}
+
+// appendWatchTargetArgs appends pairs to dst ordered by watched directory, each pair adjacent.
+func appendWatchTargetArgs(dst []string, pairs []watchTargetPair) []string {
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].watchedDir < pairs[j].watchedDir
+	})
+	for _, p := range pairs {
+		dst = append(dst,
+			fmt.Sprintf("--watched-dir=%s", p.watchedDir),
+			fmt.Sprintf("--target-dir=%s", p.targetDir),
+		)
+	}
+	return dst
+}
+
+// managedDirFlags are the config-reloader flags derived from the container's volume mounts,
+// they shouldn't be overridden by user provided extraArgs
+var managedDirFlags = map[string]struct{}{
+	"watched-dir": {},
+	"target-dir":  {},
+	"rules-dir":   {},
+}
+
+// AddWatchTargetDir mounts srcMount into c and appends the matching --watched-dir / --target-dir flag pair.
 func AddWatchTargetDir(c *corev1.Container, srcMount corev1.VolumeMount, targetDir string) {
 	for _, m := range c.VolumeMounts {
 		if m.MountPath == srcMount.MountPath {
@@ -529,10 +573,9 @@ func AddWatchTargetDir(c *corev1.Container, srcMount corev1.VolumeMount, targetD
 		}
 	}
 	c.VolumeMounts = append(c.VolumeMounts, srcMount)
-	c.Args = append(c.Args,
-		fmt.Sprintf("--watched-dir=%s", srcMount.MountPath),
-		fmt.Sprintf("--target-dir=%s", targetDir),
-	)
+	c.Args = appendWatchTargetArgs(c.Args, []watchTargetPair{
+		{watchedDir: srcMount.MountPath, targetDir: targetDir},
+	})
 }
 
 // addConfigReloadAuthKeyToReloader adds authKey env var to the given config-reloader container

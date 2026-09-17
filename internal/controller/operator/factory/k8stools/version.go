@@ -63,3 +63,13 @@ func IsFSGroupChangePolicySupported() bool {
 func IsPodLifecycleSleepActionSupported() bool {
 	return ServerMajorVersion == 1 && ServerMinorVersion >= 30
 }
+
+// IsVolumeAttributesClassRemovalStatusScoped checks how the API server validates
+// clearing of `spec.volumeAttributesClassName` at PersistentVolumeClaim update.
+//
+// Since 1.34 removal is forbidden only when `status.currentVolumeAttributesClassName` is set,
+// before that it was forbidden whenever `spec.volumeAttributesClassName` was set.
+// https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/validation/validation.go
+func IsVolumeAttributesClassRemovalStatusScoped() bool {
+	return ServerMajorVersion == 1 && ServerMinorVersion >= 34
+}

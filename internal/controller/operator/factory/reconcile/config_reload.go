@@ -29,10 +29,23 @@ var (
 	configReloadWaitInterval = 2 * time.Second
 	configReloadWaitTimeout  = 60 * time.Second
 	configReloadHTTPTimeout  = 5 * time.Second
-	configReloaderMetricsURL = func(podIP string) string {
-		return fmt.Sprintf("http://%s/metrics", net.JoinHostPort(podIP, strconv.Itoa(build.ConfigReloaderDefaultPort)))
+	configReloaderMetricsURL = func(podIP string, port int) string {
+		return fmt.Sprintf("http://%s/metrics", net.JoinHostPort(podIP, strconv.Itoa(port)))
 	}
 )
+
+// configReloaderPortFromPod returns the HTTP port named reloader-http from any container in the
+// pod. Falls back to ConfigReloaderDefaultPort when that named port is absent.
+func configReloaderPortFromPod(pod *corev1.Pod) int {
+	for _, c := range pod.Spec.Containers {
+		for _, p := range c.Ports {
+			if p.Name == build.ConfigReloaderPortName && p.ContainerPort > 0 {
+				return int(p.ContainerPort)
+			}
+		}
+	}
+	return build.ConfigReloaderDefaultPort
+}
 
 const (
 	contentHashMetricName = "configreloader_reload_content_hash"
@@ -70,7 +83,7 @@ func WaitForConfigReloadHash(ctx context.Context, rclient client.Client, cr conf
 			if !pod.DeletionTimestamp.IsZero() || !PodIsReady(&pod, 0) || pod.Status.PodIP == "" {
 				return false, nil
 			}
-			got, found, err := scrapeContentHash(ctx, httpClient, pod.Status.PodIP)
+			got, found, err := scrapeContentHash(ctx, httpClient, &pod)
 			if err != nil {
 				// transient scrape failure - keep polling rather than failing the wait outright
 				return false, nil
@@ -92,11 +105,11 @@ func HashBytes(data []byte) uint32 {
 	return crc32.ChecksumIEEE(data)
 }
 
-// scrapeContentHash fetches the config-reloader sidecar's own metrics endpoint on podIP and
+// scrapeContentHash fetches the config-reloader sidecar's own metrics endpoint on the pod and
 // returns the confirmed content hash it currently exposes, if any (a sidecar predating this
 // metric reports nothing, distinguished from a genuine mismatch via the found return value).
-func scrapeContentHash(ctx context.Context, httpClient *http.Client, podIP string) (uint32, bool, error) {
-	values, err := podutil.FetchMetricsValues(ctx, httpClient, configReloaderMetricsURL(podIP), []podutil.MetricQuery{
+func scrapeContentHash(ctx context.Context, httpClient *http.Client, pod *corev1.Pod) (uint32, bool, error) {
+	values, err := podutil.FetchMetricsValues(ctx, httpClient, configReloaderMetricsURL(pod.Status.PodIP, configReloaderPortFromPod(pod)), []podutil.MetricQuery{
 		{Name: contentHashMetricName, Dimension: "key"},
 	})
 	if err != nil {

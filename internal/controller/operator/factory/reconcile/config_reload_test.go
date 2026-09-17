@@ -20,9 +20,53 @@ import (
 )
 
 func TestConfigReloaderMetricsURL(t *testing.T) {
-	assert.Equal(t, fmt.Sprintf("http://10.0.0.1:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("10.0.0.1"))
+	assert.Equal(t, fmt.Sprintf("http://10.0.0.1:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("10.0.0.1", build.ConfigReloaderDefaultPort))
 	// IPv6 must be bracketed, otherwise the port separator is ambiguous with the address itself
-	assert.Equal(t, fmt.Sprintf("http://[2001:db8::1]:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("2001:db8::1"))
+	assert.Equal(t, fmt.Sprintf("http://[2001:db8::1]:%d/metrics", build.ConfigReloaderDefaultPort), configReloaderMetricsURL("2001:db8::1", build.ConfigReloaderDefaultPort))
+	assert.Equal(t, "http://10.0.0.1:8436/metrics", configReloaderMetricsURL("10.0.0.1", 8436))
+}
+
+func TestConfigReloaderPortFromPod(t *testing.T) {
+	assert.Equal(t, build.ConfigReloaderDefaultPort, configReloaderPortFromPod(&corev1.Pod{}))
+
+	namedOnOtherContainer := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "sidecar",
+				Ports: []corev1.ContainerPort{{
+					Name:          build.ConfigReloaderPortName,
+					ContainerPort: 8436,
+				}},
+			}},
+		},
+	}
+	assert.Equal(t, 8436, configReloaderPortFromPod(namedOnOtherContainer))
+
+	namedAfterExtraPort := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "sidecar",
+				Ports: []corev1.ContainerPort{
+					{Name: "extra", ContainerPort: 9999},
+					{Name: build.ConfigReloaderPortName, ContainerPort: 8436},
+				},
+			}},
+		},
+	}
+	assert.Equal(t, 8436, configReloaderPortFromPod(namedAfterExtraPort))
+
+	noNamedPort := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "sidecar",
+				Ports: []corev1.ContainerPort{{
+					Name:          "extra",
+					ContainerPort: 9999,
+				}},
+			}},
+		},
+	}
+	assert.Equal(t, build.ConfigReloaderDefaultPort, configReloaderPortFromPod(noNamedPort))
 }
 
 func TestWaitForConfigReloadHash_NoPodsIsNoop(t *testing.T) {
@@ -55,7 +99,7 @@ func withConfigReloaderMetricsURL(t *testing.T, ts *httptest.Server) {
 	orig := configReloaderMetricsURL
 	u, err := url.Parse(ts.URL)
 	assert.NoError(t, err)
-	configReloaderMetricsURL = func(string) string { return "http://" + u.Host + "/metrics" }
+	configReloaderMetricsURL = func(string, int) string { return "http://" + u.Host + "/metrics" }
 	t.Cleanup(func() { configReloaderMetricsURL = orig })
 }
 

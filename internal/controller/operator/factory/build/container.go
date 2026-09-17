@@ -202,7 +202,7 @@ func AddExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 // Lifecycle applies default lifecycle hooks to the container from params.
 // It adds a preStop sleep hook to prevent traffic loss during pod termination,
 // unless the user has already set a preStop hook or preStopSleepSeconds is zero.
-// Requires Kubernetes >= 1.29 (PodLifecycleSleepAction feature gate).
+// Requires Kubernetes >= 1.30, where the PodLifecycleSleepAction feature gate is enabled by default.
 func Lifecycle(container *corev1.Container, params *vmv1beta1.CommonAppsParams) {
 	if params == nil || params.PreStopSleepSeconds == nil || *params.PreStopSleepSeconds <= 0 {
 		return

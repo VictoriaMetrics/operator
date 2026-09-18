@@ -63,6 +63,8 @@ type discoverNamespacesResponse struct {
 	namespaces []string
 }
 
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=list;watch
+
 // discoverNamespaces select namespaces by given label selector
 func discoverNamespaces(ctx context.Context, rclient client.Client, s *SelectorOpts) (*discoverNamespacesResponse, error) {
 	cfg := config.MustGetBaseConfig()

@@ -64,14 +64,7 @@ func (r *VMAnomalyReconciler) Init(name string, rclient client.Client, l logr.Lo
 // Reconcile general reconcile method
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalies/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalies/finalizers,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=events,verbs=*
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
-// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;watch;list
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmanomalies/finalizers,verbs=patch
 
 func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

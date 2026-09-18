@@ -16,32 +16,60 @@ rules:
   - ""
   resources:
   - configmaps
-  - configmaps/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - persistentvolumeclaims/finalizers
   - secrets
+  - serviceaccounts
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/finalizers
+  - persistentvolumeclaims/finalizers
   - secrets/finalizers
   - serviceaccounts/finalizers
-  - services
   - services/finalizers
   verbs:
-  - '*'
+  - patch
 - apiGroups:
   - ""
   resources:
   - events
+  - pods/eviction
   verbs:
-  - '*'
+  - create
 - apiGroups:
   - ""
   resources:
   - namespaces
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - nodes
   - nodes/metrics
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - ""
@@ -54,15 +82,11 @@ rules:
   - patch
   - watch
 - apiGroups:
-  - ""
+  - apps
   resources:
-  - pods/eviction
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
+  - daemonsets
+  - deployments
+  - statefulsets
   verbs:
   - create
   - delete
@@ -74,15 +98,11 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - daemonsets
   - daemonsets/finalizers
-  - deployments
   - deployments/finalizers
-  - replicasets
-  - statefulsets
   - statefulsets/finalizers
   verbs:
-  - '*'
+  - patch
 - apiGroups:
   - apps
   resources:
@@ -96,13 +116,25 @@ rules:
   resources:
   - horizontalpodautoscalers
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - autoscaling.k8s.io
   resources:
   - verticalpodautoscalers
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - discovery.k8s.io
   resources:
@@ -134,12 +166,6 @@ rules:
 - apiGroups:
   - monitoring.coreos.com
   resources:
-  - '*'
-  verbs:
-  - '*'
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
   - alertmanagerconfigs
   - podmonitors
   - probes
@@ -167,6 +193,7 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
+  - networkpolicies
   verbs:
   - create
   - delete
@@ -179,9 +206,9 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses/finalizers
-  - networkpolicies
+  - networkpolicies/finalizers
   verbs:
-  - '*'
+  - patch
 - apiGroups:
   - operator.victoriametrics.com
   resources:
@@ -199,6 +226,7 @@ rules:
   - vmauths
   - vmclusters
   - vmdistributed
+  - vmnodescrapes
   - vmpodscrapes
   - vmprobes
   - vmrules
@@ -222,7 +250,10 @@ rules:
   - operator.victoriametrics.com
   resources:
   - vlagents/finalizers
+  - vlclusters/finalizers
+  - vldistributed/finalizers
   - vlogs/finalizers
+  - vlsingles/finalizers
   - vmagents/finalizers
   - vmalertmanagerconfigs/finalizers
   - vmalertmanagers/finalizers
@@ -230,7 +261,7 @@ rules:
   - vmanomalies/finalizers
   - vmauths/finalizers
   - vmclusters/finalizers
-  - vmnodescrapes
+  - vmdistributed/finalizers
   - vmnodescrapes/finalizers
   - vmpodscrapes/finalizers
   - vmprobes/finalizers
@@ -241,8 +272,10 @@ rules:
   - vmstaticscrapes/finalizers
   - vmusers/finalizers
   - vtagents/finalizers
+  - vtclusters/finalizers
+  - vtsingles/finalizers
   verbs:
-  - '*'
+  - patch
 - apiGroups:
   - operator.victoriametrics.com
   resources:
@@ -277,17 +310,6 @@ rules:
   - patch
   - update
 - apiGroups:
-  - operator.victoriametrics.com
-  resources:
-  - vlclusters/finalizers
-  - vldistributed/finalizers
-  - vlsingles/finalizers
-  - vmdistributed/finalizers
-  - vtclusters/finalizers
-  - vtsingles/finalizers
-  verbs:
-  - update
-- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
@@ -315,7 +337,7 @@ rules:
   - clusterrolebindings/finalizers
   - clusterroles/finalizers
   verbs:
-  - '*'
+  - patch
 - apiGroups:
   - storage.k8s.io
   resources:

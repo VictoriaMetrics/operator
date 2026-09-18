@@ -148,6 +148,17 @@ require (
 	sigs.k8s.io/json v0.0.0-20260909141634-11ed52e25bc5 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
-	sigs.k8s.io/structured-merge-diff/v7 v7.0.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+// VictoriaMetrics v1.152.0 carries an indirect k8s.io/kube-openapi (20260908163437)
+// newer than anything in its own tree needs -- prometheus/prometheus asks for 20260317,
+// client-go v0.37.0 for 20260721 -- but MVS takes the maximum, so it wins here too.
+// kube-openapi is untagged/master-only, and that revision has moved to
+// sigs.k8s.io/structured-merge-diff/v7 while k8s.io/apimachinery v0.37.0 still uses v6,
+// which breaks apimachinery's managedfields package at compile time.
+// Pin it back to the revision apimachinery v0.37.0 requires.
+// Expect to carry this until we move to k8s v0.38 / a controller-runtime on
+// apimachinery v0.38, which itself uses structured-merge-diff/v7. Only then do the
+// selected kube-openapi and apimachinery agree on the smd major again.
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad

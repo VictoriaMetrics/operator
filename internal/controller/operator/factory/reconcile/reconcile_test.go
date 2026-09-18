@@ -2,6 +2,8 @@ package reconcile
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
@@ -203,4 +206,21 @@ func TestMergeMapsWithStrategy(t *testing.T) {
 		strategy: vmv1beta1.MetadataStrategyMergeVMPriority,
 		want:     map[string]string{"label1": "value1", "label2": "value4", "missinglabel": "value10"},
 	})
+}
+
+func Test_IsDeclined(t *testing.T) {
+	declined := fmt.Errorf("cannot decrease PVC=a size from=20Gi to=10Gi: %w", ErrDeclined)
+	transient := errors.New("etcdserver: request timed out")
+	f := func(name string, err error, want bool) {
+		t.Helper()
+		assert.Equal(t, want, IsDeclined(err), name)
+	}
+	f("plain declined", declined, true)
+	f("wrapped declined", fmt.Errorf("update PVC: %w", declined), true)
+	f("unrelated error", transient, false)
+	f("aggregate of declined", utilerrors.NewAggregate([]error{declined, declined}), true)
+	// a retryable failure on another PVC must not be suppressed by a declined one
+	f("aggregate with unrelated error", utilerrors.NewAggregate([]error{declined, transient}), false)
+	f("aggregate of unrelated errors", utilerrors.NewAggregate([]error{transient}), false)
+	f("nil", nil, false)
 }

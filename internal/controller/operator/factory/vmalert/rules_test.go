@@ -269,12 +269,13 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		},
 	})
 
-	// SelectAllByDefault with no rules: no VMRules selected → no ConfigMaps created
+	// SelectAllByDefault with no rules: still creates an empty placeholder ConfigMap
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "base-vmalert"},
 			Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
 		},
+		want: []string{"vm-base-vmalert-rulefiles-0"},
 	})
 
 	// only recording rules selected: reconciles fine regardless of notifiers
@@ -321,13 +322,15 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		},
 	})
 
-	// alerting-only rule selected with no notifiers: group is dropped entirely, no ConfigMaps created
+	// alerting-only rule selected with no notifiers: group is dropped entirely, empty placeholder
+	// ConfigMap is created instead
 	f(opts{
 		cr: &vmv1beta1.VMAlert{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "base-vmalert"},
 			Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
 		},
 		hasNotifiers: false,
+		want:         []string{"vm-base-vmalert-rulefiles-0"},
 		predefinedObjects: []runtime.Object{
 			&vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{Name: "with-alert", Namespace: "default"},
@@ -340,6 +343,28 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 			},
 		},
 	})
+}
+
+// TestCreateOrUpdateRuleConfigMaps_EmptyPlaceholder checks the placeholder ConfigMap created for
+// zero selected groups has no groups in it, so vmalert's -rule glob has a valid target instead of
+// erroring, and going from 0 to 1 group only changes this ConfigMap's content rather than adding a
+// new mount to the pod spec.
+func TestCreateOrUpdateRuleConfigMaps_EmptyPlaceholder(t *testing.T) {
+	ctx := context.TODO()
+	cr := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "base-vmalert"},
+		Spec:       vmv1beta1.VMAlertSpec{SelectAllByDefault: true},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	names, err := CreateOrUpdateRuleConfigMaps(ctx, fclient, cr, nil, true)
+	assert.NoError(t, err)
+	if !assert.Equal(t, []string{"vm-base-vmalert-rulefiles-0"}, names) {
+		return
+	}
+
+	var cm corev1.ConfigMap
+	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: names[0], Namespace: cr.Namespace}, &cm))
+	assert.Empty(t, groupNamesFromCM(t, cm))
 }
 
 func TestRuleRebalance(t *testing.T) {

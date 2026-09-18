@@ -336,7 +336,10 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 
 	var initContainers []corev1.Container
 	if cr.HasConfigReloader() {
-		crc := build.ConfigReloaderContainer(false, cr, crMounts, nil)
+		crc := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:     cr,
+			Mounts: crMounts,
+		})
 		// rules-out write-side: not in crMounts to avoid --watched-dir causing reload loops.
 		crc.VolumeMounts = append(crc.VolumeMounts, corev1.VolumeMount{
 			Name:      "rules-out",
@@ -352,10 +355,13 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
 			)
 		}
-		sort.Strings(crc.Args)
 
 		// Init container populates rules-out before vmalert starts.
-		initCRC := build.ConfigReloaderContainer(true, cr, crMounts, nil)
+		initCRC := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:     cr,
+			Mounts: crMounts,
+			IsInit: true,
+		})
 		initCRC.VolumeMounts = append(initCRC.VolumeMounts, corev1.VolumeMount{
 			Name:      "rules-out",
 			MountPath: vmAlertRulesOutDir,
@@ -370,7 +376,6 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
 			)
 		}
-		sort.Strings(initCRC.Args)
 		initContainers = append(initContainers, initCRC)
 		vmalertContainers = append(vmalertContainers, crc)
 	}

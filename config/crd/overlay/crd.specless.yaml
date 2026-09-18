@@ -1001,6 +1001,8 @@ spec:
                 type: integer
               reason:
                 type: string
+              selector:
+                type: string
               shards:
                 format: int32
                 type: integer

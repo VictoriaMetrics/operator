@@ -152,12 +152,12 @@ func Test_recreateOrUpdateSTS(t *testing.T) {
 
 func Test_updateSTSPVC(t *testing.T) {
 	type opts struct {
-		sts      *appsv1.StatefulSet
-		prevVCTs []corev1.PersistentVolumeClaim
-		wantErr  bool
-		preRun   func(c client.Client)
-		expected []corev1.PersistentVolumeClaim
-		actions  []k8stools.ClientAction
+		sts         *appsv1.StatefulSet
+		prevVCTs    []corev1.PersistentVolumeClaim
+		wantErrText string
+		preRun      func(c client.Client)
+		expected    []corev1.PersistentVolumeClaim
+		actions     []k8stools.ClientAction
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -169,8 +169,8 @@ func Test_updateSTSPVC(t *testing.T) {
 		}
 		synctest.Test(t, func(t *testing.T) {
 			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
-			if o.wantErr {
-				assert.Error(t, err)
+			if o.wantErrText != "" {
+				assert.ErrorContains(t, err, o.wantErrText)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -631,7 +631,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
-		wantErr: true,
+		wantErrText: `cannot expand PVC=vmselect-cachedir-vmselect-0 size from=10Gi to=15Gi, storageClass=default doesn't support live resizing`,
 	})
 
 	// expand with annotation on non-expandable sc
@@ -832,12 +832,16 @@ func Test_updateSTSPVC(t *testing.T) {
 		},
 	})
 
-	// PVC bigger than VCT (manual expansion case), should error and skip
+	// PVC bigger than VCT (manual expansion case), the declined decrease must be
+	// reported and metadata must still be applied
 	f(opts{
 		sts: buildSTS(func(sts *appsv1.StatefulSet) {
 			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "data"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "data",
+						Annotations: map[string]string{"managed": "by-operator"},
+					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: map[corev1.ResourceName]resource.Quantity{
@@ -879,7 +883,8 @@ func Test_updateSTSPVC(t *testing.T) {
 					Name:            "data-vmselect-0",
 					Namespace:       "default",
 					Labels:          map[string]string{"app": "vmselect"},
-					ResourceVersion: "2",
+					Annotations:     map[string]string{"managed": "by-operator"},
+					ResourceVersion: "4",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
@@ -895,7 +900,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			},
 		},
-		wantErr: true,
+		wantErrText: "cannot decrease PVC=data-vmselect-0 size from=20Gi to=10Gi",
 	})
 
 	// declined decrease of one VolumeClaimTemplate must not block expansion of another
@@ -957,7 +962,7 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 			}))
 		},
-		wantErr: true,
+		wantErrText: "cannot decrease PVC=data-vmselect-0 size",
 		expected: []corev1.PersistentVolumeClaim{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -999,6 +1004,140 @@ func Test_updateSTSPVC(t *testing.T) {
 				Status: corev1.PersistentVolumeClaimStatus{
 					Capacity: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceStorage: resource.MustParse("20Gi"),
+					},
+				},
+			},
+		},
+	})
+
+	// expansion on a storage class without live resizing reports the reason,
+	// instead of timing out while waiting for a size that is never applied
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "vmselect-cachedir",
+						Labels:      map[string]string{"app": "vmselect"},
+						Annotations: map[string]string{"managed": "by-operator"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("20Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		wantErrText: `storageClass=standard doesn't support live resizing`,
+		preRun: func(c client.Client) {
+			assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvc1NSN.Name,
+					Namespace: pvc1NSN.Namespace,
+					Labels:    map[string]string{"app": "vmselect"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: ptr.To("standard"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}))
+			assert.NoError(t, c.Create(context.TODO(), &storagev1.StorageClass{
+				ObjectMeta:           metav1.ObjectMeta{Name: "standard"},
+				AllowVolumeExpansion: ptr.To(false),
+			}))
+		},
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            pvc1NSN.Name,
+					Namespace:       pvc1NSN.Namespace,
+					Labels:          map[string]string{"app": "vmselect"},
+					Annotations:     map[string]string{"managed": "by-operator"},
+					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: ptr.To("standard"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		},
+	})
+
+	// expansion disabled explicitly by annotation is not an error
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "vmselect-cachedir",
+						Labels:      map[string]string{"app": "vmselect"},
+						Annotations: map[string]string{"managed": "by-operator"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("20Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		preRun: func(c client.Client) {
+			assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        pvc1NSN.Name,
+					Namespace:   pvc1NSN.Namespace,
+					Labels:      map[string]string{"app": "vmselect"},
+					Annotations: map[string]string{"operator.victoriametrics.com/pvc-allow-volume-expansion": "false"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}))
+		},
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvc1NSN.Name,
+					Namespace: pvc1NSN.Namespace,
+					Labels:    map[string]string{"app": "vmselect"},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "false",
+						"managed": "by-operator",
+					},
+					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
 				},
 			},

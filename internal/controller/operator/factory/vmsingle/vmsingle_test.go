@@ -469,6 +469,34 @@ serviceaccountname: vmsingle-single
 	})
 }
 
+// spec.configMaps combined with extra scrape config secrets, see #2583
+func TestMakeSpecForVMSingleOk_WatchTargetDirPairing(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+				IngestOnlyMode: ptr.To(false),
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ConfigMaps: []string{"my-templates"},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	got, err := newPodSpec(ctx, cr, 2)
+	assert.NoError(t, err)
+
+	k8stools.AssertConfigReloaderWatchTargetDirs(t, got.Spec.Containers, map[string]string{
+		"/etc/vm/configs/my-templates": "",
+		"/etc/vm/sc-raw-1":             "/etc/vm/sc-files/sc-raw-1",
+		"/etc/vm/sc-raw-2":             "/etc/vm/sc-files/sc-raw-2",
+	})
+}
+
 func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMSingle

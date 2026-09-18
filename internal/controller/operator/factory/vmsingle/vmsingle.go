@@ -428,10 +428,19 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 				},
 				Key: configFilename,
 			}
-			ic = append(ic, build.ConfigReloaderContainer(true, cr, crMounts, ss))
+			ic = append(ic, build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+				CR:                cr,
+				Mounts:            crMounts,
+				SecretKeySelector: ss,
+				IsInit:            true,
+			}))
 			build.AddStrictSecuritySettingsToContainers(ic, &cr.Spec.CommonAppsParams)
 		}
-		configReloader := build.ConfigReloaderContainer(false, cr, crMounts, ss)
+		configReloader := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
+			CR:                cr,
+			Mounts:            crMounts,
+			SecretKeySelector: ss,
+		})
 		if extraConfigSecretCount > 0 {
 			// sc-files-out is write-side for the reloader; not in crMounts to avoid --watched-dir.
 			configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{
@@ -449,15 +458,11 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 						},
 					},
 				})
-				configReloader.VolumeMounts = append(configReloader.VolumeMounts, corev1.VolumeMount{
+				build.AddWatchTargetDir(&configReloader, corev1.VolumeMount{
 					Name:      rawBasename,
 					MountPath: rawDir,
 					ReadOnly:  true,
-				})
-				configReloader.Args = append(configReloader.Args,
-					fmt.Sprintf("--watched-dir=%s", rawDir),
-					fmt.Sprintf("--target-dir=%s", path.Join(vmscrapes.ExtraConfigOutDir, rawBasename)),
-				)
+				}, path.Join(vmscrapes.ExtraConfigOutDir, rawBasename))
 			}
 		}
 		containers = append(containers, configReloader)

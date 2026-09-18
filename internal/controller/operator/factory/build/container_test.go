@@ -395,7 +395,7 @@ func TestAddSyslogArgsTo(t *testing.T) {
 					},
 					KeyFile:      "/etc/vm/secrets/tls/key",
 					MinVersion:   "TLS12",
-					CipherSuites: []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"},
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
 				},
 			},
 		},
@@ -413,10 +413,42 @@ func TestAddSyslogArgsTo(t *testing.T) {
 		"-syslog.tls=,true",
 		"-syslog.tlsCertFile=,/etc/vm/tls-server-secrets/tls/CERT",
 		"-syslog.tlsKeyFile=,/etc/vm/secrets/tls/key",
-		"-syslog.tlsCipherSuites=,'TLS_AES_128_GCM_SHA256,TLS_CHACHA20_POLY1305_SHA256'",
+		"-syslog.tlsCipherSuites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256",
 		"-syslog.tlsMinVersion=TLS12",
 		"-syslog.listenAddr.udp=:3001",
 		"-syslog.compressMethod.udp=zstd",
+	}
+	f(&spec, expected)
+
+	spec = vmv1.SyslogServerSpec{
+		TCPListeners: []*vmv1.SyslogTCPListener{
+			{
+				ListenPort: 3001,
+				TLSConfig: &vmv1.TLSServerConfig{
+					CertFile:     "/etc/vm/secrets/tls/cert",
+					KeyFile:      "/etc/vm/secrets/tls/key",
+					MinVersion:   "TLS12",
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+				},
+			},
+			{
+				ListenPort: 3002,
+				TLSConfig: &vmv1.TLSServerConfig{
+					CertFile:     "/etc/vm/secrets/tls/cert2",
+					KeyFile:      "/etc/vm/secrets/tls/key2",
+					MinVersion:   "TLS12",
+					CipherSuites: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+				},
+			},
+		},
+	}
+	expected = []string{
+		"-syslog.listenAddr.tcp=:3001,:3002",
+		"-syslog.tls=true,true",
+		"-syslog.tlsCertFile=/etc/vm/secrets/tls/cert,/etc/vm/secrets/tls/cert2",
+		"-syslog.tlsKeyFile=/etc/vm/secrets/tls/key,/etc/vm/secrets/tls/key2",
+		"-syslog.tlsCipherSuites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256",
+		"-syslog.tlsMinVersion=TLS12",
 	}
 	f(&spec, expected)
 }
@@ -792,7 +824,10 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				MountPath: path.Join("/cm-dir", cm),
 			})
 		}
-		got := ConfigReloaderContainer(false, o.cr, extraMounts, nil)
+		got := ConfigReloaderContainer(ConfigReloaderOpts{
+			CR:     o.cr,
+			Mounts: extraMounts,
+		})
 		assert.Equal(t, o.expectedContainer, got)
 	}
 
@@ -820,9 +855,11 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Args: []string{
 				"--enableTCP6",
 				"--reload-url=http://localhost:/-/reload?authKey=test",
-				"--watched-dir=/cm-dir/cm-0",
-				"--watched-dir=/cm-dir/cm-1",
 				"--webhook-method=POST",
+				"--watched-dir=/cm-dir/cm-0",
+				"--target-dir=",
+				"--watched-dir=/cm-dir/cm-1",
+				"--target-dir=",
 			},
 			Ports: []corev1.ContainerPort{{
 				Name:          "reloader-http",
@@ -883,8 +920,9 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Name: "config-reloader",
 			Args: []string{
 				"--reload-url=http://127.0.0.1:/-/reload",
-				"--watched-dir=/cm-dir/cm-0",
 				"--webhook-method=POST",
+				"--watched-dir=/cm-dir/cm-0",
+				"--target-dir=",
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -948,10 +986,13 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 			Name: "config-reloader",
 			Args: []string{
 				"--reload-url=http://127.0.0.1:/-/reload",
-				"--watched-dir=/cm-dir/cm-0",
-				"--watched-dir=/etc/vm/configs/extra-template-1",
-				"--watched-dir=/etc/vm/configs/extra-template-2",
 				"--webhook-method=POST",
+				"--watched-dir=/cm-dir/cm-0",
+				"--target-dir=",
+				"--watched-dir=/etc/vm/configs/extra-template-1",
+				"--target-dir=",
+				"--watched-dir=/etc/vm/configs/extra-template-2",
+				"--target-dir=",
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -1004,6 +1045,97 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 				SuccessThreshold:    1,
 				FailureThreshold:    3,
 			},
+		},
+	})
+}
+
+func TestConfigReloaderWatchTargetPairing(t *testing.T) {
+	type watchTarget struct {
+		mountPath string
+		targetDir string
+	}
+	type opts struct {
+		cr     reloadable
+		mounts []corev1.VolumeMount
+		// extraDirs are added with AddWatchTargetDir after the container is built, like vmalert
+		// rule buckets and vmagent overflow scrape config secrets
+		extraDirs    []watchTarget
+		expectedArgs []string
+	}
+	f := func(o opts) {
+		t.Helper()
+		got := ConfigReloaderContainer(ConfigReloaderOpts{
+			CR:     o.cr,
+			Mounts: o.mounts,
+		})
+		for _, d := range o.extraDirs {
+			AddWatchTargetDir(&got, corev1.VolumeMount{
+				Name:      path.Base(d.mountPath),
+				MountPath: d.mountPath,
+				ReadOnly:  true,
+			}, d.targetDir)
+		}
+		assert.Equal(t, o.expectedArgs, got.Args)
+	}
+
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "pairing"},
+		},
+		mounts: []corev1.VolumeMount{
+			{Name: "config-out", MountPath: "/etc/vmagent/config_out"},
+			{Name: "configmap-tpl", MountPath: "/etc/vm/configs/tpl"},
+			{Name: "stream-aggr-conf", MountPath: "/etc/vm/stream-aggr"},
+			{Name: "relabeling-assets", MountPath: "/etc/vm/relabeling"},
+		},
+		extraDirs: []watchTarget{
+			{mountPath: "/etc/vm/sc-raw-1", targetDir: "/etc/vm/sc-files/sc-raw-1"},
+			{mountPath: "/etc/vm/sc-raw-2", targetDir: "/etc/vm/sc-files/sc-raw-2"},
+		},
+		expectedArgs: []string{
+			"--reload-url=http://127.0.0.1:/-/reload",
+			"--webhook-method=POST",
+			"--watched-dir=/etc/vm/configs/tpl",
+			"--target-dir=",
+			"--watched-dir=/etc/vm/relabeling",
+			"--target-dir=",
+			"--watched-dir=/etc/vm/stream-aggr",
+			"--target-dir=",
+			"--watched-dir=/etc/vm/sc-raw-1",
+			"--target-dir=/etc/vm/sc-files/sc-raw-1",
+			"--watched-dir=/etc/vm/sc-raw-2",
+			"--target-dir=/etc/vm/sc-files/sc-raw-2",
+		},
+	})
+
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "pairing"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderExtraArgs: map[string]string{
+						"watched-dir":     "/opt/extra",
+						"target-dir":      "/opt/extra-out",
+						"rules-dir":       "/opt/extra-rules",
+						"resync-interval": "30s",
+					},
+				},
+			},
+		},
+		mounts: []corev1.VolumeMount{
+			{Name: "configmap-tpl", MountPath: "/etc/vm/configs/tpl"},
+		},
+		extraDirs: []watchTarget{
+			{mountPath: "/etc/vmalert/rules-src-0", targetDir: "/etc/vmalert/rules-out/rules-src-0"},
+		},
+		expectedArgs: []string{
+			"--reload-url=http://127.0.0.1:/-/reload",
+			"--resync-interval=30s",
+			"--webhook-method=POST",
+			"--watched-dir=/etc/vm/configs/tpl",
+			"--target-dir=",
+			"--watched-dir=/etc/vmalert/rules-src-0",
+			"--target-dir=/etc/vmalert/rules-out/rules-src-0",
 		},
 	})
 }

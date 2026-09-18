@@ -330,6 +330,56 @@ type SyslogServerSpec struct {
 	UDPListeners []*SyslogUDPListener `json:"udpListeners,omitempty"`
 }
 
+// Validate checks syntax of the syslog listeners configuration
+func (s *SyslogServerSpec) Validate() error {
+	if s == nil {
+		return nil
+	}
+	// application accepts a single minimum TLS version and a single list of cipher suites
+	// for all syslog TCP listeners, diverging values cannot be applied per listener.
+	// Reject them, otherwise the effective TLS configuration of a listener
+	// silently differs from the defined one
+	refIdx := -1
+	for idx, tcp := range s.TCPListeners {
+		if tcp == nil {
+			continue
+		}
+		if err := tcp.TLSConfig.Validate(); err != nil {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d]: %w", idx, err)
+		}
+		if tcp.TLSConfig == nil {
+			continue
+		}
+		if refIdx < 0 {
+			refIdx = idx
+			continue
+		}
+		ref := s.TCPListeners[refIdx].TLSConfig
+		if tcp.TLSConfig.MinVersion != ref.MinVersion {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].tlsConfig.minVersion=%q must be equal to syslogSpec.tcpListeners[%d].tlsConfig.minVersion=%q, "+
+				"since application uses a single minimum TLS version for all syslog TCP listeners. An empty value means the application default",
+				idx, tcp.TLSConfig.MinVersion, refIdx, ref.MinVersion)
+		}
+		if !equalCipherSuites(ref.CipherSuites, tcp.TLSConfig.CipherSuites) {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].tlsConfig.cipherSuites=%q must be equal to syslogSpec.tcpListeners[%d].tlsConfig.cipherSuites=%q, "+
+				"since application uses a single list of cipher suites for all syslog TCP listeners",
+				idx, tcp.TLSConfig.CipherSuites, refIdx, ref.CipherSuites)
+		}
+	}
+	return nil
+}
+
+func equalCipherSuites(left, right []string) bool {
+	normalize := func(src []string) sets.Set[string] {
+		dst := sets.New[string]()
+		for _, cs := range src {
+			dst.Insert(strings.ToLower(cs))
+		}
+		return dst
+	}
+	return normalize(left).Equal(normalize(right))
+}
+
 // SyslogTCPListener defines configuration for TCP syslog server listen
 type SyslogTCPListener struct {
 	// ListenPort defines listen port
@@ -747,6 +797,9 @@ func (cr *VLCluster) Validate() error {
 			if err := vli.VPA.Validate(); err != nil {
 				return err
 			}
+		}
+		if err := vli.SyslogSpec.Validate(); err != nil {
+			return fmt.Errorf("vlinsert: %w", err)
 		}
 		if err := vli.Validate(); err != nil {
 			return fmt.Errorf("vlinsert: %w", err)

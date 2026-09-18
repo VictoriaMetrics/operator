@@ -44,7 +44,7 @@ var (
 		"VM_METRICS_VERSION":  "v1.152.0",
 		"VM_LOGS_VERSION":     "v1.52.0",
 		"VM_ANOMALY_VERSION":  "v1.30.6",
-		"VM_TRACES_VERSION":   "v0.11.0",
+		"VM_TRACES_VERSION":   "v0.11.1",
 		"VM_OPERATOR_VERSION": getVersion("v0.75.0-rc1"),
 	}
 )

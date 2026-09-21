@@ -162,6 +162,7 @@ require (
 	sigs.k8s.io/json v0.0.0-20260909141634-11ed52e25bc5 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v7 v7.0.0 // indirect
 )
 
 replace github.com/VictoriaMetrics/operator/api => ./api
@@ -176,4 +177,4 @@ replace github.com/VictoriaMetrics/operator/api => ./api
 // Expect to carry this until we move to k8s v0.38 / a controller-runtime on
 // apimachinery v0.38, which itself uses structured-merge-diff/v7. Only then do the
 // selected kube-openapi and apimachinery agree on the smd major again.
-replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20260911184034-7970a1e230da

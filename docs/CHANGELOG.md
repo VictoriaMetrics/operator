@@ -15,6 +15,8 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.153.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.153.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.53.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.53.0).
+
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/), [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): resolve every `spec.targetRefs[].crd` reference with its own object. Previously a single object per kind was shared by all resolutions, so config builds running concurrently for different `VMAuth` objects could store the URL of another object of the same kind at a user's `url_prefix`, routing that user's traffic to the wrong backend. The generated config stayed valid and nothing was logged. See [#2688](https://github.com/VictoriaMetrics/operator/pull/2688).
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026
 

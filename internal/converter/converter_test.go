@@ -1784,3 +1784,204 @@ entries:
 	_, err := FetchChartDefaults("victoria-metrics-single")
 	assert.ErrorContains(t, err, "HTTP 404")
 }
+
+func secretsByName(secrets []*corev1.Secret) map[string]*corev1.Secret {
+	byName := make(map[string]*corev1.Secret, len(secrets))
+	for _, s := range secrets {
+		byName[s.Name] = s
+	}
+	return byName
+}
+
+// Legacy aliases the chart still resolves via vmalert.fromLegacyArgs must not be dropped. See #2601.
+func TestUnmarshalValuesSupportsLegacyVMAlertValues(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  datasource:
+    url: http://vmauth:8427
+    bearer:
+      token: ds-token
+  remote:
+    read:
+      url: http://vmauth:8427/read
+      bearer:
+        token: rr-token
+    write:
+      url: http://vminsert:8480
+      flushInterval: 5s
+      tlsCAFile: /etc/ca.pem
+      basicAuth:
+        username: rw-user
+        password: rw-pass
+  notifier:
+    alertmanager:
+      url: http://alertmanager:9093
+      bearer:
+        tokenFile: /var/run/secrets/token
+  notifiers:
+    - alertmanager:
+        url: http://alertmanager-2:9093
+license:
+  secret:
+    name: vmalert-license
+    key: license
+`), "victoria-metrics-alert")
+	require.NoError(t, err)
+
+	alert, secrets, err := ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+	require.NoError(t, err)
+	bearer := func(secret string) *vmv1beta1.BearerAuth {
+		return &vmv1beta1.BearerAuth{TokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: secret}, Key: "token"}}
+	}
+
+	assert.Equal(t, vmv1beta1.VMAlertDatasourceSpec{URL: "http://vmauth:8427", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: bearer("test-name-datasource-auth")}}, alert.Spec.Datasource)
+	assert.Equal(t, &vmv1beta1.VMAlertRemoteReadSpec{URL: "http://vmauth:8427/read", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: bearer("test-name-remote-read-auth")}}, alert.Spec.RemoteRead)
+	assert.Equal(t, &vmv1beta1.VMAlertRemoteWriteSpec{
+		URL:           "http://vminsert:8480",
+		FlushInterval: ptr.To("5s"),
+		HTTPAuth: vmv1beta1.HTTPAuth{
+			TLSConfig: &vmv1beta1.TLSConfig{CAFile: "/etc/ca.pem"},
+			BasicAuth: &vmv1beta1.BasicAuth{
+				Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "test-name-remote-write-auth"}, Key: "username"},
+				Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "test-name-remote-write-auth"}, Key: "password"},
+			},
+		},
+	}, alert.Spec.RemoteWrite)
+	assert.Equal(t, &vmv1beta1.VMAlertNotifierSpec{URL: "http://alertmanager:9093", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: &vmv1beta1.BearerAuth{TokenFilePath: "/var/run/secrets/token"}}}, alert.Spec.Notifier)
+	assert.Equal(t, []vmv1beta1.VMAlertNotifierSpec{{URL: "http://alertmanager-2:9093"}}, alert.Spec.Notifiers)
+	assert.Equal(t, &vmv1beta1.License{KeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "vmalert-license"}, Key: "license"}}, alert.Spec.License)
+
+	byName := secretsByName(secrets)
+	require.Len(t, byName, 3)
+	assert.Equal(t, []byte("ds-token"), byName["test-name-datasource-auth"].Data["token"])
+	assert.Equal(t, []byte("rr-token"), byName["test-name-remote-read-auth"].Data["token"])
+	assert.Equal(t, []byte("rw-user"), byName["test-name-remote-write-auth"].Data["username"])
+	assert.Equal(t, []byte("rw-pass"), byName["test-name-remote-write-auth"].Data["password"])
+}
+
+// Like the chart's mergeOverwrite: a set legacy value wins, an empty one does not clobber,
+// and header maps merge by name. (The chart fails to render on an empty legacy url; the
+// converter keeps the current one instead.)
+func TestUnmarshalValuesLegacyVMAlertValuesTakePrecedence(t *testing.T) {
+	// through MergeValues, like the CLI, so headers arrive already normalized.
+	merged, err := MergeValues([]byte("{}"), []byte(`
+server:
+  datasource:
+    url: http://vmselect:8481
+    bearerToken: flat-token
+    bearer:
+      token: nested-token
+  remoteRead:
+    url: http://current-read:8481
+    bearerToken: current-token
+    headers:
+      A: "1"
+  remoteWrite:
+    url: http://current-write:8480
+  remote:
+    read:
+      url: http://legacy-read:8481
+      bearer:
+        token: ""
+      headers:
+        B: "2"
+    write:
+      url: ""
+  notifier:
+    url: http://current-am:9093
+    alertmanager:
+      url: http://legacy-am:9093
+`))
+	require.NoError(t, err)
+	values, err := UnmarshalValues(merged, "victoria-metrics-alert")
+	require.NoError(t, err)
+
+	alert, secrets, err := ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+	require.NoError(t, err)
+
+	assert.Equal(t, "http://legacy-read:8481", alert.Spec.RemoteRead.URL)
+	assert.Equal(t, []string{"A:1", "B:2"}, alert.Spec.RemoteRead.Headers)
+	assert.Equal(t, "http://current-write:8480", alert.Spec.RemoteWrite.URL)
+	assert.Equal(t, "http://legacy-am:9093", alert.Spec.Notifier.URL)
+
+	byName := secretsByName(secrets)
+	assert.Equal(t, []byte("nested-token"), byName["test-name-datasource-auth"].Data["token"])
+	assert.Equal(t, []byte("current-token"), byName["test-name-remote-read-auth"].Data["token"])
+}
+
+// A notifier without a url (the chart's `notifier: {}` default) is omitted rather than
+// emitted as an empty spec.notifier, which the operator webhook rejects. See #2601.
+func TestUnmarshalValuesVMAlertNotifierShapes(t *testing.T) {
+	convert := func(input string) (*vmv1beta1.VMAlert, error) {
+		values, err := UnmarshalValues([]byte(input), "victoria-metrics-alert")
+		if err != nil {
+			return nil, err
+		}
+		alert, _, err := ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+		return alert, err
+	}
+	for _, input := range []string{
+		"server:\n  notifier: {}\n",
+		"server:\n  notifier:\n    url: \"\"\n",
+		"server:\n  notifier:\n    alertmanager:\n      url: \"\"\n",
+	} {
+		alert, err := convert(input)
+		require.NoError(t, err, input)
+		assert.Nil(t, alert.Spec.Notifier, input)
+	}
+
+	// a list-valued notifier.url fans out into notifiers, sharing the entry's auth.
+	alert, err := convert("server:\n  notifier:\n    url: [http://am-0:9093, http://am-1:9093]\n    bearerTokenFile: /t\n  notifiers:\n    - url: http://am-2:9093\n")
+	require.NoError(t, err)
+	assert.Nil(t, alert.Spec.Notifier)
+	assert.Equal(t, []vmv1beta1.VMAlertNotifierSpec{
+		{URL: "http://am-2:9093"},
+		{URL: "http://am-0:9093", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: &vmv1beta1.BearerAuth{TokenFilePath: "/t"}}},
+		{URL: "http://am-1:9093", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: &vmv1beta1.BearerAuth{TokenFilePath: "/t"}}},
+	}, alert.Spec.Notifiers)
+
+	// the chart's fallback to its bundled alertmanager cannot be converted.
+	_, err = convert("server:\n  notifier: {}\nalertmanager:\n  enabled: true\n")
+	require.ErrorContains(t, err, "alertmanager.enabled")
+}
+
+// The chart's flat remoteWrite auth keys must produce a Secret reference like the other blocks.
+func TestUnmarshalValuesVMAlertRemoteWriteAuth(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+server:
+  remoteWrite:
+    url: http://vminsert:8480
+    bearerToken: rw-token
+    headers:
+      X-Scope-OrgID: "1"
+`), "victoria-metrics-alert")
+	require.NoError(t, err)
+	alert, secrets, err := ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+	require.NoError(t, err)
+	assert.Equal(t, &vmv1beta1.VMAlertRemoteWriteSpec{
+		URL: "http://vminsert:8480",
+		HTTPAuth: vmv1beta1.HTTPAuth{
+			Headers:    []string{"X-Scope-OrgID:1"},
+			BearerAuth: &vmv1beta1.BearerAuth{TokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "test-name-remote-write-auth"}, Key: "token"}},
+		},
+	}, alert.Spec.RemoteWrite)
+	assert.Equal(t, []byte("rw-token"), secretsByName(secrets)["test-name-remote-write-auth"].Data["token"])
+}
+
+func TestUnmarshalValuesVMAlertLicense(t *testing.T) {
+	f := func(input string, expected *vmv1beta1.License) {
+		t.Helper()
+		values, err := UnmarshalValues([]byte(input), "victoria-metrics-alert")
+		require.NoError(t, err)
+		alert, _, err := ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+		require.NoError(t, err)
+		assert.Equal(t, expected, alert.Spec.License)
+	}
+	keyRef := &vmv1beta1.License{KeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "lic"}, Key: "k"}}
+
+	f("license:\n  key: \"\"\n  secret:\n    name: \"\"\n    key: \"\"\n", nil)
+	f("license:\n  key: plain-key\n", &vmv1beta1.License{Key: ptr.To("plain-key")})
+	f("license:\n  secret:\n    name: lic\n    key: k\n", keyRef)
+	f("license:\n  key: plain-key\n  secret:\n    name: lic\n    key: k\n", &vmv1beta1.License{Key: ptr.To("plain-key")})
+	f("license:\n  secret:\n    name: lic\n", nil)
+}

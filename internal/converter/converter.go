@@ -1,9 +1,11 @@
 package converter
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"sort"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/utils/ptr"
 	k8syaml "sigs.k8s.io/yaml"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -25,6 +28,7 @@ type VMSingleHelmValues struct {
 	Global         GlobalValues    `yaml:"global,omitempty" json:"global,omitempty"`
 	Server         ServerValues    `yaml:"server" json:"server"`
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VMClusterHelmValues struct {
@@ -33,6 +37,7 @@ type VMClusterHelmValues struct {
 	VMInsert       ServerValues    `yaml:"vminsert" json:"vminsert"`
 	VMStorage      ServerValues    `yaml:"vmstorage" json:"vmstorage"`
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VLogsHelmValues struct {
@@ -61,6 +66,7 @@ type VLClusterHelmValues struct {
 	VLInsert       ServerValues    `yaml:"vlinsert" json:"vlinsert"`
 	VLStorage      ServerValues    `yaml:"vlstorage" json:"vlstorage"`
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VMAgentHelmValues struct {
@@ -82,6 +88,7 @@ type VMAgentHelmValues struct {
 	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 	RemoteWrite        []VMAgentRemoteWriteValues    `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
 	ServiceAccount     *ServiceAccount               `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License            *LicenseValues                `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VMAuthHelmValues struct {
@@ -90,6 +97,7 @@ type VMAuthHelmValues struct {
 	Env            []corev1.EnvVar     `yaml:"env,omitempty" json:"env,omitempty"`
 	ServiceAccount *ServiceAccount     `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
 	Config         *VMAuthConfigValues `yaml:"config,omitempty" json:"config,omitempty"`
+	License        *LicenseValues      `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 // VMAuthConfigValues represents vmauth's own native config file (the chart's `config`
@@ -119,6 +127,42 @@ type VMAlertHelmValues struct {
 	Global         GlobalValues        `yaml:"global,omitempty" json:"global,omitempty"`
 	Server         VMAlertServerValues `yaml:"server" json:"server"`
 	ServiceAccount *ServiceAccount     `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues      `yaml:"license,omitempty" json:"license,omitempty"`
+}
+
+// LicenseValues is the charts' `license` and `global.license` block.
+type LicenseValues struct {
+	Key    string           `yaml:"key,omitempty" json:"key,omitempty"`
+	Secret LicenseSecretRef `yaml:"secret,omitempty" json:"secret,omitempty"`
+	KeyRef LicenseSecretRef `yaml:"keyRef,omitempty" json:"keyRef,omitempty"`
+}
+
+type LicenseSecretRef struct {
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	Key  string `yaml:"key,omitempty" json:"key,omitempty"`
+}
+
+// licenseSpec follows the charts' vm.license.* helpers: a plaintext key (component, then global) wins over
+// any Secret reference, whose name and key are each resolved from secret, global secret, keyRef, global keyRef.
+func licenseSpec(local, global *LicenseValues) *vmv1beta1.License {
+	if local == nil {
+		local = &LicenseValues{}
+	}
+	if global == nil {
+		global = &LicenseValues{}
+	}
+	if key := cmp.Or(local.Key, global.Key); key != "" {
+		return &vmv1beta1.License{Key: ptr.To(key)}
+	}
+	name := cmp.Or(local.Secret.Name, global.Secret.Name, local.KeyRef.Name, global.KeyRef.Name)
+	key := cmp.Or(local.Secret.Key, global.Secret.Key, local.KeyRef.Key, global.KeyRef.Key)
+	if name == "" || key == "" {
+		return nil
+	}
+	return &vmv1beta1.License{KeyRef: &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: name},
+		Key:                  key,
+	}}
 }
 
 type VMAnomalyHelmValues struct {
@@ -141,6 +185,7 @@ type VMAnomalyHelmValues struct {
 	Reader             *VMAnomalyReaderValues        `yaml:"reader,omitempty" json:"reader,omitempty"`
 	Writer             *VMAnomalyWriterValues        `yaml:"writer,omitempty" json:"writer,omitempty"`
 	ServiceAccount     *ServiceAccount               `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License            *LicenseValues                `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VMAnomalyReaderValues struct {
@@ -190,23 +235,24 @@ type VMAlertConfigValues struct {
 // values.yaml uses for datasource/remoteRead/notifier (e.g. `basicAuth.username`,
 // `bearerToken`), unlike the operator's own nested, Secret-reference-only HTTPAuth.
 type chartHTTPAuth struct {
-	BasicAuthUsername string   `yaml:"basicAuth.username,omitempty" json:"basicAuth.username,omitempty"`
-	BasicAuthPassword string   `yaml:"basicAuth.password,omitempty" json:"basicAuth.password,omitempty"`
-	BearerToken       string   `yaml:"bearerToken,omitempty" json:"bearerToken,omitempty"`
-	BearerTokenFile   string   `yaml:"bearerTokenFile,omitempty" json:"bearerTokenFile,omitempty"`
-	Headers           []string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	BasicAuthUsername string `yaml:"basicAuth.username,omitempty" json:"basicAuth.username,omitempty"`
+	BasicAuthPassword string `yaml:"basicAuth.password,omitempty" json:"basicAuth.password,omitempty"`
+	BearerToken       string `yaml:"bearerToken,omitempty" json:"bearerToken,omitempty"`
+	BearerTokenFile   string `yaml:"bearerTokenFile,omitempty" json:"bearerTokenFile,omitempty"`
 }
 
 // VMAlertHTTPAuthValues is the chart shape for a single HTTP-auth-bearing URL block
 // (datasource, remoteRead).
 type VMAlertHTTPAuthValues struct {
-	URL           string `yaml:"url,omitempty" json:"url,omitempty"`
+	URL           string   `yaml:"url,omitempty" json:"url,omitempty"`
+	Headers       []string `yaml:"headers,omitempty" json:"headers,omitempty"`
 	chartHTTPAuth `yaml:",inline" json:",inline"`
 }
 
 // VMAlertNotifierValues is the chart shape for a notifier entry.
 type VMAlertNotifierValues struct {
-	URL           string `yaml:"url,omitempty" json:"url,omitempty"`
+	URL           string   `yaml:"url,omitempty" json:"url,omitempty"`
+	Headers       []string `yaml:"headers,omitempty" json:"headers,omitempty"`
 	chartHTTPAuth `yaml:",inline" json:",inline"`
 }
 
@@ -244,7 +290,6 @@ func (c *chartSecurityContext) toCoreV1() *corev1.SecurityContext {
 // returning a Secret for any plaintext credential found (nil if none).
 func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth, *corev1.Secret) {
 	var result vmv1beta1.HTTPAuth
-	result.Headers = auth.Headers
 	data := map[string][]byte{}
 	if auth.BasicAuthUsername != "" || auth.BasicAuthPassword != "" {
 		result.BasicAuth = &vmv1beta1.BasicAuth{}
@@ -273,6 +318,147 @@ func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth,
 	}
 }
 
+// resolveVMAlertLegacyValues rewrites the victoria-metrics-alert chart's legacy value aliases
+// into their current form, the way the chart's vmalert.args template does: server.remote.{read,write}
+// into server.remote{Read,Write}, notifier.alertmanager into the notifier itself, nested
+// basicAuth/bearer maps into the flat keys, and a list-valued notifier.url into notifiers.
+func resolveVMAlertLegacyValues(raw map[string]any) error {
+	normalizeHeaderMaps(raw)
+	server, _ := raw["server"].(map[string]any)
+	if server == nil {
+		return nil
+	}
+	if ds, ok := server["datasource"].(map[string]any); ok {
+		server["datasource"] = fromLegacyArgs(ds)
+	}
+	remote, _ := server["remote"].(map[string]any)
+	delete(server, "remote")
+	for legacy, current := range map[string]string{"read": "remoteRead", "write": "remoteWrite"} {
+		if blk, ok := remote[legacy].(map[string]any); ok {
+			dst, _ := server[current].(map[string]any)
+			server[current] = mergeOverwrite(dst, fromLegacyArgs(blk))
+		}
+	}
+	notifiers, _ := server["notifiers"].([]any)
+	for i, item := range notifiers {
+		if m, ok := item.(map[string]any); ok {
+			notifiers[i] = resolveLegacyNotifier(m)
+		}
+	}
+	notifier, _ := server["notifier"].(map[string]any)
+	notifier = resolveLegacyNotifier(notifier)
+	delete(server, "notifier")
+	if urls, _ := notifier["url"].([]any); len(urls) > 0 {
+		for _, u := range urls {
+			n := maps.Clone(notifier)
+			n["url"] = u
+			notifiers = append(notifiers, n)
+		}
+	} else if url, _ := notifier["url"].(string); url != "" {
+		server["notifier"] = notifier
+	} else if am, _ := raw["alertmanager"].(map[string]any); am["enabled"] == true {
+		// the chart falls back to its bundled alertmanager here, which has no CR equivalent.
+		return fmt.Errorf("server.notifier.url is empty and alertmanager.enabled is true: the bundled alertmanager is not converted, set server.notifier.url or create a VMAlertmanager and spec.notifier manually")
+	}
+	if notifiers != nil {
+		server["notifiers"] = notifiers
+	}
+	return nil
+}
+
+func resolveLegacyNotifier(notifier map[string]any) map[string]any {
+	am, _ := notifier["alertmanager"].(map[string]any)
+	result := maps.Clone(notifier)
+	if result == nil {
+		result = map[string]any{}
+	}
+	delete(result, "alertmanager")
+	return mergeOverwrite(result, fromLegacyArgs(am))
+}
+
+// fromLegacyArgs mirrors the chart's vmalert.fromLegacyArgs template: nested
+// basicAuth.{username,password} and bearer.{token,tokenFile} become the flat keys.
+func fromLegacyArgs(block map[string]any) map[string]any {
+	result := maps.Clone(block)
+	if result == nil {
+		return map[string]any{}
+	}
+	delete(result, "basicAuth")
+	delete(result, "bearer")
+	for nested, flat := range map[[2]string]string{
+		{"basicAuth", "username"}: "basicAuth.username",
+		{"basicAuth", "password"}: "basicAuth.password",
+		{"bearer", "token"}:       "bearerToken",
+		{"bearer", "tokenFile"}:   "bearerTokenFile",
+	} {
+		if m, _ := block[nested[0]].(map[string]any); m != nil {
+			if v, _ := m[nested[1]].(string); v != "" {
+				result[flat] = v
+			}
+		}
+	}
+	return result
+}
+
+// mergeOverwrite deep-merges src into dst like sprig's mergeOverwrite: non-empty src values win.
+func mergeOverwrite(dst, src map[string]any) map[string]any {
+	if dst == nil {
+		dst = map[string]any{}
+	}
+	for k, v := range src {
+		if k == "headers" {
+			if merged := mergeHeaders(dst[k], v); len(merged) > 0 {
+				dst[k] = merged
+			}
+			continue
+		}
+		switch sv := v.(type) {
+		case nil:
+			continue
+		case string:
+			if sv == "" {
+				continue
+			}
+		case []any:
+			if len(sv) == 0 {
+				continue
+			}
+		case map[string]any:
+			if len(sv) == 0 {
+				continue
+			}
+			if dm, ok := dst[k].(map[string]any); ok {
+				dst[k] = mergeOverwrite(dm, sv)
+				continue
+			}
+		}
+		dst[k] = v
+	}
+	return dst
+}
+
+// mergeHeaders merges two normalized "name:value" header slices by name, src winning.
+func mergeHeaders(dst, src any) []string {
+	merged := map[string]any{}
+	for _, h := range []any{dst, src} {
+		var items []string
+		switch hv := h.(type) {
+		case []string:
+			items = hv
+		case []any: // a normalized slice read back from YAML
+			for _, item := range hv {
+				items = append(items, fmt.Sprint(item))
+			}
+		}
+		for _, item := range items {
+			if name, value, ok := strings.Cut(item, ":"); ok {
+				merged[name] = value
+			}
+		}
+	}
+	return headersMapToSlice(merged)
+}
+
 // dropRuleExtraArg removes "rule" from extraArgs, if present: rule files are handled via a
 // generated VMRule CR and spec.ruleSelector instead of a stringified -rule extraArg.
 func dropRuleExtraArg(extraArgs map[string]interface{}) {
@@ -282,6 +468,7 @@ func dropRuleExtraArg(extraArgs map[string]interface{}) {
 type GlobalValues struct {
 	ImagePullSecrets []corev1.LocalObjectReference `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
 	Image            ImageValues                   `yaml:"image,omitempty" json:"image,omitempty"`
+	License          *LicenseValues                `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type ServiceAccount struct {
@@ -290,6 +477,8 @@ type ServiceAccount struct {
 
 type VLAgentHelmValues struct {
 	Image                     ImageValues                       `yaml:"image" json:"image"`
+	Global                    GlobalValues                      `yaml:"global,omitempty" json:"global,omitempty"`
+	License                   *LicenseValues                    `yaml:"license,omitempty" json:"license,omitempty"`
 	ReplicaCount              *int32                            `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
 	Annotations               map[string]string                 `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
@@ -313,6 +502,8 @@ type VLAgentHelmValues struct {
 
 type VLCollectorHelmValues struct {
 	Image                     ImageValues                       `yaml:"image" json:"image"`
+	Global                    GlobalValues                      `yaml:"global,omitempty" json:"global,omitempty"`
+	License                   *LicenseValues                    `yaml:"license,omitempty" json:"license,omitempty"`
 	Annotations               map[string]string                 `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
 	PodLabels                 map[string]string                 `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
@@ -472,6 +663,7 @@ func (v VLAgentRemoteWriteValues) asSpec() vmv1.VLAgentRemoteWriteSpec {
 type VMAlertRemoteWriteValues struct {
 	vmv1beta1.VMAlertRemoteWriteSpec `yaml:",inline" json:",inline"`
 	remoteWriteTLSValues             `yaml:",inline" json:",inline"`
+	chartHTTPAuth                    `yaml:",inline" json:",inline"`
 }
 
 // asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
@@ -671,6 +863,17 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		}
 		return &values, nil
 	case "victoria-metrics-alert":
+		var raw map[string]any
+		if err := k8syaml.Unmarshal(data, &raw); err != nil {
+			return nil, err
+		}
+		if err := resolveVMAlertLegacyValues(raw); err != nil {
+			return nil, err
+		}
+		data, err := k8syaml.Marshal(raw)
+		if err != nil {
+			return nil, err
+		}
 		var values VMAlertHelmValues
 		if err := k8syaml.Unmarshal(data, &values); err != nil {
 			return nil, err
@@ -1200,6 +1403,8 @@ func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, e
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
+	spec.License = licenseSpec(values.License, values.Global.License)
+
 	return spec, nil
 }
 
@@ -1257,6 +1462,8 @@ func convertVMAnomalySpec(values *VMAnomalyHelmValues) (*vmv1.VMAnomalySpec, err
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
 
+	spec.License = licenseSpec(values.License, values.Global.License)
+
 	return spec, nil
 }
 
@@ -1280,6 +1487,7 @@ func convertVMAlertNotifiers(crName string, items []VMAlertNotifierValues) ([]vm
 	var secrets []*corev1.Secret
 	for i, item := range items {
 		auth, secret := convertHTTPAuth(vmAlertSecretName(crName, fmt.Sprintf("notifiers-%d", i)), item.chartHTTPAuth)
+		auth.Headers = item.Headers
 		result = append(result, vmv1beta1.VMAlertNotifierSpec{URL: item.URL, HTTPAuth: auth})
 		if secret != nil {
 			secrets = append(secrets, secret)
@@ -1332,8 +1540,10 @@ func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAl
 	spec.PodMetadata = cfg.PodMetadata
 	spec.ServiceSpec = cfg.ServiceSpec
 
-	if values.Server.Notifier != nil {
+	// an operator notifier needs a url or selector, and the chart passes no notifier without one.
+	if values.Server.Notifier != nil && values.Server.Notifier.URL != "" {
 		auth, secret := convertHTTPAuth(vmAlertSecretName(name, "notifier"), values.Server.Notifier.chartHTTPAuth)
+		auth.Headers = values.Server.Notifier.Headers
 		spec.Notifier = &vmv1beta1.VMAlertNotifierSpec{URL: values.Server.Notifier.URL, HTTPAuth: auth}
 		if secret != nil {
 			secrets = append(secrets, secret)
@@ -1344,11 +1554,22 @@ func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAl
 	secrets = append(secrets, notifierSecrets...)
 
 	if rw := convertVMAlertRemoteWrite(values.Server.RemoteWrite); rw != nil && rw.URL != "" {
+		auth, secret := convertHTTPAuth(vmAlertSecretName(name, "remote-write"), values.Server.RemoteWrite.chartHTTPAuth)
+		if auth.BasicAuth != nil {
+			rw.BasicAuth = auth.BasicAuth
+		}
+		if auth.BearerAuth != nil {
+			rw.BearerAuth = auth.BearerAuth
+		}
 		spec.RemoteWrite = rw
+		if secret != nil {
+			secrets = append(secrets, secret)
+		}
 	}
 
 	if values.Server.RemoteRead != nil && values.Server.RemoteRead.URL != "" {
 		auth, secret := convertHTTPAuth(vmAlertSecretName(name, "remote-read"), values.Server.RemoteRead.chartHTTPAuth)
+		auth.Headers = values.Server.RemoteRead.Headers
 		spec.RemoteRead = &vmv1beta1.VMAlertRemoteReadSpec{URL: values.Server.RemoteRead.URL, HTTPAuth: auth}
 		if secret != nil {
 			secrets = append(secrets, secret)
@@ -1356,10 +1577,12 @@ func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAl
 	}
 
 	datasourceAuth, datasourceSecret := convertHTTPAuth(vmAlertSecretName(name, "datasource"), values.Server.Datasource.chartHTTPAuth)
+	datasourceAuth.Headers = values.Server.Datasource.Headers
 	spec.Datasource = vmv1beta1.VMAlertDatasourceSpec{URL: values.Server.Datasource.URL, HTTPAuth: datasourceAuth}
 	if datasourceSecret != nil {
 		secrets = append(secrets, datasourceSecret)
 	}
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name
@@ -1411,6 +1634,8 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
 		spec.ServiceAccountName = values.ServiceAccount.Name
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }
@@ -1465,6 +1690,8 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 			}
 		}
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }
@@ -1522,6 +1749,8 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 	spec.Volumes = values.ExtraVolumes
 	spec.VolumeMounts = values.ExtraVolumeMounts
 
+	spec.License = licenseSpec(values.License, values.Global.License)
+
 	return spec, nil
 }
 func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, error) {
@@ -1571,6 +1800,8 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 			}
 		}
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }
@@ -1629,6 +1860,8 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 		CheckpointsPath:        values.Collector.CheckpointsPath,
 		LogsPath:               values.Collector.LogsPath,
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }
@@ -1753,6 +1986,8 @@ func convertVMAuthSpec(values *VMAuthHelmValues) (*vmv1beta1.VMAuthSpec, error) 
 	if values.Config != nil {
 		spec.UnauthorizedUserAccessSpec = values.Config.UnauthorizedUser
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }

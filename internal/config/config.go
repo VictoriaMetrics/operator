@@ -503,7 +503,7 @@ type BaseOperatorConf struct {
 		// Default container image for Alertmanager.
 		Image string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		// Default Alertmanager version.
-		Version string `default:"v0.31.0" env:"ALERTMANAGERVERSION"`
+		Version string `default:"v0.34.1" env:"ALERTMANAGERVERSION"`
 		// Default HTTP listen port.
 		Port string `default:"9093"`
 		// Whether to apply default resource requests and limits.

@@ -399,9 +399,9 @@ func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec
 	return cb(asc)
 }
 
-// ValidateHeadlessDefaultService checks that an override applied with useAsDefault keeps
-// the default Service headless. 
-// The check is needed for `vmselect`, `vmstorage` and `VMAlertmanager`.
+// ValidateHeadlessDefaultService checks that an override applied with useAsDefault 
+// keeps the default Service headless. 
+// The check is used by `vmselect`, `vmstorage` and `VMAlertmanager`.
 func (asc *AdditionalServiceSpec) ValidateHeadlessDefaultService() error {
 	if asc == nil || !asc.UseAsDefault {
 		return nil

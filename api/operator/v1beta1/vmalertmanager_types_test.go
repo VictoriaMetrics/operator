@@ -97,6 +97,23 @@ receivers:
 		wantErr: true,
 	})
 
+	// serviceSpec.useAsDefault with an explicit clusterIPs and no type must be rejected
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{ClusterIPs: []string{"1.1.1.1"}},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
 	// serviceSpec.useAsDefault with type=ClusterIP and no clusterIP keeps the service headless - allowed
 	f(opts{
 		cr: &VMAlertmanager{

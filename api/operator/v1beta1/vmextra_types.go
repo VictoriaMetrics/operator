@@ -34,7 +34,8 @@ const (
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
 	UpdateStatusPaused      UpdateStatus = "paused"
-	UpdateStatusIgnored     UpdateStatus = "ignored"
+	// UpdateStatusIgnored is no longer used by the operator, see https://github.com/VictoriaMetrics/operator/issues/1181#issuecomment-5779890116
+	UpdateStatusIgnored UpdateStatus = "ignored"
 )
 
 // WorkloadKind represents the kind of Kubernetes workload managed by an operator component.
@@ -1387,6 +1388,11 @@ type TLSClientConfig struct {
 }
 
 // ScrapeObjectStatus defines the observed state of ScrapeObjects
+//
+// `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+// in which case it is set to `failed`. It never reports whether the applications
+// selecting this object accepted its content - `conditions` carries that.
+// See https://github.com/VictoriaMetrics/operator/issues/2649
 type ScrapeObjectStatus struct {
 	StatusMetadata `json:",inline"`
 	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server

@@ -29,7 +29,8 @@ var (
 	statusExpireTTL = 3 * statusUpdateTTL
 )
 
-type objectWithStatus interface {
+// ObjectWithStatusMetadata is implemented by every CRD kind exposing StatusMetadata.
+type ObjectWithStatusMetadata interface {
 	client.Object
 	GetStatusMetadata() *vmv1beta1.StatusMetadata
 }
@@ -53,7 +54,7 @@ func childConditionType(parentObjectName string) string {
 // same kind still carrying this parent's condition has it released.
 func StatusForChildObjects[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, parentObjectName string, childObjects []PT) error {
 	typeName := childConditionType(parentObjectName)
 
@@ -87,7 +88,7 @@ func StatusForChildObjects[T any, PT interface {
 // since it doesn't represent the parent's complete current selection.
 func StatusForChildObject[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, parentObjectName string, childObject PT) error {
 	typeName := childConditionType(parentObjectName)
 	syncErr, err := applyChildStatusCondition[T](ctx, rclient, childObject, parentObjectName, typeName)
@@ -102,7 +103,7 @@ func StatusForChildObject[T any, PT interface {
 
 func applyChildStatusCondition[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, childObject PT, parentObjectName, typeName string) (syncErr, err error) {
 	// update current time on each cycle
 	// due to possible throttling at API server
@@ -132,7 +133,7 @@ func applyChildStatusCondition[T any, PT interface {
 // this parent's condition, not with the total population of that kind.
 func releaseDroppedChildren[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, typeName string, current map[types.NamespacedName]struct{}) error {
 	carriers, err := listChildrenWithCondition[T, PT](ctx, rclient, typeName)
 	if err != nil {
@@ -157,7 +158,7 @@ func releaseDroppedChildren[T any, PT interface {
 // falls back to listing every object of kind T and filtering in-process.
 func listChildrenWithCondition[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, typeName string) ([]PT, error) {
 	items, err := listOfKind[T, PT](ctx, rclient, client.MatchingFields{k8stools.ChildConditionIndexField: typeName})
 	if err == nil {
@@ -181,7 +182,7 @@ func listChildrenWithCondition[T any, PT interface {
 // needing to name T's corresponding List type explicitly.
 func listOfKind[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, opts ...client.ListOption) ([]PT, error) {
 	gvk, err := apiutil.GVKForObject(PT(new(T)), rclient.Scheme())
 	if err != nil {
@@ -225,7 +226,7 @@ func hasCondition(conds []vmv1beta1.Condition, condType string) bool {
 
 func releaseChildStatusCondition[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, nsn types.NamespacedName, typeName string) error {
 	return retryOnConflict(func() error {
 		dst := PT(new(T))
@@ -240,7 +241,7 @@ func releaseChildStatusCondition[T any, PT interface {
 
 		st.Conditions = removeConditionByType(st.Conditions, typeName)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		writeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -265,7 +266,7 @@ func removeConditionByType(conds []vmv1beta1.Condition, condType string) []vmv1b
 
 func updateChildStatusConditions[T any, PT interface {
 	*T
-	objectWithStatus
+	ObjectWithStatusMetadata
 }](ctx context.Context, rclient client.Client, childObject PT, currCond vmv1beta1.Condition) error {
 	nsn := types.NamespacedName{
 		Namespace: childObject.GetNamespace(),
@@ -285,7 +286,7 @@ func updateChildStatusConditions[T any, PT interface {
 		st.Conditions = setConditionTo(st.Conditions, currCond)
 		st.Conditions = removeStaleConditionsBySuffix(st.Conditions, vmv1beta1.ConditionDomainTypeAppliedSuffix)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		writeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -342,13 +343,60 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 	return tmp
 }
 
-// writeAggregatedStatus derives status from per-parent conditions; a child selected by
-// multiple parents is only Failed if it fails on all of them, not just one.
-func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix string) {
+// SyncConfigObjectStatus recomputes status.updateStatus and status.reason of a config-kind
+// object from the per-parent conditions currently persisted at it, see writeAggregatedStatus.
+//
+// Every parent already does this whenever it writes or releases its own condition. It is
+// needed on top of that because an object that no parent selects never gets a condition
+// written, so nothing else would ever fill in its status. It also clears a status left by an
+// earlier failed reconcile of the object itself. The object is re-read before the update, so
+// that conditions written concurrently by a parent are preserved.
+func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object ObjectWithStatusMetadata) error {
+	nsn := client.ObjectKeyFromObject(object)
+	return retryOnConflict(func() error {
+		if err := rclient.Get(ctx, nsn, object); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("cannot get %T=%q to sync its status: %w", object, nsn, err)
+		}
+		st := object.GetStatusMetadata()
+		prevSt := st.DeepCopy()
+
+		st.ObservedGeneration = object.GetGeneration()
+		// the object has just been reconciled successfully, so a `failed` left by an
+		// earlier reconcile of it no longer applies and must not block the aggregation
+		st.UpdateStatus = vmv1beta1.UpdateStatusOperational
+		writeAggregatedStatus(st)
+		if reflect.DeepEqual(prevSt, st) {
+			return nil
+		}
+		if err := rclient.Status().Update(ctx, object); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("failed to update status of %T=%q: %w", object, nsn, err)
+		}
+		return nil
+	})
+}
+
+// writeAggregatedStatus derives a config-kind object's status from its per-parent conditions.
+//
+// The per-parent `<parent>.victoriametrics.com/Applied` conditions carry the real state, and
+// status.reason keeps the error text of the parents that rejected the object.
+//
+// An already `failed` status is left untouched, see the check below.
+func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata) {
+	if stm.UpdateStatus == vmv1beta1.UpdateStatusFailed {
+		// the object's own controller could not parse the spec, see SyncConfigObjectStatus.
+		return
+	}
+
 	var appliedCount, failedCount int
 	var errorMessages []string
 	for _, c := range stm.Conditions {
-		if !strings.HasSuffix(c.Type, domainTypeSuffix) {
+		if !strings.HasSuffix(c.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
 			continue
 		}
 		if c.Status == "False" {
@@ -359,19 +407,17 @@ func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata, domainTypeSuffix strin
 		}
 	}
 	sort.Strings(errorMessages)
+	// status.updateStatus is always set to `operational` here. The only other value a config object
+	// gets is `failed`, written by its own controller when the operator cannot parse the spec.
+	stm.UpdateStatus = vmv1beta1.UpdateStatusOperational
 	stm.Reason = ""
 
 	switch {
-	case appliedCount == 0 && failedCount == 0:
-		stm.UpdateStatus = vmv1beta1.UpdateStatusIgnored
+	case failedCount == 0:
 	case appliedCount == 0:
-		stm.UpdateStatus = vmv1beta1.UpdateStatusFailed
 		stm.Reason = errorMessages[0]
 	default:
-		stm.UpdateStatus = vmv1beta1.UpdateStatusOperational
-		if failedCount > 0 {
-			stm.Reason = fmt.Sprintf("applied on %d parent(s), failed on %d: %s", appliedCount, failedCount, errorMessages[0])
-		}
+		stm.Reason = fmt.Sprintf("applied on %d parent(s), failed on %d: %s", appliedCount, failedCount, errorMessages[0])
 	}
 }
 

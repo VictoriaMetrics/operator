@@ -265,6 +265,11 @@ func (r *VMAlertmanagerConfig) Validate() error {
 }
 
 // VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
+//
+// `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+// in which case it is set to `failed`. It never reports whether the applications
+// selecting this object accepted its content - `conditions` carries that.
+// See https://github.com/VictoriaMetrics/operator/issues/2649
 type VMAlertmanagerConfigStatus struct {
 	// ObservedGeneration defines current generation picked by operator for the
 	// reconcile

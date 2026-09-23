@@ -272,6 +272,11 @@ type TargetRefBasicAuth struct {
 }
 
 // VMUserStatus defines the observed state of VMUser
+//
+// `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+// in which case it is set to `failed`. It never reports whether the applications
+// selecting this object accepted its content - `conditions` carries that.
+// See https://github.com/VictoriaMetrics/operator/issues/2649
 type VMUserStatus struct {
 	StatusMetadata `json:",inline"`
 	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server

@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -427,6 +428,144 @@ func TestHandleReconcileErrWithStatus(t *testing.T) {
 		wantResult: ctrl.Result{RequeueAfter: 10},
 		wantErr:    fmt.Errorf("some transient error"),
 	})
+}
+
+func TestHandleConfigReconcileErrWithStatus(t *testing.T) {
+	type opts struct {
+		ctx        context.Context
+		err        error
+		origin     ctrl.Result
+		object     *vmv1beta1.VMRule
+		wantResult ctrl.Result
+		wantErr    error
+		wantStatus vmv1beta1.UpdateStatus
+		wantReason string
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		if o.ctx != nil {
+			ctx = o.ctx
+		}
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{o.object})
+		got, err := handleConfigReconcileErrWithStatus(ctx, fclient, o.object, o.origin, o.err)
+		assert.Equal(t, o.wantErr, err)
+		assert.Equal(t, o.wantResult, got)
+		updated := &vmv1beta1.VMRule{}
+		assert.NoError(t, fclient.Get(context.Background(), client.ObjectKeyFromObject(o.object), updated))
+		assert.Equal(t, o.wantStatus, updated.Status.UpdateStatus)
+		assert.Equal(t, o.wantReason, updated.Status.Reason)
+	}
+
+	newRule := func(modify ...func(*vmv1beta1.VMRule)) *vmv1beta1.VMRule {
+		r := &vmv1beta1.VMRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-rule",
+				Namespace: "default",
+			},
+		}
+		for _, m := range modify {
+			m(r)
+		}
+		return r
+	}
+
+	// successful reconcile marks the object operational, even though no parent selected it
+	f(opts{
+		object:     newRule(),
+		origin:     ctrl.Result{RequeueAfter: 10},
+		wantResult: ctrl.Result{RequeueAfter: 10},
+		wantStatus: vmv1beta1.UpdateStatusOperational,
+	})
+
+	// the operator cannot decode the spec: the object itself is broken, not a parent
+	f(opts{
+		err:        newParsingError("bad field value"),
+		object:     newRule(),
+		wantErr:    newParsingError("bad field value"),
+		wantStatus: vmv1beta1.UpdateStatusFailed,
+		wantReason: newParsingError("bad field value").Error(),
+	})
+
+	// once the spec parses again, the failed status and its reason are cleared
+	f(opts{
+		object: newRule(func(r *vmv1beta1.VMRule) {
+			r.Status.UpdateStatus = vmv1beta1.UpdateStatusFailed
+			r.Status.Reason = "bad field value"
+		}),
+		wantStatus: vmv1beta1.UpdateStatusOperational,
+	})
+
+	// a transient reconcile error belongs to the parent, the object itself stays operational
+	f(opts{
+		err:        fmt.Errorf("some transient error"),
+		object:     newRule(),
+		wantErr:    fmt.Errorf("some transient error"),
+		wantStatus: vmv1beta1.UpdateStatusOperational,
+	})
+
+	// the object could not be fetched, so its state is unknown and must not be reported
+	f(opts{
+		err:     newGetError(fmt.Errorf("api server is unavailable")),
+		object:  newRule(),
+		wantErr: newGetError(fmt.Errorf("api server is unavailable")),
+	})
+
+	// a NotFound get error is swallowed by handleReconcileErr, so the skip must rely on the
+	// original error; the object is kept in the client so that a status write would show up
+	f(opts{
+		err: newGetError(k8serrors.NewNotFound(
+			schema.GroupResource{Group: "operator.victoriametrics.com", Resource: "vmrules"}, "test-rule")),
+		object: newRule(),
+	})
+
+	// the operator is shutting down, writing a status can only fail
+	f(opts{
+		ctx:    canceledCtx(),
+		object: newRule(),
+	})
+
+	// the object is being deleted, its status is not worth writing
+	f(opts{
+		object: newRule(func(r *vmv1beta1.VMRule) {
+			ts := metav1.Now()
+			r.DeletionTimestamp = &ts
+			r.Finalizers = []string{vmv1beta1.FinalizerName}
+		}),
+	})
+}
+
+func TestHandleConfigReconcileErrWithStatus_PropagatesStatusWriteFailure(t *testing.T) {
+	ctx := context.Background()
+	newRule := func() *vmv1beta1.VMRule {
+		return &vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "test-rule", Namespace: "default"}}
+	}
+	fns := interceptor.Funcs{
+		SubResourceUpdate: func(_ context.Context, _ client.Client, _ string, _ client.Object, _ ...client.SubResourceUpdateOption) error {
+			return errors.New("api server is unavailable")
+		},
+	}
+	rule := newRule()
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{rule}, fns)
+
+	// the reconcile succeeded, so only a returned error can requeue the object and give
+	// it another chance to get its status
+	_, err := handleConfigReconcileErrWithStatus(ctx, fclient, rule, ctrl.Result{}, nil)
+	if assert.Error(t, err, "a failed status write must be surfaced to the controller") {
+		assert.Contains(t, err.Error(), "api server is unavailable")
+	}
+
+	// an existing reconcile error already requeues the object and must not be masked
+	reconcileErr := fmt.Errorf("some transient error")
+	_, err = handleConfigReconcileErrWithStatus(ctx, fclient, rule, ctrl.Result{}, reconcileErr)
+	assert.Equal(t, reconcileErr, err)
+}
+
+func canceledCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
 }
 
 func TestHandleReconcileErr(t *testing.T) {

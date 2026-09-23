@@ -556,6 +556,41 @@ func TestCreateOrUpdateHPA_RemovedOnDisable(t *testing.T) {
 	})
 }
 
+// regression test: createOrUpdateHPA skips daemonSetMode, so an HPA left over from
+// before the switch must be removed even though spec.hpa is still set
+func TestCreateOrUpdateHPA_RemovedOnDaemonSetMode(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "hpa-daemonset-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+			HPA: &vmv1beta1.EmbeddedHPA{
+				MinReplicas: ptr.To(int32(1)),
+				MaxReplicas: 3,
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		hpaNSN := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+		var hpa autoscalingv2.HorizontalPodAutoscaler
+		assert.NoError(t, fclient.Get(ctx, hpaNSN, &hpa))
+
+		// deleteOrphaned only runs once cr.Status.LastAppliedSpec is set, as a real reconcile loop would
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		// spec.hpa stays set, but daemonSetMode makes it inapplicable
+		cr.Spec.DaemonSetMode = true
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		err := fclient.Get(ctx, hpaNSN, &hpa)
+		assert.Error(t, err)
+		assert.True(t, k8serrors.IsNotFound(err))
+	})
+}
+
 // regression test for https://github.com/VictoriaMetrics/operator/issues/2518
 func TestCreateOrUpdateHPA_OldNameCleanedUpOnMigration(t *testing.T) {
 	cr := &vmv1beta1.VMAgent{

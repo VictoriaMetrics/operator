@@ -1284,7 +1284,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.PrefixedName() != cr.Name {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: cr.Namespace}})
 	}
-	if cr.Spec.HPA == nil {
+	if cr.Spec.HPA == nil || cr.Spec.DaemonSetMode {
 		objsToRemove = append(objsToRemove, &autoscalingv2.HorizontalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if baseConf.VPAAPIEnabled {

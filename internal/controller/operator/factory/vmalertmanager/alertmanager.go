@@ -29,6 +29,13 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	if cr.Paused() {
 		return nil
 	}
+	// VMAlertmanager is validated by the admission webhook only, which is disabled by default.
+	// The default Service must stay headless, otherwise replicas cannot discover each other.
+	if !build.MustSkipRuntimeValidation() {
+		if err := cr.Spec.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
+			return fmt.Errorf("incorrect spec.serviceSpec: %w", err)
+		}
+	}
 	var prevCR *vmv1beta1.VMAlertmanager
 	if cr.Status.LastAppliedSpec != nil {
 		prevCR = cr.DeepCopy()

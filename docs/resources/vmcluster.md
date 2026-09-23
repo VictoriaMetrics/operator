@@ -102,10 +102,12 @@ spec:
         type: LoadBalancer
 ```
 
-> **Note**: `vmselect` and `vmstorage` default services must stay headless (`clusterIP: None`) for
-> internal pod-to-pod communication, so the operator rejects `serviceSpec.useAsDefault: true` combined
-> with an explicit `spec.type` for these components. To expose `vmselect` externally, omit
-> `useAsDefault` so the operator creates an additional, separate `Service` instead:
+> **Note**: `vmselect` and `vmstorage` default services must stay headless (`clusterIP: None`), since
+> `vminsert` and `vmselect` reach `vmstorage` pods by their per-pod DNS records, which only a headless
+> `Service` provides. For these components the operator rejects `serviceSpec.useAsDefault: true`
+> combined with `spec.type` other than `ClusterIP`, or with an explicit `spec.clusterIP`/`spec.clusterIPs`
+> other than `None`. To expose `vmselect` externally, omit `useAsDefault` so the operator creates an
+> additional, separate `Service` instead:
 >
 > ```yaml
 >   vmselect:

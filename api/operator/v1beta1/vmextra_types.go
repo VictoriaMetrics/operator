@@ -399,19 +399,24 @@ func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec
 	return cb(asc)
 }
 
-// ValidateNoServiceTypeOverrideWithUseAsDefault rejects an explicit spec.type
-// combined with useAsDefault, because the default service must stay headless
-// (clusterIP: None) for cluster-native communication. Per #2487.
-func (asc *AdditionalServiceSpec) ValidateNoServiceTypeOverrideWithUseAsDefault() error {
+// ValidateHeadlessDefaultService checks that an override applied with useAsDefault keeps
+// the default Service headless. 
+// The check is needed for `vmselect`, `vmstorage` and `VMAlertmanager`.
+func (asc *AdditionalServiceSpec) ValidateHeadlessDefaultService() error {
 	if asc == nil || !asc.UseAsDefault {
 		return nil
 	}
-	// Fast path: allow headless services
-	if asc.Spec.Type == corev1.ServiceTypeClusterIP && asc.Spec.ClusterIP == corev1.ClusterIPNone {
-		return nil
+	// an empty type defaults to ClusterIP, which keeps the default Service headless
+	if asc.Spec.Type != "" && asc.Spec.Type != corev1.ServiceTypeClusterIP {
+		return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with spec.type=%q, the default Service must stay headless", asc.Spec.Type)
 	}
-	if asc.Spec.Type != "" {
-		return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with an explicit spec.type=%q: the default service is headless (clusterIP: None) and must stay headless. Remove spec.type, or create a separate service with serviceSpec.useAsDefault=false and a distinct metadata.name", asc.Spec.Type)
+	if asc.Spec.ClusterIP != "" && asc.Spec.ClusterIP != corev1.ClusterIPNone {
+		return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with spec.clusterIP=%q, the default Service must stay headless", asc.Spec.ClusterIP)
+	}
+	for _, clusterIP := range asc.Spec.ClusterIPs {
+		if clusterIP != corev1.ClusterIPNone {
+			return fmt.Errorf("serviceSpec.useAsDefault cannot be combined with spec.clusterIPs=%q, the default Service must stay headless", asc.Spec.ClusterIPs)
+		}
 	}
 	return nil
 }

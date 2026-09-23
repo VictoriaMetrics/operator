@@ -63,7 +63,75 @@ receivers:
 		},
 	})
 
-	// serviceSpec.useAsDefault with an explicit type must be rejected (default service is headless)
+	// serviceSpec.useAsDefault with a non-headless type must be rejected (default service is headless)
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// serviceSpec.useAsDefault with an explicit clusterIP and no type must be rejected
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{ClusterIP: "1.1.1.1"},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// serviceSpec.useAsDefault with an explicit clusterIPs and no type must be rejected
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{ClusterIPs: []string{"1.1.1.1"}},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// serviceSpec.useAsDefault with type=ClusterIP and no clusterIP keeps the service headless - allowed
+	f(opts{
+		cr: &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-suite",
+				Namespace: "test",
+			},
+			Spec: VMAlertmanagerSpec{
+				ServiceSpec: &AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+				},
+			},
+		},
+		wantErr: false,
+	})
+
+	// serviceSpec.useAsDefault with an explicit clusterIP must be rejected (default service is headless)
 	f(opts{
 		cr: &VMAlertmanager{
 			ObjectMeta: metav1.ObjectMeta{

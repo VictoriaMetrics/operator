@@ -250,8 +250,9 @@ spec:
 ```
 
 > **Note**: because the default service must stay headless for peer discovery, the operator rejects
-> `serviceSpec.useAsDefault: true` combined with a non-headless explicit `spec.type` such as `LoadBalancer`; an explicit headless `ClusterIP` with `clusterIP: None` remains allowed. The example above creates an
-> additional, separate `Service` instead of replacing the default one.
+> `serviceSpec.useAsDefault: true` combined with `spec.type` other than `ClusterIP`, or with an explicit
+> `spec.clusterIP`/`spec.clusterIPs` other than `None`. The example above omits `useAsDefault`, so it
+> creates an additional, separate `Service` instead of replacing the default one.
 
 ## Version management
 

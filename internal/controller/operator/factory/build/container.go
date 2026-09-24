@@ -781,7 +781,7 @@ func AddOTLPGRPCArgsTo(dst []string, grpcSpec *vmv1.OTLPGRPCSpec, tlsServerConfi
 
 	tlsC := grpcSpec.TLSConfig
 	if tlsC == nil {
-		return dst
+		return append(dst, "-otlpGRPC.tls=false")
 	}
 	dst = append(dst, "-otlpGRPC.tls=true")
 	switch {

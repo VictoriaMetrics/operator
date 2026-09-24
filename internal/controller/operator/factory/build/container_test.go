@@ -464,6 +464,7 @@ func TestAddOTLPGRPCArgsTo(t *testing.T) {
 	// no tls
 	f(&vmv1.OTLPGRPCSpec{ListenPort: 4317}, []string{
 		"-otlpGRPCListenAddr=:4317",
+		"-otlpGRPC.tls=false",
 	})
 
 	// with tls, cert/key from files

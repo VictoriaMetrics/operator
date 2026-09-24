@@ -91,6 +91,9 @@ func buildService(cr *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 	}
+	// alertmanager replicas address each other by per-pod DNS records,
+	// so the default Service is allowed to be replaced by a non-headless one.
+	// see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
 	return build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.Ports[0].Port = int32(port)
@@ -109,7 +112,7 @@ func buildService(cr *vmv1beta1.VMAlertmanager) (*corev1.Service, error) {
 				Protocol:   corev1.ProtocolUDP,
 			},
 		)
-	}), nil
+	}, build.AllowNonHeadlessDefault()), nil
 }
 
 func buildScrape(cr *vmv1beta1.VMAlertmanager, svc *corev1.Service) *vmv1beta1.VMServiceScrape {

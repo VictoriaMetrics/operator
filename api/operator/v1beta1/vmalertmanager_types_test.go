@@ -63,146 +63,48 @@ receivers:
 		},
 	})
 
-	// serviceSpec.useAsDefault with a non-headless type must be rejected (default service is headless)
+	// a non-headless default service is allowed for alertmanager, see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
+	mkCR := func(svcSpec *AdditionalServiceSpec) *VMAlertmanager {
+		return &VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-suite", Namespace: "test"},
+			Spec:       VMAlertmanagerSpec{ServiceSpec: svcSpec},
+		}
+	}
 	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
-				},
-			},
-		},
-		wantErr: true,
-	})
-
-	// serviceSpec.useAsDefault with an explicit clusterIP and no type must be rejected
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{ClusterIP: "1.1.1.1"},
-				},
-			},
-		},
-		wantErr: true,
-	})
-
-	// serviceSpec.useAsDefault with an explicit clusterIPs and no type must be rejected
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{ClusterIPs: []string{"1.1.1.1"}},
-				},
-			},
-		},
-		wantErr: true,
-	})
-
-	// serviceSpec.useAsDefault with type=ClusterIP and no clusterIP keeps the service headless - allowed
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
-				},
-			},
-		},
+		cr: mkCR(&AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+		}),
 		wantErr: false,
 	})
-
-	// serviceSpec.useAsDefault with an explicit clusterIP must be rejected (default service is headless)
 	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: "1.1.1.1",
-					},
-				},
-			},
-		},
-		wantErr: true,
-	})
-
-	// serviceSpec.useAsDefault with headless service is allowed
-	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec: corev1.ServiceSpec{
-						Type:      corev1.ServiceTypeClusterIP,
-						ClusterIP: corev1.ClusterIPNone,
-					},
-				},
-			},
-		},
+		cr: mkCR(&AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		}),
 		wantErr: false,
 	})
-
-	// serviceSpec.useAsDefault without an explicit type is allowed
 	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
-			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					UseAsDefault: true,
-					Spec: corev1.ServiceSpec{
-						Ports: []corev1.ServicePort{{Name: "http", Port: 9093}},
-					},
-				},
-			},
-		},
+		cr: mkCR(&AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{ClusterIP: "1.1.1.1"},
+		}),
 		wantErr: false,
 	})
-
-	// explicit type without useAsDefault creates a separate service - allowed
 	f(opts{
-		cr: &VMAlertmanager{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-suite",
-				Namespace: "test",
+		cr: mkCR(&AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: corev1.ClusterIPNone,
 			},
-			Spec: VMAlertmanagerSpec{
-				ServiceSpec: &AdditionalServiceSpec{
-					Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
-				},
-			},
-		},
+		}),
+		wantErr: false,
+	})
+	f(opts{
+		cr: mkCR(&AdditionalServiceSpec{
+			Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		}),
 		wantErr: false,
 	})
 }

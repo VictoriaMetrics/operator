@@ -761,9 +761,6 @@ func (cr *VMCluster) Validate() error {
 		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
-		if err := vms.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
-			return err
-		}
 		if vms.HPA != nil {
 			if err := vms.HPA.Validate(); err != nil {
 				return err
@@ -837,6 +834,7 @@ func (cr *VMCluster) Validate() error {
 		if vms.ServiceSpec != nil && vms.ServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
+		// vminsert and vmselect discover vmstorage pods via DNS records of its default Service
 		if err := vms.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
 			return err
 		}

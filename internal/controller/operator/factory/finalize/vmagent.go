@@ -93,11 +93,21 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, cr *vmv1beta1.V
 	if len(namespaces) == 0 {
 		namespaces = []string{cr.Namespace}
 	}
+	var crossNamespaceObjsToRemove []client.Object
 	for _, watchedNS := range namespaces {
-		objsToRemove = append(objsToRemove,
-			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
-			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}},
-		)
+		role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}}
+		rb := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNS}}
+		if watchedNS == cr.Namespace {
+			// owned by cr, Kubernetes garbage collection removes it
+			objsToRemove = append(objsToRemove, role, rb)
+			continue
+		}
+		crossNamespaceObjsToRemove = append(crossNamespaceObjsToRemove, role, rb)
+	}
+	// Roles and RoleBindings outside cr.Namespace carry no owner reference, so removing
+	// their finalizers is not enough, Kubernetes never garbage-collects them.
+	if err := SafeDeleteCrossNamespaceWithFinalizer(ctx, rclient, crossNamespaceObjsToRemove, cr); err != nil {
+		return err
 	}
 	if cfg.VPAAPIEnabled {
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: cr.Name, Namespace: ns}})

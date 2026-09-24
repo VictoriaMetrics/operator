@@ -153,7 +153,7 @@ func CreateOrUpdateWithConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclien
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 		if !ptr.Deref(cr.Spec.IngestOnlyMode, false) || cr.HasRemoteWriteSecrets() {
-			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cr.RBACNamespaces(cfg.WatchNamespaces)); err != nil {
+			if err := createK8sAPIAccess(ctx, rclient, cr, prevCR, cfg.WatchNamespaces); err != nil {
 				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 			}
 		}
@@ -1298,23 +1298,32 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if cr.Spec.NetworkPolicy == nil {
 		objsToRemove = append(objsToRemove, &networkingv1.NetworkPolicy{ObjectMeta: objMeta})
 	}
+	// Roles and RoleBindings outside cr.Namespace cannot reference cr as their owner,
+	// so Kubernetes never garbage-collects them and they must be removed explicitly.
+	var crossNamespaceObjsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacName := cr.GetRBACName()
-		rbacNamespaces := cr.RBACNamespaces(baseConf.WatchNamespaces)
-		if len(rbacNamespaces) == 0 {
+		watchNamespaces := baseConf.WatchNamespaces
+		if len(watchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			for _, ns := range rbacNamespaces {
-				objsToRemove = append(objsToRemove,
-					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
-					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
-				)
+			for _, ns := range watchNamespaces {
+				rb := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}}
+				role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}}
+				if ns == cr.Namespace {
+					objsToRemove = append(objsToRemove, rb, role)
+					continue
+				}
+				crossNamespaceObjsToRemove = append(crossNamespaceObjsToRemove, rb, role)
 			}
 		}
+	}
+	if err := finalize.SafeDeleteCrossNamespaceWithFinalizer(ctx, rclient, crossNamespaceObjsToRemove, cr); err != nil {
+		return fmt.Errorf("cannot remove rbac objects from watched namespaces: %w", err)
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }

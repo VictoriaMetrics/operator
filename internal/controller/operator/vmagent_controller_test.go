@@ -177,9 +177,12 @@ func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
 	g.Eventually(doneCh, "5s").Should(BeClosed())
 }
 
-func TestVMAgent_Reconcile_SkipsUnselectedNamespaces(t *testing.T) {
+// In multi-namespace mode scrape objects are selected from every watched namespace,
+// regardless of the configured namespace selectors, see k8stools.VisitSelected.
+// The generated service discovery configuration must be backed by RBAC at all of them.
+func TestVMAgent_Reconcile_CreatesRBACAtWatchedNamespaces(t *testing.T) {
 	const agentNamespace = "agent-ns"
-	const cleanupNamespace = "operator-cleanup-vmagent-cleanup"
+	const scrapeNamespace = "scrape-ns"
 	vmagent := &vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: agentNamespace},
 		Spec: vmv1beta1.VMAgentSpec{
@@ -188,7 +191,7 @@ func TestVMAgent_Reconcile_SkipsUnselectedNamespaces(t *testing.T) {
 	}
 	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent})
 	baseConf := *config.MustGetBaseConfig()
-	baseConf.WatchNamespaces = []string{agentNamespace, cleanupNamespace}
+	baseConf.WatchNamespaces = []string{agentNamespace, scrapeNamespace}
 	reconciler := &VMAgentReconciler{}
 	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 
@@ -197,10 +200,11 @@ func TestVMAgent_Reconcile_SkipsUnselectedNamespaces(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 
-	for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
-		err := fclient.Get(context.Background(), types.NamespacedName{Name: vmagent.GetRBACName(), Namespace: cleanupNamespace}, obj)
-		if !k8serrors.IsNotFound(err) {
-			t.Fatalf("unexpected %T in cleanup namespace: %v", obj, err)
+	for _, ns := range baseConf.WatchNamespaces {
+		for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+			if err := fclient.Get(context.Background(), types.NamespacedName{Name: vmagent.GetRBACName(), Namespace: ns}, obj); err != nil {
+				t.Errorf("get %T at namespace %s: %v", obj, ns, err)
+			}
 		}
 	}
 }

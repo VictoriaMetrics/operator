@@ -2046,6 +2046,7 @@ scrape_configs: []
 		assert.Equal(t, vmv1beta1.UpdateStatusOperational, status.UpdateStatus)
 		assert.NotEmpty(t, status.Reason)
 		assert.Len(t, status.Conditions, 1)
+		assert.Equal(t, "vmsingle.default.vmsingle"+vmv1beta1.ConditionDomainTypeAppliedSuffix, status.Conditions[0].Type)
 		assert.Equal(t, metav1.ConditionFalse, status.Conditions[0].Status)
 
 	}

@@ -22,7 +22,7 @@ func TestWriteAggregatedStatus(t *testing.T) {
 	f := func(conditions []vmv1beta1.Condition, expectedStatus vmv1beta1.UpdateStatus, expectedReasonContains string) {
 		t.Helper()
 		stm := &vmv1beta1.StatusMetadata{Conditions: conditions}
-		writeAggregatedStatus(stm)
+		computeAggregatedStatus(stm)
 		assert.Equal(t, expectedStatus, stm.UpdateStatus)
 		if expectedReasonContains == "" {
 			assert.Empty(t, stm.Reason)
@@ -75,7 +75,7 @@ func TestWriteAggregatedStatus_KeepsOwnControllerFailure(t *testing.T) {
 			{Type: "vmalert1.ns.vmalert" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "True"},
 		},
 	}
-	writeAggregatedStatus(stm)
+	computeAggregatedStatus(stm)
 	assert.Equal(t, vmv1beta1.UpdateStatusFailed, stm.UpdateStatus)
 	assert.Equal(t, "cannot parse VMRuleSpec", stm.Reason)
 }

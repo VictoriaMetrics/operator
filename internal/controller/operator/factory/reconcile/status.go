@@ -241,7 +241,7 @@ func releaseChildStatusCondition[T any, PT interface {
 
 		st.Conditions = removeConditionByType(st.Conditions, typeName)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st)
+		computeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -286,7 +286,7 @@ func updateChildStatusConditions[T any, PT interface {
 		st.Conditions = setConditionTo(st.Conditions, currCond)
 		st.Conditions = removeStaleConditionsBySuffix(st.Conditions, vmv1beta1.ConditionDomainTypeAppliedSuffix)
 		st.ObservedGeneration = dst.GetGeneration()
-		writeAggregatedStatus(st)
+		computeAggregatedStatus(st)
 		if !reflect.DeepEqual(prevSt, st) {
 			if err := rclient.Status().Update(ctx, dst); err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -344,7 +344,7 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 }
 
 // SyncConfigObjectStatus recomputes status.updateStatus and status.reason of a config-kind
-// object from the per-parent conditions currently persisted at it, see writeAggregatedStatus.
+// object from the per-parent conditions currently persisted at it, see computeAggregatedStatus.
 //
 // Every parent already does this whenever it writes or releases its own condition. It is
 // needed on top of that because an object that no parent selects never gets a condition
@@ -367,7 +367,7 @@ func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object O
 		// the object has just been reconciled successfully, so a `failed` left by an
 		// earlier reconcile of it no longer applies and must not block the aggregation
 		st.UpdateStatus = vmv1beta1.UpdateStatusOperational
-		writeAggregatedStatus(st)
+		computeAggregatedStatus(st)
 		if reflect.DeepEqual(prevSt, st) {
 			return nil
 		}
@@ -381,15 +381,14 @@ func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object O
 	})
 }
 
-// writeAggregatedStatus derives a config-kind object's status from its per-parent conditions.
+// computeAggregatedStatus derives a config-kind object's status from its per-parent conditions.
 //
 // The per-parent `<parent>.victoriametrics.com/Applied` conditions carry the real state, and
 // status.reason keeps the error text of the parents that rejected the object.
-//
-// An already `failed` status is left untouched, see the check below.
-func writeAggregatedStatus(stm *vmv1beta1.StatusMetadata) {
+func computeAggregatedStatus(stm *vmv1beta1.StatusMetadata) {
+	// An already `failed` status which means the object's own controller could not parse the spec,
+	// is left untouched, that can be changed only by its own controller
 	if stm.UpdateStatus == vmv1beta1.UpdateStatusFailed {
-		// the object's own controller could not parse the spec, see SyncConfigObjectStatus.
 		return
 	}
 

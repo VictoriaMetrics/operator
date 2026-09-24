@@ -19,7 +19,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.152.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.152.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.11.1](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.11.1).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.30.6](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1306).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.30.7](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1307).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for Alertmanager to [v0.34.1](https://github.com/prometheus/alertmanager/releases/tag/v0.34.1).
 
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): support bounded `spec.reader.workers`, query-level business policies, and `settings.native_threads_per_worker` introduced in vmanomaly v1.30.2. See [#2496](https://github.com/VictoriaMetrics/operator/pull/2496).

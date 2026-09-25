@@ -21,6 +21,10 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+// In namespaced mode a Role and RoleBinding are created at every watched namespace,
+// so that service discovery works there, see createK8sAPIAccess.
+// Deleting cr makes all of them unnecessary, but the ones outside cr.Namespace cannot
+// reference cr as their owner, so they are never garbage-collected after cr deletion.
 func TestOnVMAgentDelete_RemovesCrossNamespaceRBAC(t *testing.T) {
 	ctx := context.Background()
 	cr := &vmv1beta1.VMAgent{

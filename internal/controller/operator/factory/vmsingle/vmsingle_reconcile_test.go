@@ -82,6 +82,8 @@ func TestDeleteOrphaned_RemovesCrossNamespaceRBAC(t *testing.T) {
 
 // In cluster-wide mode a Role and RoleBinding are still created at cr.Namespace,
 // to keep the secrets access namespace-scoped, see createK8sAPIAccess.
+// Setting spec.serviceAccountName makes them unnecessary, but cr itself stays alive,
+// so deleteOrphaned has to delete them instead of relying on garbage collection.
 func TestDeleteOrphaned_RemovesClusterWideRBAC(t *testing.T) {
 	ctx := context.Background()
 	cr := &vmv1beta1.VMSingle{

@@ -51,7 +51,7 @@ type serviceOpts struct {
 // AllowNonHeadlessDefault allows a serviceSpec with useAsDefault and an explicitly defined spec.type
 // to replace a headless default Service with a regular one.
 //
-// It is used only by vmselect and vmalertmanager now,
+// It is used only by vmselect, vmalertmanager and vmagent for now,
 // see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
 func AllowNonHeadlessDefault() ServiceOption {
 	return func(o *serviceOpts) {

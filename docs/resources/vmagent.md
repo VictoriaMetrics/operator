@@ -239,6 +239,15 @@ spec:
   # ...
 ```
 
+> **Note**: in `StatefulMode` the default `Service` of `VMAgent` is headless (`clusterIP: None`), while in
+> other modes it is a regular one. Defining `spec.type` together with `spec.serviceSpec.useAsDefault: true`
+> replaces it with a regular `Service` and lets Kubernetes assign a `clusterIP`, which is needed by service
+> meshes that only load balance virtual IPs. Omit `spec.type` to only patch the default `Service` while
+> keeping it headless, or set `spec.clusterIP: None` to keep it headless while defining `spec.type`.
+> Define `spec.serviceSpec` without `useAsDefault` to leave the default `Service` untouched and create an
+> additional, separate one instead - if that additional `Service` is headless, the `StatefulSet` uses it to
+> provide stable per-pod DNS records.
+
 ### Sharding
 
 Operator supports sharding with [cluster mode of vmagent](https://docs.victoriametrics.com/victoriametrics/vmagent/#scraping-big-number-of-targets)

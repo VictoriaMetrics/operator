@@ -351,7 +351,10 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 // written, so nothing else would ever fill in its status. It also clears a status left by an
 // earlier failed reconcile of the object itself. The object is re-read before the update, so
 // that conditions written concurrently by a parent are preserved.
-func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object ObjectWithStatusMetadata) error {
+//
+// A non-nil parsingErr means the operator cannot parse the object spec: status.updateStatus
+// is set to `failed` with parsingErr as status.reason, and the aggregation is skipped.
+func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object ObjectWithStatusMetadata, parsingErr error) error {
 	nsn := client.ObjectKeyFromObject(object)
 	return retryOnConflict(func() error {
 		if err := rclient.Get(ctx, nsn, object); err != nil {
@@ -364,10 +367,15 @@ func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object O
 		prevSt := st.DeepCopy()
 
 		st.ObservedGeneration = object.GetGeneration()
-		// the object has just been reconciled successfully, so a `failed` left by an
-		// earlier reconcile of it no longer applies and must not block the aggregation
-		st.UpdateStatus = vmv1beta1.UpdateStatusOperational
-		computeAggregatedStatus(st)
+		if parsingErr != nil {
+			st.UpdateStatus = vmv1beta1.UpdateStatusFailed
+			st.Reason = parsingErr.Error()
+		} else {
+			// the object has just been reconciled successfully, so a `failed` left by an
+			// earlier reconcile of it no longer applies and must not block the aggregation
+			st.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			computeAggregatedStatus(st)
+		}
 		if reflect.DeepEqual(prevSt, st) {
 			return nil
 		}

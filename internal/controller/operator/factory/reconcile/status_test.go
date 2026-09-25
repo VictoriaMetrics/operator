@@ -105,7 +105,7 @@ func TestStatusForChildObjects_KeepsOwnControllerFailure(t *testing.T) {
 	assert.Equal(t, "cannot parse VMRuleSpec", got.Status.Reason)
 
 	// the object's own controller reconciles it successfully: only that clears the failure
-	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, &got))
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, &got, nil))
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
 	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
 	assert.Empty(t, got.Status.Reason)

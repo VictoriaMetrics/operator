@@ -213,13 +213,13 @@ func handleConfigReconcileErrWithStatus[T client.Object, ST reconcile.StatusWith
 	case ctx.Err() != nil || object.GetDeletionTimestamp() != nil:
 		// the operator is shutting down or the object is going away,
 		// writing its status can only produce errors
-	case isParsingError(reconcileErr):
-		// the operator cannot parse the spec
-		if statusErr := reconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); statusErr != nil {
-			logger.WithContext(ctx).Error(statusErr, "failed to update status with parsing error")
-		}
 	default:
-		if statusErr := reconcile.SyncConfigObjectStatus(ctx, rclient, object); statusErr != nil {
+		var parsingErr error
+		if isParsingError(reconcileErr) {
+			// the operator cannot parse the spec
+			parsingErr = reconcileErr
+		}
+		if statusErr := reconcile.SyncConfigObjectStatus(ctx, rclient, object, parsingErr); statusErr != nil {
 			logger.WithContext(ctx).Error(statusErr, "failed to update config object status")
 			if err == nil {
 				err = statusErr

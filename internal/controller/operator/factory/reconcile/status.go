@@ -355,10 +355,12 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 // the status is computed from the per-parent conditions, see computeAggregatedStatus.
 //
 // The object is re-read before the update to keep conditions written concurrently by parents.
-// Nothing is written if the object was deleted, or recreated with a different UID.
+// Nothing is written if the object was deleted, recreated with a different UID, or its spec
+// was changed to a newer generation, which is left to the next reconcile.
 func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object ObjectWithStatusMetadata, parsingErr error) error {
 	nsn := client.ObjectKeyFromObject(object)
 	origUID := object.GetUID()
+	origGeneration := object.GetGeneration()
 	return retryOnConflict(func() error {
 		if err := rclient.Get(ctx, nsn, object); err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -370,10 +372,14 @@ func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object O
 			// the object was recreated, the result of this reconcile does not apply to it
 			return nil
 		}
+		if object.GetGeneration() != origGeneration {
+			// the spec was changed, the result of this reconcile does not apply to it
+			return nil
+		}
 		st := object.GetStatusMetadata()
 		prevSt := st.DeepCopy()
 
-		st.ObservedGeneration = object.GetGeneration()
+		st.ObservedGeneration = origGeneration
 		if parsingErr != nil {
 			st.UpdateStatus = vmv1beta1.UpdateStatusFailed
 			st.Reason = parsingErr.Error()

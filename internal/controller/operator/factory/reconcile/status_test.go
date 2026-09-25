@@ -130,6 +130,26 @@ func TestSyncConfigObjectStatus_SkipsRecreatedObject(t *testing.T) {
 	assert.Empty(t, got.Status.Reason)
 }
 
+func TestSyncConfigObjectStatus_SkipsNewerGeneration(t *testing.T) {
+	ctx := context.Background()
+	// the spec was changed while the previous generation was being reconciled
+	updated := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "uid", Generation: 2},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{updated})
+
+	reconciled := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "uid", Generation: 1},
+	}
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, reconciled, errors.New("cannot parse VMRuleSpec")))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.Empty(t, got.Status.UpdateStatus, "the newer generation must not get the status of the reconciled one")
+	assert.Empty(t, got.Status.Reason)
+	assert.Zero(t, got.Status.ObservedGeneration)
+}
+
 func TestStatusForChildObjects_ReleasesDroppedChildren(t *testing.T) {
 	ctx := context.Background()
 	parent := "test-releases-dropped.ns.vmalert"

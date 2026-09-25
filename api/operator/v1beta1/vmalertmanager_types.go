@@ -518,9 +518,6 @@ func (cr *VMAlertmanager) Validate() error {
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Name == cr.PrefixedName() {
 		return fmt.Errorf("spec.serviceSpec.Name cannot be equal to prefixed name=%q", cr.PrefixedName())
 	}
-	if err := cr.Spec.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
-		return err
-	}
 	for idx, matchers := range cr.Spec.EnforcedTopRouteMatchers {
 		_, err := amparse.Matchers(matchers)
 		if err != nil {

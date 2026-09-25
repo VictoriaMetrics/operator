@@ -249,10 +249,12 @@ spec:
       type: LoadBalancer
 ```
 
-> **Note**: because the default service must stay headless for peer discovery, the operator rejects
-> `serviceSpec.useAsDefault: true` combined with `spec.type` other than `ClusterIP`, or with an explicit
-> `spec.clusterIP`/`spec.clusterIPs` other than `None`. The example above omits `useAsDefault`, so it
-> creates an additional, separate `Service` instead of replacing the default one.
+> **Note**: the default `Service` is headless (`clusterIP: None`), replicas discover each other through its
+> per-pod DNS records. Defining `spec.type` together with `useAsDefault: true` replaces it with a regular
+> `Service`. Omit `spec.type` to only patch the default `Service` while keeping it headless, or
+> set `spec.clusterIP: None` to keep it headless while defining `spec.type`. The example above omits
+> `useAsDefault` entirely, so it creates an additional, separate `Service` and leaves the default one
+> untouched.
 
 ## Version management
 

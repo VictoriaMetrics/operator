@@ -199,6 +199,9 @@ func createOrUpdateVMSelect(ctx context.Context, rclient client.Client, cr, prev
 
 func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	// vmselect nodes address each other by per-pod DNS records,
+	// so the default Service is allowed to be replaced by a non-headless one.
+	// see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
 	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
@@ -210,7 +213,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 				TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
 			})
 		}
-	})
+	}, build.AllowNonHeadlessDefault())
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableSelectBalancing {
 		svc.Name = cr.PrefixedInternalName(vmv1beta1.ClusterComponentSelect)
 		svc.Spec.ClusterIP = corev1.ClusterIPNone

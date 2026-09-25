@@ -41,8 +41,30 @@ func AdditionalServiceFromDefault(defaultSvc *corev1.Service, svcSpec *vmv1beta1
 	return result
 }
 
+// ServiceOption changes the way a serviceSpec with useAsDefault is merged into the default Service
+type ServiceOption func(*serviceOpts)
+
+type serviceOpts struct {
+	allowNonHeadless bool
+}
+
+// AllowNonHeadlessDefault allows a serviceSpec with useAsDefault and an explicitly defined spec.type
+// to replace a headless default Service with a regular one.
+//
+// It is used only by vmselect and vmalertmanager now,
+// see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
+func AllowNonHeadlessDefault() ServiceOption {
+	return func(o *serviceOpts) {
+		o.allowNonHeadless = true
+	}
+}
+
 // Service builds service for the given args and applies optional callback for it
-func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Service)) *corev1.Service {
+func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Service), opts ...ServiceOption) *corev1.Service {
+	var o serviceOpts
+	for _, opt := range opts {
+		opt(&o)
+	}
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -69,6 +91,9 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 	}
 	serviceOverrides := cr.GetAdditionalService()
 	if serviceOverrides != nil && serviceOverrides.UseAsDefault {
+		// an explicitly defined type means that the user defines the Service shape,
+		// an empty one means that the default Service is only patched with the given settings
+		definesServiceType := serviceOverrides.Spec.Type != ""
 		hasPortByName := func(name string) bool {
 			for _, port := range serviceOverrides.Spec.Ports {
 				if port.Name == name {
@@ -82,10 +107,15 @@ func Service(cr builderOpts, defaultPort string, setOptions func(svc *corev1.Ser
 				serviceOverrides.Spec.Ports = append(serviceOverrides.Spec.Ports, defaultPort)
 			}
 		}
-		if serviceOverrides.Spec.Type == "" {
+		if !definesServiceType {
 			serviceOverrides.Spec.Type = svc.Spec.Type
 		}
-		if serviceOverrides.Spec.ClusterIP == "" && serviceOverrides.Spec.Type == svc.Spec.Type {
+		switch {
+		case o.allowNonHeadless && definesServiceType:
+			// the given spec defines the Service shape, the clusterIP of the default Service,
+			// including None of a headless one, must not be inherited
+		case serviceOverrides.Spec.ClusterIP == "" && serviceOverrides.Spec.Type == svc.Spec.Type:
+			// the given spec only patches the default Service, keep its clusterIP
 			serviceOverrides.Spec.ClusterIP = svc.Spec.ClusterIP
 		}
 

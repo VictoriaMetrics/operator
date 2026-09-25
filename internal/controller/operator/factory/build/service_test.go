@@ -117,3 +117,168 @@ func Test_mergeServiceSpec(t *testing.T) {
 		},
 	})
 }
+
+func TestServiceUseAsDefault(t *testing.T) {
+	type opts struct {
+		name             string
+		svcSpec          *vmv1beta1.AdditionalServiceSpec
+		headless         bool
+		allowNonHeadless bool
+		validate         func(t *testing.T, svc *corev1.Service)
+	}
+
+	// builds the default service for a component with a headless or regular default
+	f := func(o opts) {
+		t.Helper()
+		cr := &vmv1beta1.VMCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1beta1.VMClusterSpec{
+				VMStorage: &vmv1beta1.VMStorage{
+					Port: "8482", VMInsertPort: "8400", VMSelectPort: "8401",
+					ServiceSpec: o.svcSpec,
+				},
+			},
+		}
+		b := NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+		var svcOpts []ServiceOption
+		if o.allowNonHeadless {
+			svcOpts = append(svcOpts, AllowNonHeadlessDefault())
+		}
+		svc := Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
+			if o.headless {
+				svc.Spec.ClusterIP = corev1.ClusterIPNone
+			}
+		}, svcOpts...)
+		o.validate(t, svc)
+	}
+
+	// no override keeps the headless default
+	f(opts{
+		name:     "no override",
+		headless: true,
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+		},
+	})
+
+	// no type defined, only patches the default service and keeps it headless
+	f(opts{
+		name:     "useAsDefault without type",
+		headless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{{Name: "extra", Port: 9999}},
+			},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+			assert.Len(t, svc.Spec.Ports, 2, "default ports must be merged")
+		},
+	})
+
+	// explicit type defines the service shape, the headless clusterIP must not be inherited
+	f(opts{
+		name:             "useAsDefault with type=ClusterIP",
+		headless:         true,
+		allowNonHeadless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Empty(t, svc.Spec.ClusterIP, "clusterIP must be assigned by kubernetes")
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+		},
+	})
+
+	// an explicitly headless override stays headless
+	f(opts{
+		name:     "useAsDefault with explicit clusterIP=None",
+		headless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: corev1.ClusterIPNone,
+			},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+		},
+	})
+
+	// a pinned clusterIP is kept as given
+	f(opts{
+		name:     "useAsDefault with pinned clusterIP",
+		headless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: "10.96.0.42",
+			},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Equal(t, "10.96.0.42", svc.Spec.ClusterIP)
+		},
+	})
+
+	// a different type was always allowed to drop the headless clusterIP
+	f(opts{
+		name:             "useAsDefault with type=LoadBalancer",
+		headless:         true,
+		allowNonHeadless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Empty(t, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+		},
+	})
+
+	// without the option the headless clusterIP is inherited, as before
+	f(opts{
+		name:     "useAsDefault with type=ClusterIP, not allowed to be non-headless",
+		headless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+		},
+	})
+
+	// a different type was always allowed to drop the headless clusterIP
+	f(opts{
+		name:     "useAsDefault with type=LoadBalancer, not allowed to be non-headless",
+		headless: true,
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Empty(t, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
+		},
+	})
+
+	// components with a regular default service are not affected
+	f(opts{
+		name: "useAsDefault with type=ClusterIP and non-headless default",
+		svcSpec: &vmv1beta1.AdditionalServiceSpec{
+			UseAsDefault: true,
+			Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+		},
+		validate: func(t *testing.T, svc *corev1.Service) {
+			assert.Empty(t, svc.Spec.ClusterIP)
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+		},
+	})
+}

@@ -102,21 +102,29 @@ spec:
         type: LoadBalancer
 ```
 
-> **Note**: the default services of `vmselect` and `vmstorage` must stay headless (`clusterIP: None`).
-> Only a headless `Service` publishes the per-pod DNS records that these components address each other by:
-> `vminsert` and `vmselect` reach `vmstorage` pods this way, and `vmselect` nodes reach each other to
-> propagate cache invalidation after a series deletion. For these components the operator therefore rejects
-> `serviceSpec.useAsDefault: true` combined with a `spec.type` other than `ClusterIP`, or with an explicit
-> `spec.clusterIP`/`spec.clusterIPs` other than `None`. To expose `vmselect` externally, omit `useAsDefault`
-> so the operator creates an additional, separate `Service` instead:
+> **Note**: the default services of `vmselect` and `vmstorage` are headless (`clusterIP: None`), which
+> publishes the per-pod DNS records that these components address each other by: `vminsert` and `vmselect`
+> reach `vmstorage` pods this way, and `vmselect` nodes reach each other to propagate cache invalidation
+> after a series deletion.
+>
+> For `vmselect`, defining `spec.type` together with `useAsDefault: true` replaces its default `Service`
+> with a regular one and lets Kubernetes assign a `clusterIP`, which is needed by service meshes that only
+> load balance virtual IPs:
 >
 > ```yaml
 >   vmselect:
 >     replicaCount: 2
 >     serviceSpec:
+>       useAsDefault: true
 >       spec:
->         type: LoadBalancer
+>         type: ClusterIP
 > ```
+>
+> For `vmstorage` the same override is rejected: its default `Service` is also resolved to the addresses of
+> the individual storage pods through DNS SRV records, when `spec.discovery` is enabled. Omit `spec.type`
+> to only patch the default `Service`, for instance to add ports or annotations, keeping its headless
+> `clusterIP`. Set `spec.clusterIP: None` explicitly to keep it headless while defining `spec.type`. Omit
+> `useAsDefault` to leave the default `Service` untouched and create an additional, separate one instead.
 
 To expose VMCluster components outside the cluster via an ingress with authentication,
 see [Authorization and exposing components — VMCluster](https://docs.victoriametrics.com/operator/auth/#vmcluster).

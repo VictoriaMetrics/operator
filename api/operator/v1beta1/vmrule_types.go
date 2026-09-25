@@ -141,7 +141,7 @@ type VMRuleStatus struct {
 	ParsingSpecError string `json:"-" yaml:"-"`
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMRule) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

@@ -373,7 +373,7 @@ func (cr *VMUser) FinalLabels() map[string]string {
 	return v
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMUser) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

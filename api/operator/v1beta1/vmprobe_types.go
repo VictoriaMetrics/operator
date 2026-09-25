@@ -149,7 +149,7 @@ type VMProbeList struct {
 	Items           []VMProbe `json:"items"`
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMProbe) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

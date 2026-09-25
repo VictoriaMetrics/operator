@@ -106,7 +106,7 @@ type TimeRange struct {
 	EndTime string `json:"end_time" yaml:"end_time"`
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (r *VMAlertmanagerConfig) GetStatusMetadata() *StatusMetadata {
 	return &r.Status.StatusMetadata
 }

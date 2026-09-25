@@ -1415,12 +1415,28 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		return 0, fmt.Errorf("generating config for vmagent failed: %w", err)
 	}
 
-	// Split jobs into gzip-compressed buckets, each fitting within the Kubernetes Secret limit.
-	buckets, err := build.PackItems(jobs, cfg.ConfigDataBudgetBytes, 150)
+	// measures the real stored bytes (cfgBase+glob+wrapper), glob assumed present as a safe overestimate
+	mainBuckets, err := build.PackItemsFunc(jobs, cfg.ConfigDataBudgetBytes, func(candidate []yaml.MapSlice) ([]byte, error) {
+		mainCfg := append(append(yaml.MapSlice{}, cfgBase...), yaml.MapItem{
+			Key:   "scrape_config_files",
+			Value: []string{vmscrapes.ExtraConfigFilesGlob},
+		})
+		mainCfg = append(mainCfg, yaml.MapItem{Key: "scrape_configs", Value: candidate})
+		return yaml.Marshal(mainCfg)
+	})
 	if err != nil {
 		return 0, fmt.Errorf("splitting scrape config into buckets: %w", err)
 	}
-	extraCount := len(buckets) - 1
+	firstBucket := mainBuckets[0].Items
+
+	var extraBuckets []build.PackedBucket[yaml.MapSlice]
+	if remaining := jobs[len(firstBucket):]; len(remaining) > 0 {
+		extraBuckets, err = build.PackItems(remaining, cfg.ConfigDataBudgetBytes)
+		if err != nil {
+			return 0, fmt.Errorf("splitting overflow scrape config into buckets: %w", err)
+		}
+	}
+	extraCount := len(extraBuckets)
 
 	// Assemble main config: global section + optional scrape_config_files glob + first bucket's jobs.
 	mainCfg := cfgBase
@@ -1430,7 +1446,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 			Value: []string{vmscrapes.ExtraConfigFilesGlob},
 		})
 	}
-	mainCfg = append(mainCfg, yaml.MapItem{Key: "scrape_configs", Value: buckets[0]})
+	mainCfg = append(mainCfg, yaml.MapItem{Key: "scrape_configs", Value: firstBucket})
 	generatedConfig, err := yaml.Marshal(mainCfg)
 	if err != nil {
 		return 0, fmt.Errorf("marshalling config for vmagent: %w", err)
@@ -1471,17 +1487,9 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	// Reconcile extra scrape config secrets (one per overflow bucket, gzip-compressed).
 	// The config-reloader decompresses these and writes them as plain YAML files under
 	// scrapeConfigExtraDir so vmagent can load them via scrape_config_files.
-	for i, bucket := range buckets[1:] {
+	for i, bucket := range extraBuckets {
 		idx := i + 1
-		extraData, err := yaml.Marshal(bucket)
-		if err != nil {
-			return 0, fmt.Errorf("marshalling extra scrape config bucket %d: %w", idx, err)
-		}
-		compressed, err := build.GzipConfig(extraData)
-		if err != nil {
-			return 0, fmt.Errorf("gzipping extra scrape config bucket %d: %w", idx, err)
-		}
-		s := vmscrapes.BuildExtraConfigSecret(cr, idx, compressed)
+		s := vmscrapes.BuildExtraConfigSecret(cr, idx, bucket.Compressed)
 		if err := reconcile.Secret(ctx, rclient, s, nil, &owner); err != nil {
 			return 0, err
 		}

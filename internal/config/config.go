@@ -153,10 +153,9 @@ type BaseOperatorConf struct {
 	EnableDefaultPreStopHook bool `default:"true" env:"VM_ENABLE_DEFAULT_PRESTOP_HOOK"`
 	// ConfigDataBudgetBytes sets the maximum number of bytes allowed for compressed data
 	// in a generated Kubernetes Secret or ConfigMap (e.g. scrape-config overflow buckets,
-	// vmalert rule ConfigMaps). When zero the budget is computed automatically from the
-	// Kubernetes object size limit minus the JSON-encoded metadata overhead. Set a lower
-	// value when a policy engine (e.g. Kyverno) injects additional labels or annotations
-	// after reconcile, causing the auto-computed budget to be too large.
+	// vmalert rule ConfigMaps), default 524288 (512KiB), comfortably under the 1MiB Kubernetes
+	// object size limit. Set a lower value when a policy engine (e.g. Kyverno) injects
+	// additional labels or annotations after reconcile, leaving less room than the default.
 	ConfigDataBudgetBytes int `default:"524288" env:"VM_CONFIG_DATA_BUDGET_BYTES"`
 
 	// defines global config reloader parameters

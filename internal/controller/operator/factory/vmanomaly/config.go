@@ -77,3 +77,12 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 	return nil
 }
+
+// ReleaseAppliedConditions releases the Applied condition this VMAnomaly wrote to the
+// VMAnomalyConfigs it used to select. Call it when cr is being deleted: once it's gone, no
+// further reconcile notices it dropped out of their selection, so the condition would
+// otherwise be left stale forever.
+func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
+	parentObject := fmt.Sprintf("%s.%s.vmanomaly", cr.Name, cr.Namespace)
+	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1.VMAnomalyConfig{})
+}

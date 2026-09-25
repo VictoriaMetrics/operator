@@ -1996,6 +1996,72 @@ func TestCreateOrUpdateService(t *testing.T) {
 		},
 	})
 
+	// statefulMode: an explicit type replaces the headless default service with a regular one
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stateful-non-headless",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				StatefulMode: true,
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+				},
+			},
+		},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+			assert.Empty(t, svc.Spec.ClusterIP, "clusterIP must be assigned by kubernetes")
+		},
+	})
+
+	// statefulMode: without an explicit type the default service stays headless
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stateful-headless",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				StatefulMode: true,
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Name: "extra", Port: 9999}},
+					},
+				},
+			},
+		},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+		},
+	})
+
+	// statefulMode: an explicitly headless override stays headless
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stateful-explicit-headless",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				StatefulMode: true,
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					UseAsDefault: true,
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: corev1.ClusterIPNone,
+					},
+				},
+			},
+		},
+		validate: func(svc *corev1.Service) {
+			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
+		},
+	})
+
 	// base case with ingestPorts and extra service
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

@@ -66,7 +66,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {
-		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
+		result, err = handleConfigReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VMPodScrape instance
 	instance.Name, instance.Namespace = req.Name, req.Namespace

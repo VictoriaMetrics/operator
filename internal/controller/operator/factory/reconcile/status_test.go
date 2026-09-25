@@ -22,7 +22,7 @@ func TestWriteAggregatedStatus(t *testing.T) {
 	f := func(conditions []vmv1beta1.Condition, expectedStatus vmv1beta1.UpdateStatus, expectedReasonContains string) {
 		t.Helper()
 		stm := &vmv1beta1.StatusMetadata{Conditions: conditions}
-		writeAggregatedStatus(stm, vmv1beta1.ConditionDomainTypeAppliedSuffix)
+		computeAggregatedStatus(stm)
 		assert.Equal(t, expectedStatus, stm.UpdateStatus)
 		if expectedReasonContains == "" {
 			assert.Empty(t, stm.Reason)
@@ -31,8 +31,11 @@ func TestWriteAggregatedStatus(t *testing.T) {
 		}
 	}
 
+	// updateStatus is deprecated for config objects and stays operational in every case,
+	// only reason tracks what the parents reported
+
 	// no parent ever applied this child object
-	f(nil, vmv1beta1.UpdateStatusIgnored, "")
+	f(nil, vmv1beta1.UpdateStatusOperational, "")
 
 	// single parent, applied successfully
 	f([]vmv1beta1.Condition{
@@ -42,9 +45,9 @@ func TestWriteAggregatedStatus(t *testing.T) {
 	// single parent, failed
 	f([]vmv1beta1.Condition{
 		{Type: "vmagent1.ns.vmagent" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "False", Message: "boom"},
-	}, vmv1beta1.UpdateStatusFailed, "boom")
+	}, vmv1beta1.UpdateStatusOperational, "boom")
 
-	// applied on one parent, failed on another: must not be globally Failed
+	// applied on one parent, failed on another
 	f([]vmv1beta1.Condition{
 		{Type: "vmagent1.ns.vmagent" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "True"},
 		{Type: "vmagent2.ns.vmagent" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "False", Message: "arbitraryFSAccessThroughSMs is not allowed"},
@@ -54,12 +57,97 @@ func TestWriteAggregatedStatus(t *testing.T) {
 	f([]vmv1beta1.Condition{
 		{Type: "vmagent1.ns.vmagent" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "False", Message: "err1"},
 		{Type: "vmagent2.ns.vmagent" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "False", Message: "err2"},
-	}, vmv1beta1.UpdateStatusFailed, "err1")
+	}, vmv1beta1.UpdateStatusOperational, "err1")
 
 	// conditions with a different suffix are ignored
 	f([]vmv1beta1.Condition{
 		{Type: "vmagent1.ns.vmagent.SomeOtherSuffix", Status: "False", Message: "unrelated"},
-	}, vmv1beta1.UpdateStatusIgnored, "")
+	}, vmv1beta1.UpdateStatusOperational, "")
+}
+
+func TestWriteAggregatedStatus_KeepsOwnControllerFailure(t *testing.T) {
+	// the object's own controller could not parse the spec, while a parent happily
+	// applied whatever decoded: the parse failure must survive the aggregation
+	stm := &vmv1beta1.StatusMetadata{
+		UpdateStatus: vmv1beta1.UpdateStatusFailed,
+		Reason:       "cannot parse VMRuleSpec",
+		Conditions: []vmv1beta1.Condition{
+			{Type: "vmalert1.ns.vmalert" + vmv1beta1.ConditionDomainTypeAppliedSuffix, Status: "True"},
+		},
+	}
+	computeAggregatedStatus(stm)
+	assert.Equal(t, vmv1beta1.UpdateStatusFailed, stm.UpdateStatus)
+	assert.Equal(t, "cannot parse VMRuleSpec", stm.Reason)
+}
+
+func TestStatusForChildObjects_KeepsOwnControllerFailure(t *testing.T) {
+	ctx := context.Background()
+	parent := "test-keeps-failure.ns.vmalert"
+
+	rule := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns"},
+		Status: vmv1beta1.VMRuleStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{
+				UpdateStatus: vmv1beta1.UpdateStatusFailed,
+				Reason:       "cannot parse VMRuleSpec",
+			},
+		},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{rule})
+
+	require.NoError(t, StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMRule{rule}))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.NotEmpty(t, got.Status.Conditions, "the parent must still record its own verdict")
+	assert.Equal(t, vmv1beta1.UpdateStatusFailed, got.Status.UpdateStatus,
+		"a parent must not clear a failure reported by the object's own controller")
+	assert.Equal(t, "cannot parse VMRuleSpec", got.Status.Reason)
+
+	// the object's own controller reconciles it successfully: only that clears the failure
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, &got, nil))
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
+	assert.Empty(t, got.Status.Reason)
+}
+
+func TestSyncConfigObjectStatus_SkipsRecreatedObject(t *testing.T) {
+	ctx := context.Background()
+	// the object was deleted and recreated while the old one was being reconciled
+	replacement := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "new-uid"},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{replacement})
+
+	stale := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "old-uid"},
+	}
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, stale, errors.New("cannot parse VMRuleSpec")))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.Empty(t, got.Status.UpdateStatus, "the replacement must not get the status of the old object")
+	assert.Empty(t, got.Status.Reason)
+}
+
+func TestSyncConfigObjectStatus_SkipsNewerGeneration(t *testing.T) {
+	ctx := context.Background()
+	// the spec was changed while the previous generation was being reconciled
+	updated := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "uid", Generation: 2},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{updated})
+
+	reconciled := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "uid", Generation: 1},
+	}
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, reconciled, errors.New("cannot parse VMRuleSpec")))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.Empty(t, got.Status.UpdateStatus, "the newer generation must not get the status of the reconciled one")
+	assert.Empty(t, got.Status.Reason)
+	assert.Zero(t, got.Status.ObservedGeneration)
 }
 
 func TestStatusForChildObjects_ReleasesDroppedChildren(t *testing.T) {
@@ -91,8 +179,7 @@ func TestStatusForChildObjects_ReleasesDroppedChildren(t *testing.T) {
 	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus, "still-selected child must be unaffected")
 
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
-	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus, "dropped child must be released, not left stale")
-	assert.Empty(t, got.Status.Conditions)
+	assert.Empty(t, got.Status.Conditions, "dropped child must be released, not left stale")
 }
 
 func TestStatusForChildObject_FastPathDoesNotReleaseSiblings(t *testing.T) {
@@ -139,7 +226,7 @@ func TestStatusForChildObjects_ReleaseIsStatelessAcrossCalls(t *testing.T) {
 	require.NoError(t, StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMRule{ruleA}))
 
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
-	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus, "drop must be detected purely from persisted cluster state")
+	assert.Empty(t, got.Status.Conditions, "drop must be detected purely from persisted cluster state")
 }
 
 func TestStatusForChildObjects_FailedReleaseIsRetriedNextCall(t *testing.T) {
@@ -175,15 +262,13 @@ func TestStatusForChildObjects_FailedReleaseIsRetriedNextCall(t *testing.T) {
 	var got vmv1beta1.VMRule
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
 	assert.NotEmpty(t, got.Status.Conditions, "failed release must not silently drop the stale condition")
-	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus, "status must remain as-is until the release actually succeeds")
 
 	// transient failure clears; the retry must now succeed
 	failReleaseUpdates = false
 	require.NoError(t, StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMRule{ruleA}))
 
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
-	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus, "retried release must eventually succeed")
-	assert.Empty(t, got.Status.Conditions)
+	assert.Empty(t, got.Status.Conditions, "retried release must eventually succeed")
 }
 
 func TestStatusForChildObjects_FallsBackWithoutIndexedClient(t *testing.T) {
@@ -209,6 +294,6 @@ func TestStatusForChildObjects_FallsBackWithoutIndexedClient(t *testing.T) {
 
 	var got vmv1beta1.VMRule
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-b"}, &got))
-	assert.Equal(t, vmv1beta1.UpdateStatusIgnored, got.Status.UpdateStatus)
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
 	assert.Empty(t, got.Status.Conditions)
 }

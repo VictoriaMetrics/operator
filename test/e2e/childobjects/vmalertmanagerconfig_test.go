@@ -271,19 +271,26 @@ route:
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
+							// updateStatus of a config object no longer reports the parents' verdict,
+							// it is reported by reason and the parent's Applied condition
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
+							Expect(amcfg.Status.Reason).ToNot(BeEmpty())
+							var applied int
 							for _, cond := range amcfg.Status.Conditions {
 								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
+									applied++
 									Expect(cond.Status).To(Equal(metav1.ConditionFalse), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)
 								}
 							}
+							Expect(applied).ToNot(BeZero(), "config must carry the Applied condition of its parent")
 						}
 						for _, nsn := range []types.NamespacedName{
 							{Name: "partially-ok", Namespace: namespace},
 						} {
 							var amcfg vmv1beta1.VMAlertmanagerConfig
 							Expect(k8sClient.Get(ctx, nsn, &amcfg)).ToNot(HaveOccurred())
-							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
+							Expect(amcfg.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
+							Expect(amcfg.Status.Reason).ToNot(BeEmpty())
 							for _, cond := range amcfg.Status.Conditions {
 								if strings.HasPrefix(cond.Type, "parsing-test-with-global-option") {
 									Expect(cond.Status).To(Equal(metav1.ConditionTrue), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, amcfg.Name)

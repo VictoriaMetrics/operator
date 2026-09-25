@@ -69,7 +69,7 @@ func (cr *VMNodeScrape) Validate() error {
 	return cr.Spec.validate()
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMNodeScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

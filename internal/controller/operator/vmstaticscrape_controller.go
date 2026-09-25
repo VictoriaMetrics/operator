@@ -47,7 +47,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
 	var instance vmv1beta1.VMStaticScrape
 	defer func() {
-		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
+		result, err = handleConfigReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {

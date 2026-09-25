@@ -2176,9 +2176,13 @@ scrape_configs: []
 
 		assert.NoError(t, testClient.Get(ctx, types.NamespacedName{Name: so.GetName(), Namespace: so.GetNamespace()}, so))
 		status := so.(getStatusMeta).GetStatusMetadata()
-		assert.Equal(t, vmv1beta1.UpdateStatusFailed, status.UpdateStatus)
+		// updateStatus of a config object no longer reports the parents' verdict,
+		// it is reported by reason and the parent's Applied condition
+		assert.Equal(t, vmv1beta1.UpdateStatusOperational, status.UpdateStatus)
 		assert.NotEmpty(t, status.Reason)
 		assert.Len(t, status.Conditions, 1)
+		assert.Equal(t, "vmagent.default.vmagent"+vmv1beta1.ConditionDomainTypeAppliedSuffix, status.Conditions[0].Type)
+		assert.Equal(t, metav1.ConditionFalse, status.Conditions[0].Status)
 
 	}
 	commonMeta := metav1.ObjectMeta{

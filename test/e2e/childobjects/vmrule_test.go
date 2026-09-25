@@ -311,12 +311,18 @@ var _ = Describe("test vmrule Controller", Label("vm", "child", "alert"), func()
 						} {
 							var vmrule vmv1beta1.VMRule
 							Expect(k8sClient.Get(ctx, nsn, &vmrule)).ToNot(HaveOccurred())
-							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
+							// updateStatus of a config object no longer reports the parents' verdict,
+							// it is reported by reason and the parent's Applied condition
+							Expect(vmrule.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
+							Expect(vmrule.Status.Reason).ToNot(BeEmpty())
+							var applied int
 							for _, cond := range vmrule.Status.Conditions {
 								if strings.HasSuffix(cond.Type, vmv1beta1.ConditionDomainTypeAppliedSuffix) {
+									applied++
 									Expect(cond.Status).To(Equal(metav1.ConditionFalse), "reason=%q,type=%q,rule=%q", cond.Reason, cond.Type, vmrule.Name)
 								}
 							}
+							Expect(applied).ToNot(BeZero(), "rule must carry the Applied condition of its parent")
 						}
 					},
 				},

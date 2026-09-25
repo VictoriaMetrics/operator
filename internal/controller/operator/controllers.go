@@ -146,6 +146,11 @@ func isParsingError(err error) bool {
 	return errors.As(err, &re) && re.reason == reasonParseObject
 }
 
+func isGetError(err error) bool {
+	var re *reconcileError
+	return errors.As(err, &re) && re.reason == reasonGetObject
+}
+
 func controllerNameFromObject(object client.Object) string {
 	t := reflect.TypeOf(object)
 	for t != nil && t.Kind() == reflect.Pointer {
@@ -181,6 +186,44 @@ func handleReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetada
 	if isParsingError(err) {
 		if err := reconcile.UpdateObjectStatus(ctx, rclient, object, vmv1beta1.UpdateStatusFailed, err); err != nil {
 			logger.WithContext(ctx).Error(err, "failed to update status with parsing error")
+		}
+	}
+	return result, err
+}
+
+// handleConfigReconcileErrWithStatus is for a config-kind object like
+// VMRule, VMServiceScrape, VMUser, VMAlertmanagerConfig.
+//
+// Its status.updateStatus is set to `operational` unless the operator cannot parse the spec,
+// in which case it is set to `failed`.
+func handleConfigReconcileErrWithStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
+	ctx context.Context,
+	rclient client.Client,
+	object reconcile.ObjectWithDeepCopyAndStatus[T, ST, STC],
+	originResult ctrl.Result,
+	err error,
+) (ctrl.Result, error) {
+	// handleReconcileErr swallows some errors, e.g. a NotFound get error, so the original
+	// one is what tells apart the cases where the object status must not be touched
+	reconcileErr := err
+	result, err := handleReconcileErr(ctx, rclient, object, originResult, err)
+	switch {
+	case !hasIdentity(object) || isGetError(reconcileErr):
+		// the object was not fetched, so its state is unknown
+	case ctx.Err() != nil || object.GetDeletionTimestamp() != nil:
+		// the operator is shutting down or the object is going away,
+		// writing its status can only produce errors
+	default:
+		var parsingErr error
+		if isParsingError(reconcileErr) {
+			// the operator cannot parse the spec
+			parsingErr = reconcileErr
+		}
+		if statusErr := reconcile.SyncConfigObjectStatus(ctx, rclient, object, parsingErr); statusErr != nil {
+			logger.WithContext(ctx).Error(statusErr, "failed to update config object status")
+			if err == nil {
+				err = statusErr
+			}
 		}
 	}
 	return result, err

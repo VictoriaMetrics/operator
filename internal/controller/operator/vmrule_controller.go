@@ -70,7 +70,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	ctx = logger.AddToContext(ctx, l)
 
 	defer func() {
-		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
+		result, err = handleConfigReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 
 	// Fetch the VMRule instance

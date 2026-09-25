@@ -30926,8 +30926,13 @@ spec:
                 type: array
             type: object
           status:
-            description: VMAlertmanagerConfigStatus defines the observed state of
-              VMAlertmanagerConfig
+            description: |-
+              VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -40777,7 +40782,13 @@ spec:
             type: object
             x-kubernetes-preserve-unknown-fields: true
           status:
-            description: VMAnomalyConfigStatus defines the observed state of VMAnomalyConfig.
+            description: |-
+              VMAnomalyConfigStatus defines the observed state of VMAnomalyConfig.
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649.
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -61249,7 +61260,13 @@ spec:
                 type: object
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -62432,7 +62449,13 @@ spec:
             - podMetricsEndpoints
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -63919,7 +63942,13 @@ spec:
             - vmProberSpec
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -64203,7 +64232,13 @@ spec:
             - groups
             type: object
           status:
-            description: VMRuleStatus defines the observed state of VMRule
+            description: |-
+              VMRuleStatus defines the observed state of VMRule
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -76722,7 +76757,13 @@ spec:
                 type: array
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -77912,7 +77953,13 @@ spec:
             - endpoints
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -84085,7 +84132,13 @@ spec:
             - targetEndpoints
             type: object
           status:
-            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            description: |-
+              ScrapeObjectStatus defines the observed state of ScrapeObjects
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",
@@ -84943,7 +84996,13 @@ spec:
             - targetRefs
             type: object
           status:
-            description: VMUserStatus defines the observed state of VMUser
+            description: |-
+              VMUserStatus defines the observed state of VMUser
+
+              `updateStatus` is set to `operational` unless the operator cannot parse the spec,
+              in which case it is set to `failed`. It never reports whether the applications
+              selecting this object accepted its content - `conditions` carries that.
+              See https://github.com/VictoriaMetrics/operator/issues/2649
             properties:
               conditions:
                 description: 'Known .status.conditions.type are: "Available", "Progressing",

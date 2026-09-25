@@ -75,7 +75,7 @@ func (cr *VMStaticScrape) Validate() error {
 	return nil
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMStaticScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

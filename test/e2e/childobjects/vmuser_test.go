@@ -179,7 +179,10 @@ var _ = Describe("test vmuser Controller", Label("vm", "child", "auth"), func() 
 						} {
 							var vmuser vmv1beta1.VMUser
 							Expect(k8sClient.Get(ctx, nsn, &vmuser)).ToNot(HaveOccurred())
-							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusFailed))
+							// updateStatus of a config object no longer reports the parents' verdict,
+							// it is reported by reason and the parent's Applied condition
+							Expect(vmuser.Status.UpdateStatus).To(Equal(vmv1beta1.UpdateStatusOperational))
+							Expect(vmuser.Status.Reason).ToNot(BeEmpty())
 							Expect(vmuser.Status.Conditions).NotTo(BeEmpty())
 						}
 					},

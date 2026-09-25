@@ -156,7 +156,7 @@ func (cr *VMServiceScrape) AsKey(_ bool) string {
 	return cr.Namespace + "/" + cr.Name
 }
 
-// GetStatusMetadata implements reconcile.objectWithStatus interface
+// GetStatusMetadata implements reconcile.ObjectWithStatusMetadata interface
 func (cr *VMServiceScrape) GetStatusMetadata() *StatusMetadata {
 	return &cr.Status.StatusMetadata
 }

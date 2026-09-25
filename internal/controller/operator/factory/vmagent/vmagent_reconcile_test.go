@@ -53,6 +53,11 @@ func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
 	assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &vpav1.VerticalPodAutoscaler{})))
 }
 
+// In namespaced mode a Role and RoleBinding are created at every watched namespace,
+// so that service discovery works there, see createK8sAPIAccess.
+// Setting spec.serviceAccountName makes all of them unnecessary, but the ones outside
+// cr.Namespace cannot reference cr as their owner, so deleteOrphaned has to delete
+// them instead of relying on garbage collection.
 func TestDeleteOrphaned_RemovesCrossNamespaceRBAC(t *testing.T) {
 	ctx := context.Background()
 	cr := &vmv1beta1.VMAgent{

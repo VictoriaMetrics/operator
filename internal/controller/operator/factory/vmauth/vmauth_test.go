@@ -50,6 +50,31 @@ func TestReleaseAppliedConditions(t *testing.T) {
 	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmauth is deleted")
 }
 
+func TestReleaseAppliedConditions_FailedParent(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth1", Namespace: "ns"}}
+	user := &vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user1", Namespace: "ns"}}
+	user.Status.CurrentSyncError = "boom"
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{user})
+
+	// simulate a prior reconcile where cr failed to sync: the user carries the error in its
+	// aggregated status, in addition to the per-parent condition.
+	parent := "auth1.ns.vmauth"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMUser{user}))
+
+	var got vmv1beta1.VMUser
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "user1"}, &got))
+	require.NotEmpty(t, got.Status.Reason, "precondition: vmauth's sync error must be reflected on the user")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "user1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmauth is deleted")
+	assert.Empty(t, got.Status.Reason, "aggregated status must be recomputed once the failing parent's condition is gone")
+	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
+}
+
 func TestTLSAssetsHash(t *testing.T) {
 	// deterministic regardless of map iteration order
 	a := tlsAssetsHash(map[string][]byte{"ca.crt": []byte("ca"), "tls.crt": []byte("cert")})

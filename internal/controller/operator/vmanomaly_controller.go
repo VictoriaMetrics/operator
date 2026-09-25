@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -96,9 +95,15 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		if err = vmanomaly.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
-			err = fmt.Errorf("cannot release status conditions for vmanomaly: %w", err)
-			return
+		// Same lock CreateOrUpdateConfig already holds via the Lock above while it writes
+		// this same Applied condition to VMAnomalyConfigs; take it here too, since
+		// IsUnmanaged() is true for a deleting instance and the Lock above was skipped.
+		anomalySync.Lock()
+		releaseErr := vmanomaly.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		anomalySync.Unlock()
+		if releaseErr != nil {
+			// Best-effort: a status-cleanup failure must never wedge the finalizer.
+			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmanomaly")
 		}
 		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
 		return

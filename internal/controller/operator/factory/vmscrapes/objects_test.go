@@ -21,17 +21,37 @@ import (
 func TestReleaseStatusesForScrapeObjects(t *testing.T) {
 	ctx := context.Background()
 	ss := &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: "ss1", Namespace: "ns"}}
+	ps := &vmv1beta1.VMPodScrape{ObjectMeta: metav1.ObjectMeta{Name: "ps1", Namespace: "ns"}}
+	ns := &vmv1beta1.VMNodeScrape{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Namespace: "ns"}}
+	pr := &vmv1beta1.VMProbe{ObjectMeta: metav1.ObjectMeta{Name: "pr1", Namespace: "ns"}}
+	stc := &vmv1beta1.VMStaticScrape{ObjectMeta: metav1.ObjectMeta{Name: "stc1", Namespace: "ns"}}
 	sc := &vmv1beta1.VMScrapeConfig{ObjectMeta: metav1.ObjectMeta{Name: "sc1", Namespace: "ns"}}
-	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ss, sc})
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ss, ps, ns, pr, stc, sc})
 
-	// simulate a prior reconcile that selected both objects and wrote the Applied condition
+	// simulate a prior reconcile that selected all six kinds and wrote the Applied condition
 	parent := "agent1.ns.vmagent"
 	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMServiceScrape{ss}))
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMPodScrape{ps}))
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMNodeScrape{ns}))
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMProbe{pr}))
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMStaticScrape{stc}))
 	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMScrapeConfig{sc}))
 
 	var gotSS vmv1beta1.VMServiceScrape
 	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &gotSS))
 	require.NotEmpty(t, gotSS.Status.Conditions, "precondition: vmagent must have written its condition")
+	var gotPS vmv1beta1.VMPodScrape
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ps1"}, &gotPS))
+	require.NotEmpty(t, gotPS.Status.Conditions, "precondition: vmagent must have written its condition")
+	var gotNS vmv1beta1.VMNodeScrape
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ns1"}, &gotNS))
+	require.NotEmpty(t, gotNS.Status.Conditions, "precondition: vmagent must have written its condition")
+	var gotPR vmv1beta1.VMProbe
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "pr1"}, &gotPR))
+	require.NotEmpty(t, gotPR.Status.Conditions, "precondition: vmagent must have written its condition")
+	var gotSTC vmv1beta1.VMStaticScrape
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "stc1"}, &gotSTC))
+	require.NotEmpty(t, gotSTC.Status.Conditions, "precondition: vmagent must have written its condition")
 	var gotSC vmv1beta1.VMScrapeConfig
 	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "sc1"}, &gotSC))
 	require.NotEmpty(t, gotSC.Status.Conditions, "precondition: vmagent must have written its condition")
@@ -41,6 +61,14 @@ func TestReleaseStatusesForScrapeObjects(t *testing.T) {
 
 	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &gotSS))
 	assert.Empty(t, gotSS.Status.Conditions, "service scrape condition must be released once the vmagent is deleted")
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ps1"}, &gotPS))
+	assert.Empty(t, gotPS.Status.Conditions, "pod scrape condition must be released once the vmagent is deleted")
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ns1"}, &gotNS))
+	assert.Empty(t, gotNS.Status.Conditions, "node scrape condition must be released once the vmagent is deleted")
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "pr1"}, &gotPR))
+	assert.Empty(t, gotPR.Status.Conditions, "probe condition must be released once the vmagent is deleted")
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "stc1"}, &gotSTC))
+	assert.Empty(t, gotSTC.Status.Conditions, "static scrape condition must be released once the vmagent is deleted")
 	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "sc1"}, &gotSC))
 	assert.Empty(t, gotSC.Status.Conditions, "scrape config condition must be released once the vmagent is deleted")
 }

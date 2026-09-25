@@ -105,9 +105,16 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		if err = vmagent.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
-			err = fmt.Errorf("cannot release status conditions for vmagent: %w", err)
-			return
+		// Same lock CreateOrUpdateWithConfig already holds via the RLock above while it
+		// writes this same Applied condition to scrape objects; take it here too, since
+		// IsUnmanaged() is true for a deleting instance and the RLock above was skipped.
+		agentSync.RLock()
+		releaseErr := vmagent.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		agentSync.RUnlock()
+		if releaseErr != nil {
+			// Best-effort: a status-cleanup failure (e.g. a scoped RBAC install missing list
+			// rights on one scrape kind) must never wedge the finalizer.
+			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmagent")
 		}
 		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
 		return

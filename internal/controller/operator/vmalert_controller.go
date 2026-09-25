@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -95,9 +94,15 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		if err = vmalert.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
-			err = fmt.Errorf("cannot release status conditions for vmalert: %w", err)
-			return
+		// Same lock CreateOrUpdateRuleConfigMaps already holds via the RLock above while it
+		// writes this same Applied condition to VMRules; take it here too, since
+		// IsUnmanaged() is true for a deleting instance and the RLock above was skipped.
+		alertSync.RLock()
+		releaseErr := vmalert.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		alertSync.RUnlock()
+		if releaseErr != nil {
+			// Best-effort: a status-cleanup failure must never wedge the finalizer.
+			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmalert")
 		}
 		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
 		return

@@ -741,23 +741,28 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	// so Kubernetes never garbage-collects them and they must be removed explicitly.
 	var crossNamespaceObjsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
-		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 		rbacName := cr.GetRBACName()
-		watchNamespaces := baseConf.WatchNamespaces
-		if len(watchNamespaces) == 0 {
+		objsToRemove = append(objsToRemove,
+			&corev1.ServiceAccount{ObjectMeta: objMeta},
+			// a Role and RoleBinding at cr.Namespace exists in both modes,
+			// in cluster-wide mode it keeps the secrets access namespace-scoped
+			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
+			&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
+		)
+		if len(baseConf.WatchNamespaces) == 0 {
 			objsToRemove = append(objsToRemove,
 				&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 				&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: rbacName}},
 			)
 		} else {
-			for _, ns := range watchNamespaces {
-				rb := &rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}}
-				role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}}
+			for _, ns := range baseConf.WatchNamespaces {
 				if ns == cr.Namespace {
-					objsToRemove = append(objsToRemove, rb, role)
 					continue
 				}
-				crossNamespaceObjsToRemove = append(crossNamespaceObjsToRemove, rb, role)
+				crossNamespaceObjsToRemove = append(crossNamespaceObjsToRemove,
+					&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
+				)
 			}
 		}
 	}

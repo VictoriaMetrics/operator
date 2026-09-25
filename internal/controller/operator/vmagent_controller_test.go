@@ -183,30 +183,49 @@ func TestVMAgent_Reconcile_AgentSync_Unmanaged(t *testing.T) {
 func TestVMAgent_Reconcile_CreatesRBACAtWatchedNamespaces(t *testing.T) {
 	const agentNamespace = "agent-ns"
 	const scrapeNamespace = "scrape-ns"
-	vmagent := &vmv1beta1.VMAgent{
-		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: agentNamespace},
-		Spec: vmv1beta1.VMAgentSpec{
-			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
-		},
-	}
-	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent})
-	baseConf := *config.MustGetBaseConfig()
-	baseConf.WatchNamespaces = []string{agentNamespace, scrapeNamespace}
-	reconciler := &VMAgentReconciler{}
-	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 
-	_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace}})
-	if err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	f := func(t *testing.T, sp vmv1beta1.CommonScrapeParams) {
+		t.Helper()
+		vmagent := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: agentNamespace},
+			Spec: vmv1beta1.VMAgentSpec{
+				RemoteWrite:        []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+				CommonScrapeParams: sp,
+			},
+		}
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent})
+		baseConf := *config.MustGetBaseConfig()
+		baseConf.WatchNamespaces = []string{agentNamespace, scrapeNamespace}
+		reconciler := &VMAgentReconciler{}
+		reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, &baseConf)
 
-	for _, ns := range baseConf.WatchNamespaces {
-		for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
-			if err := fclient.Get(context.Background(), types.NamespacedName{Name: vmagent.GetRBACName(), Namespace: ns}, obj); err != nil {
-				t.Errorf("get %T at namespace %s: %v", obj, ns, err)
+		if _, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: vmagent.Name, Namespace: vmagent.Namespace}}); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+		for _, ns := range baseConf.WatchNamespaces {
+			for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+				if err := fclient.Get(context.Background(), types.NamespacedName{Name: vmagent.GetRBACName(), Namespace: ns}, obj); err != nil {
+					t.Errorf("get %T at namespace %s: %v", obj, ns, err)
+				}
 			}
 		}
 	}
+
+	// an object that configures no selectors at all still needs RBAC at every
+	// watched namespace, this is the case scoping RBAC per selectors got wrong
+	t.Run("no selectors", func(t *testing.T) {
+		f(t, vmv1beta1.CommonScrapeParams{})
+	})
+
+	// a namespace selector is ignored in multi-namespace mode, so scrape objects
+	// at scrapeNamespace are selected even though the selector excludes it
+	t.Run("namespace selector excluding a watched namespace", func(t *testing.T) {
+		f(t, vmv1beta1.CommonScrapeParams{
+			ServiceScrapeNamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"kubernetes.io/metadata.name": agentNamespace},
+			},
+		})
+	})
 }
 
 func TestVMAgent_Reconcile_UsesReconcilerWatchNamespaces(t *testing.T) {

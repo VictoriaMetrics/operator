@@ -1500,6 +1500,15 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	return extraCount, nil
 }
 
+// ReleaseAppliedConditions releases the Applied condition this VMAgent wrote to the scrape
+// objects it used to select. Call it when cr is being deleted: once it's gone, no further
+// reconcile notices it dropped out of their selection, so the condition would otherwise be
+// left stale forever.
+func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
+	parentName := fmt.Sprintf("%s.%s.vmagent", cr.Name, cr.Namespace)
+	return vmscrapes.ReleaseStatusesForScrapeObjects(ctx, rclient, parentName)
+}
+
 func createOrUpdateHPA(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAgent) error {
 	if cr.Spec.HPA == nil {
 		return nil

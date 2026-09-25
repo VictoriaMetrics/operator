@@ -475,6 +475,15 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	return nil
 }
 
+// ReleaseAppliedConditions releases the Applied condition this VMAuth wrote to the VMUsers
+// it used to select. Call it when cr is being deleted: once it's gone, no further reconcile
+// notices it dropped out of their selection, so the condition would otherwise be left stale
+// forever.
+func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
+	parentObject := fmt.Sprintf("%s.%s.vmauth", cr.GetName(), cr.GetNamespace())
+	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMUser{})
+}
+
 func tlsAssetsHash(data map[string][]byte) uint64 {
 	keys := make([]string, 0, len(data))
 	for k := range data {

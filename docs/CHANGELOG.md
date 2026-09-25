@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
+**Release date:** 25 September 2026
+
 **Update note 1**: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/), [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/), [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/), [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): the `config-reloader` sidecar now gets an extra `--target-dir=` argument per watched directory, which changes the pod spec. All `VMAlertmanager` pods, and every `VMAgent`, `VMAlert` or `VMSingle` pod whose reloader watches a directory (`spec.configMaps`, relabeling or stream aggregation configs, rule ConfigMaps), will be rolled out once during this upgrade.
 
 **Update note 2**: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): a `serviceSpec` with `useAsDefault: true` that makes the default `Service` of `vmstorage` non-headless, that is a `spec.type` other than `ClusterIP`, or an explicit `spec.clusterIP`/`spec.clusterIPs` other than `None`, is now rejected at `spec.vmstorage.serviceSpec`. Reconciliation of such a `VMCluster` fails until the `serviceSpec` keeps the `Service` headless, or until `useAsDefault` is removed, which turns it into an additional `Service`. See [#2491](https://github.com/VictoriaMetrics/operator/pull/2491).

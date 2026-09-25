@@ -15,6 +15,7 @@ import (
 
 // +kubebuilder:rbac:groups=route.openshift.io;image.openshift.io,resources=routers/metrics;registry/metrics,verbs=get
 // +kubebuilder:rbac:urls=/metrics;/metrics/resources;/metrics/slis,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=nodes;nodes/metrics,verbs=get;list;watch
 
 // getScrapeDiscoveryRules returns the K8s service-discovery rules needed in every watched namespace.
 func getScrapeDiscoveryRules() []rbacv1.PolicyRule {

@@ -14,6 +14,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=autoscaling.k8s.io,resources=verticalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
+
 // VPA creates or updates VerticalPodAutoscaler object
 func VPA(ctx context.Context, rclient client.Client, newObj, prevObj *vpav1.VerticalPodAutoscaler, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

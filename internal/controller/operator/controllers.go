@@ -329,6 +329,8 @@ type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC]
 	Paused() bool
 }
 
+// +kubebuilder:rbac:groups="",resources=events,verbs=create
+
 func createGenericEventForObject(ctx context.Context, c client.Client, object client.Object, message string) error {
 	ev := &corev1.Event{
 		ObjectMeta: metav1.ObjectMeta{

@@ -14,6 +14,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterrolebindings;clusterroles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings/finalizers;clusterroles/finalizers,verbs=patch
+
 // RoleBinding reconciles rolebindg object
 func RoleBinding(ctx context.Context, rclient client.Client, newObj, prevObj *rbacv1.RoleBinding, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

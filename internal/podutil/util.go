@@ -29,6 +29,8 @@ type AgentMetrics interface {
 	ProbeScheme() string
 }
 
+// +kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=get;list;watch
+
 // GetMetricsAddrs discovers the agent's active endpoints from EndpointSlices and
 // returns the full metrics URL for each ready endpoint.
 func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetrics) sets.Set[string] {

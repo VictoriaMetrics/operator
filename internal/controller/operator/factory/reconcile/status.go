@@ -343,25 +343,32 @@ func removeStaleConditionsBySuffix(src []vmv1beta1.Condition, domainTypeSuffix s
 	return tmp
 }
 
-// SyncConfigObjectStatus recomputes status.updateStatus and status.reason of a config-kind
-// object from the per-parent conditions currently persisted at it, see computeAggregatedStatus.
+// SyncConfigObjectStatus sets status.updateStatus and status.reason of a config-kind object
+// after its own reconcile.
 //
-// Every parent already does this whenever it writes or releases its own condition. It is
-// needed on top of that because an object that no parent selects never gets a condition
-// written, so nothing else would ever fill in its status. It also clears a status left by an
-// earlier failed reconcile of the object itself. The object is re-read before the update, so
-// that conditions written concurrently by a parent are preserved.
+// Parents also update the status whenever they write their conditions to the object. But if
+// no parent selects the object, no parent ever touches it, and this function is the only place
+// where its status gets set. It also clears a `failed` status left by an earlier reconcile
+// once the object spec can be parsed again, which parents never do.
 //
-// A non-nil parsingErr means the operator cannot parse the object spec: status.updateStatus
-// is set to `failed` with parsingErr as status.reason, and the aggregation is skipped.
+// A non-nil parsingErr sets the status to `failed` with parsingErr as the reason. Otherwise
+// the status is computed from the per-parent conditions, see computeAggregatedStatus.
+//
+// The object is re-read before the update to keep conditions written concurrently by parents.
+// Nothing is written if the object was deleted, or recreated with a different UID.
 func SyncConfigObjectStatus(ctx context.Context, rclient client.Client, object ObjectWithStatusMetadata, parsingErr error) error {
 	nsn := client.ObjectKeyFromObject(object)
+	origUID := object.GetUID()
 	return retryOnConflict(func() error {
 		if err := rclient.Get(ctx, nsn, object); err != nil {
 			if k8serrors.IsNotFound(err) {
 				return nil
 			}
 			return fmt.Errorf("cannot get %T=%q to sync its status: %w", object, nsn, err)
+		}
+		if origUID != "" && object.GetUID() != origUID {
+			// the object was recreated, the result of this reconcile does not apply to it
+			return nil
 		}
 		st := object.GetStatusMetadata()
 		prevSt := st.DeepCopy()

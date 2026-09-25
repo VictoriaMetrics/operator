@@ -111,6 +111,25 @@ func TestStatusForChildObjects_KeepsOwnControllerFailure(t *testing.T) {
 	assert.Empty(t, got.Status.Reason)
 }
 
+func TestSyncConfigObjectStatus_SkipsRecreatedObject(t *testing.T) {
+	ctx := context.Background()
+	// the object was deleted and recreated while the old one was being reconciled
+	replacement := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "new-uid"},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{replacement})
+
+	stale := &vmv1beta1.VMRule{
+		ObjectMeta: metav1.ObjectMeta{Name: "rule-a", Namespace: "ns", UID: "old-uid"},
+	}
+	require.NoError(t, SyncConfigObjectStatus(ctx, rclient, stale, errors.New("cannot parse VMRuleSpec")))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
+	assert.Empty(t, got.Status.UpdateStatus, "the replacement must not get the status of the old object")
+	assert.Empty(t, got.Status.Reason)
+}
+
 func TestStatusForChildObjects_ReleasesDroppedChildren(t *testing.T) {
 	ctx := context.Background()
 	parent := "test-releases-dropped.ns.vmalert"

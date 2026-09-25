@@ -118,7 +118,19 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 // SafeDeleteWithFinalizer removes object, ignores notfound error.
 func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, objs []client.Object, cr crObject) error {
 	owner := cr.AsOwner()
-	selector := cr.SelectorLabels()
+	return safeDeleteWithFinalizer(ctx, rclient, objs, cr.SelectorLabels(), &owner)
+}
+
+// SafeDeleteCrossNamespaceWithFinalizer removes objects created for cr outside of its namespace,
+// such as the service discovery Role and RoleBinding at the namespaces watched by the operator.
+//
+// Kubernetes does not support cross-namespace ownership, so those objects carry no owner reference
+// and are never garbage-collected. They are matched by cr selector labels instead.
+func SafeDeleteCrossNamespaceWithFinalizer(ctx context.Context, rclient client.Client, objs []client.Object, cr crObject) error {
+	return safeDeleteWithFinalizer(ctx, rclient, objs, cr.SelectorLabels(), nil)
+}
+
+func safeDeleteWithFinalizer(ctx context.Context, rclient client.Client, objs []client.Object, selector map[string]string, owner *metav1.OwnerReference) error {
 	delete := func(r client.Object) error {
 		nsn := types.NamespacedName{
 			Name:      r.GetName(),
@@ -135,7 +147,7 @@ func SafeDeleteWithFinalizer(ctx context.Context, rclient client.Client, objs []
 			}
 			return err
 		}
-		if !canBeRemoved(r, selector, &owner) {
+		if !canBeRemoved(r, selector, owner) {
 			return nil
 		}
 		if err := RemoveFinalizer(ctx, rclient, r); err != nil {

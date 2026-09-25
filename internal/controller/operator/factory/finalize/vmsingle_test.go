@@ -8,15 +8,48 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+// In namespaced mode a Role and RoleBinding are created at every watched namespace,
+// so that service discovery works there, see createK8sAPIAccess.
+// Deleting cr makes all of them unnecessary, but the ones outside cr.Namespace cannot
+// reference cr as their owner, so they are never garbage-collected after cr deletion.
+func TestOnVMSingleDelete_RemovesCrossNamespaceRBAC(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "operator.victoriametrics.com/v1beta1", Kind: "VMSingle"},
+		ObjectMeta: metav1.ObjectMeta{Name: "vmsingle", Namespace: "single-ns"},
+	}
+	watchedNamespace := "watched-ns"
+
+	cfg := config.MustGetBaseConfig()
+	previousCfg := *cfg
+	defer func() { *cfg = previousCfg }()
+	cfg.WatchNamespaces = []string{cr.Namespace, watchedNamespace}
+
+	rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName(), Namespace: watchedNamespace, Labels: cr.SelectorLabels()}
+	cl := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		&rbacv1.Role{ObjectMeta: rbacMeta},
+		&rbacv1.RoleBinding{ObjectMeta: rbacMeta},
+	})
+
+	assert.NoError(t, OnVMSingleDelete(ctx, cl, cr))
+	for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+		err := cl.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: watchedNamespace}, obj)
+		assert.True(t, k8serrors.IsNotFound(err), "%T at %s must be removed, got %v", obj, watchedNamespace, err)
+	}
+}
 
 func TestOnVMSingleDelete(t *testing.T) {
 	type opts struct {

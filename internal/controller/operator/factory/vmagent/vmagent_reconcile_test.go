@@ -53,6 +53,63 @@ func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
 	assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &vpav1.VerticalPodAutoscaler{})))
 }
 
+// In namespaced mode a Role and RoleBinding are created at every watched namespace,
+// so that service discovery works there, see createK8sAPIAccess.
+// Setting spec.serviceAccountName makes all of them unnecessary, but the ones outside
+// cr.Namespace cannot reference cr as their owner, so deleteOrphaned has to delete
+// them instead of relying on garbage collection.
+func TestDeleteOrphaned_RemovesCrossNamespaceRBAC(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+		// an externally managed ServiceAccount, operator owned RBAC is no longer needed
+		Spec: vmv1beta1.VMAgentSpec{ServiceAccountName: "external"},
+	}
+	watchedNamespace := "watched-ns"
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		buildRole(cr, cr.Namespace), buildRB(cr, cr.Namespace),
+		buildRole(cr, watchedNamespace), buildRB(cr, watchedNamespace),
+	})
+
+	cfg := &config.BaseOperatorConf{WatchNamespaces: []string{cr.Namespace, watchedNamespace}}
+	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, cfg))
+	for _, ns := range cfg.WatchNamespaces {
+		for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+			err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName(), Namespace: ns}, obj)
+			assert.True(t, k8serrors.IsNotFound(err), "%T at %s must be removed, got %v", obj, ns, err)
+		}
+	}
+}
+
+// In cluster-wide mode a Role and RoleBinding are still created at cr.Namespace,
+// to keep the secrets access namespace-scoped, see createK8sAPIAccess.
+// Setting spec.serviceAccountName makes them unnecessary, but cr itself stays alive,
+// so deleteOrphaned has to delete them instead of relying on garbage collection.
+func TestDeleteOrphaned_RemovesClusterWideRBAC(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+		Spec:       vmv1beta1.VMAgentSpec{ServiceAccountName: "external"},
+	}
+	rbacName := cr.GetRBACName()
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		buildRole(cr, cr.Namespace), buildRB(cr, cr.Namespace),
+		buildCR(cr), buildCRB(cr),
+	})
+
+	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{}))
+	for _, obj := range []client.Object{&rbacv1.Role{}, &rbacv1.RoleBinding{}} {
+		err := fclient.Get(ctx, types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, obj)
+		assert.True(t, k8serrors.IsNotFound(err), "%T at %s must be removed, got %v", obj, cr.Namespace, err)
+	}
+	for _, obj := range []client.Object{&rbacv1.ClusterRole{}, &rbacv1.ClusterRoleBinding{}} {
+		err := fclient.Get(ctx, types.NamespacedName{Name: rbacName}, obj)
+		assert.True(t, k8serrors.IsNotFound(err), "%T must be removed, got %v", obj, err)
+	}
+}
+
 func Test_CreateOrUpdate_Actions(t *testing.T) {
 	type args struct {
 		cr     *vmv1beta1.VMAgent

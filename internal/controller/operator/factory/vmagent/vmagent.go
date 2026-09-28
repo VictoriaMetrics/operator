@@ -81,15 +81,16 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 				svc.Spec.ClusterIP = "None"
 			}
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
-		})
+		}, build.AllowNonHeadlessDefault())
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
 	}
+	// allow the default Service to be replaced by a non-headless one.
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
 		}
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
-	})
+	}, build.AllowNonHeadlessDefault())
 	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, cr.Spec.ServiceSpec)

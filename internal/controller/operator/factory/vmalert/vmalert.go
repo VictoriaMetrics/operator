@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	// vmAlertRulesOutDir is where the config-reloader writes decompressed rule files.
 	vmAlertRulesOutDir      = "/etc/vmalert/rules-out"
+	vmAlertRulesSyncDir     = vmAlertRulesOutDir + "/synced"
+	vmAlertRulesSrcDir      = "/etc/vmalert/rules-src"
 	vmAlertConfigDir        = "/etc/vmalert/config"
 	datasourceKey           = "datasource"
 	remoteReadKey           = "remoteRead"
@@ -207,6 +208,18 @@ func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 	return deploy, nil
 }
 
+func rulesSrcProjection(ruleConfigMapNames []string) *corev1.ProjectedVolumeSource {
+	sources := make([]corev1.VolumeProjection, 0, len(ruleConfigMapNames))
+	for _, name := range ruleConfigMapNames {
+		sources = append(sources, corev1.VolumeProjection{
+			ConfigMap: &corev1.ConfigMapProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+			},
+		})
+	}
+	return &corev1.ProjectedVolumeSource{Sources: sources}
+}
+
 func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) (*appsv1.DeploymentSpec, error) {
 	args, err := buildArgs(cr, ruleConfigMapNames, ac)
 	if err != nil {
@@ -227,16 +240,10 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
-	for i, name := range ruleConfigMapNames {
+	if len(ruleConfigMapNames) > 0 {
 		volumes = append(volumes, corev1.Volume{
-			Name: fmt.Sprintf("rules-src-%d", i),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name,
-					},
-				},
-			},
+			Name:         "rules-src",
+			VolumeSource: corev1.VolumeSource{Projected: rulesSrcProjection(ruleConfigMapNames)},
 		})
 	}
 
@@ -334,6 +341,12 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	build.AddConfigReloadAuthKeyToApp(&vmalertContainer, cr.Spec.ExtraArgs, &cr.Spec.CommonConfigReloaderParams)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
+	ruleSrcMount := corev1.VolumeMount{
+		Name:      "rules-src",
+		MountPath: vmAlertRulesSrcDir,
+		ReadOnly:  true,
+	}
+
 	var initContainers []corev1.Container
 	if cr.HasConfigReloader() {
 		crc := build.ConfigReloaderContainer(build.ConfigReloaderOpts{
@@ -345,15 +358,8 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 			Name:      "rules-out",
 			MountPath: vmAlertRulesOutDir,
 		})
-		for i := range ruleConfigMapNames {
-			build.AddWatchTargetDir(&crc,
-				corev1.VolumeMount{
-					Name:      fmt.Sprintf("rules-src-%d", i),
-					MountPath: path.Join("/etc/vmalert", fmt.Sprintf("rules-src-%d", i)),
-					ReadOnly:  true,
-				},
-				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
-			)
+		if len(ruleConfigMapNames) > 0 {
+			build.AddWatchTargetDir(&crc, ruleSrcMount, vmAlertRulesSyncDir)
 		}
 
 		// Init container populates rules-out before vmalert starts.
@@ -366,15 +372,8 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 			Name:      "rules-out",
 			MountPath: vmAlertRulesOutDir,
 		})
-		for i := range ruleConfigMapNames {
-			build.AddWatchTargetDir(&initCRC,
-				corev1.VolumeMount{
-					Name:      fmt.Sprintf("rules-src-%d", i),
-					MountPath: path.Join("/etc/vmalert", fmt.Sprintf("rules-src-%d", i)),
-					ReadOnly:  true,
-				},
-				path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i)),
-			)
+		if len(ruleConfigMapNames) > 0 {
+			build.AddWatchTargetDir(&initCRC, ruleSrcMount, vmAlertRulesSyncDir)
 		}
 		initContainers = append(initContainers, initCRC)
 		vmalertContainers = append(vmalertContainers, crc)
@@ -576,9 +575,8 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
-	for i := range ruleConfigMapNames {
-		// Rule files are decompressed by the config-reloader into per-bucket subdirs of vmAlertRulesOutDir.
-		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertRulesOutDir, fmt.Sprintf("rules-src-%d", i), "*.yaml")))
+	if len(ruleConfigMapNames) > 0 {
+		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertRulesSyncDir, "*.yaml")))
 	}
 
 	cfg := config.MustGetBaseConfig()

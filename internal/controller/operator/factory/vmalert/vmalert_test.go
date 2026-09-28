@@ -100,7 +100,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &d))
 			k8stools.AssertConfigReloaderWatchTargetDirs(t, d.Spec.Template.Spec.Containers, map[string]string{
 				"/etc/vm/configs/my-templates": "",
-				"/etc/vmalert/rules-src-0":     "/etc/vmalert/rules-out/rules-src-0",
+				"/etc/vmalert/rules-src":       "/etc/vmalert/rules-out/synced",
 			})
 		},
 	})
@@ -779,8 +779,8 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				},
 			},
 		},
-		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
+		ruleConfigMapNames: []string{"vm-base-rulefiles-0"},
+		want:               []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/synced/*.yaml\""},
 	})
 
 	// with tls args
@@ -809,8 +809,8 @@ func Test_buildVMAlertArgs(t *testing.T) {
 				},
 			},
 		},
-		ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\""},
+		ruleConfigMapNames: []string{"vm-base-rulefiles-0"},
+		want:               []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:8080", "-notifier.url=http://test", "-rule=\"/etc/vmalert/rules-out/synced/*.yaml\""},
 	})
 
 	// with static and selector notifiers
@@ -911,7 +911,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 		want: []string{
 			"-datasource.url=http://vmsingle-url",
 			"-httpListenAddr=:8080",
-			"-rule=\"/etc/vmalert/rules-out/rules-src-0/*.yaml\"",
+			"-rule=\"/etc/vmalert/rules-out/synced/*.yaml\"",
 		},
 	})
 }

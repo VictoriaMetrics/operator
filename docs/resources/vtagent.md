@@ -40,7 +40,7 @@ For each `VTAgent` resource, the Operator deploys a properly configured `Statefu
 alongside a headless `Service` and a `VMPodScrape` for self-monitoring with name `vtagent-{metadata.name}`.
 
 VTAgent allocates port 10429 by default for OTLP/HTTP ingestion. Below is an example of sending trace spans to the
-[`/insert/opentelemetry/v1/traces`](https://docs.victoriametrics.com/victoriatraces/#sending-otlp-traces-to-victoriatraces) handler inside a cluster:
+[`/insert/opentelemetry/v1/traces`](https://docs.victoriametrics.com/victoriatraces/quick-start/#write-data) handler inside a cluster:
 
 ```sh
 curl http://vtagent-example-0.vtagent-example.default.svc.cluster.local:10429/insert/opentelemetry/v1/traces \

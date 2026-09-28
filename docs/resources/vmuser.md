@@ -104,7 +104,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 ### IP Filters
 
 For using [IP filters](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
-you need to **[enable VMAuth Enterprise](https://docs.victoriametrics.com/victoriametrics/vmauth/#enterprise-features)**.
+you need to **[enable VMAuth Enterprise](https://docs.victoriametrics.com/operator/resources/vmauth/#enterprise-features)**.
 
 After that you can add `ip_filters` field to `VMUser`:
 

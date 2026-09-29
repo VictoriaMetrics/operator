@@ -240,7 +240,9 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 	if err = r.ClientConfig.override(cr, &cr.Spec.Reader.VMAnomalyHTTPClientSpec, ac); err != nil {
 		return fmt.Errorf("failed to update HTTP client for anomaly reader, name=%q: %w", crCanonicalName, err)
 	}
-	r.Class = "vm"
+	if r.Class == "" {
+		r.Class = "vm"
+	}
 
 	r.Queries = c.Reader.Queries
 	c.Reader = &r

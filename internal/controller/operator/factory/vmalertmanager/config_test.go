@@ -395,6 +395,93 @@ templates: []
 `,
 	})
 
+	// route labels: kept at base config root route, inherited and overridden at nested routes
+	f(opts{
+		baseCfg: []byte(`route:
+  receiver: blackhole
+  labels:
+    team: platform
+receivers:
+- name: blackhole
+`),
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "base",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+					Receivers: []vmv1beta1.Receiver{
+						{
+							Name: "email",
+							EmailConfigs: []vmv1beta1.EmailConfig{
+								{
+									SendResolved: ptr.To(true),
+									From:         "some-sender",
+									To:           "some-dst-1",
+									Text:         "some-text",
+									Smarthost:    "some:443",
+								},
+							},
+						},
+					},
+					Route: &vmv1beta1.Route{
+						Receiver: "email",
+						GroupBy:  []string{"alertname"},
+						Labels: map[string]string{
+							"reason":      "{{ .GroupLabels.alertname }}",
+							"description": `{{ .GroupLabels.alertname }} firing ({{ routeLabels "reason" }})`,
+						},
+						RawRoutes: []apiextensionsv1.JSON{
+							mustRouteToJSON(t, vmv1beta1.SubRoute{
+								Receiver: "email",
+								GroupBy:  []string{"alertname", "database"},
+								Matchers: []string{`service="database"`},
+								Labels: map[string]string{
+									"reason": "database {{ .GroupLabels.database }}",
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+		want: `route:
+  receiver: blackhole
+  labels:
+    team: platform
+  routes:
+  - routes:
+    - matchers:
+      - service="database"
+      group_by:
+      - alertname
+      - database
+      labels:
+        reason: database {{ .GroupLabels.database }}
+      receiver: default-base-email
+    matchers:
+    - namespace = "default"
+    group_by:
+    - alertname
+    labels:
+      description: '{{ .GroupLabels.alertname }} firing ({{ routeLabels "reason" }})'
+      reason: '{{ .GroupLabels.alertname }}'
+    receiver: default-base-email
+    continue: true
+receivers:
+- name: blackhole
+- name: default-base-email
+  email_configs:
+  - from: some-sender
+    text: some-text
+    to: some-dst-1
+    smarthost: some:443
+    send_resolved: true
+templates: []
+`,
+	})
+
 	// email section
 	f(opts{
 		baseCfg: []byte(`global:

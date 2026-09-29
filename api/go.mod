@@ -8,6 +8,7 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.152.0
 	github.com/VictoriaMetrics/metricsql v0.87.4
 	github.com/prometheus/alertmanager v0.34.1
+	github.com/prometheus/common v0.71.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/net v0.59.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -98,7 +99,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.71.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.17.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/prometheus/sigv4 v0.5.0 // indirect

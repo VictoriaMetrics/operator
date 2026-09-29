@@ -1,0 +1,67 @@
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: sample-additional-remote-write
+spec:
+  vmauth:
+    name: global-vmauth
+    spec:
+      replicaCount: 1
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
+        additionalRemoteWriteTargets:
+          # long-term storage, shared by every zone
+          - url: https://vmcloud.example.com/api/v1/write
+            bearerTokenSecret:
+              name: vmcloud-token
+              key: token
+            sendTimeout: 30s
+            maxDiskUsage: 5GB
+            forceVMProto: true
+            rateLimit: 10485760
+            retryMaxInterval: 5m
+          # per-zone bucket at a third-party Prometheus remote write endpoint
+          - url: https://prometheus.grafana.net/api/prom/push?zone=%ZONE%
+            basicAuth:
+              username:
+                name: grafana-cloud
+                key: username
+              password:
+                name: grafana-cloud
+                key: password
+            queues: 4
+            inlineUrlRelabelConfig:
+              # managed VMAgents run with -enableMultitenantHandlers, which adds
+              # vm_account_id/vm_project_id labels. Drop them before a non-VictoriaMetrics backend.
+              - action: labeldrop
+                regex: "vm_(account|project)_id"
+    vmcluster:
+      spec:
+        vmstorage:
+          replicaCount: 2
+        vmselect:
+          replicaCount: 2
+        vminsert:
+          replicaCount: 2
+  zones:
+    - name: us-east-1
+    - name: us-west-2
+      vmagent:
+        spec:
+          additionalRemoteWriteTargets:
+            # url matches the zoneCommon entry, so the two are deep-merged:
+            # bearerTokenSecret, maxDiskUsage, forceVMProto, rateLimit and retryMaxInterval
+            # are inherited, only sendTimeout is overridden for this zone.
+            - url: https://vmcloud.example.com/api/v1/write
+              sendTimeout: 2m
+            # url is absent from zoneCommon, so it is appended for this zone only
+            - url: http://audit-sink.observability.svc:8480/insert/0/prometheus/api/v1/write
+              headers:
+                - "X-Zone: us-west-2"
+    - name: eu-west-1

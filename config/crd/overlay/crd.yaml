@@ -22182,6 +22182,36 @@ spec:
                     aws:
                       description: AWS describes params specific to AWS cloud
                       properties:
+                        accessKeySecret:
+                          description: |-
+                            AccessKeySecret defines a reference to the secret with an AWS AccessKey
+                            for the corresponding -remoteWrite.url if useSigv4 is set.
+                            The operator projects the secret into the application container as an environment
+                            variable and passes only its reference to -remoteWrite.aws.accessKey, so the
+                            credential never appears in the workload spec or in the process arguments.
+                            Must be set together with secretKeySecret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
                         ec2Endpoint:
                           description: EC2Endpoint is an optional AWS EC2 API endpoint
                             to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
@@ -22197,6 +22227,34 @@ spec:
                             the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
                             is set
                           type: string
+                        secretKeySecret:
+                          description: |-
+                            SecretKeySecret defines a reference to the secret with an AWS SecretKey
+                            for the corresponding -remoteWrite.url if useSigv4 is set.
+                            See accessKeySecret for the details of how the value is delivered to the application.
+                            Must be set together with accessKeySecret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
                         service:
                           description: Service is an optional AWS Service to use for
                             the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4
@@ -22298,6 +22356,25 @@ spec:
                       - key
                       type: object
                       x-kubernetes-map-type: atomic
+                    disableMetadata:
+                      description: |-
+                        DisableMetadata disables sending metric metadata to the corresponding -remoteWrite.url.
+                        By default metadata sending is controlled by the global -enableMetadata flag.
+                        vmagent supports it since v1.140.0 version
+                      type: boolean
+                    disableOnDiskQueue:
+                      description: |-
+                        DisableOnDiskQueue disables storing pending data at -remoteWrite.tmpDataPath when the remote
+                        storage at the corresponding -remoteWrite.url cannot keep up with the data ingestion rate.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#disabling-on-disk-persistence).
+                        vmagent supports it per -remoteWrite.url since v1.102.0 version
+                      type: boolean
+                    forcePromProto:
+                      description: |-
+                        ForcePromProto forces using Prometheus remote write protocol for sending data
+                        to the corresponding -remoteWrite.url.
+                        It cannot be used together with forceVMProto.
+                      type: boolean
                     forceVMProto:
                       description: ForceVMProto forces using VictoriaMetrics protocol
                         for sending data to -remoteWrite.url
@@ -22389,11 +22466,28 @@ spec:
                             type: string
                         type: object
                       type: array
+                    inmemoryQueues:
+                      description: |-
+                        InmemoryQueues defines the number of additional workers for the corresponding -remoteWrite.url,
+                        which send only recently ingested data from the in-memory queue, while the file-based queue
+                        is drained by the workers configured via queues. (default 0)
+                        vmagent supports it since v1.146.0 version
+                      format: int32
+                      minimum: 0
+                      type: integer
                     maxDiskUsage:
                       description: |-
                         MaxDiskUsage defines the maximum file-based buffer size in bytes for the given remoteWrite
                         It overrides global configuration defined at remoteWriteSettings.maxDiskUsagePerURL
                       x-kubernetes-preserve-unknown-fields: true
+                    mdxEnable:
+                      description: |-
+                        MDXEnable makes vmagent retain only metrics from VictoriaMetrics services before sending
+                        them to the corresponding -remoteWrite.url.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#monitoring-data-exchange).
+                        It cannot be used together with the -remoteWrite.shardByURL flag.
+                        vmagent supports it since v1.147.0 version
+                      type: boolean
                     oauth2:
                       description: OAuth2 defines auth configuration
                       properties:
@@ -22508,6 +22602,15 @@ spec:
                       - client_id
                       - token_url
                       type: object
+                    obfuscateLabels:
+                      description: |-
+                        ObfuscateLabels defines a list of label names whose values are obfuscated before sending
+                        them to the corresponding -remoteWrite.url.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#obfuscating-label-values).
+                        vmagent supports it since v1.149.0 version
+                      items:
+                        type: string
+                      type: array
                     proxyURL:
                       description: 'ProxyURL for -remoteWrite.url. Supported proxies:
                         http, https, socks5. Example: socks5://proxy:1234'
@@ -22516,11 +22619,47 @@ spec:
                       description: The number of concurrent queues
                       format: int32
                       type: integer
+                    rateLimit:
+                      description: |-
+                        RateLimit defines an optional rate limit in bytes per second for data sent to the
+                        corresponding -remoteWrite.url. By default the rate limit is disabled. (default 0)
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    retryMaxInterval:
+                      description: |-
+                        RetryMaxInterval defines the maximum delay between retry attempts to send a block of data
+                        to the corresponding -remoteWrite.url. (default 1m0s)
+                        vmagent supports it since v1.121.0 version
+                      pattern: '[0-9]+(ms|s|m|h)'
+                      type: string
+                    retryMinInterval:
+                      description: |-
+                        RetryMinInterval defines the minimum delay between retry attempts to send a block of data
+                        to the corresponding -remoteWrite.url. Every next retry attempt doubles the delay. (default 1s)
+                        vmagent supports it since v1.103.0 version
+                      pattern: '[0-9]+(ms|s|m|h)'
+                      type: string
+                    roundDigits:
+                      description: |-
+                        RoundDigits rounds metric values to this number of decimal digits after the point before
+                        sending them to the corresponding -remoteWrite.url. Negative values round before the point,
+                        e.g. -1 rounds 126.78 to 130. Set it to 100 in order to disable rounding. (default 100)
+                      format: int32
+                      type: integer
                     sendTimeout:
                       description: Timeout for sending a single block of data to -remoteWrite.url
                         (default 1m0s)
                       pattern: '[0-9]+(ms|s|m|h)'
                       type: string
+                    significantFigures:
+                      description: |-
+                        SignificantFigures defines the number of significant figures to leave in metric values
+                        before sending them to the corresponding -remoteWrite.url.
+                        Zero value saves all the significant figures. (default 0)
+                      format: int32
+                      minimum: 0
+                      type: integer
                     streamAggrConfig:
                       description: StreamAggrConfig defines stream aggregation configuration
                         for VMAgent for -remoteWrite.url
@@ -23017,6 +23156,13 @@ spec:
                           description: Used to verify the hostname for the targets.
                           type: string
                       type: object
+                    tlsHandshakeTimeout:
+                      description: |-
+                        TLSHandshakeTimeout defines the timeout for establishing tls connections
+                        to the corresponding -remoteWrite.url. (default 20s)
+                        vmagent supports it since v1.98.0 version
+                      pattern: '[0-9]+(ms|s|m|h)'
+                      type: string
                     url:
                       description: URL of the endpoint to send samples to.
                       type: string
@@ -54962,6 +55108,25 @@ spec:
                       spec:
                         description: Spec defines the desired state of a new VMAgent.
                         properties:
+                          additionalRemoteWriteTargets:
+                            description: |-
+                              AdditionalRemoteWriteTargets defines extra remoteWrite destinations for the zone's VMAgent,
+                              in addition to the per-zone VMSingle or VMCluster backends managed by this VMDistributed.
+
+                              Each entry has the same shape as `VMAgent.spec.remoteWrite[]`, including `urlRelabelConfig`,
+                              `inlineUrlRelabelConfig` and `streamAggrConfig`. `url` is required and must be unique
+                              within a list.
+
+                              Unlike every other list in this spec, which is replaced as a whole, targets defined at
+                              `spec.zoneCommon.vmagent.spec` and at `spec.zones[].vmagent.spec` are merged by `url`:
+                              an entry whose `url` is present in both places is deep-merged with the zone value winning
+                              field-by-field, an entry present only at `spec.zones[]` is appended, an entry present only
+                              at `spec.zoneCommon` is kept as is. `%ZONE%` is substituted with the zone name in both
+                              places before urls are matched.
+
+                              `url` must not point at a VMSingle or VMCluster managed by this VMDistributed, the operator
+                              configures those remoteWrite entries itself.
+                            x-kubernetes-preserve-unknown-fields: true
                           affinity:
                             description: Affinity If specified, the pod's scheduling
                               constraints.
@@ -57562,6 +57727,25 @@ spec:
                         spec:
                           description: Spec defines the desired state of a new VMAgent.
                           properties:
+                            additionalRemoteWriteTargets:
+                              description: |-
+                                AdditionalRemoteWriteTargets defines extra remoteWrite destinations for the zone's VMAgent,
+                                in addition to the per-zone VMSingle or VMCluster backends managed by this VMDistributed.
+
+                                Each entry has the same shape as `VMAgent.spec.remoteWrite[]`, including `urlRelabelConfig`,
+                                `inlineUrlRelabelConfig` and `streamAggrConfig`. `url` is required and must be unique
+                                within a list.
+
+                                Unlike every other list in this spec, which is replaced as a whole, targets defined at
+                                `spec.zoneCommon.vmagent.spec` and at `spec.zones[].vmagent.spec` are merged by `url`:
+                                an entry whose `url` is present in both places is deep-merged with the zone value winning
+                                field-by-field, an entry present only at `spec.zones[]` is appended, an entry present only
+                                at `spec.zoneCommon` is kept as is. `%ZONE%` is substituted with the zone name in both
+                                places before urls are matched.
+
+                                `url` must not point at a VMSingle or VMCluster managed by this VMDistributed, the operator
+                                configures those remoteWrite entries itself.
+                              x-kubernetes-preserve-unknown-fields: true
                             affinity:
                               description: Affinity If specified, the pod's scheduling
                                 constraints.

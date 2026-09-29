@@ -193,6 +193,109 @@ var _ = Describe("e2e VMDistributed", Label("vm", "vmdistributed"), func() {
 			Expect(vmauth.OwnerReferences[0].UID).To(Equal(cr.UID))
 		})
 
+		It("should ship data to additional remote write targets", func() {
+			By("creating 2 VMClusters")
+			nsn.Name = "vmd-additional-rw"
+			zonesCount := 2
+			zs := make([]vmv1alpha1.VMDistributedZone, zonesCount)
+			vmClusters := make([]*vmv1beta1.VMCluster, zonesCount)
+			for i := range zs {
+				objMeta := metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      fmt.Sprintf("%s-%d", nsn.Name, i+1),
+				}
+				vmClusterSpec := genVMClusterSpec()
+				zs[i].Name = objMeta.Name
+				zs[i].VMCluster.Spec = vmClusterSpec
+				zs[i].VMCluster.Name = objMeta.Name
+				zs[i].VMAgent.Name = objMeta.Name
+				vmClusters[i] = &vmv1beta1.VMCluster{
+					ObjectMeta: objMeta,
+					Spec:       vmClusterSpec,
+				}
+			}
+			// the second zone overrides the common target by url and appends one of its own
+			commonTargetURL := "http://external-store.svc:8428/api/v1/write"
+			zoneOnlyTargetURL := "http://audit-sink.svc:8428/api/v1/write"
+			zs[1].VMAgent.Spec.AdditionalRemoteWriteTargets = []vmv1beta1.VMAgentRemoteWriteSpec{
+				{URL: commonTargetURL, SendTimeout: ptr.To("2m")},
+				{URL: zoneOnlyTargetURL},
+			}
+
+			var wg sync.WaitGroup
+			createVMClusters(ctx, &wg, k8sClient, vmClusters...)
+			createVMAuth(ctx, &wg, k8sClient, nsn.Name, namespace)
+			wg.Wait()
+
+			By("creating a VMDistributed with additionalRemoteWriteTargets")
+			cr := &vmv1alpha1.VMDistributed{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      nsn.Name,
+				},
+				Spec: vmv1alpha1.VMDistributedSpec{
+					VMAuth: vmv1alpha1.VMDistributedAuth{
+						Name: nsn.Name,
+					},
+					ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+						ReadyTimeout: &metav1.Duration{Duration: 2 * time.Minute},
+						UpdatePause:  &metav1.Duration{Duration: 1 * time.Second},
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								CommonAppsParams: vmv1beta1.CommonAppsParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+								AdditionalRemoteWriteTargets: []vmv1beta1.VMAgentRemoteWriteSpec{
+									{
+										URL:          commonTargetURL,
+										SendTimeout:  ptr.To("30s"),
+										ForceVMProto: true,
+									},
+								},
+							},
+						},
+					},
+					Zones: zs,
+				},
+			}
+			DeferCleanup(func() {
+				Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
+			})
+			expectStatusAfterAction(ctx, &vmv1alpha1.VMDistributedList{}, nsn, eventualDistributedExpandingTimeout, func() {
+				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
+			}, vmv1beta1.UpdateStatusOperational)
+
+			By("checking that additional targets are appended after the zone backends")
+			getAgent := func(name string) *vmv1beta1.VMAgent {
+				var vmagent vmv1beta1.VMAgent
+				Eventually(func() error {
+					return k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &vmagent)
+				}, eventualDistributedExpandingTimeout).ShouldNot(HaveOccurred())
+				return &vmagent
+			}
+
+			// the first zone only gets the common target, unchanged
+			firstRWs := getAgent(zs[0].VMAgent.Name).Spec.RemoteWrite
+			Expect(firstRWs).To(HaveLen(zonesCount + 1))
+			for i := range zs {
+				Expect(firstRWs[i].URL).To(Equal(vmClusters[i].GetRemoteWriteURL()))
+			}
+			Expect(firstRWs[zonesCount].URL).To(Equal(commonTargetURL))
+			Expect(firstRWs[zonesCount].SendTimeout).To(Equal(ptr.To("30s")))
+			Expect(firstRWs[zonesCount].ForceVMProto).To(BeTrue())
+
+			// the second zone merges the common target by url and appends its own
+			secondRWs := getAgent(zs[1].VMAgent.Name).Spec.RemoteWrite
+			Expect(secondRWs).To(HaveLen(zonesCount + 2))
+			for i := range zs {
+				Expect(secondRWs[i].URL).To(Equal(vmClusters[i].GetRemoteWriteURL()))
+			}
+			Expect(secondRWs[zonesCount].URL).To(Equal(commonTargetURL))
+			Expect(secondRWs[zonesCount].SendTimeout).To(Equal(ptr.To("2m")), "zone value must win over zoneCommon")
+			Expect(secondRWs[zonesCount].ForceVMProto).To(BeTrue(), "fields absent from the zone must be inherited")
+			Expect(secondRWs[zonesCount+1].URL).To(Equal(zoneOnlyTargetURL))
+		})
+
 		It("should successfully create a VMDistributed with inline VMCluster specs", func() {
 			nsn.Name = "vmd-inline-vmcluster"
 			zonesCount := 2

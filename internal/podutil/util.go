@@ -266,3 +266,80 @@ func MergeSpecs[T any](a, b *T, name string) (*T, error) {
 	}
 	return merged, nil
 }
+
+// MergeRemoteWriteTargets merges zone-level additional remoteWrite targets on top of the common
+// ones, matching entries by url. urlOf must return the url of the given entry.
+//
+// Unlike MergeSpecs, which replaces arrays as a whole, entries here are keyed:
+//   - an entry whose url is present in both lists is deep-merged, zone values win field-by-field
+//   - an entry present only in the zone list is appended after the common ones
+//   - an entry present only in the common list is kept as is
+//
+// ZonePlaceholder is substituted with name in BOTH lists before urls are matched, so a common
+// entry templated with %ZONE% can be addressed from the zone list by either the templated or the
+// already rendered url.
+//
+// The result is deterministic: common entries in their declared order, then zone-only entries in
+// their declared order. Urls must be non-empty and unique within each list after rendering.
+func MergeRemoteWriteTargets[T any](common, zone []T, name string, urlOf func(*T) string) ([]T, error) {
+	renderList := func(src []T, path string) ([]T, error) {
+		if len(src) == 0 {
+			// RenderPlaceholders marshals a nil slice into "null" and returns a nil *[]T,
+			// which would panic on dereference below.
+			return nil, nil
+		}
+		out, err := k8stools.RenderPlaceholders(&src, map[string]string{
+			vmv1alpha1.ZonePlaceholder: name,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		// rendering may produce a collision which did not exist before it,
+		// so uniqueness must be re-checked here and not only during CR validation.
+		seen := make(map[string]struct{}, len(*out))
+		for i := range *out {
+			u := urlOf(&(*out)[i])
+			if len(u) == 0 {
+				return nil, fmt.Errorf("%s[%d].url cannot be empty", path, i)
+			}
+			if _, ok := seen[u]; ok {
+				return nil, fmt.Errorf("%s[%d].url=%q is duplicated, urls must be unique within a list", path, i, u)
+			}
+			seen[u] = struct{}{}
+		}
+		return *out, nil
+	}
+
+	commonTargets, err := renderList(common, "zoneCommon.vmagent.spec.additionalRemoteWriteTargets")
+	if err != nil {
+		return nil, err
+	}
+	zoneTargets, err := renderList(zone, "vmagent.spec.additionalRemoteWriteTargets")
+	if err != nil {
+		return nil, err
+	}
+	if len(zoneTargets) == 0 {
+		return commonTargets, nil
+	}
+
+	result := make([]T, 0, len(commonTargets)+len(zoneTargets))
+	result = append(result, commonTargets...)
+	idxByURL := make(map[string]int, len(result))
+	for i := range result {
+		idxByURL[urlOf(&result[i])] = i
+	}
+	for i := range zoneTargets {
+		override := &zoneTargets[i]
+		u := urlOf(override)
+		idx, ok := idxByURL[u]
+		if !ok {
+			idxByURL[u] = len(result)
+			result = append(result, *override)
+			continue
+		}
+		if err := build.MergeDeep(&result[idx], override, false); err != nil {
+			return nil, fmt.Errorf("failed to merge additionalRemoteWriteTargets with url=%q: %w", u, err)
+		}
+	}
+	return result, nil
+}

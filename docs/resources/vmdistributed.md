@@ -45,6 +45,7 @@ Each entry in the `zones` array includes:
 *   `vmcluster` defines `VMDistributedZoneCluster`, that allows either reference an existing `VMCluster` resource or creates a new one. Only used when `spec.backendType: VMCluster`.
 *   `vmsingle` defines `VMDistributedZoneSingle`, that allows either reference an existing `VMSingle` resource or creates a new one. Only used when `spec.backendType: VMSingle`.
 *   `vmagent` defines `VMDistributedZoneAgent`, that allows either reference an existing `VMAgent` resource or creates a one. It receives write traffic from `vmauth` and sends to `VMCluster` or `VMSingle` instances.
+*   `vmagent.spec.additionalRemoteWriteTargets` defines extra remoteWrite destinations for the zone's `VMAgent`, on top of the per-zone backends the operator configures itself. See [Additional remote write targets](#additional-remote-write-targets).
 
 ### `VMDistributedZoneCluster`
 
@@ -131,6 +132,90 @@ spec:
           retentionPeriod: "14d"
 ```
 
+### Additional remote write targets
+
+By default every managed `VMAgent` writes only to the backends of the zones defined at the same
+`VMDistributed`. Those `remoteWrite` entries are owned by the operator and are rebuilt on every
+reconcile.
+
+`additionalRemoteWriteTargets` adds further destinations, such as a central long-term store or a
+third-party endpoint. Each entry has the same shape as `VMAgent.spec.remoteWrite[]`, so
+`urlRelabelConfig`, `inlineUrlRelabelConfig` and `streamAggrConfig` are available per target.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: demo
+spec:
+  zoneCommon:
+    vmagent:
+      spec:
+        additionalRemoteWriteTargets:
+          # shared by every zone
+          - url: https://vmcloud.example.com/api/v1/write
+            bearerTokenSecret:
+              name: vmcloud-token
+              key: token
+            sendTimeout: 30s
+            forceVMProto: true
+  zones:
+    - name: zone-a
+    - name: zone-b
+      vmagent:
+        spec:
+          additionalRemoteWriteTargets:
+            # same url as in zoneCommon, so the two entries are merged.
+            # bearerTokenSecret and forceVMProto are inherited, sendTimeout is overridden.
+            - url: https://vmcloud.example.com/api/v1/write
+              sendTimeout: 2m
+            # url is absent from zoneCommon, so this target is added for zone-b only
+            - url: http://audit-sink.observability.svc:8480/insert/0/prometheus/api/v1/write
+```
+
+**Merging by url.** Unlike every other list in this spec, which a zone replaces as a whole, the
+`zoneCommon` and per-zone lists are merged by `url`:
+
+*   an entry whose `url` appears in both is deep-merged, with the zone value winning field by field;
+*   an entry present only at `spec.zones[]` is appended;
+*   an entry present only at `spec.zoneCommon` is kept as is.
+
+Within a merged entry, a list of plain values such as `headers` is replaced as a whole, while a
+list of objects such as `inlineUrlRelabelConfig` is merged element by element. This matches how
+`zoneCommon` is merged everywhere else in this resource.
+
+**Templating.** `%ZONE%` is substituted with the zone name in both lists before urls are matched,
+so `url: https://ingest.example.com/%ZONE%/write` yields a per-zone destination and can be
+addressed from a zone either by the templated or by the already rendered url.
+
+**Ordering and persistent queues.** `vmagent` keys its persistent queue directories by
+`remoteWrite` index, so additional targets are always appended after the zone backends and an
+already known url keeps its position. Adding a target is therefore safe for the queues of the
+existing ones. Removing an entry that is not the last one shifts the indices of the entries after
+it, which also happens today when a zone is removed, so prefer draining before such a change.
+
+**Multitenancy.** Managed `VMAgent` instances run with `-enableMultitenantHandlers=true`, which
+turns the tenant IDs from the ingestion path into `vm_account_id` and `vm_project_id` labels on
+every sample. These labels are added before `urlRelabelConfig` is applied, so drop them for
+backends that are not VictoriaMetrics:
+
+```yaml
+            inlineUrlRelabelConfig:
+              - action: labeldrop
+                regex: "vm_(account|project)_id"
+```
+
+Leave `forceVMProto` unset for such backends as well, so that the Prometheus remote write protocol
+is negotiated instead.
+
+**Persistent queue draining.** During a zone update the operator waits for the persistent queue of
+the zone backend to drain. It matches the queue by the `url` label of
+`vmagent_remotewrite_pending_data_bytes`, which `vmagent` only exports when
+`remoteWriteSettings.showURL` is enabled. Additional targets are never waited for, so a slow
+third-party endpoint cannot block a rollout. Note that enabling `showURL` also exposes the urls of
+the additional targets in the metrics, which matters when they carry credentials in query
+parameters.
+
 ### VMDistributed and distributed chart
 
 VMDistributed can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.
@@ -210,6 +295,7 @@ VMDistributed creates or becomes an owner of existing VMAuth, VMAgent, VMCluster
 - Objects must be referred to by name; label selectors are not supported for `VMAuth`, `VMAgent`, `VMCluster` or `VMSingle` selection.
 - `VMAgent`, `VMCluster` and `VMSingle` names must be unique across zones within one `VMDistributed` resource.
 - All zones must use the same backend type (controlled by `spec.backendType`); mixing `VMCluster` and `VMSingle` zones in one `VMDistributed` is not supported.
+- `additionalRemoteWriteTargets[].url` must not point at a `VMCluster` or `VMSingle` managed by the same `VMDistributed`; the operator configures those `remoteWrite` entries itself.
 - `VMCluster` read targets use `vmselect` API paths (`/select/...`); `VMSingle` read targets use single-node API paths (`/api/v1/...`). Both are exposed as a `read` backend.
 
 ### Authorization

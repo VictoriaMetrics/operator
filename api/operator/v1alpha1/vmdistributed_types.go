@@ -237,6 +237,27 @@ type VMDistributedZoneAgentSpec struct {
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
 	// +optional
 	RemoteWriteSettings *vmv1beta1.VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
+	// AdditionalRemoteWriteTargets defines extra remoteWrite destinations for the zone's VMAgent,
+	// in addition to the per-zone VMSingle or VMCluster backends managed by this VMDistributed.
+	//
+	// Each entry has the same shape as `VMAgent.spec.remoteWrite[]`, including `urlRelabelConfig`,
+	// `inlineUrlRelabelConfig` and `streamAggrConfig`. `url` is required and must be unique
+	// within a list.
+	//
+	// Unlike every other list in this spec, which is replaced as a whole, targets defined at
+	// `spec.zoneCommon.vmagent.spec` and at `spec.zones[].vmagent.spec` are merged by `url`:
+	// an entry whose `url` is present in both places is deep-merged with the zone value winning
+	// field-by-field, an entry present only at `spec.zones[]` is appended, an entry present only
+	// at `spec.zoneCommon` is kept as is. `%ZONE%` is substituted with the zone name in both
+	// places before urls are matched.
+	//
+	// `url` must not point at a VMSingle or VMCluster managed by this VMDistributed, the operator
+	// configures those remoteWrite entries itself.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +notes={available_from: "v0.75.0"}
+	AdditionalRemoteWriteTargets []vmv1beta1.VMAgentRemoteWriteSpec `json:"additionalRemoteWriteTargets,omitempty"`
 	// UpdateStrategy - overrides default update strategy.
 	// works only for deployments, statefulset always use OnDelete.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
@@ -504,6 +525,27 @@ func (cr *VMDistributed) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
+// validateAdditionalRemoteWriteTargets checks that every additional remoteWrite target has a
+// non-empty url and that urls are unique within the given list. Urls are matched between
+// zoneCommon and zones, so a duplicate would silently drop one of the entries.
+//
+// Note that urls are checked as written, before %ZONE% substitution. Substitution can introduce
+// a collision which is not visible here, so the merge helper re-checks uniqueness after rendering.
+func validateAdditionalRemoteWriteTargets(targets []vmv1beta1.VMAgentRemoteWriteSpec, path string) error {
+	urls := sets.New[string]()
+	for i := range targets {
+		u := targets[i].URL
+		if len(u) == 0 {
+			return fmt.Errorf("%s[%d].url is required", path, i)
+		}
+		if urls.Has(u) {
+			return fmt.Errorf("%s[%d].url=%q is duplicated, urls must be unique within the list", path, i, u)
+		}
+		urls.Insert(u)
+	}
+	return nil
+}
+
 // Validate validates the VMDistributed resource
 //
 //nolint:dupl
@@ -523,6 +565,11 @@ func (cr *VMDistributed) Validate() error {
 	}
 	if !isVMSingle && hasCommonVMSingle {
 		return fmt.Errorf("backendType=VMCluster is incompatible with zoneCommon.vmsingle configuration")
+	}
+	if err := validateAdditionalRemoteWriteTargets(
+		spec.ZoneCommon.VMAgent.Spec.AdditionalRemoteWriteTargets,
+		"spec.zoneCommon.vmagent.spec.additionalRemoteWriteTargets"); err != nil {
+		return err
 	}
 	for i := range spec.Zones {
 		zone := &spec.Zones[i]
@@ -573,6 +620,11 @@ func (cr *VMDistributed) Validate() error {
 					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
 				}
 			}
+		}
+		if err := validateAdditionalRemoteWriteTargets(
+			zone.VMAgent.Spec.AdditionalRemoteWriteTargets,
+			fmt.Sprintf("spec.zones[%d].vmagent.spec.additionalRemoteWriteTargets", i)); err != nil {
+			return err
 		}
 	}
 	return nil

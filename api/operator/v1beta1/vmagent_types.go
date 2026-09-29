@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/VictoriaMetrics/metricsql"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -176,6 +178,11 @@ func (cr *VMAgent) Validate() error {
 			return err
 		}
 	}
+	for _, e := range cr.Spec.ExtraEnvs {
+		if strings.HasPrefix(e.Name, RemoteWriteEnvPrefix) {
+			return fmt.Errorf("spec.extraEnvs[%q]: the %q env variable name prefix is reserved by the operator", e.Name, RemoteWriteEnvPrefix)
+		}
+	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {
 			return fmt.Errorf("remoteWrite[%d].url cannot be empty", idx)
@@ -184,6 +191,9 @@ func (cr *VMAgent) Validate() error {
 			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
 				return fmt.Errorf("bad remoteWrite[%d].urlRelabelingConfig: %w", idx, err)
 			}
+		}
+		if err := rw.validate(); err != nil {
+			return fmt.Errorf("remoteWrite[%d]: %w", idx, err)
 		}
 	}
 	if cr.Spec.StatefulMode {
@@ -372,6 +382,22 @@ type AWS struct {
 	STSEndpoint string `json:"stsEndpoint,omitempty"`
 	// UseSigv4 enables SigV4 request signing for the corresponding -remoteWrite.url
 	UseSigv4 bool `json:"useSigv4,omitempty"`
+	// AccessKeySecret defines a reference to the secret with an AWS AccessKey
+	// for the corresponding -remoteWrite.url if useSigv4 is set.
+	// The operator projects the secret into the application container as an environment
+	// variable and passes only its reference to -remoteWrite.aws.accessKey, so the
+	// credential never appears in the workload spec or in the process arguments.
+	// Must be set together with secretKeySecret.
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	AccessKeySecret *corev1.SecretKeySelector `json:"accessKeySecret,omitempty"`
+	// SecretKeySecret defines a reference to the secret with an AWS SecretKey
+	// for the corresponding -remoteWrite.url if useSigv4 is set.
+	// See accessKeySecret for the details of how the value is delivered to the application.
+	// Must be set together with accessKeySecret.
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	SecretKeySecret *corev1.SecretKeySelector `json:"secretKeySecret,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
@@ -430,11 +456,192 @@ type VMAgentRemoteWriteSpec struct {
 	// The number of concurrent queues
 	// +optional
 	Queues *int32 `json:"queues,omitempty"`
+	// DisableMetadata disables sending metric metadata to the corresponding -remoteWrite.url.
+	// By default metadata sending is controlled by the global -enableMetadata flag.
+	// vmagent supports it since v1.140.0 version
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	DisableMetadata *bool `json:"disableMetadata,omitempty"`
+	// DisableOnDiskQueue disables storing pending data at -remoteWrite.tmpDataPath when the remote
+	// storage at the corresponding -remoteWrite.url cannot keep up with the data ingestion rate.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#disabling-on-disk-persistence).
+	// vmagent supports it per -remoteWrite.url since v1.102.0 version
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	DisableOnDiskQueue *bool `json:"disableOnDiskQueue,omitempty"`
+	// ForcePromProto forces using Prometheus remote write protocol for sending data
+	// to the corresponding -remoteWrite.url.
+	// It cannot be used together with forceVMProto.
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	ForcePromProto *bool `json:"forcePromProto,omitempty"`
+	// InmemoryQueues defines the number of additional workers for the corresponding -remoteWrite.url,
+	// which send only recently ingested data from the in-memory queue, while the file-based queue
+	// is drained by the workers configured via queues. (default 0)
+	// vmagent supports it since v1.146.0 version
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +notes={available_from: "v0.75.0"}
+	InmemoryQueues *int32 `json:"inmemoryQueues,omitempty"`
+	// MDXEnable makes vmagent retain only metrics from VictoriaMetrics services before sending
+	// them to the corresponding -remoteWrite.url.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#monitoring-data-exchange).
+	// It cannot be used together with the -remoteWrite.shardByURL flag.
+	// vmagent supports it since v1.147.0 version
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	MDXEnable *bool `json:"mdxEnable,omitempty"`
+	// ObfuscateLabels defines a list of label names whose values are obfuscated before sending
+	// them to the corresponding -remoteWrite.url.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/vmagent/#obfuscating-label-values).
+	// vmagent supports it since v1.149.0 version
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	ObfuscateLabels []string `json:"obfuscateLabels,omitempty"`
+	// RateLimit defines an optional rate limit in bytes per second for data sent to the
+	// corresponding -remoteWrite.url. By default the rate limit is disabled. (default 0)
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +notes={available_from: "v0.75.0"}
+	RateLimit *int64 `json:"rateLimit,omitempty"`
+	// RetryMinInterval defines the minimum delay between retry attempts to send a block of data
+	// to the corresponding -remoteWrite.url. Every next retry attempt doubles the delay. (default 1s)
+	// vmagent supports it since v1.103.0 version
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	// +notes={available_from: "v0.75.0"}
+	RetryMinInterval *string `json:"retryMinInterval,omitempty"`
+	// RetryMaxInterval defines the maximum delay between retry attempts to send a block of data
+	// to the corresponding -remoteWrite.url. (default 1m0s)
+	// vmagent supports it since v1.121.0 version
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	// +notes={available_from: "v0.75.0"}
+	RetryMaxInterval *string `json:"retryMaxInterval,omitempty"`
+	// RoundDigits rounds metric values to this number of decimal digits after the point before
+	// sending them to the corresponding -remoteWrite.url. Negative values round before the point,
+	// e.g. -1 rounds 126.78 to 130. Set it to 100 in order to disable rounding. (default 100)
+	// +optional
+	// +notes={available_from: "v0.75.0"}
+	RoundDigits *int32 `json:"roundDigits,omitempty"`
+	// SignificantFigures defines the number of significant figures to leave in metric values
+	// before sending them to the corresponding -remoteWrite.url.
+	// Zero value saves all the significant figures. (default 0)
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +notes={available_from: "v0.75.0"}
+	SignificantFigures *int32 `json:"significantFigures,omitempty"`
+	// TLSHandshakeTimeout defines the timeout for establishing tls connections
+	// to the corresponding -remoteWrite.url. (default 20s)
+	// vmagent supports it since v1.98.0 version
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	// +notes={available_from: "v0.75.0"}
+	TLSHandshakeTimeout *string `json:"tlsHandshakeTimeout,omitempty"`
 }
 
 // AsConfigMapKey key for kubernetes configmap
 func (*VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))
+}
+
+// validate checks consistency of the per-url remote write settings.
+// It mostly guards against combinations which make vmagent exit with a fatal error
+// or silently ignore the provided configuration.
+func (rw *VMAgentRemoteWriteSpec) validate() error {
+	if ptr.Deref(rw.ForcePromProto, false) && rw.ForceVMProto {
+		return fmt.Errorf("forcePromProto and forceVMProto cannot be set at the same time")
+	}
+	if rw.BasicAuth != nil {
+		if len(rw.BasicAuth.PasswordFile) > 0 && len(rw.BasicAuth.Password.Name) > 0 {
+			return fmt.Errorf("basicAuth: password and password_file cannot be set at the same time")
+		}
+	}
+	if rw.OAuth2 != nil {
+		if len(rw.OAuth2.ClientSecretFile) > 0 && rw.OAuth2.ClientSecret != nil {
+			return fmt.Errorf("oauth2: client_secret and client_secret_file cannot be set at the same time")
+		}
+		if len(rw.OAuth2.EndpointParams) > 0 {
+			if len(rw.OAuth2.ClientSecretFile) == 0 && rw.OAuth2.ClientSecret == nil {
+				return fmt.Errorf("oauth2: endpoint_params require client_secret or client_secret_file to be set")
+			}
+			for k, v := range rw.OAuth2.EndpointParams {
+				if strings.Contains(v, "'") {
+					return fmt.Errorf("oauth2.endpoint_params[%q] cannot contain a single quote", k)
+				}
+			}
+		}
+	}
+	for i, l := range rw.ObfuscateLabels {
+		if len(l) == 0 {
+			return fmt.Errorf("obfuscateLabels[%d] cannot be empty", i)
+		}
+		if strings.Contains(l, "^^") || strings.Contains(l, ",") {
+			return fmt.Errorf("obfuscateLabels[%d]=%q cannot contain ',' or '^^'", i, l)
+		}
+	}
+	if err := rw.validateRetryIntervals(); err != nil {
+		return err
+	}
+	return rw.AWS.validate()
+}
+
+// defaultRetryMaxInterval must be kept in sync with the -remoteWrite.retryMaxInterval default.
+const defaultRetryMaxInterval = time.Minute
+
+func (rw *VMAgentRemoteWriteSpec) validateRetryIntervals() error {
+	if rw.RetryMinInterval == nil && rw.RetryMaxInterval == nil {
+		return nil
+	}
+	minInterval := time.Second
+	if rw.RetryMinInterval != nil {
+		v, err := metricsql.PositiveDurationValue(*rw.RetryMinInterval, 0)
+		if err != nil {
+			return fmt.Errorf("cannot parse retryMinInterval=%q: %w", *rw.RetryMinInterval, err)
+		}
+		minInterval = time.Duration(v) * time.Millisecond
+	}
+	maxInterval := defaultRetryMaxInterval
+	if rw.RetryMaxInterval != nil {
+		v, err := metricsql.PositiveDurationValue(*rw.RetryMaxInterval, 0)
+		if err != nil {
+			return fmt.Errorf("cannot parse retryMaxInterval=%q: %w", *rw.RetryMaxInterval, err)
+		}
+		maxInterval = time.Duration(v) * time.Millisecond
+	}
+	if minInterval > maxInterval {
+		return fmt.Errorf("retryMinInterval=%s cannot exceed retryMaxInterval=%s", minInterval, maxInterval)
+	}
+	return nil
+}
+
+func (aws *AWS) validate() error {
+	if aws == nil {
+		return nil
+	}
+	hasAccessKey := aws.AccessKeySecret != nil
+	hasSecretKey := aws.SecretKeySecret != nil
+	if hasAccessKey != hasSecretKey {
+		return fmt.Errorf("aws: accessKeySecret and secretKeySecret must be set together")
+	}
+	if !hasAccessKey {
+		return nil
+	}
+	if !aws.UseSigv4 {
+		return fmt.Errorf("aws: accessKeySecret and secretKeySecret require useSigv4 to be set, otherwise they are ignored by vmagent")
+	}
+	for name, sel := range map[string]*corev1.SecretKeySelector{
+		"accessKeySecret": aws.AccessKeySecret,
+		"secretKeySecret": aws.SecretKeySecret,
+	} {
+		if len(sel.Name) == 0 {
+			return fmt.Errorf("aws.%s.name cannot be empty", name)
+		}
+		if len(sel.Key) == 0 {
+			return fmt.Errorf("aws.%s.key cannot be empty", name)
+		}
+	}
+	return nil
 }
 
 // VMAgentStatus defines the observed state of VMAgent

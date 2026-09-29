@@ -551,6 +551,13 @@ func (in *VMDistributedZoneAgentSpec) DeepCopyInto(out *VMDistributedZoneAgentSp
 		*out = new(v1beta1.VMAgentRemoteWriteSettings)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.AdditionalRemoteWriteTargets != nil {
+		in, out := &in.AdditionalRemoteWriteTargets, &out.AdditionalRemoteWriteTargets
+		*out = make([]v1beta1.VMAgentRemoteWriteSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.UpdateStrategy != nil {
 		in, out := &in.UpdateStrategy, &out.UpdateStrategy
 		*out = new(appsv1.DeploymentStrategyType)
@@ -706,7 +713,7 @@ func (in *VMDistributedZoneRemoteWriteSpec) DeepCopyInto(out *VMDistributedZoneR
 	if in.AWS != nil {
 		in, out := &in.AWS, &out.AWS
 		*out = new(v1beta1.AWS)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

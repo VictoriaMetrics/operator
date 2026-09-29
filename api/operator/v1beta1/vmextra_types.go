@@ -99,6 +99,9 @@ const (
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 	KubeNodeEnvName                  = "KUBE_NODE_NAME"
+	// RemoteWriteEnvPrefix is reserved by the operator for credentials
+	// projected into the application container from spec.remoteWrite.
+	RemoteWriteEnvPrefix = "VM_REMOTEWRITE_"
 	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
 	// must be added to annotation of VMObject
 	// annotations:
@@ -128,6 +131,20 @@ const (
 	// ConditionDomainTypeAppliedSuffix defines type suffix for ConditionParsingReason reason
 	ConditionDomainTypeAppliedSuffix = ".victoriametrics.com/Applied"
 )
+
+// RemoteWriteAWSAccessKeyEnvName returns the name of the environment variable
+// which holds AWS accessKey for spec.remoteWrite with the given idx.
+// The name is derived from the index, so it stays stable across reconciles.
+func RemoteWriteAWSAccessKeyEnvName(idx int) string {
+	return fmt.Sprintf("%s%d_AWS_ACCESS_KEY", RemoteWriteEnvPrefix, idx)
+}
+
+// RemoteWriteAWSSecretKeyEnvName returns the name of the environment variable
+// which holds AWS secretKey for spec.remoteWrite with the given idx.
+// The name is derived from the index, so it stays stable across reconciles.
+func RemoteWriteAWSSecretKeyEnvName(idx int) string {
+	return fmt.Sprintf("%s%d_AWS_SECRET_KEY", RemoteWriteEnvPrefix, idx)
+}
 
 // skip validation, if object has annotation.
 func MustSkipCRValidation(cr client.Object) bool {

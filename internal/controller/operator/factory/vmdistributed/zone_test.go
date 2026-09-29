@@ -558,3 +558,185 @@ func TestZonesSorting(t *testing.T) {
 	})
 
 }
+
+func TestGetZones_AdditionalRemoteWriteTargets(t *testing.T) {
+	ctx := context.Background()
+	// agentByName is needed because getZones sorts zones before returning,
+	// so the index in zs.vmagents does not necessarily match the zone index.
+	agentByName := func(zs *zones, name string) *vmv1beta1.VMAgent {
+		t.Helper()
+		for _, a := range zs.vmagents {
+			if a.Name == name {
+				return a
+			}
+		}
+		t.Fatalf("VMAgent %q was not built", name)
+		return nil
+	}
+	newCR := func(common []vmv1beta1.VMAgentRemoteWriteSpec, zoneB []vmv1beta1.VMAgentRemoteWriteSpec) *vmv1alpha1.VMDistributed {
+		return &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns"},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+					VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+						Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							AdditionalRemoteWriteTargets: common,
+						},
+					},
+				},
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{Name: "zone-a"},
+					{
+						Name: "zone-b",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+							Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+								AdditionalRemoteWriteTargets: zoneB,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("common targets are appended after the zone backends", func(t *testing.T) {
+		cr := newCR([]vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "https://extra/write", SendTimeout: ptr.To("30s")},
+		}, nil)
+		zs, err := getZones(ctx, k8stools.GetTestClientWithObjects(nil), cr)
+		assert.NoError(t, err)
+
+		backendURLs := make([]string, 0, len(zs.backends))
+		for i := range cr.Spec.Zones {
+			backendURLs = append(backendURLs, zs.backends[i].obj.GetRemoteWriteURL())
+		}
+		for _, zoneName := range []string{"zone-a", "zone-b"} {
+			agent := agentByName(zs, "dist-"+zoneName)
+			rws := agent.Spec.RemoteWrite
+			assert.Len(t, rws, len(cr.Spec.Zones)+1)
+			// backends keep remoteWrite index == zone index
+			for i, want := range backendURLs {
+				assert.Equal(t, want, rws[i].URL)
+			}
+			assert.Equal(t, "https://extra/write", rws[len(backendURLs)].URL)
+			assert.Equal(t, ptr.To("30s"), rws[len(backendURLs)].SendTimeout)
+		}
+	})
+
+	t.Run("zone entry merges by url and appends the rest", func(t *testing.T) {
+		cr := newCR([]vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "https://extra/write", SendTimeout: ptr.To("30s"), ForceVMProto: true},
+		}, []vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "https://extra/write", SendTimeout: ptr.To("2m")},
+			{URL: "https://audit/write"},
+		})
+		zs, err := getZones(ctx, k8stools.GetTestClientWithObjects(nil), cr)
+		assert.NoError(t, err)
+
+		// zone-a only sees the common target, untouched
+		aRWs := agentByName(zs, "dist-zone-a").Spec.RemoteWrite
+		assert.Len(t, aRWs, len(cr.Spec.Zones)+1)
+		assert.Equal(t, "https://extra/write", aRWs[2].URL)
+		assert.Equal(t, ptr.To("30s"), aRWs[2].SendTimeout)
+
+		// zone-b overrides sendTimeout by url, inherits forceVMProto, and gets its own target
+		bRWs := agentByName(zs, "dist-zone-b").Spec.RemoteWrite
+		assert.Len(t, bRWs, len(cr.Spec.Zones)+2)
+		assert.Equal(t, "https://extra/write", bRWs[2].URL)
+		assert.Equal(t, ptr.To("2m"), bRWs[2].SendTimeout)
+		assert.True(t, bRWs[2].ForceVMProto, "fields not set by the zone must be inherited from zoneCommon")
+		assert.Equal(t, "https://audit/write", bRWs[3].URL)
+	})
+
+	t.Run("%ZONE% is rendered per zone", func(t *testing.T) {
+		cr := newCR([]vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "https://extra/write?zone=%ZONE%"},
+		}, nil)
+		zs, err := getZones(ctx, k8stools.GetTestClientWithObjects(nil), cr)
+		assert.NoError(t, err)
+		for _, zoneName := range []string{"zone-a", "zone-b"} {
+			rws := agentByName(zs, "dist-"+zoneName).Spec.RemoteWrite
+			assert.Equal(t, "https://extra/write?zone="+zoneName, rws[len(rws)-1].URL)
+		}
+	})
+
+	t.Run("url colliding with a managed backend is rejected", func(t *testing.T) {
+		probe, err := getZones(ctx, k8stools.GetTestClientWithObjects(nil), newCR(nil, nil))
+		assert.NoError(t, err)
+		backendURL := probe.backends[0].obj.GetRemoteWriteURL()
+
+		cr := newCR([]vmv1beta1.VMAgentRemoteWriteSpec{{URL: backendURL}}, nil)
+		_, err = getZones(ctx, k8stools.GetTestClientWithObjects(nil), cr)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "collides with the remoteWrite url of the backend")
+	})
+}
+
+func TestGetZones_AdditionalTargetsPreserveRemoteWriteOrder(t *testing.T) {
+	ctx := context.Background()
+	newCR := func(targets []vmv1beta1.VMAgentRemoteWriteSpec) *vmv1alpha1.VMDistributed {
+		return &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns"},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+					VMAgent: vmv1alpha1.VMDistributedZoneAgent{
+						Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							AdditionalRemoteWriteTargets: targets,
+						},
+					},
+				},
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{Name: "zone-a"}, {Name: "zone-b"}, {Name: "zone-c"},
+				},
+			},
+		}
+	}
+	urlsOf := func(rws []vmv1beta1.VMAgentRemoteWriteSpec) []string {
+		out := make([]string, 0, len(rws))
+		for _, rw := range rws {
+			out = append(out, rw.URL)
+		}
+		return out
+	}
+	// persist a previous generation so the next getZones pass sees it as the live state
+	persist := func(zs *zones) []runtime.Object {
+		objs := make([]runtime.Object, 0, len(zs.backends)+len(zs.vmagents))
+		for i := range zs.backends {
+			b := zs.backends[i].obj.(*vmv1beta1.VMSingle).DeepCopy()
+			b.ResourceVersion = ""
+			objs = append(objs, b)
+		}
+		for i := range zs.vmagents {
+			a := zs.vmagents[i].DeepCopy()
+			a.ResourceVersion = ""
+			objs = append(objs, a)
+		}
+		return objs
+	}
+
+	// generation 1: backends only
+	zs1, err := getZones(ctx, k8stools.GetTestClientWithObjects(nil), newCR(nil))
+	assert.NoError(t, err)
+	base := urlsOf(zs1.vmagents[0].Spec.RemoteWrite)
+	assert.Len(t, base, 3)
+
+	// generation 2: one additional target must land at the tail, backend indices unchanged
+	zs2, err := getZones(ctx, k8stools.GetTestClientWithObjects(persist(zs1)),
+		newCR([]vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://extra-a/write"}}))
+	assert.NoError(t, err)
+	assert.Equal(t, append(append([]string{}, base...), "https://extra-a/write"),
+		urlsOf(zs2.vmagents[0].Spec.RemoteWrite),
+		"existing persistent queue indices must not shift when a target is added")
+
+	// generation 3: a second target must land after the first one
+	zs3, err := getZones(ctx, k8stools.GetTestClientWithObjects(persist(zs2)),
+		newCR([]vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "https://extra-a/write"},
+			{URL: "https://extra-b/write"},
+		}))
+	assert.NoError(t, err)
+	assert.Equal(t, append(append([]string{}, base...), "https://extra-a/write", "https://extra-b/write"),
+		urlsOf(zs3.vmagents[0].Spec.RemoteWrite))
+}

@@ -2,6 +2,7 @@ package vmagent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"path"
@@ -532,11 +533,11 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretCount int) (*corev1.PodSpec, error) {
 	var args []string
 
-	if rwArgs, err := buildRemoteWriteArgs(cr, ac); err != nil {
+	rwArgs, rwEnvs, err := buildRemoteWriteArgs(cr, ac)
+	if err != nil {
 		return nil, fmt.Errorf("failed to build remote write args: %w", err)
-	} else {
-		args = append(args, rwArgs...)
 	}
+	args = append(args, rwArgs...)
 
 	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
@@ -556,6 +557,9 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
+	// appended after extraEnvs on purpose: kubernetes takes the last entry for a
+	// duplicate name, which keeps operator-managed credentials authoritative.
+	envs = append(envs, rwEnvs...)
 
 	if cr.Spec.DaemonSetMode {
 		envs = append(envs, corev1.EnvVar{
@@ -998,7 +1002,7 @@ func sortMap(m map[string]string) []item {
 	return kv
 }
 
-func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, error) {
+func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]string, []corev1.EnvVar, error) {
 	maxDiskUsage := defaultMaxDiskUsage
 	var queues int32
 	if cr.Spec.RemoteWriteSettings != nil {
@@ -1011,6 +1015,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	}
 
 	var args []string
+	var envs []corev1.EnvVar
 	var hasAnyQueuesSet bool
 	var hasAnyDiskUsagesSet bool
 	var storageLimit int64
@@ -1053,6 +1058,24 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 		awsService := build.NewFlag("-remoteWrite.aws.service", "")
 		awsSTSEndpoint := build.NewFlag("-remoteWrite.aws.stsEndpoint", "")
 		awsUseSigv4 := build.NewFlag("-remoteWrite.aws.useSigv4", "false")
+		awsAccessKey := build.NewFlag("-remoteWrite.aws.accessKey", "")
+		awsSecretKey := build.NewFlag("-remoteWrite.aws.secretKey", "")
+		oauth2EndpointParams := build.NewFlag("-remoteWrite.oauth2.endpointParams", "")
+		disableMetadata := build.NewFlag("-remoteWrite.disableMetadata", "false")
+		disableOnDiskQueue := build.NewFlag("-remoteWrite.disableOnDiskQueue", "false")
+		forcePromProto := build.NewFlag("-remoteWrite.forcePromProto", "false")
+		mdxEnable := build.NewFlag("-remoteWrite.mdx.enable", "false")
+		// empty value of an int or duration array flag is resolved by vmagent
+		// to the flag's own default value, so the placeholder must stay empty
+		// instead of hardcoding vmagent defaults, which would drift.
+		inmemoryQueues := build.NewFlag("-remoteWrite.inmemoryQueues", "")
+		obfuscateLabels := build.NewFlag("-remoteWrite.obfuscateLabels", "")
+		rateLimit := build.NewFlag("-remoteWrite.rateLimit", "")
+		retryMinInterval := build.NewFlag("-remoteWrite.retryMinInterval", "")
+		retryMaxInterval := build.NewFlag("-remoteWrite.retryMaxInterval", "")
+		roundDigits := build.NewFlag("-remoteWrite.roundDigits", "")
+		significantFigures := build.NewFlag("-remoteWrite.significantFigures", "")
+		tlsHandshakeTimeout := build.NewFlag("-remoteWrite.tlsHandshakeTimeout", "")
 
 		var streamAggrConfigs []*vmv1beta1.StreamAggrConfig
 		var streamAggrKeys []string
@@ -1076,7 +1099,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.TLSConfig != nil {
 				creds, err := ac.BuildTLSCreds(cr.Namespace, rw.TLSConfig)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				tlsCAs.Add(creds.CAFile, i)
 				tlsCerts.Add(creds.CertFile, i)
@@ -1089,13 +1112,13 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.BasicAuth != nil {
 				user, err := ac.LoadKeyFromSecret(cr.Namespace, &rw.BasicAuth.Username)
 				if err != nil {
-					return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
+					return nil, nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
 				}
 				authUser.Add(strconv.Quote(user), i)
 				if len(rw.BasicAuth.Password.Name) > 0 {
 					passFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rw.BasicAuth.Password)
 					if err != nil {
-						return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
+						return nil, nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
 					}
 					authPasswordFile.Add(passFile, i)
 				}
@@ -1106,7 +1129,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
 				value, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.BearerTokenSecret)
 				if err != nil {
-					return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
+					return nil, nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
 				}
 				bearerTokenFile.Add(strconv.Quote(value), i)
 			}
@@ -1149,16 +1172,23 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 				if rw.OAuth2.ClientSecret != nil {
 					oaSecretKeyFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.OAuth2.ClientSecret)
 					if err != nil {
-						return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
+						return nil, nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
 					}
 					oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
 				}
 				if len(rw.OAuth2.ClientID.PrefixedName()) > 0 {
 					secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rw.OAuth2.ClientID)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					oauth2ClientID.Add(secret, i)
+				}
+				if len(rw.OAuth2.EndpointParams) > 0 {
+					jsonData, err := json.Marshal(rw.OAuth2.EndpointParams)
+					if err != nil {
+						return nil, nil, fmt.Errorf("cannot marshal remoteWrite[%d].oauth2.endpoint_params as json: %w", i, err)
+					}
+					oauth2EndpointParams.Add(fmt.Sprintf("'%s'", jsonData), i)
 				}
 			}
 			if rw.AWS != nil {
@@ -1168,6 +1198,32 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 				awsService.Add(rw.AWS.Service, i)
 				awsSTSEndpoint.Add(rw.AWS.STSEndpoint, i)
 				awsUseSigv4.Add(strconv.FormatBool(rw.AWS.UseSigv4), i)
+				// AWS static credentials are projected into the container as env vars and
+				// only referenced from the flag value, so they never appear in the workload
+				// spec or in the process arguments. The secret is read here solely to fail
+				// the reconcile early instead of leaving the pod in CreateContainerConfigError.
+				if rw.AWS.AccessKeySecret != nil {
+					if _, err := ac.LoadKeyFromSecret(cr.Namespace, rw.AWS.AccessKeySecret); err != nil {
+						return nil, nil, fmt.Errorf("cannot load remoteWrite[%d].aws.accessKeySecret: %w", i, err)
+					}
+					envName := vmv1beta1.RemoteWriteAWSAccessKeyEnvName(i)
+					envs = append(envs, corev1.EnvVar{
+						Name:      envName,
+						ValueFrom: &corev1.EnvVarSource{SecretKeyRef: rw.AWS.AccessKeySecret.DeepCopy()},
+					})
+					awsAccessKey.Add(fmt.Sprintf("%%{%s}", envName), i)
+				}
+				if rw.AWS.SecretKeySecret != nil {
+					if _, err := ac.LoadKeyFromSecret(cr.Namespace, rw.AWS.SecretKeySecret); err != nil {
+						return nil, nil, fmt.Errorf("cannot load remoteWrite[%d].aws.secretKeySecret: %w", i, err)
+					}
+					envName := vmv1beta1.RemoteWriteAWSSecretKeyEnvName(i)
+					envs = append(envs, corev1.EnvVar{
+						Name:      envName,
+						ValueFrom: &corev1.EnvVarSource{SecretKeyRef: rw.AWS.SecretKeySecret.DeepCopy()},
+					})
+					awsSecretKey.Add(fmt.Sprintf("%%{%s}", envName), i)
+				}
 			}
 			streamAggrConfigs = append(streamAggrConfigs, rw.StreamAggrConfig)
 			streamAggrKeys = append(streamAggrKeys, rw.AsConfigMapKey(i, "stream-aggr-conf"))
@@ -1180,6 +1236,42 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			forceVMProto.Add(strconv.FormatBool(rw.ForceVMProto), i)
 			if rw.ProxyURL != nil {
 				proxyURL.Add(*rw.ProxyURL, i)
+			}
+			if rw.DisableMetadata != nil {
+				disableMetadata.Add(strconv.FormatBool(*rw.DisableMetadata), i)
+			}
+			if rw.DisableOnDiskQueue != nil {
+				disableOnDiskQueue.Add(strconv.FormatBool(*rw.DisableOnDiskQueue), i)
+			}
+			if rw.ForcePromProto != nil {
+				forcePromProto.Add(strconv.FormatBool(*rw.ForcePromProto), i)
+			}
+			if rw.MDXEnable != nil {
+				mdxEnable.Add(strconv.FormatBool(*rw.MDXEnable), i)
+			}
+			if rw.InmemoryQueues != nil {
+				inmemoryQueues.Add(strconv.Itoa(int(*rw.InmemoryQueues)), i)
+			}
+			if len(rw.ObfuscateLabels) > 0 {
+				obfuscateLabels.Add(strings.Join(rw.ObfuscateLabels, "^^"), i)
+			}
+			if rw.RateLimit != nil {
+				rateLimit.Add(strconv.FormatInt(*rw.RateLimit, 10), i)
+			}
+			if rw.RetryMinInterval != nil {
+				retryMinInterval.Add(*rw.RetryMinInterval, i)
+			}
+			if rw.RetryMaxInterval != nil {
+				retryMaxInterval.Add(*rw.RetryMaxInterval, i)
+			}
+			if rw.RoundDigits != nil {
+				roundDigits.Add(strconv.Itoa(int(*rw.RoundDigits)), i)
+			}
+			if rw.SignificantFigures != nil {
+				significantFigures.Add(strconv.Itoa(int(*rw.SignificantFigures)), i)
+			}
+			if rw.TLSHandshakeTimeout != nil {
+				tlsHandshakeTimeout.Add(*rw.TLSHandshakeTimeout, i)
 			}
 		}
 		maxDiskUsagePerURL := build.NewFlag("-remoteWrite.maxDiskUsagePerURL", maxDiskUsage)
@@ -1200,10 +1292,13 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 		args = build.RelabelArgsTo(args, "remoteWrite.urlRelabelConfig", relabelKeys, relabelConfigs...)
 		args = build.AppendFlagsToArgs(args, totalCount, tlsInsecure, sendTimeout, proxyURL)
 		args = build.AppendFlagsToArgs(args, totalCount, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
-		args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
+		args = build.AppendFlagsToArgs(args, totalCount, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL, oauth2EndpointParams)
 		args = build.AppendFlagsToArgs(args, totalCount, headers, authPasswordFile, maxDiskUsagePerURL, forceVMProto)
 		args = build.StreamAggrArgsTo(args, "remoteWrite.streamAggr", streamAggrKeys, streamAggrConfigs...)
-		args = build.AppendFlagsToArgs(args, totalCount, awsEC2Endpoint, awsRegion, awsRoleARN, awsService, awsSTSEndpoint, awsUseSigv4)
+		args = build.AppendFlagsToArgs(args, totalCount, awsEC2Endpoint, awsRegion, awsRoleARN, awsService, awsSTSEndpoint, awsUseSigv4, awsAccessKey, awsSecretKey)
+		args = build.AppendFlagsToArgs(args, totalCount, disableMetadata, disableOnDiskQueue, forcePromProto, mdxEnable)
+		args = build.AppendFlagsToArgs(args, totalCount, inmemoryQueues, obfuscateLabels, rateLimit, roundDigits, significantFigures)
+		args = build.AppendFlagsToArgs(args, totalCount, retryMinInterval, retryMaxInterval, tlsHandshakeTimeout)
 	}
 
 	if cr.Spec.RemoteWriteSettings != nil {
@@ -1246,7 +1341,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 	if !hasAnyDiskUsagesSet {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%s", maxDiskUsage))
 	}
-	return args, nil
+	return args, envs, nil
 }
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent, baseConf *config.BaseOperatorConf) error {
@@ -1357,7 +1452,7 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 		}
 		// ingest-only mode with remote write credentials: reconcile a credential-only secret
 		// so vmagent can read credentials from files and the config-reloader can watch for changes.
-		if _, err := buildRemoteWriteArgs(cr, ac); err != nil {
+		if _, _, err := buildRemoteWriteArgs(cr, ac); err != nil {
 			return 0, fmt.Errorf("cannot load remote write assets for ingest-only mode: %w", err)
 		}
 		owner := cr.AsOwner()

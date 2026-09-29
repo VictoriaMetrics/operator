@@ -152,6 +152,18 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		if err != nil {
 			return nil, fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
 		}
+		// additionalRemoteWriteTargets is merged by url instead of being replaced as a whole,
+		// so it is computed from the raw specs. The value MergeSpecs produced for it is
+		// discarded by ToVMAgentSpec anyway, since VMAgentSpec has no such field.
+		additionalTargets, err := podutil.MergeRemoteWriteTargets(
+			cr.Spec.ZoneCommon.VMAgent.Spec.AdditionalRemoteWriteTargets,
+			z.VMAgent.Spec.AdditionalRemoteWriteTargets,
+			z.Name,
+			func(rw *vmv1beta1.VMAgentRemoteWriteSpec) string { return rw.URL },
+		)
+		if err != nil {
+			return nil, fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
+		}
 		vmAgentSpec, err := vmAgentCustomSpec.ToVMAgentSpec()
 		if err != nil {
 			return nil, fmt.Errorf("spec.zones[%d].vmagent.spec: %w", i, err)
@@ -162,6 +174,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		}
 		vmAgentSpec.RemoteWriteSettings.UseMultiTenantMode = true
 		vmAgentSpec.RemoteWrite = vmAgentSpec.RemoteWrite[:0]
+		backendURLs := make(map[string]int, len(cr.Spec.Zones))
 		for j := range cr.Spec.Zones {
 			cz := &cr.Spec.Zones[j]
 			customRemoteWrite, err := podutil.MergeSpecs(&cr.Spec.ZoneCommon.RemoteWrite, &cz.RemoteWrite, cz.Name)
@@ -173,7 +186,20 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 				return nil, fmt.Errorf("spec.zones[%d].vmagent: spec.zones[%d].remoteWrite: %w", i, j, err)
 			}
 			remoteWrite.URL = zs.backends[j].obj.GetRemoteWriteURL()
+			backendURLs[remoteWrite.URL] = j
 			vmAgentSpec.RemoteWrite = append(vmAgentSpec.RemoteWrite, *remoteWrite)
+		}
+		// additional targets are appended after the managed zone backends, so that a freshly
+		// created VMAgent keeps remoteWrite index == zone index for the backends. vmagent keys
+		// its persistent queue directories by remoteWrite index.
+		for j := range additionalTargets {
+			rw := &additionalTargets[j]
+			if zoneIdx, ok := backendURLs[rw.URL]; ok {
+				return nil, fmt.Errorf("spec.zones[%d].vmagent.spec.additionalRemoteWriteTargets[%d].url=%q "+
+					"collides with the remoteWrite url of the backend managed for spec.zones[%d]",
+					i, j, rw.URL, zoneIdx)
+			}
+			vmAgentSpec.RemoteWrite = append(vmAgentSpec.RemoteWrite, *rw)
 		}
 		// sorting VMAgent's remote write configurations
 		orderMap := make(map[string]int)

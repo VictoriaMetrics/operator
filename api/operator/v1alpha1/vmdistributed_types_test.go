@@ -222,3 +222,55 @@ func TestEnsureNoVMOwners(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "is owned by other distributed resource")
 }
+
+func TestValidateVMDistributed_AdditionalRemoteWriteTargets(t *testing.T) {
+	f := func(common, zone []vmv1beta1.VMAgentRemoteWriteSpec, isErr bool) {
+		t.Helper()
+		cr := VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{Name: "test"},
+			Spec: VMDistributedSpec{
+				BackendType: VMDistributedBackendTypeVMSingle,
+				ZoneCommon: VMDistributedZoneCommon{
+					VMAgent: VMDistributedZoneAgent{
+						Spec: VMDistributedZoneAgentSpec{AdditionalRemoteWriteTargets: common},
+					},
+				},
+				Zones: []VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: VMDistributedZoneAgent{
+							Spec: VMDistributedZoneAgentSpec{AdditionalRemoteWriteTargets: zone},
+						},
+					},
+				},
+			},
+		}
+		if isErr {
+			assert.Error(t, cr.Validate())
+		} else {
+			assert.NoError(t, cr.Validate())
+		}
+	}
+
+	// valid
+	f([]vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://a/write"}}, nil, false)
+	f(nil, []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://a/write"}}, false)
+	f([]vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://a/write"}},
+		[]vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://a/write"}}, false)
+
+	// %ZONE% in a url must stay valid, it is substituted later on.
+	// this also guards against reintroducing url.Parse here, which rejects "%ZO" as a bad escape.
+	f([]vmv1beta1.VMAgentRemoteWriteSpec{{URL: "https://a/%ZONE%/write"}}, nil, false)
+
+	// empty url
+	f([]vmv1beta1.VMAgentRemoteWriteSpec{{}}, nil, true)
+	f(nil, []vmv1beta1.VMAgentRemoteWriteSpec{{}}, true)
+
+	// duplicated urls within a single list
+	f([]vmv1beta1.VMAgentRemoteWriteSpec{
+		{URL: "https://a/write"}, {URL: "https://a/write"},
+	}, nil, true)
+	f(nil, []vmv1beta1.VMAgentRemoteWriteSpec{
+		{URL: "https://a/write"}, {URL: "https://a/write"},
+	}, true)
+}

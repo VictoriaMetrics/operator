@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
 
@@ -181,4 +182,94 @@ func TestVMAgent_IsUnmanaged(t *testing.T) {
 		Status: VMAgentStatus{ParsingSpecError: "some other unrelated parse failure"},
 		Spec:   VMAgentSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
 	}, true)
+}
+
+func TestVMAgent_Validate_RemoteWriteSettings(t *testing.T) {
+	f := func(rw VMAgentRemoteWriteSpec, wantErr bool) {
+		t.Helper()
+		rw.URL = "http://some-rw"
+		r := &VMAgent{Spec: VMAgentSpec{RemoteWrite: []VMAgentRemoteWriteSpec{rw}}}
+		if wantErr {
+			assert.Error(t, r.Validate())
+		} else {
+			assert.NoError(t, r.Validate())
+		}
+	}
+
+	// forcePromProto and forceVMProto are mutually exclusive, vmagent exits with a fatal error
+	f(VMAgentRemoteWriteSpec{ForcePromProto: ptr.To(true), ForceVMProto: true}, true)
+	f(VMAgentRemoteWriteSpec{ForcePromProto: ptr.To(true)}, false)
+	f(VMAgentRemoteWriteSpec{ForceVMProto: true}, false)
+
+	// retry intervals
+	f(VMAgentRemoteWriteSpec{RetryMinInterval: ptr.To("5s"), RetryMaxInterval: ptr.To("30s")}, false)
+	f(VMAgentRemoteWriteSpec{RetryMinInterval: ptr.To("30s"), RetryMaxInterval: ptr.To("5s")}, true)
+	// a lone retryMinInterval is compared against the 1m default of retryMaxInterval
+	f(VMAgentRemoteWriteSpec{RetryMinInterval: ptr.To("30s")}, false)
+	f(VMAgentRemoteWriteSpec{RetryMinInterval: ptr.To("5m")}, true)
+	f(VMAgentRemoteWriteSpec{RetryMinInterval: ptr.To("not-a-duration")}, true)
+
+	// obfuscateLabels encoding
+	f(VMAgentRemoteWriteSpec{ObfuscateLabels: []string{"instance", "job"}}, false)
+	f(VMAgentRemoteWriteSpec{ObfuscateLabels: []string{""}}, true)
+	f(VMAgentRemoteWriteSpec{ObfuscateLabels: []string{"a^^b"}}, true)
+	f(VMAgentRemoteWriteSpec{ObfuscateLabels: []string{"a,b"}}, true)
+
+	// aws static credentials
+	validSel := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+		Key:                  "key",
+	}
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, AccessKeySecret: validSel, SecretKeySecret: validSel}}, false)
+	// must be set together
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, AccessKeySecret: validSel}}, true)
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, SecretKeySecret: validSel}}, true)
+	// silently ignored by vmagent without useSigv4
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{AccessKeySecret: validSel, SecretKeySecret: validSel}}, true)
+	// incomplete selector
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{
+		UseSigv4:        true,
+		AccessKeySecret: &corev1.SecretKeySelector{Key: "key"},
+		SecretKeySecret: validSel,
+	}}, true)
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{
+		UseSigv4:        true,
+		AccessKeySecret: validSel,
+		SecretKeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"}},
+	}}, true)
+	// the pre-existing aws fields keep working on their own
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, Region: "us-east-1"}}, false)
+
+	// oauth2 endpoint params are ignored by vmagent without a client secret
+	f(VMAgentRemoteWriteSpec{OAuth2: &OAuth2{
+		EndpointParams: map[string]string{"audience": "x"},
+	}}, true)
+	f(VMAgentRemoteWriteSpec{OAuth2: &OAuth2{
+		ClientSecretFile: "/etc/secret",
+		EndpointParams:   map[string]string{"audience": "x"},
+	}}, false)
+	// a single quote would break the quoting of the flag value
+	f(VMAgentRemoteWriteSpec{OAuth2: &OAuth2{
+		ClientSecretFile: "/etc/secret",
+		EndpointParams:   map[string]string{"audience": "it's"},
+	}}, true)
+
+	// mutually exclusive secret sources, they would otherwise corrupt the flag array
+	f(VMAgentRemoteWriteSpec{BasicAuth: &BasicAuth{
+		Password:     corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "s"}, Key: "p"},
+		PasswordFile: "/etc/pass",
+	}}, true)
+	f(VMAgentRemoteWriteSpec{OAuth2: &OAuth2{
+		ClientSecret:     &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "s"}, Key: "p"},
+		ClientSecretFile: "/etc/secret",
+	}}, true)
+
+	// extraEnvs must not collide with the operator-managed prefix
+	r := &VMAgent{Spec: VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraEnvs: []corev1.EnvVar{{Name: RemoteWriteEnvPrefix + "0_AWS_ACCESS_KEY", Value: "x"}},
+		},
+	}}
+	assert.Error(t, r.Validate())
 }

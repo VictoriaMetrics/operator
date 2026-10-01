@@ -38,6 +38,26 @@ func TestGetVersion(t *testing.T) {
 			want:    "v1.151.0-cluster",
 		},
 		{
+			name:    "ubi",
+			version: "operator-20260902-v0.75.0-ubi",
+			want:    "v0.75.0-ubi",
+		},
+		{
+			name:    "prerelease ubi",
+			version: "operator-20260902-v0.75.0-rc0-ubi",
+			want:    "v0.75.0-rc0-ubi",
+		},
+		{
+			name:    "fips",
+			version: "operator-20260902-v0.75.0-fips",
+			want:    "v0.75.0-fips",
+		},
+		{
+			name:    "prerelease fips",
+			version: "operator-20260902-v0.75.0-rc0-fips",
+			want:    "v0.75.0-rc0-fips",
+		},
+		{
 			name:     "fallback",
 			version:  "operator-development",
 			fallback: "v0.75.0-rc0",
@@ -62,15 +82,27 @@ func TestGetVersion(t *testing.T) {
 }
 
 func TestConfigReloaderImageVersion(t *testing.T) {
-	t.Setenv("VM_OPERATOR_VERSION", "v0.75.0-rc0")
-
-	var cfg BaseOperatorConf
-	if err := env.ParseWithOptions(&cfg, getEnvOpts()); err != nil {
-		t.Fatalf("failed to parse config defaults: %v", err)
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{"prerelease", "v0.75.0-rc0", "victoriametrics/operator:config-reloader-v0.75.0-rc0"},
+		{"ubi", "v0.75.0-ubi", "victoriametrics/operator:config-reloader-v0.75.0-ubi"},
 	}
 
-	want := "victoriametrics/operator:config-reloader-v0.75.0-rc0"
-	if cfg.ConfigReloader.Image != want {
-		t.Fatalf("config-reloader image = %q, want %q", cfg.ConfigReloader.Image, want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("VM_OPERATOR_VERSION", tt.version)
+
+			var cfg BaseOperatorConf
+			if err := env.ParseWithOptions(&cfg, getEnvOpts()); err != nil {
+				t.Fatalf("failed to parse config defaults: %v", err)
+			}
+
+			if cfg.ConfigReloader.Image != tt.want {
+				t.Fatalf("config-reloader image = %q, want %q", cfg.ConfigReloader.Image, tt.want)
+			}
+		})
 	}
 }

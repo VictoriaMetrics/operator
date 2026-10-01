@@ -16,6 +16,7 @@ NAMESPACE ?= vm
 OVERLAY ?= config/manager
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
+UBI_BASEIMAGE?=registry.access.redhat.com/ubi10-micro:10.0
 
 BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
@@ -256,9 +257,10 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 
 publish:
 	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
-	TAG=$(TAG)-ubi BASEIMAGE=registry.access.redhat.com/ubi10-micro:latest ROOT=./cmd $(MAKE) docker-buildx
+	TAG=$(TAG)-ubi BASEIMAGE=$(UBI_BASEIMAGE) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG)-ubi BASEIMAGE=$(UBI_BASEIMAGE) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG)-fips COMPONENT=config-reloader GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 COSIGN ?= $(shell which cosign 2>/dev/null || echo $(COSIGN_BIN))
@@ -277,6 +279,7 @@ sign: $(COSIGN)
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-ubi) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-fips) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)-ubi) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)-fips) ; \
 	done
 

@@ -47,9 +47,9 @@ func updateCRDObjURLs(ctx context.Context, rclient client.Client, crd *vmv1beta1
 		if _, ok := objURLs[key]; ok {
 			continue
 		}
-		crdObj, ok := crdNameToObject[crd.Kind]
-		if !ok {
-			return fmt.Errorf("unsupported kind=%q", crd.Kind)
+		crdObj, err := newTargetObject(crd.Kind)
+		if err != nil {
+			return fmt.Errorf("cannot resolve targetRef namespace=%q,name=%q: %w", nsn.Namespace, nsn.Name, err)
 		}
 		crdObj.SetName(nsn.Name)
 		crdObj.SetNamespace(nsn.Namespace)
@@ -307,27 +307,37 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 	return needUpdate
 }
 
-var crdNameToObject = map[string]objectWithURL{
-	"VMAgent":  &vmv1beta1.VMAgent{},
-	"VMAlert":  &vmv1beta1.VMAlert{},
-	"VMSingle": &vmv1beta1.VMSingle{},
-	"VLogs":    &vmv1beta1.VLogs{},
+// newTargetObject returns a new object for the given targetRef kind.
+// Config builds for different VMAuths run concurrently and resolving a ref mutates the object it is given, so each call needs its own.
+func newTargetObject(kind string) (objectWithURL, error) {
+	switch kind {
+	case "VMAgent":
+		return &vmv1beta1.VMAgent{}, nil
+	case "VMAlert":
+		return &vmv1beta1.VMAlert{}, nil
+	case "VMSingle":
+		return &vmv1beta1.VMSingle{}, nil
+	case "VLogs":
+		return &vmv1beta1.VLogs{}, nil
 	// keep both variants for backward-compatibility
-	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
-	"VMAlertManager":      &vmv1beta1.VMAlertmanager{},
-	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
-	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
-	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
-	"VMAnomaly":           &vmv1.VMAnomaly{},
-	"VLSingle":            &vmv1.VLSingle{},
-	"VLCluster/vlselect":  newClusterWithURL("vlselect"),
-	"VLCluster/vlinsert":  newClusterWithURL("vlinsert"),
-	"VLCluster/vlstorage": newClusterWithURL("vlstorage"),
-	"VLAgent":             &vmv1.VLAgent{},
-	"VTSingle":            &vmv1.VTSingle{},
-	"VTCluster/vtselect":  newClusterWithURL("vtselect"),
-	"VTCluster/vtinsert":  newClusterWithURL("vtinsert"),
-	"VTCluster/vtstorage": newClusterWithURL("vtstorage"),
+	case "VMAlertmanager", "VMAlertManager":
+		return &vmv1beta1.VMAlertmanager{}, nil
+	case "VMAnomaly":
+		return &vmv1.VMAnomaly{}, nil
+	case "VLSingle":
+		return &vmv1.VLSingle{}, nil
+	case "VLAgent":
+		return &vmv1.VLAgent{}, nil
+	case "VTSingle":
+		return &vmv1.VTSingle{}, nil
+	case "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
+		"VLCluster/vlselect", "VLCluster/vlinsert", "VLCluster/vlstorage",
+		"VTCluster/vtselect", "VTCluster/vtinsert", "VTCluster/vtstorage":
+		// Cluster kinds name their component after the slash.
+		_, component, _ := strings.Cut(kind, "/")
+		return newClusterWithURL(component), nil
+	}
+	return nil, fmt.Errorf("unsupported kind=%q", kind)
 }
 
 // helper interface to restore VMCluster type

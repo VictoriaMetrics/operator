@@ -14,7 +14,9 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.153.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.153.0).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.53.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.53.0).
+
+* BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): allow `spec.configRawYaml` and `spec.configSecret` without `reader.queries` when queries are provided by selected [VMAnomalyConfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/) objects. Previously such a settings-only base config failed reconciliation with `reader.queries must be provided via configRawYaml or configSecret`. See [#2685](https://github.com/VictoriaMetrics/operator/pull/2685).
+
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026
 

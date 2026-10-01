@@ -1294,6 +1294,46 @@ func TestConvertVLogs(t *testing.T) {
 		},
 	)
 }
+func TestConvertVLSingle(t *testing.T) {
+	// ConvertVLSingle exists so migrate can get the current (non-deprecated) CRD for the
+	// victoria-logs-single chart, instead of Convert's VLogs output.
+	values := &VLogsHelmValues{
+		Server: ServerValues{
+			Image: ImageValues{
+				Repository: "victoriametrics/victoria-logs",
+				Tag:        "v0.3.2",
+			},
+			ReplicaCount:    ptr.To(int32(1)),
+			RetentionPeriod: "14d",
+		},
+	}
+	actual, err := ConvertVLSingle("test-name", "test-ns", values)
+	require.NoError(t, err)
+	assert.Equal(t, &vmv1.VLSingle{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1",
+			Kind:       "VLSingle",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-name",
+			Namespace: "test-ns",
+		},
+		Spec: vmv1.VLSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{
+					Repository: "victoriametrics/victoria-logs",
+					Tag:        "v0.3.2",
+				},
+				ReplicaCount: ptr.To(int32(1)),
+			},
+			RetentionPeriod: "14d",
+		},
+	}, actual)
+
+	_, err = ConvertVLSingle("test-name", "test-ns", &VMSingleHelmValues{})
+	assert.Error(t, err)
+}
+
 func TestConvertVTSingle(t *testing.T) {
 	f := func(values *VTSingleHelmValues, expected func() *vmv1.VTSingle) {
 		t.Helper()

@@ -69,6 +69,22 @@ metric_b{path="x"} 2
 		"metric_a": {"0": 1},
 		"metric_b": {"x": 2},
 	})
+
+	// a present-but-empty label value is kept under the empty-string key, distinct from the
+	// label being absent entirely (which drops the sample - covered separately below).
+	f(`
+test_metric{path=""} 24
+`, []MetricQuery{{Name: "test_metric", Dimension: "path"}}, map[string]map[string]float64{
+		"test_metric": {"": 24},
+	})
+
+	// the requested label is absent (a different tag is present instead): dropped, not
+	// mistaken for an empty value.
+	f(`
+test_metric{other="x"} 24
+`, []MetricQuery{{Name: "test_metric", Dimension: "path"}}, map[string]map[string]float64{
+		"test_metric": {},
+	})
 }
 
 func TestFetchMetricsValuesLargeResponse(t *testing.T) {

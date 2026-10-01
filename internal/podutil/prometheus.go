@@ -26,6 +26,16 @@ type MetricQuery struct {
 	Dimension string
 }
 
+// StatusError reports a non-200 HTTP response to a metrics scrape.
+type StatusError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("unexpected response status=%d, body=%q", e.StatusCode, e.Body)
+}
+
 // FetchMetricsValues issues a single HTTP GET to url and extracts every sample matching any
 // of the given queries, returning metric name -> (dimension value -> sample value).
 func FetchMetricsValues(ctx context.Context, httpClient *http.Client, url string, queries []MetricQuery) (map[string]map[string]float64, error) {
@@ -40,7 +50,7 @@ func FetchMetricsValues(ctx context.Context, httpClient *http.Client, url string
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBodyBytes))
-		return nil, fmt.Errorf("unexpected response status=%d, body=%q while requesting metrics at %s", resp.StatusCode, body, url)
+		return nil, fmt.Errorf("while requesting metrics at %s: %w", url, &StatusError{StatusCode: resp.StatusCode, Body: string(body)})
 	}
 	dimensions := make(map[string]string, len(queries))
 	for _, q := range queries {
@@ -56,8 +66,6 @@ func FetchMetricsValues(ctx context.Context, httpClient *http.Client, url string
 	return values, nil
 }
 
-// unmarshalMetrics scans r line by line rather than buffering it in full, so a large
-// /metrics response never inflates controller memory - only one line is held at a time.
 func unmarshalMetrics(values map[string]map[string]float64, r io.Reader, dimensions map[string]string) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 4096), maxMetricLineBytes)
@@ -80,6 +88,7 @@ func unmarshalMetrics(values map[string]map[string]float64, r io.Reader, dimensi
 		line = line[len(metricName):]
 		line = skipLeadingWhitespace(line)
 		var dimValue string
+		var hasDim bool
 		if len(line) > 0 && line[0] == '{' {
 			line = line[1:]
 			var err error
@@ -89,7 +98,7 @@ func unmarshalMetrics(values map[string]map[string]float64, r io.Reader, dimensi
 				return fmt.Errorf("cannot unmarshal tags: %w", err)
 			}
 			if dimension != "" {
-				dimValue = tags[dimension]
+				dimValue, hasDim = tags[dimension]
 			}
 		}
 		line = skipLeadingWhitespace(line)
@@ -110,7 +119,7 @@ func unmarshalMetrics(values map[string]map[string]float64, r io.Reader, dimensi
 			metricValues = make(map[string]float64)
 			values[metricName] = metricValues
 		}
-		if len(dimValue) > 0 {
+		if hasDim {
 			metricValues[dimValue] = v
 		} else if dimension == "" {
 			metricValues[strconv.Itoa(len(metricValues))] = v

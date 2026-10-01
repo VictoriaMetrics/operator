@@ -15,10 +15,12 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
+	vmmetrics "github.com/VictoriaMetrics/metrics"
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -211,17 +213,19 @@ func RunManager(ctx context.Context) error {
 	})
 
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   *metricsAddr,
-		SecureServing: *tlsEnable,
-		CertDir:       *tlsCertDir,
-		CertName:      *tlsCertName,
-		KeyName:       *tlsCertKey,
-		TLSOpts:       metricServerTLSOpts,
+		BindAddress:    *metricsAddr,
+		SecureServing:  *tlsEnable,
+		CertDir:        *tlsCertDir,
+		CertName:       *tlsCertName,
+		KeyName:        *tlsCertKey,
+		TLSOpts:        metricServerTLSOpts,
+		FilterProvider: vmMetricsFilterProvider,
 	}
 
 	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, buildinfo.ShortVersion()))
 
 	r := metrics.Registry
+	dropDefaultProcessMetrics(r)
 	r.MustRegister(appVersion, uptime, startedAt, clientQPSLimit)
 	mustAddRestClientMetrics(r)
 	flagsAsMetrics(r, managerFlags)
@@ -532,6 +536,24 @@ func mustAddRestClientMetrics(r metrics.RegistererGatherer) {
 	// replace global go-client RequestLatency metric
 	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
 	r.MustRegister(restClientLatency)
+}
+
+// dropDefaultProcessMetrics unregisters controller-runtime's default go_*/process_* collectors, since vmMetricsFilterProvider appends VM's own (superset) versions.
+func dropDefaultProcessMetrics(r metrics.RegistererGatherer) {
+	r.Unregister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	r.Unregister(collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)))
+}
+
+// vmMetricsFilterProvider appends standard VM process/go metrics (e.g. process_cpu_cores_available) to "/metrics".
+func vmMetricsFilterProvider(*rest.Config, *http.Client) (metricsserver.Filter, error) {
+	return func(_ logr.Logger, handler http.Handler) (http.Handler, error) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// drop Accept-Encoding so promhttp responds uncompressed and WritePrometheus output can be appended as plain text
+			r.Header.Del("Accept-Encoding")
+			handler.ServeHTTP(w, r)
+			vmmetrics.WritePrometheus(w, true)
+		}), nil
+	}, nil
 }
 
 type crdController interface {

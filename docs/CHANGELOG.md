@@ -20,6 +20,8 @@ aliases:
 * BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): fix an invalid `spec.notifier: {}` being generated for the `victoria-metrics-alert` chart when no notifier URL is set, which the operator webhook rejects. Such a notifier is now omitted, and the conversion fails with an explicit error when the chart's bundled `alertmanager` would have been used instead. See [#2601](https://github.com/VictoriaMetrics/operator/issues/2601).
 * BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): fix the charts' `license` and `global.license` blocks being dropped during conversion. They are now converted into `spec.license` for `VMSingle`, `VMCluster`, `VMAgent`, `VMAlert`, `VMAuth`, `VMAnomaly`, `VLCluster` and `VLAgent`, with the same precedence as the charts: a plaintext key (`license.key`, then `global.license.key`) wins over any Secret reference, which is taken from `license.secret`, `global.license.secret`, `license.keyRef` and `global.license.keyRef`, in that order. See [#2601](https://github.com/VictoriaMetrics/operator/issues/2601).
 
+* BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/), [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): resolve each `crd` target reference with its own object. Previously, config builds running at the same time for different `VMAuth` objects shared one object per kind, so a reference could resolve to another object of the same kind and `url_prefix` silently routed traffic to the wrong backend. See [#2690](https://github.com/VictoriaMetrics/operator/pull/2690). Thanks to @lewis-treacy .
+
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026
 

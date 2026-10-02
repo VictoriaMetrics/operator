@@ -591,6 +591,18 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
 					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
 				})},
+				{version: "v0.74.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.74.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.75.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
+				{version: "v0.75.0", cr: with(vmsingle, func(cr *vmv1beta1.VMSingle) {
+					cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](30)
+				})},
 			},
 		},
 		{
@@ -665,6 +677,24 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				})},
 				{version: "v0.73.0", cr: with(vlagent)},
 				{version: "v0.73.0", cr: vlagentK8sCollector},
+				{version: "v0.74.0", cr: with(vmagent)},
+				{version: "v0.74.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.DaemonSetMode = true
+				})},
+				{version: "v0.74.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.StatefulMode = true
+				})},
+				{version: "v0.74.0", cr: with(vlagent)},
+				{version: "v0.74.0", cr: vlagentK8sCollector},
+				{version: "v0.75.0", cr: with(vmagent)},
+				{version: "v0.75.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.DaemonSetMode = true
+				})},
+				{version: "v0.75.0", cr: with(vmagent, func(cr *vmv1beta1.VMAgent) {
+					cr.Spec.StatefulMode = true
+				})},
+				{version: "v0.75.0", cr: with(vlagent)},
+				{version: "v0.75.0", cr: vlagentK8sCollector},
 			},
 		},
 		{
@@ -673,6 +703,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.6", cr: with(vmauth)},
 				{version: "v0.68.7", cr: with(vmauth)},
 				{version: "v0.73.0", cr: with(vmauth)},
+				{version: "v0.74.0", cr: with(vmauth)},
+				{version: "v0.75.0", cr: with(vmauth)},
 			},
 		},
 		// nolint:dupl
@@ -688,8 +720,15 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vmsingle)},
 				{version: "v0.73.0", cr: with(vtsingle)},
 				{version: "v0.73.0", cr: with(vlsingle)},
+				{version: "v0.74.0", cr: with(vmsingle)},
+				{version: "v0.74.0", cr: with(vtsingle)},
+				{version: "v0.74.0", cr: with(vlsingle)},
+				{version: "v0.75.0", cr: with(vmsingle)},
+				{version: "v0.75.0", cr: with(vtsingle)},
+				{version: "v0.75.0", cr: with(vlsingle)},
 			},
 		},
+		// nolint:dupl
 		{
 			name: "VLCluster",
 			pairs: []crVersionPair{
@@ -705,8 +744,17 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
+				{version: "v0.74.0", cr: with(vlcluster)},
+				{version: "v0.74.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
+				{version: "v0.75.0", cr: with(vlcluster)},
+				{version: "v0.75.0", cr: with(vlcluster, func(cr *vmv1.VLCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
 			},
 		},
+		// nolint:dupl
 		{
 			name: "VTCluster",
 			pairs: []crVersionPair{
@@ -723,6 +771,16 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.73.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
 					cr.Spec.RequestsLoadBalancer.Enabled = true
 				})},
+
+				{version: "v0.74.0", cr: with(vtcluster)},
+				{version: "v0.74.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
+
+				{version: "v0.75.0", cr: with(vtcluster)},
+				{version: "v0.75.0", cr: with(vtcluster, func(cr *vmv1.VTCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+				})},
 			},
 		},
 		// nolint:dupl
@@ -732,6 +790,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.6", cr: with(vmcluster)},
 				{version: "v0.68.7", cr: with(vmcluster)},
 				{version: "v0.73.0", cr: with(vmcluster)},
+				{version: "v0.74.0", cr: with(vmcluster)},
+				{version: "v0.75.0", cr: with(vmcluster)},
 			},
 		},
 		// nolint:dupl
@@ -807,6 +867,52 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						},
 					}
 				})},
+				{version: "v0.74.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
+					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
+						Destination:                 "fs:///tmp",
+						DestinationDisableSuffixAdd: true,
+						Image: vmv1beta1.Image{
+							Tag: "v1.136.0-enterprise",
+						},
+						AcceptEULA: true,
+					}
+					cr.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				})},
+				{version: "v0.75.0", isEnterprise: true, cr: with(vmcluster, func(cr *vmv1beta1.VMCluster) {
+					cr.Spec.RequestsLoadBalancer.Enabled = true
+					cr.Spec.VMStorage.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMSelect.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.VMInsert.Image.Tag = "v1.136.0-enterprise-cluster"
+					cr.Spec.RequestsLoadBalancer.Spec.Image.Tag = "v1.136.0-enterprise"
+					cr.Spec.VMStorage.VMBackup = &vmv1beta1.VMBackup{
+						Destination:                 "fs:///tmp",
+						DestinationDisableSuffixAdd: true,
+						Image: vmv1beta1.Image{
+							Tag: "v1.136.0-enterprise",
+						},
+						AcceptEULA: true,
+					}
+					cr.Spec.License = &vmv1beta1.License{
+						KeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "license",
+							},
+							Key: "key",
+						},
+					}
+				})},
 			},
 			envs: map[string]string{
 				"VM_LOOPBACK":                          "localhost",
@@ -820,6 +926,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.68.6", cr: with(vmdistributed)},
 				{version: "v0.68.7", cr: with(vmdistributed)},
 				{version: "v0.73.0", cr: with(vmdistributed)},
+				{version: "v0.74.0", cr: with(vmdistributed)},
+				{version: "v0.75.0", cr: with(vmdistributed)},
 			},
 		},
 	}))

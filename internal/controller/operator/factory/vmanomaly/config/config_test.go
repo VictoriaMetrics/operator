@@ -1622,6 +1622,215 @@ server:
 `,
 	})
 
+	// settings-only base config with models, schedulers and queries from VMAnomalyConfig
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+settings:
+  restore_state: true
+`,
+				SelectAllByDefault: true,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "10s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "anomaly",
+					Namespace: "default",
+				},
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "test": {
+      "class": "zscore",
+      "queries": ["test"],
+      "schedulers": ["test"],
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "test": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  },
+  "queries": {
+    "test": {
+      "expr": "vm_metric"
+    }
+  }
+}`),
+				},
+			},
+		},
+		expected: `
+models:
+  default-anomaly-test:
+    class: zscore
+    queries:
+    - default-anomaly-test
+    schedulers:
+    - default-anomaly-test
+    z_threshold: 2.5
+schedulers:
+  default-anomaly-test:
+    class: periodic
+    fit_every: 12m
+    fit_window: 13h
+    infer_every: 11m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 10s
+  queries:
+    default-anomaly-test:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  restore_state: true
+server:
+  port: "8490"
+`,
+	})
+
+	// settings-only base config without VMAnomalyConfig
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+settings:
+  restore_state: true
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "10s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// no reader section and no VMAnomalyConfig queries
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  m1:
+    class: zscore
+    z_threshold: 2.5
+schedulers:
+  s1:
+    class: periodic
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "10s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// settings-only base config with VMAnomalyConfig that has no queries
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+settings:
+  restore_state: true
+`,
+				SelectAllByDefault: true,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "10s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "anomaly",
+					Namespace: "default",
+				},
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "test": {
+      "class": "zscore",
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "test": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  }
+}`),
+				},
+			},
+		},
+		wantErr: true,
+	})
+
 	// tz is serialized as a string (reader/query/scheduler), an explicit zero
 	// anomaly_score_outside_data_range survives marshalling, and an unset decay is omitted
 	f(opts{

@@ -198,6 +198,10 @@ type VMAnomalyHTTPClientSpec struct {
 
 // VMAnomalyReadersSpec defines reader configuration for VMAnomaly
 type VMAnomalyReadersSpec struct {
+	// Class defines reader type, defaults to vm
+	// +optional
+	// +kubebuilder:validation:Enum=vm;reader.vm.VmReader;vlogs;reader.vlogs.VLogsReader
+	Class string `json:"class,omitempty" yaml:"class,omitempty"`
 	// DatasourceURL address
 	// datasource must serve /api/v1/query and /api/v1/query_range APIs
 	DatasourceURL string `json:"datasourceURL" yaml:"datasource_url,omitempty"`

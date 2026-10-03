@@ -19627,6 +19627,13 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  class:
+                    enum:
+                    - vm
+                    - reader.vm.VmReader
+                    - vlogs
+                    - reader.vlogs.VLogsReader
+                    type: string
                   dataRange:
                     items:
                       type: string

@@ -60,12 +60,13 @@ jobs:
           git_commit_gpgsign: true
           workdir: __vm-charts-repo
 
-      - name: Update crd yaml in chart repo
+      - name: Update crd and rbac yaml in chart repo
         if: steps.chart.outputs.update == 'true'
         id: update
         run: |
           cp ../__vm-operator-repo/config/crd/overlay/crd.descriptionless.yaml charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
           cp ../__vm-operator-repo/config/crd/overlay/crd.specless.yaml charts/victoria-metrics-operator/crd.yaml
+          cp ../__vm-operator-repo/config/rbac/role.yaml charts/victoria-metrics-operator/operator-role.yaml
           bzip2 -k charts/victoria-metrics-operator/charts/crds/crds/crd.yaml
           mv charts/victoria-metrics-operator/charts/crds/crds/crd.yaml.bz2 charts/victoria-metrics-operator/charts/crds/files/crd.yaml.bz2
           echo "BUILDTIME=$(date +%s)" >> $GITHUB_OUTPUT
@@ -77,11 +78,11 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           add-paths: charts
-          commit-message: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
+          commit-message: Automatic update operator crds and rbac from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
           signoff: true
           committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
           path: __vm-charts-repo
           branch: operator-crd-update-${{ steps.update.outputs.BUILDTIME }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           delete-branch: true
-          title: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
+          title: Automatic update operator crds and rbac from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}

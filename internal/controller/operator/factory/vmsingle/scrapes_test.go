@@ -1438,6 +1438,83 @@ scrape_configs:
 `,
 	})
 
+	// ignore namespace selectors
+	f(opts{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ignore-ns",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					IngestOnlyMode:     ptr.To(false),
+					SelectAllByDefault: true,
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						IgnoreNamespaceSelectors: true,
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "project-alpha",
+				},
+			},
+			&vmv1beta1.VMPodScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod-1",
+					Namespace: "project-alpha",
+				},
+				Spec: vmv1beta1.VMPodScrapeSpec{
+					NamespaceSelector: vmv1beta1.NamespaceSelector{
+						Any: true,
+					},
+					PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+						{
+							Port: ptr.To("web"),
+						},
+					},
+				},
+			},
+		},
+		wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/ignore-ns
+scrape_configs:
+- job_name: podScrape/project-alpha/pod-1/0
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - project-alpha
+  honor_labels: false
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: web
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: project-alpha/pod-1
+  - target_label: endpoint
+    replacement: web
+`,
+	})
+
 	// with invalid objects syntax
 	f(opts{
 		cr: &vmv1beta1.VMSingle{

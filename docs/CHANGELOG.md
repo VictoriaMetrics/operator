@@ -14,6 +14,9 @@ aliases:
 ## tip
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.153.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.153.0).
+
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/), [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/), [vmstorage](https://docs.victoriametrics.com/operator/resources/vmstorage/): a user-declared `spec.livenessProbe` is rendered into the component's container again. Previously these types skipped liveness probes entirely, silently dropping any probe declared at `spec.livenessProbe`. See [#2680](https://github.com/VictoriaMetrics/operator/pull/2680).
+
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026
 

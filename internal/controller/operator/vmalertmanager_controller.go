@@ -97,6 +97,17 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		// Same lock CreateOrUpdateAlertManager already holds via the RLock above while it
+		// writes this same Applied condition to VMAlertmanagerConfigs; take it here too,
+		// since IsUnmanaged() is true for a deleting instance and the RLock above was
+		// skipped.
+		alertmanagerSync.RLock()
+		releaseErr := vmalertmanager.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		alertmanagerSync.RUnlock()
+		if releaseErr != nil {
+			// Best-effort: a status-cleanup failure must never wedge the finalizer.
+			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmalertmanager")
+		}
 		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
 		return
 	}

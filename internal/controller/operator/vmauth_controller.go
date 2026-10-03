@@ -96,6 +96,18 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		// Same lock CreateOrUpdateConfig already holds via the RLock above while it writes
+		// this same Applied condition to VMUsers; take it here too, since IsUnmanaged() is
+		// true for a deleting instance and the RLock above was skipped. Holding it as a
+		// reader (not writer) lets it wait out an in-flight VMUser reconcile (which holds
+		// authSync.Lock()) instead of racing it.
+		authSync.RLock()
+		releaseErr := vmauth.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		authSync.RUnlock()
+		if releaseErr != nil {
+			// Best-effort: a status-cleanup failure must never wedge the finalizer.
+			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmauth")
+		}
 		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}

@@ -1563,6 +1563,97 @@ scrape_configs:
 `,
 	})
 
+	// ignore namespace selectors
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ignore-ns",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					SelectAllByDefault: true,
+					CommonScrapeSecurityEnforcements: vmv1beta1.CommonScrapeSecurityEnforcements{
+						IgnoreNamespaceSelectors: true,
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "project-alpha",
+				},
+			},
+			&vmv1beta1.VMServiceScrape{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "svc-1",
+					Namespace: "project-alpha",
+				},
+				Spec: vmv1beta1.VMServiceScrapeSpec{
+					NamespaceSelector: vmv1beta1.NamespaceSelector{
+						MatchNames: []string{"project-beta"},
+					},
+					Endpoints: []vmv1beta1.Endpoint{
+						{
+							Port: "http",
+						},
+					},
+				},
+			},
+		},
+		wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/ignore-ns
+scrape_configs:
+- job_name: serviceScrape/project-alpha/svc-1/0
+  kubernetes_sd_configs:
+  - role: endpoints
+    namespaces:
+      names:
+      - project-alpha
+  honor_labels: false
+  relabel_configs:
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_endpoint_port_name
+    regex: http
+  - source_labels:
+    - __meta_kubernetes_endpoint_address_target_kind
+    - __meta_kubernetes_endpoint_address_target_name
+    separator: ;
+    regex: Node;(.*)
+    replacement: ${1}
+    target_label: node
+  - source_labels:
+    - __meta_kubernetes_endpoint_address_target_kind
+    - __meta_kubernetes_endpoint_address_target_name
+    separator: ;
+    regex: Pod;(.*)
+    replacement: ${1}
+    target_label: pod
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_service_name
+    target_label: service
+  - source_labels:
+    - __meta_kubernetes_service_name
+    target_label: job
+    replacement: ${1}
+  - target_label: endpoint
+    replacement: http
+`,
+	})
+
 	// with invalid objects syntax
 	f(opts{
 		cr: &vmv1beta1.VMAgent{

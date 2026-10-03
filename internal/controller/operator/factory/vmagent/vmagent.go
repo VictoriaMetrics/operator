@@ -1405,11 +1405,12 @@ func createOrUpdateScrapeConfig(ctx context.Context, rclient client.Client, cr, 
 	}
 
 	pos := &vmscrapes.ParsedObjects{
-		Namespace:            cr.Namespace,
-		APIServerConfig:      cr.Spec.APIServerConfig,
-		MustUseNodeSelector:  cr.Spec.DaemonSetMode,
-		HasClusterWideAccess: len(cfg.WatchNamespaces) == 0 || !cr.IsOwnsServiceAccount(),
-		ExternalLabels:       cr.ExternalLabels(),
+		Namespace:                cr.Namespace,
+		APIServerConfig:          cr.Spec.APIServerConfig,
+		MustUseNodeSelector:      cr.Spec.DaemonSetMode,
+		HasClusterWideAccess:     len(cfg.WatchNamespaces) == 0 || !cr.IsOwnsServiceAccount(),
+		ExternalLabels:           cr.ExternalLabels(),
+		IgnoreNamespaceSelectors: cr.Spec.IgnoreNamespaceSelectors,
 	}
 	if !pos.HasClusterWideAccess {
 		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +

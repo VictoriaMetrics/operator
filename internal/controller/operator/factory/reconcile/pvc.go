@@ -15,6 +15,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims/finalizers,verbs=patch
+
 // PersistentVolumeClaim reconciles PVC object
 // It updates only resource spec
 // other fields are ignored

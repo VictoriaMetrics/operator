@@ -13,6 +13,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+// +kubebuilder:rbac:groups="",resources=nodes;nodes/metrics,verbs=get;list;watch
+
 func getScrapeDiscoveryRules() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{

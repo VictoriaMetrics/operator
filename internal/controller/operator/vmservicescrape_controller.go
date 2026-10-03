@@ -58,7 +58,7 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/finalizers,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/finalizers,verbs=patch
 
 func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

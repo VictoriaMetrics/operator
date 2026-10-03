@@ -14,6 +14,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=secrets/finalizers,verbs=patch
+
 // Secret reconciles secret object.
 func Secret(ctx context.Context, rclient client.Client, newObj *corev1.Secret, prevMeta *metav1.ObjectMeta, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

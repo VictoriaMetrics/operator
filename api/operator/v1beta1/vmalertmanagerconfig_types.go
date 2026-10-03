@@ -34,6 +34,7 @@ import (
 	amcfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/matcher/compat"
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
+	"github.com/prometheus/common/model"
 	"golang.org/x/net/http/httpguts"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -349,6 +350,13 @@ type Route struct {
 	// These must match the name at time_intervals
 	// +optional
 	ActiveTimeIntervals []string `json:"active_time_intervals,omitempty" yaml:"active_time_intervals,omitempty"`
+	// Labels attached to the route. Child routes inherit them and can override them.
+	// Route labels don't change alert labels or grouping, but are available in notification templates.
+	// Available since alertmanager v0.34.0.
+	// https://prometheus.io/docs/alerting/latest/configuration/#route
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // SubRoute alias for Route, its needed to proper use json parsing with raw input
@@ -362,6 +370,11 @@ func parseNestedRoutes(src *Route) error {
 	for idx, matchers := range src.Matchers {
 		if _, err := amparse.Matchers(matchers); err != nil {
 			return fmt.Errorf("cannot parse matchers=%q idx=%d for route_receiver=%s: %w", matchers, idx, src.Receiver, err)
+		}
+	}
+	for name := range src.Labels {
+		if !compat.IsValidLabelName(model.LabelName(name)) {
+			return fmt.Errorf("invalid label name %q at labels for route_receiver=%s", name, src.Receiver)
 		}
 	}
 	for _, nestedRoute := range src.RawRoutes {

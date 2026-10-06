@@ -42,9 +42,9 @@ var (
 
 	defaultEnvs = map[string]string{
 		"VM_METRICS_VERSION":  "v1.153.0",
-		"VM_LOGS_VERSION":     "v1.52.0",
+		"VM_LOGS_VERSION":     "v1.53.0",
 		"VM_ANOMALY_VERSION":  "v1.30.7",
-		"VM_TRACES_VERSION":   "v0.11.1",
+		"VM_TRACES_VERSION":   "v0.12.0",
 		"VM_OPERATOR_VERSION": getVersion("v0.75.0"),
 	}
 )

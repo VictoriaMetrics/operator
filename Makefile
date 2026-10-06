@@ -16,6 +16,7 @@ NAMESPACE ?= vm
 OVERLAY ?= config/manager
 FIPS_VERSION=v1.0.0
 BASEIMAGE ?=scratch
+UBI_BASEIMAGE?=registry.access.redhat.com/ubi10-micro:10.0
 
 BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
@@ -256,9 +257,10 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 
 publish:
 	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
-	TAG=$(TAG)-ubi BASEIMAGE=registry.access.redhat.com/ubi10-micro:latest ROOT=./cmd $(MAKE) docker-buildx
+	TAG=$(TAG)-ubi BASEIMAGE=$(UBI_BASEIMAGE) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=$(TAG)-fips GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG)-ubi BASEIMAGE=$(UBI_BASEIMAGE) COMPONENT=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG)-fips COMPONENT=config-reloader GODEBUG_BUILD_ARGS=fips140=only FIPS_BUILD_VERSION=$(FIPS_VERSION) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 COSIGN ?= $(shell which cosign 2>/dev/null || echo $(COSIGN_BIN))
@@ -277,6 +279,7 @@ sign: $(COSIGN)
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-ubi) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,$(TAG)-fips) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)) && \
+		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)-ubi) && \
 		$(COSIGN) sign --yes $${registry}/$(ORG)/$(REPO)@$(call digest,config-reloader-$(TAG)-fips) ; \
 	done
 
@@ -355,7 +358,7 @@ CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.8.1
+KUSTOMIZE_VERSION ?= v5.8.2
 CONTROLLER_TOOLS_VERSION ?= v0.22.0
 ENVTEST_VERSION ?= release-0.23
 GOLANGCI_LINT_VERSION ?= v2.14.0
@@ -363,7 +366,7 @@ CODEGENERATOR_VERSION ?= v0.37.1
 OLM_VERSION ?= 0.46.0
 OPERATOR_SDK_VERSION ?= v1.42.3
 OPM_VERSION ?= v1.74.0
-YQ_VERSION ?= v4.53.6
+YQ_VERSION ?= v4.54.1
 COSIGN_VERSION ?= v3.1.3
 
 CRD_REF_DOCS_VERSION ?= c5e6088a7cbca578c33aabd74ade8210985e5a67

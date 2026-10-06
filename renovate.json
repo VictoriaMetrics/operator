@@ -264,6 +264,17 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "VictoriaMetrics/operator"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal\\/config\\/config\\.go$/"
+      ],
+      "matchStrings": [
+        "default:\"(?<currentValue>v[^\"]+)\" env:\"ALERTMANAGERVERSION\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "prometheus/alertmanager"
     }
   ]
 }

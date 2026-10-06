@@ -14,9 +14,13 @@ CRUST_GATHER_BIN ?= $(LOCALBIN)/crust-gather-$(CRUST_GATHER_VERSION)
 MIRRORD_BIN ?= $(LOCALBIN)/mirrord-$(MIRRORD_VERSION)
 
 ## Tool Versions
+# renovate: datasource=go depName=sigs.k8s.io/kind
 KIND_VERSION ?= v0.32.0
-GINKGO_VERSION ?= v2.31.0
+# renovate: datasource=go depName=github.com/onsi/ginkgo/v2
+GINKGO_VERSION ?= v2.33.0
+# renovate: datasource=go depName=github.com/crust-gather/crust-gather
 CRUST_GATHER_VERSION ?= v0.15.2
+# renovate: datasource=github-releases depName=metalbear-co/mirrord versioning=semver
 MIRRORD_VERSION ?= 3.217.1
 
 MIRRORD_OS=$(if $(filter darwin,$(OS)),mac,linux)

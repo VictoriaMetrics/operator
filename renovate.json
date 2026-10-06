@@ -46,11 +46,8 @@
         "/^Makefile$/"
       ],
       "matchStrings": [
-        "ENVTEST_K8S_VERSION = (?<currentValue>.*)"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "kubernetes/kubernetes",
-      "extractVersionTemplate": "^v(?<version>.*)$"
+        "(?m)^# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?(?: extractVersion=(?<extractVersion>.*?))?\\n\\w+_VERSION\\s*\\??=\\s*(?<currentValue>[v0-9].*)$"
+      ]
     },
     {
       "customType": "regex",
@@ -58,43 +55,8 @@
         "/^Makefile$/"
       ],
       "matchStrings": [
-        "KUSTOMIZE_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "sigs.k8s.io/kustomize/kustomize/v5"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "sigs.k8s.io/controller-tools"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "GOLANGCI_LINT_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/golangci/golangci-lint/v2"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "CODEGENERATOR_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "k8s.io/code-generator"
+        "(?m)^# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?(?: extractVersion=(?<extractVersion>.*?))?\\nENVTEST_VERSION\\s*\\?= release-(?<currentValue>.*)$"
+      ]
     },
     {
       "customType": "regex",
@@ -102,113 +64,8 @@
         "/^test\\/Makefile$/"
       ],
       "matchStrings": [
-        "KIND_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "sigs.k8s.io/kind"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "OPERATOR_SDK_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/operator-framework/operator-sdk"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/",
-        "/^operatorhub.yaml$/"
-      ],
-      "matchStrings": [
-        "OPM_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/operator-framework/operator-registry"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "YQ_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/mikefarah/yq/v4"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^test\\/Makefile$/"
-      ],
-      "matchStrings": [
-        "GINKGO_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/onsi/ginkgo/v2"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^test\\/Makefile$/"
-      ],
-      "matchStrings": [
-        "CRUST_GATHER_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "github.com/crust-gather/crust-gather"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "OLM_VERSION \\?= (?<currentValue>.*)"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "operator-framework/operator-lifecycle-manager",
-      "extractVersionTemplate": "^v(?<version>.*)$"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "ENVTEST_VERSION \\?= release-(?<currentValue>.*)"
-      ],
-      "datasourceTemplate": "go",
-      "depNameTemplate": "sigs.k8s.io/controller-runtime",
-      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+).*$"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^test\\/Makefile$/"
-      ],
-      "matchStrings": [
-        "MIRRORD_VERSION \\?= (?<currentValue>.*)"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "metalbear-co/mirrord",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^Makefile$/"
-      ],
-      "matchStrings": [
-        "COSIGN_VERSION \\?= (?<currentValue>v.*)"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "sigstore/cosign"
+        "(?m)^# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\n\\w+_VERSION\\s*\\?=\\s*(?<currentValue>.*)$"
+      ]
     },
     {
       "customType": "regex",
@@ -216,65 +73,8 @@
         "/^internal\\/config\\/config\\.go$/"
       ],
       "matchStrings": [
-        "\"VM_METRICS_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "VictoriaMetrics/VictoriaMetrics"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^internal\\/config\\/config\\.go$/"
-      ],
-      "matchStrings": [
-        "\"VM_LOGS_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "VictoriaMetrics/VictoriaLogs"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^internal\\/config\\/config\\.go$/"
-      ],
-      "matchStrings": [
-        "\"VM_ANOMALY_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
-      ],
-      "datasourceTemplate": "docker",
-      "depNameTemplate": "victoriametrics/vmanomaly"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^internal\\/config\\/config\\.go$/"
-      ],
-      "matchStrings": [
-        "\"VM_TRACES_VERSION\":\\s+\"(?<currentValue>v[^\"]+)\""
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "VictoriaMetrics/VictoriaTraces"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^internal\\/config\\/config\\.go$/"
-      ],
-      "matchStrings": [
-        "\"VM_OPERATOR_VERSION\": getVersion\\(\"(?<currentValue>v[^\"]+)\""
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "VictoriaMetrics/operator"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^internal\\/config\\/config\\.go$/"
-      ],
-      "matchStrings": [
-        "default:\"(?<currentValue>v[^\"]+)\" env:\"ALERTMANAGERVERSION\""
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "prometheus/alertmanager"
+        "(?m)^\\s*// renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?\\n\\s*\"\\w+\":\\s*(?:getVersion\\()?\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ]
 }

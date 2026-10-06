@@ -41,11 +41,18 @@ var (
 	initConf sync.Once
 
 	defaultEnvs = map[string]string{
-		"VM_METRICS_VERSION":  "v1.153.0",
-		"VM_LOGS_VERSION":     "v1.53.0",
-		"VM_ANOMALY_VERSION":  "v1.30.7",
-		"VM_TRACES_VERSION":   "v0.12.0",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaMetrics
+		"VM_METRICS_VERSION": "v1.153.0",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaLogs
+		"VM_LOGS_VERSION": "v1.53.0",
+		// renovate: datasource=docker depName=victoriametrics/vmanomaly
+		"VM_ANOMALY_VERSION": "v1.30.7",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
+		"VM_TRACES_VERSION": "v0.12.0",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
 		"VM_OPERATOR_VERSION": getVersion("v0.75.0"),
+		// renovate: datasource=github-releases depName=prometheus/alertmanager
+		"VM_ALERTMANAGER_VERSION": "v0.34.1",
 	}
 )
 
@@ -503,7 +510,7 @@ type BaseOperatorConf struct {
 		// Default container image for Alertmanager.
 		Image string `default:"prom/alertmanager" env:"ALERTMANAGERDEFAULTBASEIMAGE"`
 		// Default Alertmanager version.
-		Version string `default:"v0.34.1" env:"ALERTMANAGERVERSION"`
+		Version string `env:"ALERTMANAGERVERSION,expand" default:"${VM_ALERTMANAGER_VERSION}"`
 		// Default HTTP listen port.
 		Port string `default:"9093"`
 		// Whether to apply default resource requests and limits.

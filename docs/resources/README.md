@@ -159,6 +159,7 @@ Every custom resource with deployable application has a fields for specifying ve
 - [Managing versions for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#version-management)
 - [Managing versions for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#version-management)
 - [Managing versions for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management)
+- [Managing versions for VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#version-management)
 - [Managing versions for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#version-management)
 
 ## Managing resources
@@ -171,6 +172,7 @@ Every custom resource with deployable application has a fields and operator para
 - [Managing resources for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#resource-management)
 - [Managing resources for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#resource-management)
 - [Managing resources for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#resource-management)
+- [Managing resources for VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#resource-management)
 - [Managing resources for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#resource-management)
 
 ## High availability

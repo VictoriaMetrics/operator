@@ -60,6 +60,7 @@ func (r *VMEstimatorReconciler) Init(name string, rclient client.Client, l logr.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmestimators/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmestimators/finalizers,verbs=update
 // +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 
 func (r *VMEstimatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

@@ -2717,7 +2717,7 @@ Appears in: [VMAlertDatasourceSpec (v1beta1)](#v1beta1-vmalertdatasourcespec), [
 HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
-Appears in: [DiscordConfig (v1beta1)](#v1beta1-discordconfig), [IncidentioConfig (v1beta1)](#v1beta1-incidentioconfig), [JiraConfig (v1beta1)](#v1beta1-jiraconfig), [MSTeamsConfig (v1beta1)](#v1beta1-msteamsconfig), [MSTeamsV2Config (v1beta1)](#v1beta1-msteamsv2config), [MattermostConfig (v1beta1)](#v1beta1-mattermostconfig), [OpsGenieConfig (v1beta1)](#v1beta1-opsgenieconfig), [PagerDutyConfig (v1beta1)](#v1beta1-pagerdutyconfig), [PushoverConfig (v1beta1)](#v1beta1-pushoverconfig), [RocketchatConfig (v1beta1)](#v1beta1-rocketchatconfig), [SNSConfig (v1beta1)](#v1beta1-snsconfig), [SlackConfig (v1beta1)](#v1beta1-slackconfig), [TelegramConfig (v1beta1)](#v1beta1-telegramconfig), [VictorOpsConfig (v1beta1)](#v1beta1-victoropsconfig), [WebexConfig (v1beta1)](#v1beta1-webexconfig), [WebhookConfig (v1beta1)](#v1beta1-webhookconfig), [WechatConfig (v1beta1)](#v1beta1-wechatconfig)
+Appears in: [DiscordConfig (v1beta1)](#v1beta1-discordconfig), [IncidentioConfig (v1beta1)](#v1beta1-incidentioconfig), [JiraConfig (v1beta1)](#v1beta1-jiraconfig), [MSTeamsConfig (v1beta1)](#v1beta1-msteamsconfig), [MSTeamsV2Config (v1beta1)](#v1beta1-msteamsv2config), [MattermostConfig (v1beta1)](#v1beta1-mattermostconfig), [OpsGenieConfig (v1beta1)](#v1beta1-opsgenieconfig), [PagerDutyConfig (v1beta1)](#v1beta1-pagerdutyconfig), [PushoverConfig (v1beta1)](#v1beta1-pushoverconfig), [RocketchatConfig (v1beta1)](#v1beta1-rocketchatconfig), [SNSConfig (v1beta1)](#v1beta1-snsconfig), [SlackConfig (v1beta1)](#v1beta1-slackconfig), [TelegramConfig (v1beta1)](#v1beta1-telegramconfig), [VMAlertmanagerEventRecorderWebhookOutput (v1beta1)](#v1beta1-vmalertmanagereventrecorderwebhookoutput), [VictorOpsConfig (v1beta1)](#v1beta1-victoropsconfig), [WebexConfig (v1beta1)](#v1beta1-webexconfig), [WebhookConfig (v1beta1)](#v1beta1-webhookconfig), [WechatConfig (v1beta1)](#v1beta1-wechatconfig)
 
 | Field | Description |
 | --- | --- |
@@ -3924,7 +3924,7 @@ Appears in: [GCESDConfig (v1beta1)](#v1beta1-gcesdconfig), [RelabelConfig (v1bet
 
 TLSClientConfig defines TLS configuration for the application's client
 
-Appears in: [VMAlertmanagerGossipConfig (v1beta1)](#v1beta1-vmalertmanagergossipconfig), [VMAlertmanagerTracingConfig (v1beta1)](#v1beta1-vmalertmanagertracingconfig)
+Appears in: [VMAlertmanagerEventRecorderKafkaOutput (v1beta1)](#v1beta1-vmalertmanagereventrecorderkafkaoutput), [VMAlertmanagerGossipConfig (v1beta1)](#v1beta1-vmalertmanagergossipconfig), [VMAlertmanagerTracingConfig (v1beta1)](#v1beta1-vmalertmanagertracingconfig)
 
 | Field | Description |
 | --- | --- |
@@ -4623,6 +4623,72 @@ Appears in: [VMAlertmanagerConfig (v1beta1)](#v1beta1-vmalertmanagerconfig)
 | route<a href="#v1beta1-vmalertmanagerconfigspec-route" id="v1beta1-vmalertmanagerconfigspec-route">#</a><a id="vmalertmanagerconfigspec-route"></a><br/>_[Route (v1beta1)](#v1beta1-route)_ | _(Optional)_<br/>Route definition for alertmanager, may include nested routes. |
 | time_intervals<a href="#v1beta1-vmalertmanagerconfigspec-time_intervals" id="v1beta1-vmalertmanagerconfigspec-time_intervals">#</a><a id="vmalertmanagerconfigspec-time_intervals"></a><br/>_[TimeIntervals (v1beta1)](#v1beta1-timeintervals) array_ | _(Optional)_<br/>TimeIntervals defines named interval for active/mute notifications interval<br />See https://prometheus.io/docs/alerting/latest/configuration/#time_interval |
 
+#### VMAlertmanagerEventRecorder {#v1beta1-vmalertmanagereventrecorder}
+<a id="vmalertmanagereventrecorder"></a>
+
+VMAlertmanagerEventRecorder defines the event_recorder config section of Alertmanager,
+which records notification pipeline events to one or more outputs. Every recorded event
+is fanned out to every configured output across all output kinds.
+
+Appears in: [VMAlertmanagerSpec (v1beta1)](#v1beta1-vmalertmanagerspec)
+
+| Field | Description |
+| --- | --- |
+| fileOutputs<a href="#v1beta1-vmalertmanagereventrecorder-fileoutputs" id="v1beta1-vmalertmanagereventrecorder-fileoutputs">#</a><a id="vmalertmanagereventrecorder-fileoutputs"></a><br/>_[VMAlertmanagerEventRecorderFileOutput (v1beta1)](#v1beta1-vmalertmanagereventrecorderfileoutput) array_ | _(Optional)_<br/>FileOutputs defines JSONL file outputs to append recorded events to. |
+| kafkaOutputs<a href="#v1beta1-vmalertmanagereventrecorder-kafkaoutputs" id="v1beta1-vmalertmanagereventrecorder-kafkaoutputs">#</a><a id="vmalertmanagereventrecorder-kafkaoutputs"></a><br/>_[VMAlertmanagerEventRecorderKafkaOutput (v1beta1)](#v1beta1-vmalertmanagereventrecorderkafkaoutput) array_ | _(Optional)_<br/>KafkaOutputs defines Kafka outputs to produce recorded events to. |
+| stdoutOutput<a href="#v1beta1-vmalertmanagereventrecorder-stdoutoutput" id="v1beta1-vmalertmanagereventrecorder-stdoutoutput">#</a><a id="vmalertmanagereventrecorder-stdoutoutput"></a><br/>_boolean_ | _(Optional)_<br/>StdoutOutput enables writing recorded events as newline-delimited JSON to stdout.<br />This is the recommended output for container deployments, where stdout is<br />captured by the runtime log driver. |
+| webhookOutputs<a href="#v1beta1-vmalertmanagereventrecorder-webhookoutputs" id="v1beta1-vmalertmanagereventrecorder-webhookoutputs">#</a><a id="vmalertmanagereventrecorder-webhookoutputs"></a><br/>_[VMAlertmanagerEventRecorderWebhookOutput (v1beta1)](#v1beta1-vmalertmanagereventrecorderwebhookoutput) array_ | _(Optional)_<br/>WebhookOutputs defines HTTP webhook outputs to POST recorded events to. |
+
+#### VMAlertmanagerEventRecorderFileOutput {#v1beta1-vmalertmanagereventrecorderfileoutput}
+<a id="vmalertmanagereventrecorderfileoutput"></a>
+
+VMAlertmanagerEventRecorderFileOutput defines a single file_outputs entry of event_recorder config.
+
+Appears in: [VMAlertmanagerEventRecorder (v1beta1)](#v1beta1-vmalertmanagereventrecorder)
+
+| Field | Description |
+| --- | --- |
+| path<a href="#v1beta1-vmalertmanagereventrecorderfileoutput-path" id="v1beta1-vmalertmanagereventrecorderfileoutput-path">#</a><a id="vmalertmanagereventrecorderfileoutput-path"></a><br/>_string_ | _(Required)_<br/>Path is the JSONL file to append events to on the vmalertmanager container's<br />filesystem. Created if absent. |
+
+#### VMAlertmanagerEventRecorderKafkaOutput {#v1beta1-vmalertmanagereventrecorderkafkaoutput}
+<a id="vmalertmanagereventrecorderkafkaoutput"></a>
+
+VMAlertmanagerEventRecorderKafkaOutput defines a single kafka_outputs entry of event_recorder config.
+
+Appears in: [VMAlertmanagerEventRecorder (v1beta1)](#v1beta1-vmalertmanagereventrecorder)
+
+| Field | Description |
+| --- | --- |
+| acks<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-acks" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-acks">#</a><a id="vmalertmanagereventrecorderkafkaoutput-acks"></a><br/>_string_ | _(Optional)_<br/>Acks controls the producer acknowledgement level. Defaults to "leader" when not set. |
+| brokers<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-brokers" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-brokers">#</a><a id="vmalertmanagereventrecorderkafkaoutput-brokers"></a><br/>_string array_ | _(Required)_<br/>Brokers is the list of Kafka seed brokers in host:port form. |
+| bufferSize<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-buffersize" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-buffersize">#</a><a id="vmalertmanagereventrecorderkafkaoutput-buffersize"></a><br/>_integer_ | _(Optional)_<br/>BufferSize is the capacity of the local channel between the event recorder<br />dispatcher and the Kafka producer. Defaults to 1024 when not set. |
+| clientID<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-clientid" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-clientid">#</a><a id="vmalertmanagereventrecorderkafkaoutput-clientid"></a><br/>_string_ | _(Optional)_<br/>ClientID is reported to the Kafka brokers. Defaults to "alertmanager" when not set. |
+| compression<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-compression" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-compression">#</a><a id="vmalertmanagereventrecorderkafkaoutput-compression"></a><br/>_string_ | _(Optional)_<br/>Compression selects the producer compression codec. Defaults to no compression when not set. |
+| format<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-format" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-format">#</a><a id="vmalertmanagereventrecorderkafkaoutput-format"></a><br/>_string_ | _(Optional)_<br/>Format selects the on-the-wire encoding of each event value. Defaults to "json" when not set. |
+| tlsConfig<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-tlsconfig" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-tlsconfig">#</a><a id="vmalertmanagereventrecorderkafkaoutput-tlsconfig"></a><br/>_[TLSClientConfig (v1beta1)](#v1beta1-tlsclientconfig)_ | _(Optional)_<br/>TLSConfig configures TLS for the Kafka broker connection. If unset, PLAINTEXT is used. |
+| topic<a href="#v1beta1-vmalertmanagereventrecorderkafkaoutput-topic" id="v1beta1-vmalertmanagereventrecorderkafkaoutput-topic">#</a><a id="vmalertmanagereventrecorderkafkaoutput-topic"></a><br/>_string_ | _(Required)_<br/>Topic is the Kafka topic to produce events to. |
+
+#### VMAlertmanagerEventRecorderWebhookOutput {#v1beta1-vmalertmanagereventrecorderwebhookoutput}
+<a id="vmalertmanagereventrecorderwebhookoutput"></a>
+
+VMAlertmanagerEventRecorderWebhookOutput defines a single webhook_outputs entry of event_recorder config.
+
+Appears in: [VMAlertmanagerEventRecorder (v1beta1)](#v1beta1-vmalertmanagereventrecorder)
+
+| Field | Description |
+| --- | --- |
+| batch<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-batch" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-batch">#</a><a id="vmalertmanagereventrecorderwebhookoutput-batch"></a><br/>_boolean_ | _(Optional)_<br/>Batch enables sending events as JSON arrays instead of individual objects. |
+| batchFlushInterval<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-batchflushinterval" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-batchflushinterval">#</a><a id="vmalertmanagereventrecorderwebhookoutput-batchflushinterval"></a><br/>_string_ | _(Optional)_<br/>BatchFlushInterval is the maximum time an incomplete batch waits. Defaults to 100ms when not set. |
+| batchMaxBytes<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-batchmaxbytes" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-batchmaxbytes">#</a><a id="vmalertmanagereventrecorderwebhookoutput-batchmaxbytes"></a><br/>_integer_ | _(Optional)_<br/>BatchMaxBytes is the soft maximum encoded request size. Defaults to 1 MiB when not set. |
+| batchMaxEvents<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-batchmaxevents" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-batchmaxevents">#</a><a id="vmalertmanagereventrecorderwebhookoutput-batchmaxevents"></a><br/>_integer_ | _(Optional)_<br/>BatchMaxEvents is the maximum number of events in one request. Defaults to 100 when not set. |
+| httpConfig<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-httpconfig" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-httpconfig">#</a><a id="vmalertmanagereventrecorderwebhookoutput-httpconfig"></a><br/>_[HTTPConfig (v1beta1)](#v1beta1-httpconfig)_ | _(Optional)_<br/>HTTPConfig configures the HTTP client used for webhook delivery. |
+| maxRetries<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-maxretries" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-maxretries">#</a><a id="vmalertmanagereventrecorderwebhookoutput-maxretries"></a><br/>_integer_ | _(Optional)_<br/>MaxRetries is the maximum number of delivery attempts per event. Defaults to 3 when not set.<br />Set to 0 to disable retries. |
+| retryBackoff<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-retrybackoff" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-retrybackoff">#</a><a id="vmalertmanagereventrecorderwebhookoutput-retrybackoff"></a><br/>_string_ | _(Optional)_<br/>RetryBackoff is the base backoff between retry attempts. Defaults to 500ms when not set.<br />Successive attempts use exponential backoff (base * 2^attempt). |
+| timeout<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-timeout" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-timeout">#</a><a id="vmalertmanagereventrecorderwebhookoutput-timeout"></a><br/>_string_ | _(Optional)_<br/>Timeout for webhook HTTP requests. Defaults to 10s when not set. |
+| url<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-url" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-url">#</a><a id="vmalertmanagereventrecorderwebhookoutput-url"></a><br/>_string_ | _(Optional)_<br/>URL to POST each event to,<br />one of `url` and `urlSecret` must be defined. |
+| urlSecret<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-urlsecret" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-urlsecret">#</a><a id="vmalertmanagereventrecorderwebhookoutput-urlsecret"></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Optional)_<br/>URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL.<br />one of `url` and `urlSecret` must be defined. |
+| workers<a href="#v1beta1-vmalertmanagereventrecorderwebhookoutput-workers" id="v1beta1-vmalertmanagereventrecorderwebhookoutput-workers">#</a><a id="vmalertmanagereventrecorderwebhookoutput-workers"></a><br/>_integer_ | _(Optional)_<br/>Workers is the number of concurrent delivery goroutines. Defaults to 4 when not set. |
+
 #### VMAlertmanagerGossipConfig {#v1beta1-vmalertmanagergossipconfig}
 <a id="vmalertmanagergossipconfig"></a>
 
@@ -4684,6 +4750,7 @@ Appears in: [VMAlertmanager (v1beta1)](#v1beta1-vmalertmanager)
 | enableServiceLinks<a href="#v1beta1-vmalertmanagerspec-enableservicelinks" id="v1beta1-vmalertmanagerspec-enableservicelinks">#</a><a id="vmalertmanagerspec-enableservicelinks"></a><br/>_boolean_ | _(Optional)_<br/>EnableServiceLinks indicates whether information about services should be injected into pod's<br />environment variables, matching the syntax of Docker links.<br />Optional: Defaults to true. |
 | enforcedNamespaceLabel<a href="#v1beta1-vmalertmanagerspec-enforcednamespacelabel" id="v1beta1-vmalertmanagerspec-enforcednamespacelabel">#</a><a id="vmalertmanagerspec-enforcednamespacelabel"></a><br/>_string_ | _(Optional)_<br/>EnforcedNamespaceLabel defines the namespace label key for top route matcher for VMAlertmanagerConfig<br />Default is "namespace" |
 | enforcedTopRouteMatchers<a href="#v1beta1-vmalertmanagerspec-enforcedtoproutematchers" id="v1beta1-vmalertmanagerspec-enforcedtoproutematchers">#</a><a id="vmalertmanagerspec-enforcedtoproutematchers"></a><br/>_string array_ | _(Required)_<br/>EnforcedTopRouteMatchers defines label matchers to be added for the top route<br />of VMAlertmanagerConfig<br />It allows to make some set of labels required for alerts.<br />https://prometheus.io/docs/alerting/latest/configuration/#matcher |
+| eventRecorder<a href="#v1beta1-vmalertmanagerspec-eventrecorder" id="v1beta1-vmalertmanagerspec-eventrecorder">#</a><a id="vmalertmanagerspec-eventrecorder"></a><br/>_[VMAlertmanagerEventRecorder (v1beta1)](#v1beta1-vmalertmanagereventrecorder)_ | _(Optional)_<br/>EventRecorder defines the event_recorder config section of Alertmanager,<br />which records notification pipeline events to one or more outputs.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0760">v0.76.0</a> |
 | externalURL<a href="#v1beta1-vmalertmanagerspec-externalurl" id="v1beta1-vmalertmanagerspec-externalurl">#</a><a id="vmalertmanagerspec-externalurl"></a><br/>_string_ | _(Optional)_<br/>ExternalURL the VMAlertmanager instances will be available under. This is<br />necessary to generate correct URLs. This is necessary if VMAlertmanager is not<br />served from root of a DNS name. |
 | extraArgs<a href="#v1beta1-vmalertmanagerspec-extraargs" id="v1beta1-vmalertmanagerspec-extraargs">#</a><a id="vmalertmanagerspec-extraargs"></a><br/>_object (keys:string, values:string)_ | _(Optional)_<br/>ExtraArgs that will be passed to the application container<br />for example remoteWrite.tmpDataPath: /tmp |
 | extraEnvs<a href="#v1beta1-vmalertmanagerspec-extraenvs" id="v1beta1-vmalertmanagerspec-extraenvs">#</a><a id="vmalertmanagerspec-extraenvs"></a><br/>_[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#envvar-v1-core) array_ | _(Optional)_<br/>ExtraEnvs that will be passed to the application container |

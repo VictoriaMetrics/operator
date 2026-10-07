@@ -62,6 +62,7 @@ type amConfig struct {
 	TimeIntervals []yaml.MapSlice `yaml:"time_intervals,omitempty"`
 	Templates     []string        `yaml:"templates"`
 	TracingConfig yaml.MapSlice   `yaml:"tracing,omitempty"`
+	EventRecorder yaml.MapSlice   `yaml:"event_recorder,omitempty"`
 }
 
 type receiver struct {
@@ -105,7 +106,7 @@ type parsedObjects struct {
 }
 
 func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, data []byte, ac *build.AssetsCache) ([]byte, error) {
-	if len(pos.configs.All()) == 0 && cr.Spec.TracingConfig == nil && len(cr.Spec.Templates) == 0 {
+	if len(pos.configs.All()) == 0 && cr.Spec.TracingConfig == nil && cr.Spec.EventRecorder == nil && len(cr.Spec.Templates) == 0 {
 		return data, nil
 	}
 	var baseCfg amConfig
@@ -193,6 +194,16 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, data []byte,
 			return nil, err
 		}
 		baseCfg.TracingConfig = tracingCfg
+	}
+	if cr.Spec.EventRecorder != nil {
+		if !eventRecorderSupported(cr) {
+			return nil, fmt.Errorf("spec.eventRecorder requires alertmanager >= %s, got image tag %q", eventRecorderMinVersion.Original(), cr.Spec.Image.Tag)
+		}
+		eventRecorderCfg, err := buildEventRecorderConfig(cr, ac)
+		if err != nil {
+			return nil, err
+		}
+		baseCfg.EventRecorder = eventRecorderCfg
 	}
 	data, err := yaml.Marshal(baseCfg)
 	if err != nil {
@@ -1580,6 +1591,117 @@ func buildTracingConfig(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) (ya
 	cfg.set("compression", tracingCfg.Compression)
 	cfg.set("http_headers", tracingCfg.Headers)
 	cfg.set("endpoint", tracingCfg.Endpoint)
+	return cfg.items, nil
+}
+
+// buildEventRecorderConfig renders cr.Spec.EventRecorder into the event_recorder config
+// section of Alertmanager config.
+func buildEventRecorderConfig(cr *vmv1beta1.VMAlertmanager, ac *build.AssetsCache) (yaml.MapSlice, error) {
+	var cfg rawValue
+	er := cr.Spec.EventRecorder
+	if er == nil {
+		return cfg.items, nil
+	}
+
+	if len(er.FileOutputs) > 0 {
+		var fileOutputs []yaml.MapSlice
+		for _, fo := range er.FileOutputs {
+			var r rawValue
+			r.set("path", fo.Path)
+			fileOutputs = append(fileOutputs, r.items)
+		}
+		cfg.set("file_outputs", fileOutputs)
+	}
+
+	if len(er.WebhookOutputs) > 0 {
+		var webhookOutputs []yaml.MapSlice
+		for i, wo := range er.WebhookOutputs {
+			var r rawValue
+			switch {
+			case wo.URL != nil:
+				r.set("url", *wo.URL)
+			case wo.URLSecret != nil:
+				url, err := ac.LoadKeyFromSecret(cr.Namespace, wo.URLSecret)
+				if err != nil {
+					return nil, fmt.Errorf("cannot load eventRecorder.webhookOutputs[%d].urlSecret: %w", i, err)
+				}
+				r.set("url", url)
+			}
+			if wo.HTTPConfig != nil {
+				httpCfg, err := buildHTTPConfig(wo.HTTPConfig, cr.Namespace, ac)
+				if err != nil {
+					return nil, fmt.Errorf("cannot build eventRecorder.webhookOutputs[%d].httpConfig: %w", i, err)
+				}
+				if len(httpCfg) > 0 {
+					r.set("http_config", httpCfg)
+				}
+			}
+			r.set("timeout", wo.Timeout)
+			r.set("workers", wo.Workers)
+			if wo.MaxRetries != nil {
+				r.items = append(r.items, yaml.MapItem{Key: "max_retries", Value: *wo.MaxRetries})
+			}
+			r.set("retry_backoff", wo.RetryBackoff)
+			r.set("batch", wo.Batch)
+			r.set("batch_max_events", wo.BatchMaxEvents)
+			r.set("batch_max_bytes", wo.BatchMaxBytes)
+			r.set("batch_flush_interval", wo.BatchFlushInterval)
+			webhookOutputs = append(webhookOutputs, r.items)
+		}
+		cfg.set("webhook_outputs", webhookOutputs)
+	}
+
+	if len(er.KafkaOutputs) > 0 {
+		var kafkaOutputs []yaml.MapSlice
+		for i, ko := range er.KafkaOutputs {
+			var r rawValue
+			r.set("brokers", ko.Brokers)
+			r.set("topic", ko.Topic)
+			r.set("client_id", ko.ClientID)
+			r.set("format", ko.Format)
+			r.set("acks", ko.Acks)
+			r.set("compression", ko.Compression)
+			r.set("buffer_size", ko.BufferSize)
+			if ko.TLSConfig != nil {
+				tc := ko.TLSConfig.DeepCopy()
+				if tc.CASecretRef != nil {
+					file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tc.CASecretRef)
+					if err != nil {
+						return nil, fmt.Errorf("cannot fetch eventRecorder.kafkaOutputs[%d].tlsConfig CA secret: %w", i, err)
+					}
+					tc.CAFile = file
+				}
+				if tc.CertSecretRef != nil {
+					file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tc.CertSecretRef)
+					if err != nil {
+						return nil, fmt.Errorf("cannot fetch eventRecorder.kafkaOutputs[%d].tlsConfig cert secret: %w", i, err)
+					}
+					tc.CertFile = file
+				}
+				if tc.KeySecretRef != nil {
+					file, err := ac.LoadPathFromSecret(build.TLSAssetsResourceKind, cr.Namespace, tc.KeySecretRef)
+					if err != nil {
+						return nil, fmt.Errorf("cannot fetch eventRecorder.kafkaOutputs[%d].tlsConfig key secret: %w", i, err)
+					}
+					tc.KeyFile = file
+				}
+				var tlsR rawValue
+				tlsR.set("ca_file", tc.CAFile)
+				tlsR.set("cert_file", tc.CertFile)
+				tlsR.set("key_file", tc.KeyFile)
+				tlsR.set("insecure_skip_verify", tc.InsecureSkipVerify)
+				tlsR.set("server_name", tc.ServerName)
+				r.set("tls_config", tlsR.items)
+			}
+			kafkaOutputs = append(kafkaOutputs, r.items)
+		}
+		cfg.set("kafka_outputs", kafkaOutputs)
+	}
+
+	if er.StdoutOutput {
+		cfg.items = append(cfg.items, yaml.MapItem{Key: "stdout_outputs", Value: []yaml.MapSlice{{}}})
+	}
+
 	return cfg.items, nil
 }
 

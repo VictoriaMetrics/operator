@@ -3,9 +3,11 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	appsv1 "k8s.io/api/apps/v1"
@@ -206,6 +208,12 @@ type VMAlertmanagerSpec struct {
 	// TracingConfig defines tracing configuration for Alertmanager
 	// +optional
 	TracingConfig *VMAlertmanagerTracingConfig `json:"tracingConfig,omitempty"`
+
+	// EventRecorder defines the event_recorder config section of Alertmanager,
+	// which records notification pipeline events to one or more outputs.
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	EventRecorder *VMAlertmanagerEventRecorder `json:"eventRecorder,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
@@ -593,6 +601,12 @@ func (cr *VMAlertmanager) Validate() error {
 		}
 	}
 
+	if cr.Spec.EventRecorder != nil {
+		if err := cr.Spec.EventRecorder.Validate(); err != nil {
+			return fmt.Errorf("incorrect spec.eventRecorder: %w", err)
+		}
+	}
+
 	if cr.Spec.DisableNamespaceMatcher && cr.Spec.EnforcedNamespaceLabel != "" {
 		return fmt.Errorf("cannot use both disableNamespaceMatcher and enforcedNamespaceLabel at the same time")
 	}
@@ -634,6 +648,195 @@ type VMAlertmanagerTracingConfig struct {
 	// Timeout defines tracing connection timeout
 	// +optional
 	Timeout string `json:"timeout,omitempty"`
+}
+
+// VMAlertmanagerEventRecorder defines the event_recorder config section of Alertmanager,
+// which records notification pipeline events to one or more outputs. Every recorded event
+// is fanned out to every configured output across all output kinds.
+type VMAlertmanagerEventRecorder struct {
+	// FileOutputs defines JSONL file outputs to append recorded events to.
+	// +optional
+	FileOutputs []VMAlertmanagerEventRecorderFileOutput `json:"fileOutputs,omitempty"`
+	// WebhookOutputs defines HTTP webhook outputs to POST recorded events to.
+	// +optional
+	WebhookOutputs []VMAlertmanagerEventRecorderWebhookOutput `json:"webhookOutputs,omitempty"`
+	// KafkaOutputs defines Kafka outputs to produce recorded events to.
+	// +optional
+	KafkaOutputs []VMAlertmanagerEventRecorderKafkaOutput `json:"kafkaOutputs,omitempty"`
+	// StdoutOutput enables writing recorded events as newline-delimited JSON to stdout.
+	// This is the recommended output for container deployments, where stdout is
+	// captured by the runtime log driver.
+	// +optional
+	StdoutOutput bool `json:"stdoutOutput,omitempty"`
+}
+
+// VMAlertmanagerEventRecorderFileOutput defines a single file_outputs entry of event_recorder config.
+type VMAlertmanagerEventRecorderFileOutput struct {
+	// Path is the JSONL file to append events to on the vmalertmanager container's
+	// filesystem. Created if absent.
+	// +required
+	Path string `json:"path"`
+}
+
+// VMAlertmanagerEventRecorderWebhookOutput defines a single webhook_outputs entry of event_recorder config.
+type VMAlertmanagerEventRecorderWebhookOutput struct {
+	// URL to POST each event to,
+	// one of `url` and `urlSecret` must be defined.
+	// +optional
+	URL *string `json:"url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL.
+	// one of `url` and `urlSecret` must be defined.
+	// +optional
+	URLSecret *corev1.SecretKeySelector `json:"urlSecret,omitempty"`
+	// HTTPConfig configures the HTTP client used for webhook delivery.
+	// +optional
+	HTTPConfig *HTTPConfig `json:"httpConfig,omitempty"`
+	// Timeout for webhook HTTP requests. Defaults to 10s when not set.
+	// +optional
+	Timeout string `json:"timeout,omitempty"`
+	// Workers is the number of concurrent delivery goroutines. Defaults to 4 when not set.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	Workers int32 `json:"workers,omitempty"`
+	// MaxRetries is the maximum number of delivery attempts per event. Defaults to 3 when not set.
+	// Set to 0 to disable retries.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MaxRetries *int32 `json:"maxRetries,omitempty"`
+	// RetryBackoff is the base backoff between retry attempts. Defaults to 500ms when not set.
+	// Successive attempts use exponential backoff (base * 2^attempt).
+	// +optional
+	RetryBackoff string `json:"retryBackoff,omitempty"`
+	// Batch enables sending events as JSON arrays instead of individual objects.
+	// +optional
+	Batch bool `json:"batch,omitempty"`
+	// BatchMaxEvents is the maximum number of events in one request. Defaults to 100 when not set.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	BatchMaxEvents int32 `json:"batchMaxEvents,omitempty"`
+	// BatchMaxBytes is the soft maximum encoded request size. Defaults to 1 MiB when not set.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	BatchMaxBytes int32 `json:"batchMaxBytes,omitempty"`
+	// BatchFlushInterval is the maximum time an incomplete batch waits. Defaults to 100ms when not set.
+	// +optional
+	BatchFlushInterval string `json:"batchFlushInterval,omitempty"`
+}
+
+// VMAlertmanagerEventRecorderKafkaOutput defines a single kafka_outputs entry of event_recorder config.
+type VMAlertmanagerEventRecorderKafkaOutput struct {
+	// Brokers is the list of Kafka seed brokers in host:port form.
+	// +required
+	Brokers []string `json:"brokers"`
+	// Topic is the Kafka topic to produce events to.
+	// +required
+	Topic string `json:"topic"`
+	// ClientID is reported to the Kafka brokers. Defaults to "alertmanager" when not set.
+	// +optional
+	ClientID string `json:"clientID,omitempty"`
+	// Format selects the on-the-wire encoding of each event value. Defaults to "json" when not set.
+	// +optional
+	// +kubebuilder:validation:Enum=json;protobuf
+	Format string `json:"format,omitempty"`
+	// Acks controls the producer acknowledgement level. Defaults to "leader" when not set.
+	// +optional
+	// +kubebuilder:validation:Enum=none;leader;all
+	Acks string `json:"acks,omitempty"`
+	// Compression selects the producer compression codec. Defaults to no compression when not set.
+	// +optional
+	// +kubebuilder:validation:Enum=none;gzip;snappy;lz4;zstd
+	Compression string `json:"compression,omitempty"`
+	// BufferSize is the capacity of the local channel between the event recorder
+	// dispatcher and the Kafka producer. Defaults to 1024 when not set.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	BufferSize int32 `json:"bufferSize,omitempty"`
+	// TLSConfig configures TLS for the Kafka broker connection. If unset, PLAINTEXT is used.
+	// +optional
+	TLSConfig *TLSClientConfig `json:"tlsConfig,omitempty"`
+}
+
+// Validate performs syntax validation of the event recorder config.
+func (r *VMAlertmanagerEventRecorder) Validate() error {
+	if len(r.FileOutputs) == 0 && len(r.WebhookOutputs) == 0 && len(r.KafkaOutputs) == 0 && !r.StdoutOutput {
+		return fmt.Errorf("eventRecorder must configure at least one of fileOutputs, webhookOutputs, kafkaOutputs or stdoutOutput")
+	}
+	for i, fo := range r.FileOutputs {
+		if fo.Path == "" {
+			return fmt.Errorf("fileOutputs[%d].path is required", i)
+		}
+	}
+	for i, wo := range r.WebhookOutputs {
+		hasURL := wo.URL != nil && *wo.URL != ""
+		if !hasURL && wo.URLSecret == nil {
+			return fmt.Errorf("webhookOutputs[%d]: one of `url` or `urlSecret` must be defined", i)
+		}
+		if wo.URL != nil && wo.URLSecret != nil {
+			return fmt.Errorf("webhookOutputs[%d]: `url` and `urlSecret` are mutually exclusive", i)
+		}
+		if hasURL {
+			woURL, err := url.Parse(*wo.URL)
+			if err != nil {
+				return fmt.Errorf("webhookOutputs[%d].url: %w", i, err)
+			}
+			if (woURL.Scheme != "http" && woURL.Scheme != "https") || woURL.Host == "" {
+				return fmt.Errorf("webhookOutputs[%d].url must be an absolute http or https URL with a host", i)
+			}
+		}
+		if err := wo.HTTPConfig.validate(); err != nil {
+			return fmt.Errorf("webhookOutputs[%d].httpConfig: %w", i, err)
+		}
+		if wo.Timeout != "" {
+			if _, err := time.ParseDuration(wo.Timeout); err != nil {
+				return fmt.Errorf("webhookOutputs[%d].timeout: %w", i, err)
+			}
+		}
+		if wo.RetryBackoff != "" {
+			if _, err := time.ParseDuration(wo.RetryBackoff); err != nil {
+				return fmt.Errorf("webhookOutputs[%d].retryBackoff: %w", i, err)
+			}
+		}
+		if wo.BatchFlushInterval != "" {
+			if _, err := time.ParseDuration(wo.BatchFlushInterval); err != nil {
+				return fmt.Errorf("webhookOutputs[%d].batchFlushInterval: %w", i, err)
+			}
+		}
+	}
+	for i, ko := range r.KafkaOutputs {
+		if len(ko.Brokers) == 0 {
+			return fmt.Errorf("kafkaOutputs[%d].brokers must have at least one entry", i)
+		}
+		for j, broker := range ko.Brokers {
+			if broker == "" {
+				return fmt.Errorf("kafkaOutputs[%d].brokers[%d] must not be empty", i, j)
+			}
+			if host, port, err := net.SplitHostPort(broker); err != nil {
+				return fmt.Errorf("kafkaOutputs[%d].brokers[%d]: must be a host:port pair: %w", i, j, err)
+			} else if host == "" || port == "" {
+				return fmt.Errorf("kafkaOutputs[%d].brokers[%d]=%q: host and port must both be non-empty", i, j, broker)
+			}
+		}
+		if ko.Topic == "" {
+			return fmt.Errorf("kafkaOutputs[%d].topic is required", i)
+		}
+		if tc := ko.TLSConfig; tc != nil {
+			if tc.CASecretRef != nil && tc.CAFile != "" {
+				return fmt.Errorf("kafkaOutputs[%d].tlsConfig: ca_secret_ref and ca_file are mutually exclusive", i)
+			}
+			if tc.CertSecretRef != nil && tc.CertFile != "" {
+				return fmt.Errorf("kafkaOutputs[%d].tlsConfig: cert_secret_ref and cert_file are mutually exclusive", i)
+			}
+			if tc.KeySecretRef != nil && tc.KeyFile != "" {
+				return fmt.Errorf("kafkaOutputs[%d].tlsConfig: key_secret_ref and key_file are mutually exclusive", i)
+			}
+			hasCert := tc.CertFile != "" || tc.CertSecretRef != nil
+			hasKey := tc.KeyFile != "" || tc.KeySecretRef != nil
+			if hasCert != hasKey {
+				return fmt.Errorf("kafkaOutputs[%d].tlsConfig: cert and key must be provided together", i)
+			}
+		}
+	}
+	return nil
 }
 
 // VMAlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager

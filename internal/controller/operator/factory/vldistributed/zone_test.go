@@ -196,7 +196,48 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, "dist-zone-a", singles[0].Name)
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
 			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
-			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].Spec.RemoteWrite[1].URL)
+			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].obj.Spec.RemoteWrite[1].URL)
+		},
+	})
+
+	// zone's VLAgent disabled after it already existed: getZones must pick up the
+	// leftover CR as staleAgents so upgrade can delete it instead of leaving it running.
+	f(opts{
+		cr: &vmv1alpha1.VLDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VLDistributedSpec{
+				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+				Zones: []vmv1alpha1.VLDistributedZone{
+					{
+						Name: "zone-a",
+						VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1.VLAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "dist-zone-a",
+					Namespace:         "ns",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1.VLAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
+			assert.True(t, zs.vlagents[0].disabled, "leftover VLAgent CR must be marked for deletion")
+			if assert.NotNil(t, zs.vlagents[0].obj, "leftover VLAgent CR must be picked up for cleanup") {
+				assert.Equal(t, "dist-zone-a", zs.vlagents[0].obj.Name)
+			}
+			assert.True(t, zs.hasChanges[0], "stale VLAgent cleanup must trigger an upgrade pass")
 		},
 	})
 }
@@ -278,7 +319,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
-			vlagents: []*vmv1.VLAgent{vlAgent},
+			vlagents: []vlAgentRef{{obj: vlAgent}},
 			backends: []vlBackend{{obj: vlCluster}},
 		}
 
@@ -360,15 +401,15 @@ func TestZonesSorting(t *testing.T) {
 		t.Helper()
 		zs := &zones{
 			backends:     make([]vlBackend, len(o.clusters)),
-			vlagents:     make([]*vmv1.VLAgent, len(o.clusters)),
+			vlagents:     make([]vlAgentRef, len(o.clusters)),
 			hasChanges:   make([]bool, len(o.clusters)),
 			trafficModes: make([]vmv1alpha1.VLDistributedTrafficMode, len(o.clusters)),
 		}
 		for i, c := range o.clusters {
 			zs.backends[i] = vlBackend{obj: c}
-			zs.vlagents[i] = &vmv1.VLAgent{
+			zs.vlagents[i] = vlAgentRef{obj: &vmv1.VLAgent{
 				ObjectMeta: metav1.ObjectMeta{Name: c.Name},
-			}
+			}}
 		}
 		if o.hasChanges != nil {
 			zs.hasChanges = o.hasChanges
@@ -524,8 +565,8 @@ func TestZonesSorting(t *testing.T) {
 		hasChanges: []bool{true, false},
 		wantNames:  []string{"zone-a", "zone-b"},
 		validate: func(zs *zones) {
-			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vlagents[0].Name)
-			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vlagents[1].Name)
+			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vlagents[0].obj.Name)
+			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vlagents[1].obj.Name)
 			assert.False(t, zs.hasChanges[0])
 			assert.True(t, zs.hasChanges[1])
 		},

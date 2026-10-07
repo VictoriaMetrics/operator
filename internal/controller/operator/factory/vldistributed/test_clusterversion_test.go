@@ -121,10 +121,10 @@ func TestClusterVersionChange(t *testing.T) {
 		t.Logf("hasChanges[0]: %v", zs.hasChanges[0])
 		t.Logf("backends[0].prevAccepts: %v", zs.backends[0].prevAccepts)
 		t.Logf("backends[0].obj.CreationTimestamp: %v", zs.backends[0].obj.GetCreationTimestamp())
-		t.Logf("vlagents[0].CreationTimestamp: %v (IsZero: %v)", zs.vlagents[0].CreationTimestamp, zs.vlagents[0].CreationTimestamp.IsZero())
+		t.Logf("vlagents[0].CreationTimestamp: %v (IsZero: %v)", zs.vlagents[0].obj.CreationTimestamp, zs.vlagents[0].obj.CreationTimestamp.IsZero())
 
 		backendCreated := !zs.backends[0].obj.GetCreationTimestamp().Time.IsZero()
-		needsLBUpdate := backendCreated && !zs.vlagents[0].CreationTimestamp.IsZero()
+		needsLBUpdate := backendCreated && !zs.vlagents[0].obj.CreationTimestamp.IsZero()
 		if !zs.hasChanges[0] {
 			needsLBUpdate = false
 		}

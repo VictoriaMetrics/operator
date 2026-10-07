@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -89,29 +90,28 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, newGetError(err)
 	}
 
-	if !instance.IsUnmanaged() {
-		authSync.RLock()
-		defer authSync.RUnlock()
-	}
-
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		// Same lock CreateOrUpdateConfig already holds via the RLock above while it writes
-		// this same Applied condition to VMUsers; take it here too, since IsUnmanaged() is
-		// true for a deleting instance and the RLock above was skipped. Holding it as a
-		// reader (not writer) lets it wait out an in-flight VMUser reconcile (which holds
-		// authSync.Lock()) instead of racing it.
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
 		authSync.RLock()
 		releaseErr := vmauth.ReleaseAppliedConditions(ctx, r.Client, &instance)
 		authSync.RUnlock()
 		if releaseErr != nil {
-			// Best-effort: a status-cleanup failure must never wedge the finalizer.
-			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmauth")
+			releaseErr = fmt.Errorf("cannot release status conditions for vmauth: %w", releaseErr)
 		}
-		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
-			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
+		finErr := finalize.OnVMAuthDelete(ctx, r, &instance)
+		if finErr != nil {
+			finErr = fmt.Errorf("cannot remove finalizer from vmauth: %w", finErr)
 		}
+		err = errors.Join(releaseErr, finErr)
 		return
+	}
+
+	if !instance.IsUnmanaged() {
+		authSync.RLock()
+		defer authSync.RUnlock()
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = newParsingError(instance.Status.ParsingSpecError)

@@ -37,6 +37,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	vmreconcile "github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 var _ = Describe("VMAgent Controller", func() {
@@ -237,5 +238,66 @@ func TestVMAgent_Reconcile_UsesReconcilerWatchNamespaces(t *testing.T) {
 		if err := fclient.Get(context.Background(), types.NamespacedName{Name: vmagent.GetRBACName(), Namespace: vmagent.Namespace}, obj.obj); err != nil {
 			t.Errorf("get %s in vmagent namespace: %v", obj.kind, err)
 		}
+	}
+}
+
+func TestVMAgent_Reconcile_DeleteReleasesAppliedCondition(t *testing.T) {
+	ctx := context.Background()
+	now := metav1.Now()
+	vmagent := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "vmagent",
+			Namespace:         "ns",
+			Finalizers:        []string{vmv1beta1.FinalizerName},
+			DeletionTimestamp: &now,
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			SelectAllByDefault: true,
+			RemoteWrite:        []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+		},
+	}
+	ss := &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: "ss", Namespace: "ns"}}
+	ps := &vmv1beta1.VMPodScrape{ObjectMeta: metav1.ObjectMeta{Name: "ps", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{vmagent, ss, ps})
+
+	// simulate a prior reconcile that selected both scrape objects
+	parent := "vmagent.ns.vmagent"
+	if err := vmreconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMServiceScrape{ss}); err != nil {
+		t.Fatal(err)
+	}
+	if err := vmreconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMPodScrape{ps}); err != nil {
+		t.Fatal(err)
+	}
+	var gotSS vmv1beta1.VMServiceScrape
+	var gotPS vmv1beta1.VMPodScrape
+	nsn := func(name string) types.NamespacedName { return types.NamespacedName{Namespace: "ns", Name: name} }
+	if err := fclient.Get(ctx, nsn("ss"), &gotSS); err != nil || len(gotSS.Status.Conditions) == 0 {
+		t.Fatalf("precondition: VMServiceScrape must carry the Applied condition: %v", err)
+	}
+	if err := fclient.Get(ctx, nsn("ps"), &gotPS); err != nil || len(gotPS.Status.Conditions) == 0 {
+		t.Fatalf("precondition: VMPodScrape must carry the Applied condition: %v", err)
+	}
+
+	reconciler := &VMAgentReconciler{}
+	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, config.MustGetBaseConfig())
+	if _, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsn("vmagent")}); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	if err := fclient.Get(ctx, nsn("ss"), &gotSS); err != nil {
+		t.Fatal(err)
+	}
+	if len(gotSS.Status.Conditions) != 0 {
+		t.Errorf("VMServiceScrape condition must be released on VMAgent delete, got %v", gotSS.Status.Conditions)
+	}
+	if err := fclient.Get(ctx, nsn("ps"), &gotPS); err != nil {
+		t.Fatal(err)
+	}
+	if len(gotPS.Status.Conditions) != 0 {
+		t.Errorf("VMPodScrape condition must be released on VMAgent delete, got %v", gotPS.Status.Conditions)
+	}
+	var gotAgent vmv1beta1.VMAgent
+	if err := fclient.Get(ctx, nsn("vmagent"), &gotAgent); err == nil && len(gotAgent.Finalizers) != 0 {
+		t.Errorf("finalizer must be removed, got %v", gotAgent.Finalizers)
 	}
 }

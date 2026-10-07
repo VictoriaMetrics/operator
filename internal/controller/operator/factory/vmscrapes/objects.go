@@ -2,6 +2,7 @@ package vmscrapes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -382,25 +383,38 @@ func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rc
 // parent CR (e.g. VMAgent) is being deleted: once it's gone, no further reconcile notices it
 // dropped out of their selection, so the condition would otherwise be left stale forever.
 func ReleaseStatusesForScrapeObjects(ctx context.Context, rclient client.Client, parentName string) error {
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMServiceScrape{}); err != nil {
-		return fmt.Errorf("cannot release statuses for service scrape objects: %w", err)
+	var errs []error
+	if !build.IsControllerDisabled("VMServiceScrape") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMServiceScrape{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for service scrape objects: %w", err))
+		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMPodScrape{}); err != nil {
-		return fmt.Errorf("cannot release statuses for pod scrape objects: %w", err)
+	if !build.IsControllerDisabled("VMPodScrape") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMPodScrape{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for pod scrape objects: %w", err))
+		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMNodeScrape{}); err != nil {
-		return fmt.Errorf("cannot release statuses for node scrape objects: %w", err)
+	if !build.IsControllerDisabled("VMNodeScrape") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMNodeScrape{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for node scrape objects: %w", err))
+		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMProbe{}); err != nil {
-		return fmt.Errorf("cannot release statuses for probe scrape objects: %w", err)
+	if !build.IsControllerDisabled("VMProbe") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMProbe{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for probe scrape objects: %w", err))
+		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMStaticScrape{}); err != nil {
-		return fmt.Errorf("cannot release statuses for static scrape objects: %w", err)
+	if !build.IsControllerDisabled("VMStaticScrape") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMStaticScrape{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for static scrape objects: %w", err))
+		}
 	}
-	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMScrapeConfig{}); err != nil {
-		return fmt.Errorf("cannot release statuses for scrapeconfig scrape objects: %w", err)
+	if !build.IsControllerDisabled("VMScrapeConfig") {
+		if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMScrapeConfig{}); err != nil {
+			errs = append(errs, fmt.Errorf("cannot release statuses for scrapeconfig scrape objects: %w", err))
+		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // BuildScrapeJobsConfig returns the global config section (without scrape_configs) and the

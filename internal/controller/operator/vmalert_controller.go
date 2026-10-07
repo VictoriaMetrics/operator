@@ -18,6 +18,8 @@ package operator
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -87,25 +89,25 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
-	if !instance.IsUnmanaged() {
-		alertSync.RLock()
-		defer alertSync.RUnlock()
-	}
-
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		// Same lock CreateOrUpdateRuleConfigMaps already holds via the RLock above while it
-		// writes this same Applied condition to VMRules; take it here too, since
-		// IsUnmanaged() is true for a deleting instance and the RLock above was skipped.
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
 		alertSync.RLock()
 		releaseErr := vmalert.ReleaseAppliedConditions(ctx, r.Client, &instance)
 		alertSync.RUnlock()
 		if releaseErr != nil {
-			// Best-effort: a status-cleanup failure must never wedge the finalizer.
-			logger.WithContext(ctx).Error(releaseErr, "cannot release status conditions for vmalert")
+			releaseErr = fmt.Errorf("cannot release status conditions for vmalert: %w", releaseErr)
 		}
-		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
+		finErr := finalize.OnVMAlertDelete(ctx, r.Client, &instance)
+		err = errors.Join(releaseErr, finErr)
 		return
+	}
+
+	if !instance.IsUnmanaged() {
+		alertSync.RLock()
+		defer alertSync.RUnlock()
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

@@ -297,7 +297,12 @@ func TestVMAgent_Reconcile_DeleteReleasesAppliedCondition(t *testing.T) {
 		t.Errorf("VMPodScrape condition must be released on VMAgent delete, got %v", gotPS.Status.Conditions)
 	}
 	var gotAgent vmv1beta1.VMAgent
-	if err := fclient.Get(ctx, nsn("vmagent"), &gotAgent); err == nil && len(gotAgent.Finalizers) != 0 {
+	if err := fclient.Get(ctx, nsn("vmagent"), &gotAgent); err != nil {
+		// removing the last finalizer of a deleting object deletes it, so NotFound is the success case
+		if !k8serrors.IsNotFound(err) {
+			t.Fatal(err)
+		}
+	} else if len(gotAgent.Finalizers) != 0 {
 		t.Errorf("finalizer must be removed, got %v", gotAgent.Finalizers)
 	}
 }

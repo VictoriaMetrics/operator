@@ -823,7 +823,6 @@ func addEntSuffixToTag(versionTag string) string {
 	return versionTag
 }
 
-// setTag sets the tag if componentVersion or clusterVersion is not empty.
 func addVMEstimatorDefaults(objI any) {
 	cr := objI.(*vmv1.VMEstimator)
 	c := getCfg()
@@ -854,6 +853,7 @@ func addVMEstimatorDefaults(objI any) {
 	}
 }
 
+// setTag sets the tag if componentVersion or clusterVersion is not empty.
 func setTag(componentVersion, clusterVersion string) string {
 	if componentVersion != "" {
 		return componentVersion

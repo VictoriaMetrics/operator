@@ -225,6 +225,12 @@ func (s *VMEstimatorStream) Validate() error {
 		}
 		seen[l] = struct{}{}
 	}
+	if s.GroupLimit < 0 {
+		return fmt.Errorf("groupLimit=%d must be positive", s.GroupLimit)
+	}
+	if s.Buckets < 0 {
+		return fmt.Errorf("buckets=%d must be positive", s.Buckets)
+	}
 	if s.HLLPrecision != 0 && (s.HLLPrecision < 4 || s.HLLPrecision > 18) {
 		return fmt.Errorf("hllPrecision=%d must be in range [4, 18]", s.HLLPrecision)
 	}

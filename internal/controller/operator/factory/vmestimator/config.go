@@ -51,6 +51,10 @@ func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
 		if err := yaml.UnmarshalStrict([]byte(data), &c); err != nil {
 			return nil, fmt.Errorf("cannot parse streams from configmap=%q, key=%q: %w", cm.Name, cm.Key, err)
 		}
+		// explicit `streams: []` is allowed, it disables default streams
+		if c.Streams == nil {
+			return nil, fmt.Errorf("streams list is missing at configmap=%q, key=%q", cm.Name, cm.Key)
+		}
 		for idx := range c.Streams {
 			if err := c.Streams[idx].Validate(); err != nil {
 				return nil, fmt.Errorf("incorrect stream at configmap=%q, key=%q, idx=%d: %w", cm.Name, cm.Key, idx, err)

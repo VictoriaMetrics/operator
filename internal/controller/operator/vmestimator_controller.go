@@ -111,6 +111,7 @@ func (r *VMEstimatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
+		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

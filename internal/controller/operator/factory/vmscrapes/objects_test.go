@@ -7,13 +7,43 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseStatusesForScrapeObjects(t *testing.T) {
+	ctx := context.Background()
+	ss := &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: "ss1", Namespace: "ns"}}
+	sc := &vmv1beta1.VMScrapeConfig{ObjectMeta: metav1.ObjectMeta{Name: "sc1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ss, sc})
+
+	// simulate a prior reconcile that selected both objects and wrote the Applied condition
+	parent := "agent1.ns.vmagent"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMServiceScrape{ss}))
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMScrapeConfig{sc}))
+
+	var gotSS vmv1beta1.VMServiceScrape
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &gotSS))
+	require.NotEmpty(t, gotSS.Status.Conditions, "precondition: vmagent must have written its condition")
+	var gotSC vmv1beta1.VMScrapeConfig
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "sc1"}, &gotSC))
+	require.NotEmpty(t, gotSC.Status.Conditions, "precondition: vmagent must have written its condition")
+
+	// the parent vmagent is being deleted: it no longer selects anything, across every kind
+	require.NoError(t, ReleaseStatusesForScrapeObjects(ctx, fclient, parent))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &gotSS))
+	assert.Empty(t, gotSS.Status.Conditions, "service scrape condition must be released once the vmagent is deleted")
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "sc1"}, &gotSC))
+	assert.Empty(t, gotSC.Status.Conditions, "scrape config condition must be released once the vmagent is deleted")
+}
 
 func TestSelectServiceMonitors(t *testing.T) {
 	predefinedObjects := []runtime.Object{

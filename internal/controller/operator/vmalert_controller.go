@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -94,6 +95,10 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		if err = vmalert.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
+			err = fmt.Errorf("cannot release status conditions for vmalert: %w", err)
+			return
+		}
 		err = finalize.OnVMAlertDelete(ctx, r.Client, &instance)
 		return
 	}

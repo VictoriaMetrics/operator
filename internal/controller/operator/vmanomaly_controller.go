@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -95,6 +96,10 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		if err = vmanomaly.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
+			err = fmt.Errorf("cannot release status conditions for vmanomaly: %w", err)
+			return
+		}
 		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
 		return
 	}

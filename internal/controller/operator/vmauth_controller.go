@@ -96,6 +96,10 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
+		if err = vmauth.ReleaseAppliedConditions(ctx, r.Client, &instance); err != nil {
+			err = fmt.Errorf("cannot release status conditions for vmauth: %w", err)
+			return
+		}
 		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}

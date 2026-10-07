@@ -6,6 +6,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -25,7 +26,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseAppliedConditions(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth1", Namespace: "ns"}}
+	user := &vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{user})
+
+	// simulate a prior reconcile that selected the user and wrote the Applied condition
+	parent := "auth1.ns.vmauth"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMUser{user}))
+
+	var got vmv1beta1.VMUser
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "user1"}, &got))
+	require.NotEmpty(t, got.Status.Conditions, "precondition: vmauth must have written its condition")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "user1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmauth is deleted")
+}
 
 func TestTLSAssetsHash(t *testing.T) {
 	// deterministic regardless of map iteration order

@@ -22,6 +22,8 @@ aliases:
 * BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): fix the charts' `license` and `global.license` blocks being dropped during conversion. They are now converted into `spec.license` for `VMSingle`, `VMCluster`, `VMAgent`, `VMAlert`, `VMAuth`, `VMAnomaly`, `VLCluster` and `VLAgent`, with the same precedence as the charts: a plaintext key (`license.key`, then `global.license.key`) wins over any Secret reference, which is taken from `license.secret`, `global.license.secret`, `license.keyRef` and `global.license.keyRef`, in that order. See [#2601](https://github.com/VictoriaMetrics/operator/issues/2601).
 * BUGFIX: [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/), [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): resolve each `crd` target reference with its own object. Previously, config builds running at the same time for different `VMAuth` objects shared one object per kind, so a reference could resolve to another object of the same kind and `url_prefix` silently routed traffic to the wrong backend. See [#2690](https://github.com/VictoriaMetrics/operator/pull/2690). Thanks to @lewis-treacy .
 
+* BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) and [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): respect `spec.ignoreNamespaceSelectors`. Previously, since v0.69.0, scrape objects still discovered targets in the namespaces from their `namespaceSelector`. See [#2684](https://github.com/VictoriaMetrics/operator/issues/2684).
+
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026
 

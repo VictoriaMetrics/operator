@@ -647,17 +647,42 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 
 var utf8MinVersion = semver.MustParse("v0.28.0")
 
+// eventRecorderMinVersion is the first Alertmanager release containing the
+// event-recorder feature, see https://github.com/prometheus/alertmanager/blob/main/CHANGELOG.md
+var eventRecorderMinVersion = semver.MustParse("v0.33.0")
+
+// stdoutOutputMinVersion is the first Alertmanager release supporting the
+// event-recorder's stdout_outputs destination, added later than the base
+// event-recorder feature, see https://github.com/prometheus/alertmanager/commit/85fc7ce83c12c5aa75d7fe5b77db48271dd17965
+var stdoutOutputMinVersion = semver.MustParse("v0.34.0")
+
+// batchWebhookMinVersion is the first Alertmanager release supporting the
+// event-recorder's webhook batch settings, added later than the base
+// event-recorder feature, see https://github.com/prometheus/alertmanager/blob/v0.34.0/eventrecorder/webhook.go
+var batchWebhookMinVersion = semver.MustParse("v0.34.0")
+
+// alertmanagerAtLeast reports whether cr's image version is at least minVersion.
+// Tags that cannot be parsed as a version, such as `latest`, are treated as newer than any release.
+func alertmanagerAtLeast(cr *vmv1beta1.VMAlertmanager, minVersion *semver.Version) bool {
+	tag, _, _ := strings.Cut(cr.Spec.Image.Tag, "@")
+	v, err := semver.NewVersion(tag)
+	if err != nil {
+		return true
+	}
+	release := semver.New(v.Major(), v.Minor(), v.Patch(), "", "")
+	return release.GreaterThanEqual(minVersion)
+}
+
 // addFeatureFlags adds features based on alertmanager version
 //
 // https://github.com/prometheus/alertmanager/blob/main/featurecontrol/featurecontrol.go#L23
 func addFeatureFlags(args []string, cr *vmv1beta1.VMAlertmanager) []string {
-	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
-	if err != nil {
-		return args
-	}
 	var features []string
-	if amVersion.GreaterThanEqual(utf8MinVersion) {
+	if amVersion, err := semver.NewVersion(cr.Spec.Image.Tag); err == nil && amVersion.GreaterThanEqual(utf8MinVersion) {
 		features = append(features, "utf8-strict-mode")
+	}
+	if cr.Spec.EventRecorder != nil && alertmanagerAtLeast(cr, eventRecorderMinVersion) {
+		features = append(features, "event-recorder")
 	}
 	if len(features) > 0 {
 		args = append(args, fmt.Sprintf("--enable-feature=%s", strings.Join(features, ",")))

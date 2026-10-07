@@ -49,6 +49,8 @@ var (
 		"VM_ANOMALY_VERSION": "v1.30.7",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
 		"VM_TRACES_VERSION": "v0.12.0",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/vmestimator
+		"VM_ESTIMATOR_VERSION": "v0.1.16",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
 		"VM_OPERATOR_VERSION": getVersion("v0.75.0"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager
@@ -125,6 +127,9 @@ type BaseOperatorConf struct {
 	// VTSingle, VTCluster (vtselect/vtinsert/vtstorage).
 	// Used as the image tag when no explicit version is set in the CR spec.
 	TracesVersion string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
+	// Defines default image version for VMEstimator components: single, storage and select.
+	// Used as the image tag when no explicit version is set in the CR spec.
+	EstimatorVersion string `default:"${VM_ESTIMATOR_VERSION}" env:"VM_ESTIMATOR_VERSION,expand"`
 	// Defines the operator's own version. Used for config-reloader image tag interpolation.
 	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"VM_OPERATOR_VERSION,expand"`
 	// Enables support for Kubernetes Gateway API.
@@ -395,6 +400,84 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
+
+	// VMEstimator defines default settings for VMEstimator components.
+	VMEstimator struct {
+		// Whether to apply default resource requests and limits to all VMEstimator components.
+		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
+		// Single defines defaults for the single-node vmestimator component.
+		Single struct {
+			// Default container image for single-node vmestimator.
+			Image string `default:"victoriametrics/vmestimator"`
+			// Default image version. Inherits VM_ESTIMATOR_VERSION if not set explicitly.
+			Version string `env:",expand" default:"${VM_ESTIMATOR_VERSION}"`
+			// Default HTTP listen port.
+			Port string `default:"8490"`
+			// Whether to apply default resource requests and limits. Inherits VMEstimator-level setting if not set.
+			UseDefaultResources bool `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMESTIMATORDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
+				Limit struct {
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
+		} `prefix:"SINGLE_"`
+		// Storage defines defaults for the vmestimator storage component.
+		Storage struct {
+			// Default container image for vmestimator storage.
+			Image string `default:"victoriametrics/vmestimator"`
+			// Default image version. Inherits VM_ESTIMATOR_VERSION if not set explicitly.
+			Version string `env:",expand" default:"${VM_ESTIMATOR_VERSION}"`
+			// Default HTTP listen port.
+			Port string `default:"8490"`
+			// Whether to apply default resource requests and limits. Inherits VMEstimator-level setting if not set.
+			UseDefaultResources bool `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMESTIMATORDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
+				Limit struct {
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem              string `default:"256Mi"`
+					Cpu              string `default:"100m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
+		} `prefix:"STORAGE_"`
+		// Select defines defaults for the vmestimator select component.
+		Select struct {
+			// Default container image for vmestimator select.
+			Image string `default:"victoriametrics/vmestimator"`
+			// Default image version. Inherits VM_ESTIMATOR_VERSION if not set explicitly.
+			Version string `env:",expand" default:"${VM_ESTIMATOR_VERSION}"`
+			// Default HTTP listen port.
+			Port string `default:"8490"`
+			// Whether to apply default resource requests and limits. Inherits VMEstimator-level setting if not set.
+			UseDefaultResources bool `env:"USEDEFAULTRESOURCES,expand" default:"${VM_VMESTIMATORDEFAULT_USEDEFAULTRESOURCES}"`
+			Resource            struct {
+				Limit struct {
+					Mem              string `default:"1024Mi"`
+					Cpu              string `default:"1000m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"LIMIT_"`
+				Request struct {
+					Mem              string `default:"128Mi"`
+					Cpu              string `default:"50m"`
+					EphemeralStorage string `default:"unlimited"`
+				} `prefix:"REQUEST_"`
+			} `prefix:"RESOURCE_"`
+			TerminationGracePeriodSeconds int64 `default:"30"`
+		} `prefix:"SELECT_"`
+	} `prefix:"VM_VMESTIMATORDEFAULT_"`
 
 	// VMSingle defines default settings for VMSingle (single-node VictoriaMetrics) deployments.
 	VMSingle struct {
@@ -921,6 +1004,15 @@ func (boc BaseOperatorConf) validate() error {
 		return err
 	}
 	if err := validateResource("vmanomaly", Resource(boc.VMAnomaly.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmestimator single", Resource(boc.VMEstimator.Single.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmestimator storage", Resource(boc.VMEstimator.Storage.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmestimator select", Resource(boc.VMEstimator.Select.Resource)); err != nil {
 		return err
 	}
 	if err := validateResource("vlsingle", Resource(boc.VLSingle.Resource)); err != nil {

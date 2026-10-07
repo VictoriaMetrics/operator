@@ -1,0 +1,12 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vmestimator-sample
+spec:
+  streams:
+    - interval: 5m
+    - interval: 5m
+      groupBy: [job]

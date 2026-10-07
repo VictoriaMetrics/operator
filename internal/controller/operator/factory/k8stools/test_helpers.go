@@ -77,6 +77,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VMAnomalyConfigList{},
 		&vmv1.VLAgentList{},
 		&vmv1.VTAgentList{},
+		&vmv1.VMEstimatorList{},
 		&vmv1.VLSingle{},
 		&vmv1.VLCluster{},
 		&vmv1.VTSingle{},
@@ -85,6 +86,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1.VMAnomalyConfig{},
 		&vmv1.VLAgent{},
 		&vmv1.VTAgent{},
+		&vmv1.VMEstimator{},
 	)
 	s.AddKnownTypes(schema.GroupVersion(gwapiv1.GroupVersion),
 		&gwapiv1.HTTPRouteList{},
@@ -141,6 +143,7 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 			&vmv1.VMAnomaly{},
 			&vmv1.VMAnomalyConfig{},
 			&vmv1.VLAgent{},
+			&vmv1.VMEstimator{},
 			&gwapiv1.HTTPRoute{},
 			&vpav1.VerticalPodAutoscaler{},
 		).

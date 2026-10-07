@@ -51,6 +51,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VTAgent{}, addVTAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VMEstimator{}, addVMEstimatorDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VLDistributed{}, addVLDistributedDefaults)
@@ -800,6 +801,36 @@ func addEntSuffixToTag(versionTag string) string {
 }
 
 // setTag sets the tag if componentVersion or clusterVersion is not empty.
+func addVMEstimatorDefaults(objI any) {
+	cr := objI.(*vmv1.VMEstimator)
+	c := getCfg()
+	addDefaultMetadata(cr)
+	cp := commonParams{
+		useStrictSecurity: cr.Spec.UseStrictSecurity,
+		tag:               cr.Spec.ComponentVersion,
+		imagePullSecrets:  cr.Spec.ImagePullSecrets,
+	}
+	if cr.Spec.ClusterDomainName == "" {
+		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	}
+	// deploy single-node vmestimator if no component is defined
+	if cr.Spec.Single == nil && cr.Spec.Storage == nil && cr.Spec.Select == nil {
+		cr.Spec.Single = &vmv1.VMEstimatorSingle{}
+	}
+	if cr.Spec.Single != nil {
+		cv := config.ApplicationDefaults(c.VMEstimator.Single)
+		addDefaultsToCommonParams(&cr.Spec.Single.CommonAppsParams, &cp, &cv)
+	}
+	if cr.Spec.Storage != nil {
+		cv := config.ApplicationDefaults(c.VMEstimator.Storage)
+		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &cv)
+	}
+	if cr.Spec.Select != nil {
+		cv := config.ApplicationDefaults(c.VMEstimator.Select)
+		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cp, &cv)
+	}
+}
+
 func setTag(componentVersion, clusterVersion string) string {
 	if componentVersion != "" {
 		return componentVersion

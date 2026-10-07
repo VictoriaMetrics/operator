@@ -181,7 +181,7 @@ streams:
 		},
 	})
 
-	// configmap without streams disables default streams
+	// configmap with empty streams list disables default streams
 	f(opts{
 		spec: vmv1.VMEstimatorSpec{
 			StreamsConfigMap: cmRef,
@@ -190,6 +190,41 @@ streams:
 			streamsCM(`streams: []`),
 		},
 		want: []vmv1.VMEstimatorStream{},
+	})
+
+	// configmap without streams list
+	f(opts{
+		spec: vmv1.VMEstimatorSpec{
+			StreamsConfigMap: cmRef,
+		},
+		predefinedObjects: []runtime.Object{
+			streamsCM(``),
+		},
+		wantErr: true,
+	})
+	f(opts{
+		spec: vmv1.VMEstimatorSpec{
+			StreamsConfigMap: cmRef,
+		},
+		predefinedObjects: []runtime.Object{
+			streamsCM(`streams:`),
+		},
+		wantErr: true,
+	})
+
+	// negative group limit at configmap
+	f(opts{
+		spec: vmv1.VMEstimatorSpec{
+			StreamsConfigMap: cmRef,
+		},
+		predefinedObjects: []runtime.Object{
+			streamsCM(`
+streams:
+  - interval: 5m
+    group_limit: -1
+`),
+		},
+		wantErr: true,
 	})
 
 	// missing configmap

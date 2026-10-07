@@ -76,6 +76,10 @@ func TestVMEstimatorStream_Validate(t *testing.T) {
 	// duplicated label
 	f(VMEstimatorStream{GroupBy: []string{"job", "instance", "job"}}, true)
 
+	// negative group limit and buckets
+	f(VMEstimatorStream{GroupLimit: -1}, true)
+	f(VMEstimatorStream{Buckets: -1}, true)
+
 	// hll precision out of range
 	f(VMEstimatorStream{HLLPrecision: 3}, true)
 	f(VMEstimatorStream{HLLPrecision: 19}, true)

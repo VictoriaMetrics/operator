@@ -38,8 +38,7 @@ func TestValidateVLDistributed(t *testing.T) {
 		t.Helper()
 		err := o.cr.Validate()
 		if o.isErr {
-			assert.Error(t, err)
-			if o.errMsg != "" {
+			if assert.Error(t, err) && o.errMsg != "" {
 				assert.Contains(t, err.Error(), o.errMsg)
 			}
 		} else {

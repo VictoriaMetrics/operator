@@ -143,6 +143,82 @@ so each replica estimates only its share of the data. Use cluster mode to scale 
 See [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmestimator/#alerting)
 and [dashboards](https://docs.victoriametrics.com/victoriametrics/vmestimator/#dashboards) for vmestimator.
 
+## Version management
+
+To set `VMEstimator` version add `spec.componentVersion` or `spec.COMPONENT.image.tag` name from [releases](https://github.com/VictoriaMetrics/vmestimator/releases)
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  componentVersion: v0.1.16
+  storage:
+    image:
+      repository: victoriametrics/vmestimator
+      tag: v0.1.16
+      pullPolicy: Always
+  # ...
+```
+
+Also, you can specify `imagePullSecrets` if you are pulling images from private repo:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  imagePullSecrets:
+    - name: my-repo-secret
+# ...
+```
+
+## Resource management
+
+You can specify resources for each `VMEstimator` resource components in the `spec` section of the `VMEstimator` CRD.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: resources
+spec:
+  # ...
+  storage:
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+  # ...
+```
+
+If these parameters are not specified, then,
+by default all `VMEstimator` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
+
+- `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_LIMIT_MEM` - default memory limit for `VMEstimator.storage` pods,
+- `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_LIMIT_CPU` - default cpu limit for `VMEstimator.storage` pods,
+- `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_REQUEST_MEM` - default memory request for `VMEstimator.storage` pods,
+- `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_REQUEST_CPU` - default cpu request for `VMEstimator.storage` pods.
+
+The same parameters with `SINGLE` and `SELECT` instead of `STORAGE` are used for `VMEstimator.single` and `VMEstimator.select` pods.
+
+These default parameters will be used if:
+
+- `VM_VMESTIMATORDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value),
+- `VMEstimator` CR doesn't have `resources` field in `spec` section for component.
+
+Field `resources` in `VMEstimator` spec has higher priority than operator parameters.
+
+If you set `VM_VMESTIMATORDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VMEstimator` CRD,
+then `VMEstimator` pods will be created without resource requests and limits.
+
+Also, you can specify requests without limits - in this case default values for limits will not be used.
+
 ## Examples
 
 Single-node mode:

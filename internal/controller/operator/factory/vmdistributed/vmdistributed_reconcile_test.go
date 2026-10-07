@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -570,6 +572,53 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 		},
 	})
+}
+
+// Disabling a zone's VMAgent (replicaCount: 0) after it was already created must
+// delete the leftover CR, not just skip reconciling it.
+func Test_CreateOrUpdate_DeletesDisabledVMAgent(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dist",
+			Namespace: "default",
+		},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+			VMAuth:      vmv1alpha1.VMDistributedAuth{Enabled: ptr.To(false)},
+			Zones: []vmv1alpha1.VMDistributedZone{
+				// maintenance mode avoids a real persistent-queue drain wait on VMAgent creation
+				{Name: "zone-1", TrafficMode: vmv1alpha1.VMDistributedTrafficModeMaintenance},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			switch v := obj.(type) {
+			case *vmv1beta1.VMSingle:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			case *vmv1beta1.VMAgent:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}
+			return cl.Create(ctx, obj, opts...)
+		},
+	})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	vmAgentName := types.NamespacedName{Namespace: cr.Namespace, Name: "dist-zone-1"}
+	var vmAgent vmv1beta1.VMAgent
+	assert.NoError(t, fclient.Get(ctx, vmAgentName, &vmAgent), "VMAgent must be created")
+
+	// disable the zone's VMAgent
+	cr.Spec.Zones[0].VMAgent.Spec.ReplicaCount = ptr.To(int32(0))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	err := fclient.Get(ctx, vmAgentName, &vmAgent)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err), "disabled VMAgent must be deleted, not left running")
 }
 
 func Test_CreateOrUpdate_Paused(t *testing.T) {

@@ -37,9 +37,18 @@ type vlBackend struct {
 	prevAccepts bool
 }
 
+// vlAgentRef holds a zone's VLAgent together with its desired fate: reconcile
+// it (delete=false, obj set to the desired spec), delete it (delete=true,
+// obj is the leftover CR from before the zone's VLAgent was disabled), or do
+// nothing (obj is nil — disabled and no CR ever existed).
+type vlAgentRef struct {
+	obj      *vmv1.VLAgent
+	disabled bool
+}
+
 type zones struct {
 	httpClient   *http.Client
-	vlagents     []*vmv1.VLAgent
+	vlagents     []vlAgentRef
 	backends     []vlBackend
 	hasChanges   []bool
 	trafficModes []vmv1alpha1.VLDistributedTrafficMode
@@ -103,7 +112,7 @@ func (zs *zones) singleObjects() []*vmv1.VLSingle {
 func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistributed) (*zones, error) {
 	zs := &zones{
 		httpClient:   &http.Client{Timeout: httpTimeout},
-		vlagents:     make([]*vmv1.VLAgent, len(cr.Spec.Zones)),
+		vlagents:     make([]vlAgentRef, len(cr.Spec.Zones)),
 		backends:     make([]vlBackend, len(cr.Spec.Zones)),
 		hasChanges:   make([]bool, len(cr.Spec.Zones)),
 		trafficModes: make([]vmv1alpha1.VLDistributedTrafficMode, len(cr.Spec.Zones)),
@@ -131,13 +140,22 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
-		if !z.VLAgentEnabled(cr) {
-			continue
-		}
 		vlAgentName := z.VLAgentName(cr)
 		nsn := types.NamespacedName{
 			Name:      vlAgentName,
 			Namespace: cr.Namespace,
+		}
+		if !z.VLAgentEnabled(cr) {
+			// zone's VLAgent may have been created before it was disabled; fetch it
+			// so upgrade can delete it, instead of leaving it running forever.
+			var existing vmv1.VLAgent
+			if err := rclient.Get(ctx, nsn, &existing); err == nil {
+				zs.vlagents[i] = vlAgentRef{obj: &existing, disabled: true}
+				zs.hasChanges[i] = true
+			} else if !k8serrors.IsNotFound(err) {
+				return nil, fmt.Errorf("unexpected error during attempt to get VLAgent=%s: %w", nsn.String(), err)
+			}
+			continue
 		}
 		var vlAgent vmv1.VLAgent
 		if err := rclient.Get(ctx, nsn, &vlAgent); err != nil {
@@ -195,7 +213,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 		vlAgent.Spec = *vlAgentSpec
 		rclient.Scheme().Default(&vlAgent)
 		zs.hasChanges[i] = zs.hasChanges[i] || !equality.Semantic.DeepEqual(&vlAgent.Spec, &prevAgentSpec)
-		zs.vlagents[i] = &vlAgent
+		zs.vlagents[i] = vlAgentRef{obj: &vlAgent}
 	}
 
 	sort.Sort(zs)
@@ -285,13 +303,16 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	defer cancel()
 
 	owner := cr.AsOwner()
-	vlAgent := zs.vlagents[i]
+	agentRef := zs.vlagents[i]
+	vlAgent := agentRef.obj
+	// zone's VLAgent is disabled: either nothing to reconcile, or a stale CR to delete
+	agentDisabled := agentRef.disabled || vlAgent == nil
 	backend := zs.backends[i]
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
 	// backend or vlagent have been created; a disabled VLAgent counts as already created
-	agentCreated := vlAgent == nil || !vlAgent.CreationTimestamp.IsZero()
+	agentCreated := agentDisabled || !vlAgent.CreationTimestamp.IsZero()
 	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vlagent spec changes required
 	if !zs.hasChanges[i] {
@@ -299,7 +320,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts && vlAgent != nil {
+		if backend.prevAccepts && !agentDisabled {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -330,10 +351,19 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	// reconcile VLAgent, if enabled for this zone
-	if vlAgent != nil {
+	switch {
+	case !agentDisabled:
 		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
 		if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
 			return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
+		}
+	case agentRef.disabled:
+		// zone's VLAgent was disabled after being created; delete the leftover CR
+		// so replicaCount: 0 actually results in 0 agents.
+		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
+		logger.WithContext(ctx).Info("deleting disabled VLAgent", "item", item, "name", nsnAgent)
+		if err := rclient.Delete(ctx, vlAgent); err != nil && !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("zone=%s: failed to delete disabled VLAgent=%s: %w", item, nsnAgent.String(), err)
 		}
 	}
 
@@ -345,7 +375,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	case *vmv1.VLSingle:
 		newAcceptsWrites = mode != vmv1alpha1.VLDistributedTrafficModeReadOnly && mode != vmv1alpha1.VLDistributedTrafficModeMaintenance
 	}
-	if newAcceptsWrites && vlAgent != nil {
+	if newAcceptsWrites && !agentDisabled {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -388,7 +418,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
 
 	backendName := zs.backends[clusterIdx].obj.GetName()
-	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vlagents[clusterIdx].Namespace}
+	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vlagents[clusterIdx].obj.Namespace}
 	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
@@ -414,10 +444,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 
 	var wg sync.WaitGroup
 	for i := range zs.vlagents {
-		vlAgent := zs.vlagents[i]
-		if vlAgent == nil || vlAgent.CreationTimestamp.IsZero() {
+		agentRef := zs.vlagents[i]
+		if agentRef.disabled || agentRef.obj == nil || agentRef.obj.CreationTimestamp.IsZero() {
 			continue
 		}
+		vlAgent := agentRef.obj
 		nsn := types.NamespacedName{
 			Name:      vlAgent.Name,
 			Namespace: vlAgent.Namespace,

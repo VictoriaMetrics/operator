@@ -155,6 +155,14 @@ type action struct {
 	key  string
 }
 
+func backendNames(objs []vmv1beta1.NamespacedName) []string {
+	names := make([]string, len(objs))
+	for i, o := range objs {
+		names[i] = o.Name
+	}
+	return names
+}
+
 func TestCreateOrUpdate(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
@@ -518,12 +526,20 @@ func TestCreateOrUpdate(t *testing.T) {
 			var got vmv1beta1.VMAuth
 			nsn := types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}
 			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.Len(t, got.Spec.DefaultTargetRefs, 2)
+
 			writeRef := got.Spec.DefaultTargetRefs[0]
 			assert.Equal(t, "write", writeRef.Name)
 			assert.Len(t, writeRef.CRD.Objects, 2, "only enabled zones' VMAgents should be targeted")
 			for _, obj := range writeRef.CRD.Objects {
 				assert.NotEqual(t, "vmcluster-1", obj.Name, "disabled zone's VMAgent must be excluded from write targetRef")
 			}
+
+			readRef := got.Spec.DefaultTargetRefs[1]
+			assert.Equal(t, "read", readRef.Name)
+			assert.Equal(t, "VMCluster/vmselect", readRef.CRD.Kind)
+			assert.Len(t, readRef.CRD.Objects, 3, "disabled VMAgent must not affect read targetRef backends")
+			assert.ElementsMatch(t, []string{"vmcluster-1", "vmcluster-2", "vmcluster-3"}, backendNames(readRef.CRD.Objects))
 		},
 	})
 

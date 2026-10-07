@@ -30,14 +30,18 @@ import (
 
 func TestValidateVLDistributed(t *testing.T) {
 	type opts struct {
-		cr    VLDistributed
-		isErr bool
+		cr     VLDistributed
+		isErr  bool
+		errMsg string
 	}
 	f := func(o opts) {
 		t.Helper()
 		err := o.cr.Validate()
 		if o.isErr {
 			assert.Error(t, err)
+			if o.errMsg != "" {
+				assert.Contains(t, err.Error(), o.errMsg)
+			}
 		} else {
 			assert.NoError(t, err)
 		}
@@ -70,16 +74,17 @@ func TestValidateVLDistributed(t *testing.T) {
 				Zones: []VLDistributedZone{
 					{
 						Name:      "zone-1",
-						VLCluster: VLDistributedZoneCluster{Name: "a"},
+						VLCluster: VLDistributedZoneCluster{Name: "a", Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
 					},
 					{
 						Name:      "zone-1",
-						VLCluster: VLDistributedZoneCluster{Name: "b"},
+						VLCluster: VLDistributedZoneCluster{Name: "b", Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
 					},
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "is duplicated, zone names must be unique",
 	})
 
 	// same vlcluster in two zones
@@ -92,16 +97,17 @@ func TestValidateVLDistributed(t *testing.T) {
 				Zones: []VLDistributedZone{
 					{
 						Name:      "zone-1",
-						VLCluster: VLDistributedZoneCluster{Name: "a"},
+						VLCluster: VLDistributedZoneCluster{Name: "a", Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
 					},
 					{
 						Name:      "zone-2",
-						VLCluster: VLDistributedZoneCluster{Name: "a"},
+						VLCluster: VLDistributedZoneCluster{Name: "a", Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
 					},
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "is already added in a different zone",
 	})
 
 	// same vlsingle in two zones

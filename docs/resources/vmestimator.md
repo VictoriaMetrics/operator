@@ -1,0 +1,201 @@
+---
+weight: 25
+title: VMEstimator
+menu:
+  docs:
+    identifier: operator-cr-vmestimator
+    parent: operator-cr
+    weight: 25
+aliases:
+  - /operator/resources/vmestimator/
+  - /operator/resources/vmestimator/index.html
+tags:
+  - kubernetes
+  - metrics
+  - cardinality
+---
+`VMEstimator` represents [vmestimator](https://docs.victoriametrics.com/victoriametrics/vmestimator/) - a real-time cardinality estimator
+for metrics ingested via [Prometheus remote write protocol](https://prometheus.io/docs/specs/prw/remote_write_spec/).
+
+The `VMEstimator` CRD declaratively defines a vmestimator installation to run in a Kubernetes cluster.
+It supports both single-node and [cluster](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster) deployment modes:
+
+* **single-node** mode (`spec.single`) - the Operator deploys a `Deployment`, which accepts remote write requests
+  and exposes cardinality estimations as metrics. It's the default mode, which is used if no component is defined at the spec.
+* **cluster** mode (`spec.storage` and `spec.select`) - the Operator deploys storage nodes as a `StatefulSet`,
+  which accept remote write requests and maintain local cardinality estimations,
+  and select nodes as a `Deployment`, which query all storage nodes, merge their estimations and expose them as metrics.
+  Use the cluster mode for high availability or when CPU of a single instance becomes a limiting factor.
+
+`spec.single` cannot be used together with `spec.storage` or `spec.select`, and `spec.select` requires `spec.storage`.
+In cluster mode the object name must not exceed 32 characters, since Kubernetes cannot create pods of a `StatefulSet`
+with a name longer than 52 characters.
+
+For each component the Operator adds `Service` and `VMServiceScrape` in the same namespace,
+prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
+
+## Specification
+
+You can see the full actual specification of the `VMEstimator` resource in the **[API docs -> VMEstimator](https://docs.victoriametrics.com/operator/api/#v1-vmestimator)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
+
+Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmestimator/#examples) section.
+
+## Configuration
+
+vmestimator computes cardinality according to the configured [streams](https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration).
+Streams can be defined at `spec.streams` or loaded from a `ConfigMap` key referenced at `spec.streamsConfigMap`.
+The `ConfigMap` key must contain vmestimator configuration in YAML format with a top-level `streams` list,
+see [example config](https://github.com/VictoriaMetrics/vmestimator/blob/main/streams.yaml).
+If both are set, streams from the `ConfigMap` are appended to the streams from `spec.streams`.
+
+If neither `spec.streams` nor `spec.streamsConfigMap` is set, the Operator uses default streams,
+which estimate global cardinality, cardinality per `job` and cardinality per metric name over `5m` interval.
+
+The Operator validates streams, generates the configuration file and stores it at the `vmestimator-<name>` `ConfigMap`,
+which is mounted to single-node and storage pods.
+vmestimator doesn't support configuration reload, so the Operator restarts pods on configuration changes.
+Note, that changes of the `ConfigMap` referenced at `spec.streamsConfigMap` are picked up during the next periodic reconciliation,
+which is configured with [VM_FORCERESYNCINTERVAL](https://docs.victoriametrics.com/operator/configuration/#variables-vm-forceresyncinterval).
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  streams:
+    # global cardinality and churn ratio
+    - interval: 15m
+      churnInterval: 15m
+    # cardinality and churn ratio per job
+    - interval: 15m
+      churnInterval: 15m
+      groupBy: [job]
+    # number of unique values per label name, excluding dev environment
+    - interval: 15m
+      filter: '{env!="dev"}'
+      groupBy: [__label__]
+      labels:
+        cluster: prod
+```
+
+Command-line flags, which aren't covered by the spec, for example `deduplication.interval` or `cardinalityMetrics.minCardinality`,
+can be set via `extraArgs` of the corresponding component.
+See the [list of command-line flags](https://docs.victoriametrics.com/victoriametrics/vmestimator/#command-line-flags).
+
+## Services and URLs
+
+For a `VMEstimator` named `<name>` in namespace `<namespace>`, the Operator creates the following Kubernetes services:
+
+| Service name | Mode | Type | Port | Purpose |
+|---|---|---|---|---|
+| `vmestimator-single-<name>` | single-node | ClusterIP | 8490 | Remote write ingestion and cardinality metrics |
+| `vmestimator-storage-<name>-insert` | cluster | ClusterIP | 8490 | Remote write ingestion, load-balanced among storage nodes |
+| `vmestimator-storage-<name>` | cluster | Headless | 8490 | Stable network identities of storage nodes, used by select nodes |
+| `vmestimator-select-<name>` | cluster | ClusterIP | 8490 | Merged cardinality metrics |
+
+Remote write URLs:
+
+| Mode | URL |
+|---|---|
+| single-node | `http://vmestimator-single-<name>.<namespace>.svc:8490/cardinality/api/v1/write` |
+| cluster | `http://vmestimator-storage-<name>-insert.<namespace>.svc:8490/cardinality/api/v1/write` |
+
+In cluster mode storage nodes expose local cardinality estimations at `/cardinality/metrics` path,
+so their `/metrics` path contains only operational metrics. Merged cardinality estimations are exposed by select nodes at `/metrics` path.
+This could be changed with `cardinalityMetrics.exposeAt` flag at `spec.storage.extraArgs`.
+
+## Sending data
+
+It's recommended to [replicate](https://docs.victoriametrics.com/victoriametrics/vmagent/#replication-and-high-availability)
+all the metrics from [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) into vmestimator
+and to disable on-disk queue for vmestimator, so it cannot affect the main ingestion pipeline:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example
+spec:
+  selectAllByDefault: true
+  remoteWrite:
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
+    - url: "http://vmestimator-single-example.default.svc:8490/cardinality/api/v1/write"
+  extraArgs:
+    # values are applied to remoteWrite urls in the order of their definition
+    remoteWrite.disableOnDiskQueue: "false,true"
+```
+
+## Scraping cardinality metrics
+
+By default, the Operator creates `VMServiceScrape` for each component, so cardinality estimations
+are collected by [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) together with operational metrics.
+Use `disableSelfServiceScrape` and `serviceScrapeSpec` fields of the components to customize it.
+
+Each select replica returns the full merged estimation, so deduplicate it at query time when several select replicas are scraped,
+for example: `max(cardinality_estimate) without (instance, pod)`.
+Single-node mode is expected to run with a single replica: the Service spreads remote write requests among replicas,
+so each replica estimates only its share of the data. Use cluster mode to scale vmestimator.
+
+See [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmestimator/#alerting)
+and [dashboards](https://docs.victoriametrics.com/victoriametrics/vmestimator/#dashboards) for vmestimator.
+
+## Examples
+
+Single-node mode:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  streams:
+    - interval: 5m
+    - interval: 5m
+      groupBy: [job]
+    - interval: 5m
+      groupBy: [__name__]
+  single:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+```
+
+Cluster mode:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  streamsConfigMap:
+    name: vmestimator-streams
+    key: streams.yaml
+  storage:
+    replicaCount: 3
+    podDisruptionBudget:
+      maxUnavailable: 1
+  select:
+    replicaCount: 2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmestimator-streams
+data:
+  streams.yaml: |
+    streams:
+      - interval: '15m'
+        churn_interval: '15m'
+      - interval: '15m'
+        churn_interval: '15m'
+        group_by: ['job']
+```

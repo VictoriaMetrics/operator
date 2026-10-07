@@ -31,6 +31,7 @@ Metrics Operator introduces.
 - [VTSingle](https://docs.victoriametrics.com/operator/resources/vtsingle/)
 - [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
 - [VTAgent](https://docs.victoriametrics.com/operator/resources/vtagent/)
+- [VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/)
 
 Here is the scheme of relations between the custom resources:
 
@@ -59,6 +60,9 @@ Field `extraArgs` is supported for the following custom resources:
 - [VTSingle spec](https://docs.victoriametrics.com/operator/api/#v1-vtsinglespec)
 - [VTCluster spec](https://docs.victoriametrics.com/operator/api/#v1-vtclusterspec)
 - [VTAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vtagentspec)
+- [VMEstimator/single spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorsingle)
+- [VMEstimator/storage spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorstorage)
+- [VMEstimator/select spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorselect)
 
 Supported flags for each application can be found the in the corresponding documentation:
 
@@ -70,6 +74,7 @@ Supported flags for each application can be found the in the corresponding docum
 - [VLAgent](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)
 - [VTSingle/VTCluster](https://docs.victoriametrics.com/victoriatraces/#list-of-command-line-flags)
 - [VTAgent](https://docs.victoriametrics.com/victoriatraces/vtagent/#advanced-usage)
+- [VMEstimator](https://docs.victoriametrics.com/victoriametrics/vmestimator/#command-line-flags)
 
 Usage example:
 

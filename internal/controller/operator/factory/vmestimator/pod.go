@@ -75,7 +75,7 @@ func buildPodTemplate(cr *vmv1.VMEstimator, o *podOpts) (*corev1.PodTemplateSpec
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: configMapName(cr),
+						Name: cr.GetConfigMapName(),
 					},
 				},
 			},

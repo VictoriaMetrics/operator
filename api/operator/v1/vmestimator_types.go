@@ -89,8 +89,7 @@ type VMEstimatorSpec struct {
 	Paused bool `json:"paused,omitempty"`
 
 	// Streams defines cardinality estimation streams.
-	// If neither streams nor streamsConfigMap is set, operator uses default streams,
-	// which estimate global cardinality and cardinality per job and per metric name over 5m interval.
+	// Either streams or streamsConfigMap must be set.
 	// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
 	// +optional
 	Streams []VMEstimatorStream `json:"streams,omitempty"`
@@ -224,12 +223,6 @@ func (s *VMEstimatorStream) Validate() error {
 			return fmt.Errorf("groupBy cannot contain label name %q more than once", l)
 		}
 		seen[l] = struct{}{}
-	}
-	if s.GroupLimit < 0 {
-		return fmt.Errorf("groupLimit=%d must be positive", s.GroupLimit)
-	}
-	if s.Buckets < 0 {
-		return fmt.Errorf("buckets=%d must be positive", s.Buckets)
 	}
 	if s.HLLPrecision != 0 && (s.HLLPrecision < 4 || s.HLLPrecision > 18) {
 		return fmt.Errorf("hllPrecision=%d must be in range [4, 18]", s.HLLPrecision)
@@ -733,6 +726,11 @@ func (cr *VMEstimator) PrefixedInsertName() string {
 	return cr.PrefixedName(vmv1beta1.ClusterComponentStorage) + vmEstimatorInsertSuffix
 }
 
+// GetConfigMapName returns name of the ConfigMap with vmestimator configuration
+func (cr *VMEstimator) GetConfigMapName() string {
+	return cr.PrefixedName(vmv1beta1.ClusterComponentRoot)
+}
+
 // GetServiceAccountName returns service account name for all vmestimator components
 func (cr *VMEstimator) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
@@ -809,6 +807,9 @@ func (cr *VMEstimator) Validate() error {
 	}
 	if cr.Spec.Select != nil && cr.Spec.Storage == nil {
 		return fmt.Errorf("spec.select requires spec.storage to be defined")
+	}
+	if len(cr.Spec.Streams) == 0 && cr.Spec.StreamsConfigMap == nil {
+		return fmt.Errorf("either spec.streams or spec.streamsConfigMap must be set")
 	}
 	for idx := range cr.Spec.Streams {
 		if err := cr.Spec.Streams[idx].Validate(); err != nil {

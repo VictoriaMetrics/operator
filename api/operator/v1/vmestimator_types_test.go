@@ -76,10 +76,6 @@ func TestVMEstimatorStream_Validate(t *testing.T) {
 	// duplicated label
 	f(VMEstimatorStream{GroupBy: []string{"job", "instance", "job"}}, true)
 
-	// negative group limit and buckets
-	f(VMEstimatorStream{GroupLimit: -1}, true)
-	f(VMEstimatorStream{Buckets: -1}, true)
-
 	// hll precision out of range
 	f(VMEstimatorStream{HLLPrecision: 3}, true)
 	f(VMEstimatorStream{HLLPrecision: 19}, true)
@@ -104,9 +100,27 @@ func TestVMEstimator_Validate(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+	streams := []VMEstimatorStream{{Interval: "5m"}}
 
-	// empty spec
-	f(VMEstimatorSpec{}, false)
+	// streams aren't set
+	f(VMEstimatorSpec{}, true)
+	f(VMEstimatorSpec{
+		Storage: &VMEstimatorStorage{},
+		Select:  &VMEstimatorSelect{},
+	}, true)
+
+	// single-node mode is used by default
+	f(VMEstimatorSpec{
+		Streams: streams,
+	}, false)
+
+	// streams are loaded from configmap only
+	f(VMEstimatorSpec{
+		StreamsConfigMap: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "streams"},
+			Key:                  "streams.yaml",
+		},
+	}, false)
 
 	// single mode
 	f(VMEstimatorSpec{
@@ -116,28 +130,33 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// cluster mode
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{},
 		Select:  &VMEstimatorSelect{},
 	}, false)
 
 	// storage without select
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{},
 	}, false)
 
 	// single together with cluster components
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Single:  &VMEstimatorSingle{},
 		Storage: &VMEstimatorStorage{},
 	}, true)
 	f(VMEstimatorSpec{
-		Single: &VMEstimatorSingle{},
-		Select: &VMEstimatorSelect{},
+		Streams: streams,
+		Single:  &VMEstimatorSingle{},
+		Select:  &VMEstimatorSelect{},
 	}, true)
 
 	// select without storage
 	f(VMEstimatorSpec{
-		Select: &VMEstimatorSelect{},
+		Streams: streams,
+		Select:  &VMEstimatorSelect{},
 	}, true)
 
 	// incorrect stream
@@ -154,6 +173,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// service name collides with the default one
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Single: &VMEstimatorSingle{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-single-test"},
@@ -163,6 +183,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// storage service name collides with the insert service
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-storage-test-insert"},
@@ -172,6 +193,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// storage service must stay headless for select nodes
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				UseAsDefault: true,
@@ -181,6 +203,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 		Select: &VMEstimatorSelect{},
 	}, true)
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
 				UseAsDefault: true,
@@ -194,21 +217,25 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// select requires storage nodes
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
 		Select:  &VMEstimatorSelect{},
 	}, true)
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
 		Select: &VMEstimatorSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{
 			ExtraArgs: map[string]string{"storageNode": "http://external-storage:8490"},
 		}},
 	}, false)
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
 	}, false)
 
 	// incorrect select hpa
 	f(VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{},
 		Select: &VMEstimatorSelect{
 			HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: ptr.To(int32(5)), MaxReplicas: 2},
@@ -232,6 +259,7 @@ func TestVMEstimator_Names(t *testing.T) {
 	assert.Equal(t, "vmestimator-select-test", cr.PrefixedName(vmv1beta1.ClusterComponentSelect))
 	assert.Equal(t, "vmestimator-storage-test-insert", cr.PrefixedInsertName())
 	assert.Equal(t, "vmestimator-test", cr.GetServiceAccountName())
+	assert.Equal(t, "vmestimator-test", cr.GetConfigMapName())
 
 	assert.Equal(t, map[string]string{
 		"app.kubernetes.io/name":      "vmestimator-storage",
@@ -386,7 +414,9 @@ func TestVMEstimator_ValidateNames(t *testing.T) {
 	nameOfLen := func(n int) string {
 		return strings.Repeat("a", n)
 	}
+	streams := []VMEstimatorStream{{Interval: "5m"}}
 	cluster := VMEstimatorSpec{
+		Streams: streams,
 		Storage: &VMEstimatorStorage{},
 		Select:  &VMEstimatorSelect{},
 	}
@@ -396,14 +426,14 @@ func TestVMEstimator_ValidateNames(t *testing.T) {
 	f(nameOfLen(33), cluster, true)
 
 	// single-node Service name vmestimator-single-<name> must not exceed 63 chars
-	f(nameOfLen(44), VMEstimatorSpec{Single: &VMEstimatorSingle{}}, false)
-	f(nameOfLen(45), VMEstimatorSpec{Single: &VMEstimatorSingle{}}, true)
+	f(nameOfLen(44), VMEstimatorSpec{Single: &VMEstimatorSingle{}, Streams: streams}, false)
+	f(nameOfLen(45), VMEstimatorSpec{Single: &VMEstimatorSingle{}, Streams: streams}, true)
 
 	// single-node is deployed by default
-	f(nameOfLen(45), VMEstimatorSpec{}, true)
+	f(nameOfLen(45), VMEstimatorSpec{Streams: streams}, true)
 
 	// dots are allowed at object names, but not at Service names
-	f("my.estimator", VMEstimatorSpec{}, true)
+	f("my.estimator", VMEstimatorSpec{Streams: streams}, true)
 }
 
 func TestVMEstimator_RemoteWriteURLWithServiceOverride(t *testing.T) {

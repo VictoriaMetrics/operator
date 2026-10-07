@@ -64,6 +64,12 @@ type VMUserJWT struct {
 	// +optional
 	// +notes={available_from: "v0.74.0"}
 	DefaultVMAccessClaim *VMAccessClaim `json:"defaultVMAccessClaim,omitempty"`
+	// ProxyCookieAuthorizationToken, when set, forwards the SSO session cookie token to the
+	// backend by setting it as a "Bearer <token>" value in the given HTTP header.
+	// Any previously set value of the header is overwritten.
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	ProxyCookieAuthorizationToken string `json:"proxyCookieAuthorizationToken,omitempty"`
 }
 
 // VMUserSpec defines the desired state of VMUser

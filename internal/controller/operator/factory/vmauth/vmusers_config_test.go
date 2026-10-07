@@ -890,6 +890,259 @@ jwt:
     - team=dev
 `,
 	})
+
+	// jwt with proxyCookieAuthorizationToken forwards the SSO cookie to the backend
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+				JWT: &vmv1beta1.VMUserJWT{
+					OIDC: &vmv1beta1.VMUserOIDC{
+						Issuer: "https://idp.example.com",
+					},
+					ProxyCookieAuthorizationToken: "Authorization",
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+jwt:
+  oidc:
+    issuer: https://idp.example.com
+  proxy_cookie_authorization_token: Authorization
+`,
+	})
+}
+
+func Test_buildSSOConfig(t *testing.T) {
+	type opts struct {
+		cr                *vmv1beta1.VMAuth
+		predefinedObjects []runtime.Object
+		want              string
+		wantErr           bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.TODO()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		ac := getAssetsCache(ctx, fclient, o.cr)
+		got, err := buildSSOConfig(o.cr, ac)
+		if o.wantErr {
+			assert.Error(t, err)
+			return
+		}
+		assert.NoError(t, err)
+		szd, err := yaml.Marshal(got)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, string(szd))
+	}
+
+	// no sso configured
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+		},
+		want: "[]\n",
+	})
+
+	// single sso entry with minimal fields, secrets resolved from refs
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				SSO: []vmv1beta1.VMAuthSSOConfig{
+					{
+						SrcHost: `sso\.example\.com`,
+						OIDC: vmv1beta1.VMAuthSSOOIDC{
+							Issuer:   "https://idp.example.com",
+							ClientID: "sso.example.com",
+							ClientSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "clientSecret",
+							},
+							CookieSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "cookieSecret",
+							},
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "sso-secrets", Namespace: "default"},
+				Data: map[string][]byte{
+					"clientSecret": []byte("the-client-secret"),
+					"cookieSecret": []byte("the-cookie-secret-at-least-16-chars"),
+				},
+			},
+		},
+		want: `- src_host: sso\.example\.com
+  oidc:
+    issuer: https://idp.example.com
+    client_id: sso.example.com
+    client_secret: the-client-secret
+    cookie_secret: the-cookie-secret-at-least-16-chars
+`,
+	})
+
+	// full set of optional fields
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				SSO: []vmv1beta1.VMAuthSSOConfig{
+					{
+						SrcHost: `sso\.example\.com`,
+						OIDC: vmv1beta1.VMAuthSSOOIDC{
+							Issuer:   "https://idp.example.com",
+							ClientID: "sso.example.com",
+							ClientSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "clientSecret",
+							},
+							CookieSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "cookieSecret",
+							},
+							Insecure:           true,
+							Scopes:             []string{"openid", "profile", "email"},
+							SessionDuration:    "1h",
+							DefaultRedirectURL: "/vmui/",
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "sso-secrets", Namespace: "default"},
+				Data: map[string][]byte{
+					"clientSecret": []byte("the-client-secret"),
+					"cookieSecret": []byte("the-cookie-secret-at-least-16-chars"),
+				},
+			},
+		},
+		want: `- src_host: sso\.example\.com
+  oidc:
+    issuer: https://idp.example.com
+    client_id: sso.example.com
+    client_secret: the-client-secret
+    cookie_secret: the-cookie-secret-at-least-16-chars
+    insecure: true
+    scopes:
+    - openid
+    - profile
+    - email
+    session_duration: 1h
+    default_redirect_url: /vmui/
+`,
+	})
+
+	// missing secret must surface as an error, not a silently empty value
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				SSO: []vmv1beta1.VMAuthSSOConfig{
+					{
+						SrcHost: `sso\.example\.com`,
+						OIDC: vmv1beta1.VMAuthSSOOIDC{
+							Issuer:   "https://idp.example.com",
+							ClientID: "sso.example.com",
+							ClientSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+								Key:                  "clientSecret",
+							},
+							CookieSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+								Key:                  "cookieSecret",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// cookie secret shorter than 16 characters must be rejected, not rendered into config
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				SSO: []vmv1beta1.VMAuthSSOConfig{
+					{
+						SrcHost: `sso\.example\.com`,
+						OIDC: vmv1beta1.VMAuthSSOOIDC{
+							Issuer:   "https://idp.example.com",
+							ClientID: "sso.example.com",
+							ClientSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "clientSecret",
+							},
+							CookieSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "cookieSecret",
+							},
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "sso-secrets", Namespace: "default"},
+				Data: map[string][]byte{
+					"clientSecret": []byte("the-client-secret"),
+					"cookieSecret": []byte("too-short"),
+				},
+			},
+		},
+		wantErr: true,
+	})
+
+	// an sso entry that's invalid on its own terms (empty src_host) must be rejected
+	// at config-build time too, not just at admission
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-auth", Namespace: "default"},
+			Spec: vmv1beta1.VMAuthSpec{
+				SSO: []vmv1beta1.VMAuthSSOConfig{
+					{
+						OIDC: vmv1beta1.VMAuthSSOOIDC{
+							Issuer:   "https://idp.example.com",
+							ClientID: "sso.example.com",
+							ClientSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "clientSecret",
+							},
+							CookieSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+								Key:                  "cookieSecret",
+							},
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "sso-secrets", Namespace: "default"},
+				Data: map[string][]byte{
+					"clientSecret": []byte("the-client-secret"),
+					"cookieSecret": []byte("the-cookie-secret-at-least-16-chars"),
+				},
+			},
+		},
+		wantErr: true,
+	})
 }
 
 func Test_genPassword(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestVMAuthValidate(t *testing.T) {
@@ -128,6 +129,49 @@ spec:
       - http://url-1`,
 		wantErr: "at most one option can be used `spec.unauthorizedAccessConfig` or `spec.unauthorizedUserAccessSpec`, got both",
 	})
+
+	// sso: issuer without a host cannot serve as an absolute OIDC issuer URL
+	f(opts{
+		src: `
+apiVersion: v1
+kind: VMAuth
+metadata:
+  name: must-fail
+spec:
+  sso:
+    - src_host: 'sso\.example\.com'
+      oidc:
+        issuer: 'https:issuer'
+        client_id: sso.example.com
+        clientSecretRef:
+          name: sso-secrets
+          key: clientSecret
+        cookieSecretRef:
+          name: sso-secrets
+          key: cookieSecret`,
+		wantErr: "incorrect cr.spec.sso[0]: oidc.issuer must be an absolute URL with a host",
+	})
+
+}
+
+func TestVMAuthSSOConfigValidate(t *testing.T) {
+	// valid entry must not error
+	c := VMAuthSSOConfig{
+		SrcHost: `sso\.example\.com`,
+		OIDC: VMAuthSSOOIDC{
+			Issuer:   "https://idp.example.com",
+			ClientID: "sso.example.com",
+			ClientSecretRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+				Key:                  "clientSecret",
+			},
+			CookieSecretRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "sso-secrets"},
+				Key:                  "cookieSecret",
+			},
+		},
+	}
+	assert.NoError(t, c.Validate())
 }
 
 func TestVMAuth_PrefixedName(t *testing.T) {

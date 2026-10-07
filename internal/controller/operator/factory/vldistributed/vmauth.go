@@ -5,7 +5,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -22,12 +21,12 @@ func vlBackendTargetRef(backends []vlBackend, kind string, paths []string, owner
 	return podutil.VMAuthReadTargetRef(objects, kind, paths, owner, excludeIds...)
 }
 
-func vlAgentWriteTargetRef(vlAgents []*vmv1.VLAgent, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
-	// keep positional alignment with zone indices; disabled zones keep a nil entry, skipped by podutil.
+func vlAgentWriteTargetRef(vlAgents []vlAgentRef, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
+	// keep positional alignment with zone indices; disabled/deleted zones keep a nil entry, skipped by podutil.
 	objects := make([]metav1.Object, len(vlAgents))
 	for i := range vlAgents {
-		if vlAgents[i] != nil {
-			objects[i] = vlAgents[i]
+		if !vlAgents[i].disabled && vlAgents[i].obj != nil {
+			objects[i] = vlAgents[i].obj
 		}
 	}
 	return podutil.VMAuthWriteTargetRef(objects, "VLAgent", []string{"/insert/.+"}, owner, excludeIds...)

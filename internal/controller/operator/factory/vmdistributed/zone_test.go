@@ -195,7 +195,7 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, "dist-zone-a", singles[0].Name)
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
 			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
-			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].Spec.RemoteWrite[1].URL)
+			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].obj.Spec.RemoteWrite[1].URL)
 		},
 	})
 
@@ -230,10 +230,52 @@ func TestGetZones(t *testing.T) {
 			} else {
 				zoneAIdx, zoneBIdx = 1, 0
 			}
-			assert.Nil(t, zs.vmagents[zoneAIdx], "disabled zone must not have a VMAgent built")
-			assert.NotNil(t, zs.vmagents[zoneBIdx], "enabled zone must have a VMAgent built")
-			assert.Contains(t, remoteWriteURLs(zs.vmagents[zoneBIdx]), singles[zoneAIdx].GetRemoteWriteURL(),
+			assert.Nil(t, zs.vmagents[zoneAIdx].obj, "disabled zone must not have a VMAgent built")
+			assert.False(t, zs.vmagents[zoneAIdx].delete, "no stale VMAgent to clean up when none existed before")
+			assert.NotNil(t, zs.vmagents[zoneBIdx].obj, "enabled zone must have a VMAgent built")
+			assert.Contains(t, remoteWriteURLs(zs.vmagents[zoneBIdx].obj), singles[zoneAIdx].GetRemoteWriteURL(),
 				"other zone's VMAgent must still replicate writes into the disabled zone's backend")
+		},
+	})
+
+	// zone's VMAgent disabled after it already existed: getZones must pick up the
+	// leftover CR so upgrade can delete it instead of leaving it running.
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "dist-zone-a",
+					Namespace:         "ns",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			assert.True(t, zs.vmagents[0].delete, "leftover VMAgent CR must be marked for deletion")
+			if assert.NotNil(t, zs.vmagents[0].obj, "leftover VMAgent CR must be picked up for cleanup") {
+				assert.Equal(t, "dist-zone-a", zs.vmagents[0].obj.Name)
+			}
+			assert.True(t, zs.hasChanges[0], "stale VMAgent cleanup must trigger an upgrade pass")
 		},
 	})
 }
@@ -270,7 +312,7 @@ func TestGetZones_PreservesExistingShardCount(t *testing.T) {
 	// there either, isolating the check below to the VMAgent shardCount handling.
 	persistedBackend := zs1.backends[0].obj.(*vmv1beta1.VMSingle).DeepCopy()
 	persistedBackend.ResourceVersion = ""
-	persistedAgent := zs1.vmagents[0].DeepCopy()
+	persistedAgent := zs1.vmagents[0].obj.DeepCopy()
 	persistedAgent.Spec.ShardCount = ptr.To[int32](1)
 	persistedAgent.ResourceVersion = ""
 
@@ -279,7 +321,7 @@ func TestGetZones_PreservesExistingShardCount(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.False(t, zs2.hasChanges[0], "defaulted shardCount must not be reported as a spec change")
-	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
+	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].obj.Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {
@@ -359,7 +401,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
-			vmagents: []*vmv1beta1.VMAgent{vmAgent},
+			vmagents: []vmAgentRef{{obj: vmAgent}},
 			backends: []vmBackend{{obj: backend}},
 		}
 
@@ -432,15 +474,15 @@ func TestZonesSorting(t *testing.T) {
 		t.Helper()
 		zs := &zones{
 			backends:     make([]vmBackend, len(o.clusters)),
-			vmagents:     make([]*vmv1beta1.VMAgent, len(o.clusters)),
+			vmagents:     make([]vmAgentRef, len(o.clusters)),
 			hasChanges:   make([]bool, len(o.clusters)),
 			trafficModes: make([]vmv1alpha1.VMDistributedTrafficMode, len(o.clusters)),
 		}
 		for i, c := range o.clusters {
 			zs.backends[i] = vmBackend{obj: c}
-			zs.vmagents[i] = &vmv1beta1.VMAgent{
+			zs.vmagents[i] = vmAgentRef{obj: &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{Name: c.Name},
-			}
+			}}
 		}
 		if o.hasChanges != nil {
 			zs.hasChanges = o.hasChanges
@@ -596,8 +638,8 @@ func TestZonesSorting(t *testing.T) {
 		hasChanges: []bool{true, false},
 		wantNames:  []string{"zone-a", "zone-b"},
 		validate: func(zs *zones) {
-			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vmagents[0].Name)
-			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vmagents[1].Name)
+			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vmagents[0].obj.Name)
+			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vmagents[1].obj.Name)
 			assert.False(t, zs.hasChanges[0])
 			assert.True(t, zs.hasChanges[1])
 		},

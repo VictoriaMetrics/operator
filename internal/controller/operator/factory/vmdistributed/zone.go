@@ -36,9 +36,18 @@ type vmBackend struct {
 	prevAccepts bool
 }
 
+// vmAgentRef holds a zone's VMAgent together with its desired fate: reconcile
+// it (delete=false, obj set to the desired spec), delete it (delete=true,
+// obj is the leftover CR from before the zone's VMAgent was disabled), or do
+// nothing (obj is nil — disabled and no CR ever existed).
+type vmAgentRef struct {
+	obj    *vmv1beta1.VMAgent
+	delete bool
+}
+
 type zones struct {
 	httpClient   *http.Client
-	vmagents     []*vmv1beta1.VMAgent
+	vmagents     []vmAgentRef
 	backends     []vmBackend
 	hasChanges   []bool
 	trafficModes []vmv1alpha1.VMDistributedTrafficMode
@@ -104,7 +113,7 @@ func (zs *zones) singleObjects() []*vmv1beta1.VMSingle {
 func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed) (*zones, error) {
 	zs := &zones{
 		httpClient:   &http.Client{Timeout: httpTimeout},
-		vmagents:     make([]*vmv1beta1.VMAgent, len(cr.Spec.Zones)),
+		vmagents:     make([]vmAgentRef, len(cr.Spec.Zones)),
 		backends:     make([]vmBackend, len(cr.Spec.Zones)),
 		hasChanges:   make([]bool, len(cr.Spec.Zones)),
 		trafficModes: make([]vmv1alpha1.VMDistributedTrafficMode, len(cr.Spec.Zones)),
@@ -132,13 +141,22 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 
 	for i := range cr.Spec.Zones {
 		z := &cr.Spec.Zones[i]
-		if !z.VMAgentEnabled(cr) {
-			continue
-		}
 		vmAgentName := z.VMAgentName(cr)
 		nsn := types.NamespacedName{
 			Name:      vmAgentName,
 			Namespace: cr.Namespace,
+		}
+		if !z.VMAgentEnabled(cr) {
+			// zone's VMAgent may have been created before it was disabled; fetch it
+			// so upgrade can delete it, instead of leaving it running forever.
+			var existing vmv1beta1.VMAgent
+			if err := rclient.Get(ctx, nsn, &existing); err == nil {
+				zs.vmagents[i] = vmAgentRef{obj: &existing, delete: true}
+				zs.hasChanges[i] = true
+			} else if !k8serrors.IsNotFound(err) {
+				return nil, fmt.Errorf("unexpected error during attempt to get VMAgent=%s: %w", nsn.String(), err)
+			}
+			continue
 		}
 		var vmAgent vmv1beta1.VMAgent
 		if err := rclient.Get(ctx, nsn, &vmAgent); err != nil {
@@ -199,7 +217,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 		vmAgent.Spec = *vmAgentSpec
 		rclient.Scheme().Default(&vmAgent)
 		zs.hasChanges[i] = zs.hasChanges[i] || !equality.Semantic.DeepEqual(&vmAgent.Spec, &prevAgentSpec)
-		zs.vmagents[i] = &vmAgent
+		zs.vmagents[i] = vmAgentRef{obj: &vmAgent}
 	}
 
 	sort.Sort(zs)
@@ -292,13 +310,16 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	defer cancel()
 
 	owner := cr.AsOwner()
-	vmAgent := zs.vmagents[i]
+	agentRef := zs.vmagents[i]
+	vmAgent := agentRef.obj
+	// zone's VMAgent is disabled: either nothing to reconcile, or a stale CR to delete
+	agentDisabled := agentRef.delete || vmAgent == nil
 	backend := zs.backends[i]
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
 	// backend or vmAgent have been created; a disabled VMAgent counts as already created
-	agentCreated := vmAgent == nil || !vmAgent.CreationTimestamp.IsZero()
+	agentCreated := agentDisabled || !vmAgent.CreationTimestamp.IsZero()
 	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vmagent spec changes required
 	if !zs.hasChanges[i] {
@@ -306,7 +327,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts && vmAgent != nil {
+		if backend.prevAccepts && !agentDisabled {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -341,14 +362,23 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	// reconcile VMAgent, if enabled for this zone
-	if vmAgent != nil {
+	switch {
+	case !agentDisabled:
 		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
 		if err := reconcile.VMAgent(ctx, rclient, vmAgent, nil, &owner); err != nil {
 			return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
 		}
+	case agentRef.delete:
+		// zone's VMAgent was disabled after being created; delete the leftover CR
+		// so replicaCount: 0 actually results in 0 agents.
+		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
+		logger.WithContext(ctx).Info("deleting disabled VMAgent", "item", item, "name", nsnAgent)
+		if err := rclient.Delete(ctx, vmAgent); err != nil && !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("zone=%s: failed to delete disabled VMAgent=%s: %w", item, nsnAgent.String(), err)
+		}
 	}
 
-	if newAcceptsWrites && vmAgent != nil {
+	if newAcceptsWrites && !agentDisabled {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -384,7 +414,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
 
 	backendName := zs.backends[clusterIdx].obj.GetName()
-	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vmagents[clusterIdx].Namespace}
+	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vmagents[clusterIdx].obj.Namespace}
 	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
@@ -412,10 +442,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 
 	var wg sync.WaitGroup
 	for i := range zs.vmagents {
-		vmAgent := zs.vmagents[i]
-		if vmAgent == nil || vmAgent.CreationTimestamp.IsZero() {
+		agentRef := zs.vmagents[i]
+		if agentRef.delete || agentRef.obj == nil || agentRef.obj.CreationTimestamp.IsZero() {
 			continue
 		}
+		vmAgent := agentRef.obj
 		nsn := types.NamespacedName{
 			Name:      vmAgent.Name,
 			Namespace: vmAgent.Namespace,

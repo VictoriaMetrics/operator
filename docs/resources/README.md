@@ -185,6 +185,7 @@ VictoriaMetrics operator support high availability for each component of the mon
 - [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#high-availability)
 - [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#high-availability)
 - [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#high-availability)
+- [VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#high-availability)
 
 In addition, these CRD support common features, that can be used to increase high availability - resources above have the following fields:
 

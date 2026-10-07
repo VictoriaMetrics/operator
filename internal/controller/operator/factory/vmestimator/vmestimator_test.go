@@ -85,6 +85,9 @@ func testVPA() *vmv1beta1.EmbeddedVPA {
 	}
 }
 
+// testStreams are required for VMEstimator spec to be valid
+var testStreams = []vmv1.VMEstimatorStream{{Interval: "5m"}}
+
 func parseStreams(t *testing.T, data string) []vmv1.VMEstimatorStream {
 	t.Helper()
 	var c streamsConfig
@@ -125,11 +128,6 @@ func TestBuildConfig(t *testing.T) {
 		LocalObjectReference: corev1.LocalObjectReference{Name: "streams"},
 		Key:                  "streams.yaml",
 	}
-
-	// default streams
-	f(opts{
-		want: defaultStreams,
-	})
 
 	// inline streams
 	f(opts{
@@ -181,7 +179,7 @@ streams:
 		},
 	})
 
-	// configmap with empty streams list disables default streams
+	// configmap with empty streams list
 	f(opts{
 		spec: vmv1.VMEstimatorSpec{
 			StreamsConfigMap: cmRef,
@@ -212,7 +210,7 @@ streams:
 		wantErr: true,
 	})
 
-	// negative group limit at configmap
+	// configmap content isn't validated by CRD schema, while vmestimator fails to start with incorrect precision
 	f(opts{
 		spec: vmv1.VMEstimatorSpec{
 			StreamsConfigMap: cmRef,
@@ -221,7 +219,7 @@ streams:
 			streamsCM(`
 streams:
   - interval: 5m
-    group_limit: -1
+    hll_precision: 3
 `),
 		},
 		wantErr: true,
@@ -303,6 +301,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	f(opts{
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec:       vmv1.VMEstimatorSpec{Streams: testStreams},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) {
 			var sa corev1.ServiceAccount
@@ -317,7 +316,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			var cm corev1.ConfigMap
 			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &cm))
-			assert.Equal(t, defaultStreams, parseStreams(t, cm.Data[configFileName]))
+			assert.Equal(t, testStreams, parseStreams(t, cm.Data[configFileName]))
 
 			var dep appsv1.Deployment
 			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &dep))
@@ -441,6 +440,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams:           testStreams,
 				ClusterDomainName: "cluster.local",
 				Storage: &vmv1.VMEstimatorStorage{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
@@ -466,6 +466,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams: testStreams,
 				ManagedMetadata: &vmv1beta1.ManagedObjectsMetadata{
 					Labels:      map[string]string{"team": "observability"},
 					Annotations: map[string]string{"owner": "sre"},
@@ -541,6 +542,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams: testStreams,
 				Storage: &vmv1.VMEstimatorStorage{
 					PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: ptr.To(intstr.FromInt32(1))},
 					NetworkPolicy: &vmv1beta1.EmbeddedNetworkPolicy{
@@ -623,6 +625,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams: testStreams,
 				Single: &vmv1.VMEstimatorSingle{
 					VPA: testVPA(),
 				},
@@ -636,7 +639,8 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
-				Paused: true,
+				Streams: testStreams,
+				Paused:  true,
 			},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) {
@@ -650,6 +654,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams:            testStreams,
 				ServiceAccountName: "custom",
 				Storage:            &vmv1.VMEstimatorStorage{},
 				Select:             &vmv1.VMEstimatorSelect{},
@@ -685,6 +690,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		cr: &vmv1.VMEstimator{
 			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 			Spec: vmv1.VMEstimatorSpec{
+				Streams: testStreams,
 				Single:  &vmv1.VMEstimatorSingle{},
 				Storage: &vmv1.VMEstimatorStorage{},
 			},
@@ -737,6 +743,7 @@ func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 	cr := &vmv1.VMEstimator{
 		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 		Spec: vmv1.VMEstimatorSpec{
+			Streams: testStreams,
 			Single: &vmv1.VMEstimatorSingle{
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: ptr.To(intstr.FromInt32(1))},
 			},
@@ -803,6 +810,7 @@ func TestCreateOrUpdate_RemoveOptionalObjects(t *testing.T) {
 	cr := &vmv1.VMEstimator{
 		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 		Spec: vmv1.VMEstimatorSpec{
+			Streams: testStreams,
 			Storage: &vmv1.VMEstimatorStorage{
 				PodDisruptionBudget: pdb(),
 				NetworkPolicy:       np(),

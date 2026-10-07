@@ -18,9 +18,6 @@ import (
 
 const (
 	storageKind = vmv1beta1.ClusterComponentStorage
-	// storage nodes expose local cardinality estimations at the separate path
-	// in order to keep them away of the default scrape path, since select nodes expose merged estimations
-	storageCardinalityMetricsPath = "/cardinality/metrics"
 )
 
 func createOrUpdateStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator, configHash string) error {
@@ -144,7 +141,9 @@ func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulS
 		logLevel:  storage.LogLevel,
 		logFormat: storage.LogFormat,
 		args: []string{
-			fmt.Sprintf("-cardinalityMetrics.exposeAt=%s", storageCardinalityMetricsPath),
+			// storage nodes expose local cardinality estimations at the separate path
+			// in order to keep them away of the default scrape path, since select nodes expose merged estimations
+			"-cardinalityMetrics.exposeAt=/cardinality/metrics",
 		},
 		configHash: configHash,
 	})

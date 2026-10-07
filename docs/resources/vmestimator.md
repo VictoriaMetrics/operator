@@ -28,31 +28,28 @@ It supports both single-node and [cluster](https://docs.victoriametrics.com/vict
   Use the cluster mode for high availability or when CPU of a single instance becomes a limiting factor.
 
 `spec.single` cannot be used together with `spec.storage` or `spec.select`, and `spec.select` requires `spec.storage`.
-In cluster mode the object name must not exceed 32 characters, since Kubernetes cannot create pods of a `StatefulSet`
-with a name longer than 52 characters.
 
 For each component the Operator adds `Service` and `VMServiceScrape` in the same namespace,
 prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
+Because of this prefix, the object name must not exceed 44 characters in single-node mode
+and 32 characters in cluster mode.
 
 ## Specification
 
 You can see the full actual specification of the `VMEstimator` resource in the **[API docs -> VMEstimator](https://docs.victoriametrics.com/operator/api/#v1-vmestimator)**.
 
-If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
+For more information on additional arguments see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmestimator/#examples) section.
 
 ## Configuration
 
 vmestimator computes cardinality according to the configured [streams](https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration).
-Streams can be defined at `spec.streams` or loaded from a `ConfigMap` key referenced at `spec.streamsConfigMap`.
+Streams can be defined at `spec.streams` or loaded from a `ConfigMap` key referenced at `spec.streamsConfigMap`,
+one of them must be set.
 The `ConfigMap` key must contain vmestimator configuration in YAML format with a top-level `streams` list,
 see [example config](https://github.com/VictoriaMetrics/vmestimator/blob/main/streams.yaml).
 If both are set, streams from the `ConfigMap` are appended to the streams from `spec.streams`.
-
-If neither `spec.streams` nor `spec.streamsConfigMap` is set, the Operator uses default streams,
-which estimate global cardinality, cardinality per `job` and cardinality per metric name over `5m` interval.
 
 The Operator validates streams, generates the configuration file and stores it at the `vmestimator-<name>` `ConfigMap`,
 which is mounted to single-node and storage pods.
@@ -108,6 +105,29 @@ In cluster mode storage nodes expose local cardinality estimations at `/cardinal
 so their `/metrics` path contains only operational metrics. Merged cardinality estimations are exposed by select nodes at `/metrics` path.
 This could be changed with `cardinalityMetrics.exposeAt` flag at `spec.storage.extraArgs`.
 
+## Network policy
+
+Each component supports `networkPolicy` field. When it's set, the Operator creates a `NetworkPolicy` for the component pods
+with the given `ingress` and `egress` rules, and removes it when the field is removed.
+For example, allow traffic only from VMAgent pods:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  streams:
+    - interval: 5m
+  single:
+    networkPolicy:
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: vmagent
+```
+
 ## Sending data
 
 It's recommended to [replicate](https://docs.victoriametrics.com/victoriametrics/vmagent/#replication-and-high-availability)
@@ -135,13 +155,13 @@ By default, the Operator creates `VMServiceScrape` for each component, so cardin
 are collected by [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) together with operational metrics.
 Use `disableSelfServiceScrape` and `serviceScrapeSpec` fields of the components to customize it.
 
-Each select replica returns the full merged estimation, so deduplicate it at query time when several select replicas are scraped,
-for example: `max(cardinality_estimate) without (instance, pod)`.
-Single-node mode is expected to run with a single replica: the Service spreads remote write requests among replicas,
-so each replica estimates only its share of the data. Use cluster mode to scale vmestimator.
-
 See [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmestimator/#alerting)
 and [dashboards](https://docs.victoriametrics.com/victoriametrics/vmestimator/#dashboards) for vmestimator.
+
+## High availability
+
+Single-node mode doesn't support high availability. Use cluster mode with several storage and select replicas instead,
+see [cluster mode](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster).
 
 ## Version management
 
@@ -177,7 +197,7 @@ spec:
 
 ## Resource management
 
-You can specify resources for each `VMEstimator` resource components in the `spec` section of the `VMEstimator` CRD.
+You can specify resources for each component of the `VMEstimator` resource in the `spec` section of the `VMEstimator` CRD.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

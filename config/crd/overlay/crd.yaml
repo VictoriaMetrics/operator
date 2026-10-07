@@ -64528,8 +64528,7 @@ spec:
               streams:
                 description: |-
                   Streams defines cardinality estimation streams.
-                  If neither streams nor streamsConfigMap is set, operator uses default streams,
-                  which estimate global cardinality and cardinality per job and per metric name over 5m interval.
+                  Either streams or streamsConfigMap must be set.
                   See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
                 items:
                   description: |-

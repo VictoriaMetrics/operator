@@ -39,7 +39,7 @@ func OnVMEstimatorDelete(ctx context.Context, rclient client.Client, cr *vmv1.VM
 			Namespace: ns,
 		}},
 		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.PrefixedName(vmv1beta1.ClusterComponentRoot),
+			Name:      cr.GetConfigMapName(),
 			Namespace: ns,
 		}},
 		cr,

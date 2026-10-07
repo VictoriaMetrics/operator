@@ -19,28 +19,14 @@ import (
 
 const configFileName = "streams.yaml"
 
-// defaultStreams are used if neither spec.streams nor spec.streamsConfigMap is set
-var defaultStreams = []vmv1.VMEstimatorStream{
-	{Interval: "5m"},
-	{Interval: "5m", GroupBy: []string{"job"}},
-	{Interval: "5m", GroupBy: []string{"__name__"}},
-}
-
 // streamsConfig defines vmestimator configuration file
 // See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
 type streamsConfig struct {
 	Streams []vmv1.VMEstimatorStream `yaml:"streams"`
 }
 
-func configMapName(cr *vmv1.VMEstimator) string {
-	return cr.PrefixedName(vmv1beta1.ClusterComponentRoot)
-}
-
 // buildConfig returns vmestimator configuration file content
 func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
-	if len(cr.Spec.Streams) == 0 && cr.Spec.StreamsConfigMap == nil {
-		return yaml.Marshal(streamsConfig{Streams: defaultStreams})
-	}
 	streams := append([]vmv1.VMEstimatorStream{}, cr.Spec.Streams...)
 	if cm := cr.Spec.StreamsConfigMap; cm != nil {
 		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cm)
@@ -51,7 +37,7 @@ func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
 		if err := yaml.UnmarshalStrict([]byte(data), &c); err != nil {
 			return nil, fmt.Errorf("cannot parse streams from configmap=%q, key=%q: %w", cm.Name, cm.Key, err)
 		}
-		// explicit `streams: []` is allowed, it disables default streams
+		// missing streams list is likely a mistake, while explicit `streams: []` is allowed
 		if c.Streams == nil {
 			return nil, fmt.Errorf("streams list is missing at configmap=%q, key=%q", cm.Name, cm.Key)
 		}

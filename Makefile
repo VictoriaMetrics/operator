@@ -21,6 +21,7 @@ UBI_BASEIMAGE?=registry.access.redhat.com/ubi10-micro:10.0
 BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+# renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>.*)$
 ENVTEST_K8S_VERSION = 1.37.1
 PLATFORM = $(shell uname -o)
 
@@ -358,15 +359,25 @@ CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 
 ## Tool Versions
+# renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
 KUSTOMIZE_VERSION ?= v5.8.2
+# renovate: datasource=go depName=sigs.k8s.io/controller-tools
 CONTROLLER_TOOLS_VERSION ?= v0.22.0
+# renovate: datasource=go depName=sigs.k8s.io/controller-runtime extractVersion=^v(?<version>\d+\.\d+).*$
 ENVTEST_VERSION ?= release-0.23
+# renovate: datasource=go depName=github.com/golangci/golangci-lint/v2
 GOLANGCI_LINT_VERSION ?= v2.14.0
+# renovate: datasource=go depName=k8s.io/code-generator
 CODEGENERATOR_VERSION ?= v0.37.1
+# renovate: datasource=github-releases depName=operator-framework/operator-lifecycle-manager extractVersion=^v(?<version>.*)$
 OLM_VERSION ?= 0.46.0
+# renovate: datasource=go depName=github.com/operator-framework/operator-sdk
 OPERATOR_SDK_VERSION ?= v1.42.3
+# renovate: datasource=go depName=github.com/operator-framework/operator-registry
 OPM_VERSION ?= v1.74.0
+# renovate: datasource=go depName=github.com/mikefarah/yq/v4
 YQ_VERSION ?= v4.54.1
+# renovate: datasource=github-releases depName=sigstore/cosign
 COSIGN_VERSION ?= v3.1.3
 
 CRD_REF_DOCS_VERSION ?= c5e6088a7cbca578c33aabd74ade8210985e5a67

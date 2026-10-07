@@ -4865,6 +4865,37 @@ Appears in: [VMAuthLoadBalancer (v1beta1)](#v1beta1-vmauthloadbalancer)
 | volumeMounts<a href="#v1beta1-vmauthloadbalancerspec-volumemounts" id="v1beta1-vmauthloadbalancerspec-volumemounts">#</a><a id="vmauthloadbalancerspec-volumemounts"></a><br/>_[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volumemount-v1-core) array_ | _(Optional)_<br/>VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the Application container |
 | volumes<a href="#v1beta1-vmauthloadbalancerspec-volumes" id="v1beta1-vmauthloadbalancerspec-volumes">#</a><a id="vmauthloadbalancerspec-volumes"></a><br/>_[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#volume-v1-core) array_ | _(Optional)_<br/>Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated. |
 
+#### VMAuthSSOConfig {#v1beta1-vmauthssoconfig}
+<a id="vmauthssoconfig"></a>
+
+VMAuthSSOConfig defines a single sso config section entry of vmauth config.
+Single Sign-On is applied to a browser request when its Host header matches SrcHost.
+
+Appears in: [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec)
+
+| Field | Description |
+| --- | --- |
+| oidc<a href="#v1beta1-vmauthssoconfig-oidc" id="v1beta1-vmauthssoconfig-oidc">#</a><a id="vmauthssoconfig-oidc"></a><br/>_[VMAuthSSOOIDC (v1beta1)](#v1beta1-vmauthssooidc)_ | _(Required)_<br/>OIDC defines the OpenID Connect provider configuration used for this sso entry. |
+| src_host<a href="#v1beta1-vmauthssoconfig-src_host" id="v1beta1-vmauthssoconfig-src_host">#</a><a id="vmauthssoconfig-src_host"></a><br/>_string_ | _(Required)_<br/>SrcHost is a regular expression that must match the request Host header<br />in order for this sso entry to be applied. |
+
+#### VMAuthSSOOIDC {#v1beta1-vmauthssooidc}
+<a id="vmauthssooidc"></a>
+
+VMAuthSSOOIDC defines OpenID Connect configuration for a VMAuthSSOConfig entry.
+
+Appears in: [VMAuthSSOConfig (v1beta1)](#v1beta1-vmauthssoconfig)
+
+| Field | Description |
+| --- | --- |
+| clientSecretRef<a href="#v1beta1-vmauthssooidc-clientsecretref" id="v1beta1-vmauthssooidc-clientsecretref">#</a><a id="vmauthssooidc-clientsecretref"></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Required)_<br/>ClientSecretRef refers to a Secret key holding the OAuth2 client secret. |
+| client_id<a href="#v1beta1-vmauthssooidc-client_id" id="v1beta1-vmauthssooidc-client_id">#</a><a id="vmauthssooidc-client_id"></a><br/>_string_ | _(Required)_<br/>ClientID defines the OAuth2 client id registered at the issuer. |
+| cookieSecretRef<a href="#v1beta1-vmauthssooidc-cookiesecretref" id="v1beta1-vmauthssooidc-cookiesecretref">#</a><a id="vmauthssooidc-cookiesecretref"></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core)_ | _(Required)_<br/>CookieSecretRef refers to a Secret key holding the key used to sign the<br />short-lived CSRF cookie set during the authorization flow. Must be at least<br />16 characters. Never shared with the IdP. |
+| default_redirect_url<a href="#v1beta1-vmauthssooidc-default_redirect_url" id="v1beta1-vmauthssooidc-default_redirect_url">#</a><a id="vmauthssooidc-default_redirect_url"></a><br/>_string_ | _(Optional)_<br/>DefaultRedirectURL is the URL users are sent to after SSO login when the<br />original request URL fails open-redirect validation. Defaults to "/". |
+| insecure<a href="#v1beta1-vmauthssooidc-insecure" id="v1beta1-vmauthssooidc-insecure">#</a><a id="vmauthssooidc-insecure"></a><br/>_boolean_ | _(Optional)_<br/>Insecure disables the Secure flag on SSO cookies and uses http:// instead<br />of https:// for redirect URIs. Defaults to false.<br />Set to true only when vmauth is accessed over plain HTTP (e.g. local dev). |
+| issuer<a href="#v1beta1-vmauthssooidc-issuer" id="v1beta1-vmauthssooidc-issuer">#</a><a id="vmauthssooidc-issuer"></a><br/>_string_ | _(Required)_<br/>Issuer defines the OIDC issuer URL. |
+| scopes<a href="#v1beta1-vmauthssooidc-scopes" id="v1beta1-vmauthssooidc-scopes">#</a><a id="vmauthssooidc-scopes"></a><br/>_string array_ | _(Optional)_<br/>Scopes defaults to ["openid"] when not set. |
+| session_duration<a href="#v1beta1-vmauthssooidc-session_duration" id="v1beta1-vmauthssooidc-session_duration">#</a><a id="vmauthssooidc-session_duration"></a><br/>_string_ | _(Optional)_<br/>SessionDuration caps the SSO session cookie lifetime.<br />The cookie MaxAge is the minimum of this value and the id_token's exp claim.<br />Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h". |
+
 #### VMAuthSpec {#v1beta1-vmauthspec}
 <a id="vmauthspec"></a>
 
@@ -4944,6 +4975,7 @@ Appears in: [DistributedAuth (v1alpha1)](#v1alpha1-distributedauth), [VMAuth (v1
 | serviceAccountName<a href="#v1beta1-vmauthspec-serviceaccountname" id="v1beta1-vmauthspec-serviceaccountname">#</a><a id="vmauthspec-serviceaccountname"></a><br/>_string_ | _(Optional)_<br/>ServiceAccountName is the name of the ServiceAccount to use to run the pods |
 | serviceScrapeSpec<a href="#v1beta1-vmauthspec-servicescrapespec" id="v1beta1-vmauthspec-servicescrapespec">#</a><a id="vmauthspec-servicescrapespec"></a><br/>_[VMServiceScrapeSpec (v1beta1)](#v1beta1-vmservicescrapespec)_ | _(Optional)_<br/>ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec |
 | serviceSpec<a href="#v1beta1-vmauthspec-servicespec" id="v1beta1-vmauthspec-servicespec">#</a><a id="vmauthspec-servicespec"></a><br/>_[AdditionalServiceSpec (v1beta1)](#v1beta1-additionalservicespec)_ | _(Optional)_<br/>ServiceSpec that will be added to vmsingle service spec |
+| sso<a href="#v1beta1-vmauthspec-sso" id="v1beta1-vmauthspec-sso">#</a><a id="vmauthspec-sso"></a><br/>_[VMAuthSSOConfig (v1beta1)](#v1beta1-vmauthssoconfig) array_ | _(Optional)_<br/>SSO defines the sso config section of vmauth config, enabling Single Sign-On<br />via OpenID Connect for browser requests matching srcHost.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0760">v0.76.0</a> |
 | startupProbe<a href="#v1beta1-vmauthspec-startupprobe" id="v1beta1-vmauthspec-startupprobe">#</a><a id="vmauthspec-startupprobe"></a><br/>_[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#probe-v1-core)_ | _(Optional)_<br/>StartupProbe that will be added to CR pod |
 | terminationGracePeriodSeconds<a href="#v1beta1-vmauthspec-terminationgraceperiodseconds" id="v1beta1-vmauthspec-terminationgraceperiodseconds">#</a><a id="vmauthspec-terminationgraceperiodseconds"></a><br/>_integer_ | _(Optional)_<br/>TerminationGracePeriodSeconds period for container graceful termination |
 | tlsConfig<a href="#v1beta1-vmauthspec-tlsconfig" id="v1beta1-vmauthspec-tlsconfig">#</a><a id="vmauthspec-tlsconfig"></a><br/>_[TLSConfig (v1beta1)](#v1beta1-tlsconfig)_ | _(Optional)_<br/>TLSConfig defines tls configuration for the backend connection |
@@ -5887,6 +5919,7 @@ Appears in: [VMUserSpec (v1beta1)](#v1beta1-vmuserspec)
 | defaultVMAccessClaim<a href="#v1beta1-vmuserjwt-defaultvmaccessclaim" id="v1beta1-vmuserjwt-defaultvmaccessclaim">#</a><a id="vmuserjwt-defaultvmaccessclaim"></a><br/>_[VMAccessClaim (v1beta1)](#v1beta1-vmaccessclaim)_ | _(Optional)_<br/>DefaultVMAccessClaim defines vm_access claim parameters to use when a JWT<br />doesn't carry a vm_access claim of its own. Set to an empty object to opt in<br />a token that only needs to pass matchClaims/oidc verification without vm_access.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0740">v0.74.0</a> |
 | matchClaims<a href="#v1beta1-vmuserjwt-matchclaims" id="v1beta1-vmuserjwt-matchclaims">#</a><a id="vmuserjwt-matchclaims"></a><br/>_object (keys:string, values:string)_ | _(Required)_<br/>MatchClaims enables claim based routing |
 | oidc<a href="#v1beta1-vmuserjwt-oidc" id="v1beta1-vmuserjwt-oidc">#</a><a id="vmuserjwt-oidc"></a><br/>_[VMUserOIDC (v1beta1)](#v1beta1-vmuseroidc)_ | _(Required)_<br/>OIDC defines OIDC configuration section |
+| proxyCookieAuthorizationToken<a href="#v1beta1-vmuserjwt-proxycookieauthorizationtoken" id="v1beta1-vmuserjwt-proxycookieauthorizationtoken">#</a><a id="vmuserjwt-proxycookieauthorizationtoken"></a><br/>_string_ | _(Optional)_<br/>ProxyCookieAuthorizationToken, when set, forwards the SSO session cookie token to the<br />backend by setting it as a "Bearer <token>" value in the given HTTP header.<br />Any previously set value of the header is overwritten.<br/><b>Available from: </b><a href="https://docs.victoriametrics.com/operator/changelog/#v0760">v0.76.0</a> |
 | publicKeyRefs<a href="#v1beta1-vmuserjwt-publickeyrefs" id="v1beta1-vmuserjwt-publickeyrefs">#</a><a id="vmuserjwt-publickeyrefs"></a><br/>_[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#secretkeyselector-v1-core) array_ | _(Required)_<br/>PublicKeyRefs defines a list of Secret selectors that reference public keys |
 | publicKeys<a href="#v1beta1-vmuserjwt-publickeys" id="v1beta1-vmuserjwt-publickeys">#</a><a id="vmuserjwt-publickeys"></a><br/>_string array_ | _(Required)_<br/>PublicKeys defines a list of public keys that are used for signature verification |
 | skipVerify<a href="#v1beta1-vmuserjwt-skipverify" id="v1beta1-vmuserjwt-skipverify">#</a><a id="vmuserjwt-skipverify"></a><br/>_boolean_ | _(Required)_<br/>SkipVerify skips signature verification for testing purposes |

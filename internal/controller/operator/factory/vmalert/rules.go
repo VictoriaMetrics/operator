@@ -93,6 +93,11 @@ func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1
 // notices it dropped out of their selection, so the condition would otherwise be left stale
 // forever.
 func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
+	if build.IsControllerDisabled("VMRule") {
+		// VMRule controller is disabled (its CRD may not be installed): there is nothing
+		// to list or release, same as selectRules skipping selection above.
+		return nil
+	}
 	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
 	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{})
 }

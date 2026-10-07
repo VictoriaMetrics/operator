@@ -377,6 +377,32 @@ func (pos *ParsedObjects) UpdateStatusesForScrapeObjects(ctx context.Context, rc
 	return nil
 }
 
+// ReleaseStatusesForScrapeObjects releases parentName's Applied condition from every scrape
+// child object across all scrape-selecting kinds that still carries it. Call it when the
+// parent CR (e.g. VMAgent) is being deleted: once it's gone, no further reconcile notices it
+// dropped out of their selection, so the condition would otherwise be left stale forever.
+func ReleaseStatusesForScrapeObjects(ctx context.Context, rclient client.Client, parentName string) error {
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMServiceScrape{}); err != nil {
+		return fmt.Errorf("cannot release statuses for service scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMPodScrape{}); err != nil {
+		return fmt.Errorf("cannot release statuses for pod scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMNodeScrape{}); err != nil {
+		return fmt.Errorf("cannot release statuses for node scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMProbe{}); err != nil {
+		return fmt.Errorf("cannot release statuses for probe scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMStaticScrape{}); err != nil {
+		return fmt.Errorf("cannot release statuses for static scrape objects: %w", err)
+	}
+	if err := reconcile.StatusForChildObjects(ctx, rclient, parentName, []*vmv1beta1.VMScrapeConfig{}); err != nil {
+		return fmt.Errorf("cannot release statuses for scrapeconfig scrape objects: %w", err)
+	}
+	return nil
+}
+
 // BuildScrapeJobsConfig returns the global config section (without scrape_configs) and the
 // flat list of individual scrape job configs. Callers that need to split the config across
 // multiple Kubernetes Secrets use this instead of GenerateConfig.

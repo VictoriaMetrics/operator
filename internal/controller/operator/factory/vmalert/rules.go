@@ -88,6 +88,15 @@ func reconcileVMAlertConfig(ctx context.Context, rclient client.Client, cr *vmv1
 	return cmNames, nil
 }
 
+// ReleaseAppliedConditions releases the Applied condition this VMAlert wrote to the VMRules
+// it used to select. Call it when cr is being deleted: once it's gone, no further reconcile
+// notices it dropped out of their selection, so the condition would otherwise be left stale
+// forever.
+func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) error {
+	parentObject := fmt.Sprintf("%s.%s.vmalert", cr.Name, cr.Namespace)
+	return reconcile.StatusForChildObjects(ctx, rclient, parentObject, []*vmv1beta1.VMRule{})
+}
+
 type parsedObjects struct {
 	rules *build.ChildObjects[*vmv1beta1.VMRule]
 }

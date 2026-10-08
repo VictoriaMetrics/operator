@@ -11200,6 +11200,117 @@ spec:
                         required:
                         - spec
                         type: object
+                      sso:
+                        description: |-
+                          SSO defines the sso config section of vmauth config, enabling Single Sign-On
+                          via OpenID Connect for browser requests matching srcHost.
+                        items:
+                          description: |-
+                            VMAuthSSOConfig defines a single sso config section entry of vmauth config.
+                            Single Sign-On is applied to a browser request when its Host header matches SrcHost.
+                          properties:
+                            oidc:
+                              description: OIDC defines the OpenID Connect provider
+                                configuration used for this sso entry.
+                              properties:
+                                client_id:
+                                  description: ClientID defines the OAuth2 client
+                                    id registered at the issuer.
+                                  type: string
+                                clientSecretRef:
+                                  description: ClientSecretRef refers to a Secret
+                                    key holding the OAuth2 client secret.
+                                  properties:
+                                    key:
+                                      description: The key of the secret to select
+                                        from.  Must be a valid secret key.
+                                      type: string
+                                    name:
+                                      default: ""
+                                      description: |-
+                                        Name of the referent.
+                                        This field is effectively required, but due to backwards compatibility is
+                                        allowed to be empty. Instances of this type with an empty value here are
+                                        almost certainly wrong.
+                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      type: string
+                                    optional:
+                                      description: Specify whether the Secret or its
+                                        key must be defined
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                cookieSecretRef:
+                                  description: |-
+                                    CookieSecretRef refers to a Secret key holding the key used to sign the
+                                    short-lived CSRF cookie set during the authorization flow. Must be at least
+                                    16 characters. Never shared with the IdP.
+                                  properties:
+                                    key:
+                                      description: The key of the secret to select
+                                        from.  Must be a valid secret key.
+                                      type: string
+                                    name:
+                                      default: ""
+                                      description: |-
+                                        Name of the referent.
+                                        This field is effectively required, but due to backwards compatibility is
+                                        allowed to be empty. Instances of this type with an empty value here are
+                                        almost certainly wrong.
+                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      type: string
+                                    optional:
+                                      description: Specify whether the Secret or its
+                                        key must be defined
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                default_redirect_url:
+                                  description: |-
+                                    DefaultRedirectURL is the URL users are sent to after SSO login when the
+                                    original request URL fails open-redirect validation. Defaults to "/".
+                                  type: string
+                                insecure:
+                                  description: |-
+                                    Insecure disables the Secure flag on SSO cookies and uses http:// instead
+                                    of https:// for redirect URIs. Defaults to false.
+                                    Set to true only when vmauth is accessed over plain HTTP (e.g. local dev).
+                                  type: boolean
+                                issuer:
+                                  description: Issuer defines the OIDC issuer URL.
+                                  type: string
+                                scopes:
+                                  description: Scopes defaults to ["openid"] when
+                                    not set.
+                                  items:
+                                    type: string
+                                  type: array
+                                session_duration:
+                                  description: |-
+                                    SessionDuration caps the SSO session cookie lifetime.
+                                    The cookie MaxAge is the minimum of this value and the id_token's exp claim.
+                                    Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
+                                  type: string
+                              required:
+                              - clientSecretRef
+                              - client_id
+                              - cookieSecretRef
+                              - issuer
+                              type: object
+                            src_host:
+                              description: |-
+                                SrcHost is a regular expression that must match the request Host header
+                                in order for this sso entry to be applied.
+                              type: string
+                          required:
+                          - oidc
+                          - src_host
+                          type: object
+                        type: array
                       startupProbe:
                         description: StartupProbe that will be added to CR pod
                         type: object
@@ -43449,6 +43560,116 @@ spec:
                 required:
                 - spec
                 type: object
+              sso:
+                description: |-
+                  SSO defines the sso config section of vmauth config, enabling Single Sign-On
+                  via OpenID Connect for browser requests matching srcHost.
+                items:
+                  description: |-
+                    VMAuthSSOConfig defines a single sso config section entry of vmauth config.
+                    Single Sign-On is applied to a browser request when its Host header matches SrcHost.
+                  properties:
+                    oidc:
+                      description: OIDC defines the OpenID Connect provider configuration
+                        used for this sso entry.
+                      properties:
+                        client_id:
+                          description: ClientID defines the OAuth2 client id registered
+                            at the issuer.
+                          type: string
+                        clientSecretRef:
+                          description: ClientSecretRef refers to a Secret key holding
+                            the OAuth2 client secret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        cookieSecretRef:
+                          description: |-
+                            CookieSecretRef refers to a Secret key holding the key used to sign the
+                            short-lived CSRF cookie set during the authorization flow. Must be at least
+                            16 characters. Never shared with the IdP.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        default_redirect_url:
+                          description: |-
+                            DefaultRedirectURL is the URL users are sent to after SSO login when the
+                            original request URL fails open-redirect validation. Defaults to "/".
+                          type: string
+                        insecure:
+                          description: |-
+                            Insecure disables the Secure flag on SSO cookies and uses http:// instead
+                            of https:// for redirect URIs. Defaults to false.
+                            Set to true only when vmauth is accessed over plain HTTP (e.g. local dev).
+                          type: boolean
+                        issuer:
+                          description: Issuer defines the OIDC issuer URL.
+                          type: string
+                        scopes:
+                          description: Scopes defaults to ["openid"] when not set.
+                          items:
+                            type: string
+                          type: array
+                        session_duration:
+                          description: |-
+                            SessionDuration caps the SSO session cookie lifetime.
+                            The cookie MaxAge is the minimum of this value and the id_token's exp claim.
+                            Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
+                          type: string
+                      required:
+                      - clientSecretRef
+                      - client_id
+                      - cookieSecretRef
+                      - issuer
+                      type: object
+                    src_host:
+                      description: |-
+                        SrcHost is a regular expression that must match the request Host header
+                        in order for this sso entry to be applied.
+                      type: string
+                  required:
+                  - oidc
+                  - src_host
+                  type: object
+                type: array
               startupProbe:
                 description: StartupProbe that will be added to CR pod
                 type: object
@@ -53784,6 +54005,117 @@ spec:
                         required:
                         - spec
                         type: object
+                      sso:
+                        description: |-
+                          SSO defines the sso config section of vmauth config, enabling Single Sign-On
+                          via OpenID Connect for browser requests matching srcHost.
+                        items:
+                          description: |-
+                            VMAuthSSOConfig defines a single sso config section entry of vmauth config.
+                            Single Sign-On is applied to a browser request when its Host header matches SrcHost.
+                          properties:
+                            oidc:
+                              description: OIDC defines the OpenID Connect provider
+                                configuration used for this sso entry.
+                              properties:
+                                client_id:
+                                  description: ClientID defines the OAuth2 client
+                                    id registered at the issuer.
+                                  type: string
+                                clientSecretRef:
+                                  description: ClientSecretRef refers to a Secret
+                                    key holding the OAuth2 client secret.
+                                  properties:
+                                    key:
+                                      description: The key of the secret to select
+                                        from.  Must be a valid secret key.
+                                      type: string
+                                    name:
+                                      default: ""
+                                      description: |-
+                                        Name of the referent.
+                                        This field is effectively required, but due to backwards compatibility is
+                                        allowed to be empty. Instances of this type with an empty value here are
+                                        almost certainly wrong.
+                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      type: string
+                                    optional:
+                                      description: Specify whether the Secret or its
+                                        key must be defined
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                cookieSecretRef:
+                                  description: |-
+                                    CookieSecretRef refers to a Secret key holding the key used to sign the
+                                    short-lived CSRF cookie set during the authorization flow. Must be at least
+                                    16 characters. Never shared with the IdP.
+                                  properties:
+                                    key:
+                                      description: The key of the secret to select
+                                        from.  Must be a valid secret key.
+                                      type: string
+                                    name:
+                                      default: ""
+                                      description: |-
+                                        Name of the referent.
+                                        This field is effectively required, but due to backwards compatibility is
+                                        allowed to be empty. Instances of this type with an empty value here are
+                                        almost certainly wrong.
+                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      type: string
+                                    optional:
+                                      description: Specify whether the Secret or its
+                                        key must be defined
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                default_redirect_url:
+                                  description: |-
+                                    DefaultRedirectURL is the URL users are sent to after SSO login when the
+                                    original request URL fails open-redirect validation. Defaults to "/".
+                                  type: string
+                                insecure:
+                                  description: |-
+                                    Insecure disables the Secure flag on SSO cookies and uses http:// instead
+                                    of https:// for redirect URIs. Defaults to false.
+                                    Set to true only when vmauth is accessed over plain HTTP (e.g. local dev).
+                                  type: boolean
+                                issuer:
+                                  description: Issuer defines the OIDC issuer URL.
+                                  type: string
+                                scopes:
+                                  description: Scopes defaults to ["openid"] when
+                                    not set.
+                                  items:
+                                    type: string
+                                  type: array
+                                session_duration:
+                                  description: |-
+                                    SessionDuration caps the SSO session cookie lifetime.
+                                    The cookie MaxAge is the minimum of this value and the id_token's exp claim.
+                                    Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
+                                  type: string
+                              required:
+                              - clientSecretRef
+                              - client_id
+                              - cookieSecretRef
+                              - issuer
+                              type: object
+                            src_host:
+                              description: |-
+                                SrcHost is a regular expression that must match the request Host header
+                                in order for this sso entry to be applied.
+                              type: string
+                          required:
+                          - oidc
+                          - src_host
+                          type: object
+                        type: array
                       startupProbe:
                         description: StartupProbe that will be added to CR pod
                         type: object
@@ -84423,6 +84755,12 @@ spec:
                     required:
                     - issuer
                     type: object
+                  proxyCookieAuthorizationToken:
+                    description: |-
+                      ProxyCookieAuthorizationToken, when set, forwards the SSO session cookie token to the
+                      backend by setting it as a "Bearer <token>" value in the given HTTP header.
+                      Any previously set value of the header is overwritten.
+                    type: string
                   publicKeyRefs:
                     description: PublicKeyRefs defines a list of Secret selectors
                       that reference public keys

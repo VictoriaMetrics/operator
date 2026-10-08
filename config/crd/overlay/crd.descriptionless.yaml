@@ -5620,6 +5620,64 @@ spec:
                         required:
                         - spec
                         type: object
+                      sso:
+                        items:
+                          properties:
+                            oidc:
+                              properties:
+                                client_id:
+                                  type: string
+                                clientSecretRef:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                cookieSecretRef:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                default_redirect_url:
+                                  type: string
+                                insecure:
+                                  type: boolean
+                                issuer:
+                                  type: string
+                                scopes:
+                                  items:
+                                    type: string
+                                  type: array
+                                session_duration:
+                                  type: string
+                              required:
+                              - clientSecretRef
+                              - client_id
+                              - cookieSecretRef
+                              - issuer
+                              type: object
+                            src_host:
+                              type: string
+                          required:
+                          - oidc
+                          - src_host
+                          type: object
+                        type: array
                       startupProbe:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
@@ -21894,6 +21952,64 @@ spec:
                 required:
                 - spec
                 type: object
+              sso:
+                items:
+                  properties:
+                    oidc:
+                      properties:
+                        client_id:
+                          type: string
+                        clientSecretRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        cookieSecretRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        default_redirect_url:
+                          type: string
+                        insecure:
+                          type: boolean
+                        issuer:
+                          type: string
+                        scopes:
+                          items:
+                            type: string
+                          type: array
+                        session_duration:
+                          type: string
+                      required:
+                      - clientSecretRef
+                      - client_id
+                      - cookieSecretRef
+                      - issuer
+                      type: object
+                    src_host:
+                      type: string
+                  required:
+                  - oidc
+                  - src_host
+                  type: object
+                type: array
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -27105,6 +27221,64 @@ spec:
                         required:
                         - spec
                         type: object
+                      sso:
+                        items:
+                          properties:
+                            oidc:
+                              properties:
+                                client_id:
+                                  type: string
+                                clientSecretRef:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                cookieSecretRef:
+                                  properties:
+                                    key:
+                                      type: string
+                                    name:
+                                      default: ""
+                                      type: string
+                                    optional:
+                                      type: boolean
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                default_redirect_url:
+                                  type: string
+                                insecure:
+                                  type: boolean
+                                issuer:
+                                  type: string
+                                scopes:
+                                  items:
+                                    type: string
+                                  type: array
+                                session_duration:
+                                  type: string
+                              required:
+                              - clientSecretRef
+                              - client_id
+                              - cookieSecretRef
+                              - issuer
+                              type: object
+                            src_host:
+                              type: string
+                          required:
+                          - oidc
+                          - src_host
+                          type: object
+                        type: array
                       startupProbe:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
@@ -43245,6 +43419,8 @@ spec:
                     required:
                     - issuer
                     type: object
+                  proxyCookieAuthorizationToken:
+                    type: string
                   publicKeyRefs:
                     items:
                       properties:

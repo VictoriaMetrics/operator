@@ -441,6 +441,15 @@ func (pos *parsedObjects) generateConfig(cr *vmv1beta1.VMAuth, objURLs map[strin
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
+
+	ssoValue, err := buildSSOConfig(cr, ac)
+	if err != nil {
+		return nil, fmt.Errorf("cannot build sso config section: %w", err)
+	}
+	if len(ssoValue) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sso", Value: ssoValue})
+	}
+
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize configuration to yaml: %w", err)
@@ -521,6 +530,50 @@ func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac
 
 	default:
 		return nil, nil
+	}
+	return result, nil
+}
+
+// buildSSOConfig renders cr.Spec.SSO into the sso config section of vmauth config,
+// resolving the client and cookie secrets referenced by each entry.
+func buildSSOConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yaml.MapSlice, error) {
+	var result []yaml.MapSlice
+	for i := range cr.Spec.SSO {
+		sso := &cr.Spec.SSO[i]
+		if err := sso.Validate(); err != nil {
+			return nil, fmt.Errorf("incorrect spec.sso[%d]: %w", i, err)
+		}
+		clientSecret, err := ac.LoadKeyFromSecret(cr.Namespace, sso.OIDC.ClientSecretRef)
+		if err != nil {
+			return nil, fmt.Errorf("cannot load sso[%d].oidc.clientSecretRef: %w", i, err)
+		}
+		cookieSecret, err := ac.LoadKeyFromSecret(cr.Namespace, sso.OIDC.CookieSecretRef)
+		if err != nil {
+			return nil, fmt.Errorf("cannot load sso[%d].oidc.cookieSecretRef: %w", i, err)
+		}
+		if len(cookieSecret) < 16 {
+			return nil, fmt.Errorf("sso[%d].oidc.cookieSecretRef value must be at least 16 characters long", i)
+		}
+		oidc := yaml.MapSlice{
+			{Key: "issuer", Value: sso.OIDC.Issuer},
+			{Key: "client_id", Value: sso.OIDC.ClientID},
+			{Key: "client_secret", Value: clientSecret},
+			{Key: "cookie_secret", Value: cookieSecret},
+		}
+		if sso.OIDC.Insecure {
+			oidc = append(oidc, yaml.MapItem{Key: "insecure", Value: sso.OIDC.Insecure})
+		}
+		oidc = appendIfNotEmpty(sso.OIDC.Scopes, "scopes", oidc)
+		if sso.OIDC.SessionDuration != "" {
+			oidc = append(oidc, yaml.MapItem{Key: "session_duration", Value: sso.OIDC.SessionDuration})
+		}
+		if sso.OIDC.DefaultRedirectURL != "" {
+			oidc = append(oidc, yaml.MapItem{Key: "default_redirect_url", Value: sso.OIDC.DefaultRedirectURL})
+		}
+		result = append(result, yaml.MapSlice{
+			{Key: "src_host", Value: sso.SrcHost},
+			{Key: "oidc", Value: oidc},
+		})
 	}
 	return result, nil
 }
@@ -960,6 +1013,12 @@ func genUserCfg(user *vmv1beta1.VMUser, objURLs map[string]string, cr *vmv1beta1
 			jwt = append(jwt, yaml.MapItem{
 				Key:   "default_vm_access_claim",
 				Value: buildVMAccessClaimYAML(user.Spec.JWT.DefaultVMAccessClaim),
+			})
+		}
+		if user.Spec.JWT.ProxyCookieAuthorizationToken != "" {
+			jwt = append(jwt, yaml.MapItem{
+				Key:   "proxy_cookie_authorization_token",
+				Value: user.Spec.JWT.ProxyCookieAuthorizationToken,
 			})
 		}
 		r = append(r, yaml.MapItem{

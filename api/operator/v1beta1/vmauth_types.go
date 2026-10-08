@@ -6,8 +6,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,6 +102,11 @@ type VMAuthSpec struct {
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
 	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
+	// SSO defines the sso config section of vmauth config, enabling Single Sign-On
+	// via OpenID Connect for browser requests matching srcHost.
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	SSO []VMAuthSSOConfig `json:"sso,omitempty" yaml:"sso,omitempty"`
 	// IPFilters global access ip filters
 	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
 	// +optional
@@ -229,6 +236,96 @@ func (s *VMAuthUnauthorizedUserAccessSpec) Validate() error {
 		return fmt.Errorf("incorrect UnauthorizedUserAccess options: %w", err)
 	}
 
+	return nil
+}
+
+// VMAuthSSOConfig defines a single sso config section entry of vmauth config.
+// Single Sign-On is applied to a browser request when its Host header matches SrcHost.
+type VMAuthSSOConfig struct {
+	// SrcHost is a regular expression that must match the request Host header
+	// in order for this sso entry to be applied.
+	// +required
+	SrcHost string `json:"src_host" yaml:"src_host"`
+	// OIDC defines the OpenID Connect provider configuration used for this sso entry.
+	// +required
+	OIDC VMAuthSSOOIDC `json:"oidc" yaml:"oidc"`
+}
+
+// VMAuthSSOOIDC defines OpenID Connect configuration for a VMAuthSSOConfig entry.
+type VMAuthSSOOIDC struct {
+	// Issuer defines the OIDC issuer URL.
+	// +required
+	Issuer string `json:"issuer" yaml:"issuer"`
+	// ClientID defines the OAuth2 client id registered at the issuer.
+	// +required
+	ClientID string `json:"client_id" yaml:"client_id"`
+	// ClientSecretRef refers to a Secret key holding the OAuth2 client secret.
+	// +required
+	ClientSecretRef *corev1.SecretKeySelector `json:"clientSecretRef" yaml:"clientSecretRef"`
+	// CookieSecretRef refers to a Secret key holding the key used to sign the
+	// short-lived CSRF cookie set during the authorization flow. Must be at least
+	// 16 characters. Never shared with the IdP.
+	// +required
+	CookieSecretRef *corev1.SecretKeySelector `json:"cookieSecretRef" yaml:"cookieSecretRef"`
+	// Insecure disables the Secure flag on SSO cookies and uses http:// instead
+	// of https:// for redirect URIs. Defaults to false.
+	// Set to true only when vmauth is accessed over plain HTTP (e.g. local dev).
+	// +optional
+	Insecure bool `json:"insecure,omitempty" yaml:"insecure,omitempty"`
+	// Scopes defaults to ["openid"] when not set.
+	// +optional
+	Scopes []string `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	// SessionDuration caps the SSO session cookie lifetime.
+	// The cookie MaxAge is the minimum of this value and the id_token's exp claim.
+	// Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
+	// +optional
+	SessionDuration string `json:"session_duration,omitempty" yaml:"session_duration,omitempty"`
+	// DefaultRedirectURL is the URL users are sent to after SSO login when the
+	// original request URL fails open-redirect validation. Defaults to "/".
+	// +optional
+	DefaultRedirectURL string `json:"default_redirect_url,omitempty" yaml:"default_redirect_url,omitempty"`
+}
+
+// Validate performs syntax validation of the sso config entry.
+func (c *VMAuthSSOConfig) Validate() error {
+	if c.SrcHost == "" {
+		return fmt.Errorf("src_host is required")
+	}
+	if _, err := regexp.Compile(c.SrcHost); err != nil {
+		return fmt.Errorf("src_host must be a valid regular expression: %w", err)
+	}
+	oidc := c.OIDC
+	if oidc.Issuer == "" {
+		return fmt.Errorf("oidc.issuer is required")
+	}
+	issuerURL, err := url.Parse(oidc.Issuer)
+	if err != nil {
+		return fmt.Errorf("oidc.issuer must be a valid URL: %w", err)
+	}
+	if issuerURL.Scheme != "https" && issuerURL.Scheme != "http" {
+		return fmt.Errorf("oidc.issuer must have http or https scheme")
+	}
+	if issuerURL.Host == "" {
+		return fmt.Errorf("oidc.issuer must be an absolute URL with a host")
+	}
+	if oidc.ClientID == "" {
+		return fmt.Errorf("oidc.client_id is required")
+	}
+	if oidc.ClientSecretRef == nil || oidc.ClientSecretRef.Name == "" || oidc.ClientSecretRef.Key == "" {
+		return fmt.Errorf("oidc.clientSecretRef.name and oidc.clientSecretRef.key are required")
+	}
+	if oidc.CookieSecretRef == nil || oidc.CookieSecretRef.Name == "" || oidc.CookieSecretRef.Key == "" {
+		return fmt.Errorf("oidc.cookieSecretRef.name and oidc.cookieSecretRef.key are required")
+	}
+	if oidc.SessionDuration != "" {
+		d, err := time.ParseDuration(oidc.SessionDuration)
+		if err != nil {
+			return fmt.Errorf("oidc.session_duration: %w", err)
+		}
+		if d < 0 {
+			return fmt.Errorf("oidc.session_duration must not be negative")
+		}
+	}
 	return nil
 }
 
@@ -521,6 +618,12 @@ func (cr *VMAuth) Validate() error {
 	if cr.Spec.VPA != nil {
 		if err := cr.Spec.VPA.Validate(); err != nil {
 			return fmt.Errorf("incorrect cr.spec.vpa syntax: %w", err)
+		}
+	}
+
+	for i := range cr.Spec.SSO {
+		if err := cr.Spec.SSO[i].Validate(); err != nil {
+			return fmt.Errorf("incorrect cr.spec.sso[%d]: %w", i, err)
 		}
 	}
 

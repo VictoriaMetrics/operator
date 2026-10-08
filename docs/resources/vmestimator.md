@@ -27,8 +27,9 @@ The deployment mode is defined at `spec.mode`:
   and select nodes as a `Deployment`, which query all storage nodes, merge their estimations and expose them as metrics.
   See [cluster](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster) for details.
 
-Storage nodes are configured at `spec.storage` and select nodes at `spec.select` in both modes,
-so switching the mode requires changing only `spec.mode`. Remote write URL is the same in both modes.
+Storage nodes are configured at `spec.storage` and used in both modes, select nodes are configured at `spec.select`
+and used only in cluster mode. Both sections can be kept in the spec, so switching the mode requires changing only `spec.mode`.
+Remote write URL is the same in both modes.
 
 For each component the Operator adds `Service` and `VMServiceScrape` in the same namespace,
 prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.

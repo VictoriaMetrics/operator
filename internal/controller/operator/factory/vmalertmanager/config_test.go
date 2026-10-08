@@ -1637,6 +1637,233 @@ templates: []
 	})
 }
 
+func Test_buildConfig_RejectsUnsupportedEventRecorderVersion(t *testing.T) {
+	pos := &parsedObjects{configs: build.NewChildObjects[*vmv1beta1.VMAlertmanagerConfig]("vmalertmanagerconfig", nil, nil)}
+
+	cr := &vmv1beta1.VMAlertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{Tag: "v0.28.0"},
+			},
+			EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{StdoutOutput: true},
+		},
+	}
+	ctx := context.TODO()
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	ac := getAssetsCache(ctx, fclient, cr)
+
+	_, err := pos.buildConfig(cr, []byte(`route:
+  receiver: blackhole
+receivers:
+- name: blackhole
+`), ac)
+	assert.ErrorContains(t, err, "spec.eventRecorder requires alertmanager >= v0.33.0")
+}
+
+func Test_buildEventRecorderConfig(t *testing.T) {
+	type opts struct {
+		cr                *vmv1beta1.VMAlertmanager
+		predefinedObjects []runtime.Object
+		want              string
+		wantErr           bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.TODO()
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		ac := getAssetsCache(ctx, fclient, o.cr)
+		got, err := buildEventRecorderConfig(o.cr, ac)
+		if o.wantErr {
+			assert.Error(t, err)
+			return
+		}
+		assert.NoError(t, err)
+		szd, err := yaml.Marshal(got)
+		assert.NoError(t, err)
+		assert.Equal(t, o.want, string(szd))
+	}
+
+	// no event recorder configured
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+		},
+		want: "{}\n",
+	})
+
+	// file and stdout outputs
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+					FileOutputs: []vmv1beta1.VMAlertmanagerEventRecorderFileOutput{
+						{Path: "/var/lib/alertmanager/events.jsonl"},
+					},
+					StdoutOutput: true,
+				},
+			},
+		},
+		want: `file_outputs:
+- path: /var/lib/alertmanager/events.jsonl
+stdout_outputs:
+- {}
+`,
+	})
+
+	// webhook output with plain url and secret-backed url
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+					WebhookOutputs: []vmv1beta1.VMAlertmanagerEventRecorderWebhookOutput{
+						{
+							URL:            ptr.To("https://example.com/hook"),
+							Batch:          true,
+							BatchMaxEvents: 50,
+						},
+						{
+							URLSecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "webhook-secrets"},
+								Key:                  "url",
+							},
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "webhook-secrets", Namespace: "default"},
+				Data:       map[string][]byte{"url": []byte("https://secret.example.com/hook")},
+			},
+		},
+		want: `webhook_outputs:
+- url: https://example.com/hook
+  batch: true
+  batch_max_events: 50
+- url: https://secret.example.com/hook
+`,
+	})
+
+	// webhook output with maxRetries explicitly set to 0 (disable retries); the zero value
+	// must be preserved in the rendered config instead of being treated as "unset"
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+					WebhookOutputs: []vmv1beta1.VMAlertmanagerEventRecorderWebhookOutput{
+						{
+							URL:        ptr.To("https://example.com/hook"),
+							MaxRetries: ptr.To(int32(0)),
+						},
+					},
+				},
+			},
+		},
+		want: `webhook_outputs:
+- url: https://example.com/hook
+  max_retries: 0
+`,
+	})
+
+	// kafka output with TLS config resolved from a secret
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+					KafkaOutputs: []vmv1beta1.VMAlertmanagerEventRecorderKafkaOutput{
+						{
+							Brokers: []string{"kafka:9092"},
+							Topic:   "am-events",
+							Format:  "protobuf",
+							TLSConfig: &vmv1beta1.TLSClientConfig{
+								CASecretRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "ca"},
+									Key:                  "key",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "default"},
+				Data:       map[string][]byte{"key": []byte("value")},
+			},
+		},
+		want: `kafka_outputs:
+- brokers:
+  - kafka:9092
+  topic: am-events
+  format: protobuf
+  tls_config:
+    ca_file: /etc/alertmanager/tls_assets/default_ca_key
+`,
+	})
+
+	// missing secret must surface as an error, not a silently empty value
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+					WebhookOutputs: []vmv1beta1.VMAlertmanagerEventRecorderWebhookOutput{
+						{
+							URLSecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "missing"},
+								Key:                  "url",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantErr: true,
+	})
+}
+
+func Test_buildEventRecorderConfig_DoesNotMutateCRSpec(t *testing.T) {
+	ctx := context.TODO()
+	tlsConfig := &vmv1beta1.TLSClientConfig{
+		CASecretRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "ca"},
+			Key:                  "key",
+		},
+	}
+	cr := &vmv1beta1.VMAlertmanager{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-am", Namespace: "default"},
+		Spec: vmv1beta1.VMAlertmanagerSpec{
+			EventRecorder: &vmv1beta1.VMAlertmanagerEventRecorder{
+				KafkaOutputs: []vmv1beta1.VMAlertmanagerEventRecorderKafkaOutput{
+					{Brokers: []string{"kafka:9092"}, Topic: "am-events", TLSConfig: tlsConfig},
+				},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "default"},
+			Data:       map[string][]byte{"key": []byte("value")},
+		},
+	})
+	ac := getAssetsCache(ctx, fclient, cr)
+
+	_, err := buildEventRecorderConfig(cr, ac)
+	assert.NoError(t, err)
+
+	// the CR's own TLSConfig pointer must be untouched: it's shared with the informer
+	// cache, and populating CAFile/CertFile/KeyFile in place would corrupt it for
+	// every other reader of the same cached object.
+	assert.Empty(t, tlsConfig.CAFile, "buildEventRecorderConfig must not mutate the CR's TLSConfig in place")
+}
+
 func TestAddConfigTemplates(t *testing.T) {
 	type opts struct {
 		config    string

@@ -647,6 +647,21 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 
 var utf8MinVersion = semver.MustParse("v0.28.0")
 
+// eventRecorderMinVersion is the first Alertmanager release containing the
+// event-recorder feature, see https://github.com/prometheus/alertmanager/blob/main/CHANGELOG.md
+var eventRecorderMinVersion = semver.MustParse("v0.33.0")
+
+// eventRecorderSupported reports whether cr's image version is known to support
+// Alertmanager's event-recorder feature. An unparseable tag is treated as
+// supported, since it may be a non-semver custom build.
+func eventRecorderSupported(cr *vmv1beta1.VMAlertmanager) bool {
+	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return true
+	}
+	return amVersion.GreaterThanEqual(eventRecorderMinVersion)
+}
+
 // addFeatureFlags adds features based on alertmanager version
 //
 // https://github.com/prometheus/alertmanager/blob/main/featurecontrol/featurecontrol.go#L23
@@ -658,6 +673,9 @@ func addFeatureFlags(args []string, cr *vmv1beta1.VMAlertmanager) []string {
 	var features []string
 	if amVersion.GreaterThanEqual(utf8MinVersion) {
 		features = append(features, "utf8-strict-mode")
+	}
+	if cr.Spec.EventRecorder != nil && amVersion.GreaterThanEqual(eventRecorderMinVersion) {
+		features = append(features, "event-recorder")
 	}
 	if len(features) > 0 {
 		args = append(args, fmt.Sprintf("--enable-feature=%s", strings.Join(features, ",")))

@@ -434,7 +434,7 @@ type VTStorage struct {
 	// RetentionPeriod for the stored traces
 	// https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// RetentionMaxDiskSpaceUsageBytes for the stored traces
 	// VictoriaTraces keeps at least two last days of data in order to guarantee that the traces for the last day can be returned in queries.
@@ -447,7 +447,7 @@ type VTStorage struct {
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion
 	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
 	// LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams
 	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces

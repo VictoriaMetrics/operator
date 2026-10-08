@@ -6479,7 +6479,7 @@ spec:
                     description: |-
                       FutureRetention for the stored logs
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -7866,7 +7866,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored logs
                       https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -17821,7 +17821,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored logs
                   https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -44969,11 +44969,11 @@ spec:
                 type: object
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               serviceAccountName:
                 description: |-
@@ -80351,11 +80351,11 @@ spec:
                 type: array
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -92319,7 +92319,7 @@ spec:
                       FutureRetention for the stored traces
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion
                       see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -93707,7 +93707,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored traces
                       https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -95375,7 +95375,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored traces
                   https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-

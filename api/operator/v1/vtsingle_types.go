@@ -72,7 +72,7 @@ type VTSingleSpec struct {
 	// RetentionPeriod for the stored traces
 	// https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// RetentionMaxDiskSpaceUsageBytes for the stored traces
 	// VictoriaTraces keeps at least two last days of data in order to guarantee that the traces for the last day can be returned in queries.

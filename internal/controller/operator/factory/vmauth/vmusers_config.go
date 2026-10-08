@@ -330,6 +330,8 @@ func newTargetObject(kind string) (objectWithURL, error) {
 		return &vmv1.VLAgent{}, nil
 	case "VTSingle":
 		return &vmv1.VTSingle{}, nil
+	case "VTAgent":
+		return &vmv1.VTAgent{}, nil
 	case "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
 		"VLCluster/vlselect", "VLCluster/vlinsert", "VLCluster/vlstorage",
 		"VTCluster/vtselect", "VTCluster/vtinsert", "VTCluster/vtstorage":

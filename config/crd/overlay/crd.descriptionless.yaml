@@ -4475,6 +4475,7 @@ spec:
                                   - VTCluster/vtselect
                                   - VTCluster/vtstorage
                                   - VTSingle
+                                  - VTAgent
                                   - VMAnomaly
                                   type: string
                                 name:
@@ -5734,6 +5735,7 @@ spec:
                                       - VTCluster/vtselect
                                       - VTCluster/vtstorage
                                       - VTSingle
+                                      - VTAgent
                                       - VMAnomaly
                                       type: string
                                     name:
@@ -20749,6 +20751,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VTAgent
                           - VMAnomaly
                           type: string
                         name:
@@ -22008,6 +22011,7 @@ spec:
                               - VTCluster/vtselect
                               - VTCluster/vtstorage
                               - VTSingle
+                              - VTAgent
                               - VMAnomaly
                               type: string
                             name:
@@ -25960,6 +25964,7 @@ spec:
                                   - VTCluster/vtselect
                                   - VTCluster/vtstorage
                                   - VTSingle
+                                  - VTAgent
                                   - VMAnomaly
                                   type: string
                                 name:
@@ -27219,6 +27224,7 @@ spec:
                                       - VTCluster/vtselect
                                       - VTCluster/vtstorage
                                       - VTSingle
+                                      - VTAgent
                                       - VMAnomaly
                                       type: string
                                     name:
@@ -43339,6 +43345,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VTAgent
                           - VMAnomaly
                           type: string
                         name:

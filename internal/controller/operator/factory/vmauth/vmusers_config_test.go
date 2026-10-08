@@ -3111,6 +3111,58 @@ unauthorized_user:
 `,
 	})
 
+	// with vtagent ref
+	f(opts{
+		cr: &vmv1beta1.VMAuth{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "traces-agent-refs",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAuthSpec{
+				SelectAllByDefault: true,
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMUser{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-1",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMUserSpec{
+					Name:        ptr.To("user1"),
+					BearerToken: ptr.To("bearer"),
+					TargetRefs: []vmv1beta1.TargetRef{
+						{
+							CRD: &vmv1beta1.CRDRef{
+								Kind: "VTAgent",
+								NamespacedName: vmv1beta1.NamespacedName{
+									Name:      "test",
+									Namespace: "default",
+								},
+							},
+							Paths: []string{"/insert/opentelemetry/v1/traces"},
+						},
+					},
+				},
+			},
+			&vmv1.VTAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+			},
+		},
+		want: `users:
+- url_map:
+  - url_prefix:
+    - http://vtagent-test.default.svc:10429
+    src_paths:
+    - /insert/opentelemetry/v1/traces
+  name: user1
+  bearer_token: bearer
+`,
+	})
+
 	// with vlcluster refs
 	f(opts{
 		cr: &vmv1beta1.VMAuth{

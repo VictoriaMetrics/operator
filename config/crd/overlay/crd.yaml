@@ -8810,7 +8810,7 @@ spec:
                                 kind:
                                   description: |-
                                     Kind one of:
-                                    VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                                    VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                                   enum:
                                   - VMAgent
                                   - VMAlert
@@ -8830,6 +8830,7 @@ spec:
                                   - VTCluster/vtselect
                                   - VTCluster/vtstorage
                                   - VTSingle
+                                  - VTAgent
                                   - VMAnomaly
                                   type: string
                                 name:
@@ -11398,7 +11399,7 @@ spec:
                                     kind:
                                       description: |-
                                         Kind one of:
-                                        VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                                        VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                                       enum:
                                       - VMAgent
                                       - VMAlert
@@ -11418,6 +11419,7 @@ spec:
                                       - VTCluster/vtselect
                                       - VTCluster/vtstorage
                                       - VTSingle
+                                      - VTAgent
                                       - VMAnomaly
                                       type: string
                                     name:
@@ -41091,7 +41093,7 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                            VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                           enum:
                           - VMAgent
                           - VMAlert
@@ -41111,6 +41113,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VTAgent
                           - VMAnomaly
                           type: string
                         name:
@@ -43647,7 +43650,7 @@ spec:
                             kind:
                               description: |-
                                 Kind one of:
-                                VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                                VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                               enum:
                               - VMAgent
                               - VMAlert
@@ -43667,6 +43670,7 @@ spec:
                               - VTCluster/vtselect
                               - VTCluster/vtstorage
                               - VTSingle
+                              - VTAgent
                               - VMAnomaly
                               type: string
                             name:
@@ -51394,7 +51398,7 @@ spec:
                                 kind:
                                   description: |-
                                     Kind one of:
-                                    VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                                    VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                                   enum:
                                   - VMAgent
                                   - VMAlert
@@ -51414,6 +51418,7 @@ spec:
                                   - VTCluster/vtselect
                                   - VTCluster/vtstorage
                                   - VTSingle
+                                  - VTAgent
                                   - VMAnomaly
                                   type: string
                                 name:
@@ -53982,7 +53987,7 @@ spec:
                                     kind:
                                       description: |-
                                         Kind one of:
-                                        VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                                        VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                                       enum:
                                       - VMAgent
                                       - VMAlert
@@ -54002,6 +54007,7 @@ spec:
                                       - VTCluster/vtselect
                                       - VTCluster/vtstorage
                                       - VTSingle
+                                      - VTAgent
                                       - VMAnomaly
                                       type: string
                                     name:
@@ -84570,7 +84576,7 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
+                            VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
                           enum:
                           - VMAgent
                           - VMAlert
@@ -84590,6 +84596,7 @@ spec:
                           - VTCluster/vtselect
                           - VTCluster/vtstorage
                           - VTSingle
+                          - VTAgent
                           - VMAnomaly
                           type: string
                         name:

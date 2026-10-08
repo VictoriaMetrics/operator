@@ -1961,7 +1961,7 @@ Appears in: [TargetRef (v1beta1)](#v1beta1-targetref)
 
 | Field | Description |
 | --- | --- |
-| kind<a href="#v1beta1-crdref-kind" id="v1beta1-crdref-kind">#</a><a id="crdref-kind"></a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent |
+| kind<a href="#v1beta1-crdref-kind" id="v1beta1-crdref-kind">#</a><a id="crdref-kind"></a><br/>_string_ | _(Required)_<br/>Kind one of:<br />VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent |
 | name<a href="#v1beta1-crdref-name" id="v1beta1-crdref-name">#</a><a id="crdref-name"></a><br/>_string_ | _(Required)_<br/>Name of the target Kubernetes object |
 | namespace<a href="#v1beta1-crdref-namespace" id="v1beta1-crdref-namespace">#</a><a id="crdref-namespace"></a><br/>_string_ | _(Required)_<br/>Namespace of the target Kubernetes object |
 | objects<a href="#v1beta1-crdref-objects" id="v1beta1-crdref-objects">#</a><a id="crdref-objects"></a><br/>_[NamespacedName (v1beta1)](#v1beta1-namespacedname) array_ | _(Optional)_<br/>Objects defines list of name/namespace pairs that define existing k8s object |

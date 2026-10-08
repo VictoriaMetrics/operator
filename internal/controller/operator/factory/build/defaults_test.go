@@ -9,6 +9,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
@@ -202,6 +203,69 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 		},
 		wantVersion: "v1.120.0-enterprise-cluster@sha256xxx",
 	})
+}
+
+func TestAddVMDistributedDefaultsWithLicenseAndNoVMSingle(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		Spec: vmv1alpha1.VMDistributedSpec{
+			License: &vmv1beta1.License{Key: ptr.To("license-key")},
+			ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+				VMCluster: vmv1alpha1.VMDistributedZoneCluster{
+					Spec: vmv1beta1.VMClusterSpec{
+						ClusterVersion: "v1.153.0-enterprise-cluster",
+					},
+				},
+			},
+			Zones: []vmv1alpha1.VMDistributedZone{{Name: "zone-a"}},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		addVMDistributedDefaults(cr)
+	})
+	assert.Equal(t, cr.Spec.License, cr.Spec.ZoneCommon.VMCluster.Spec.License)
+	assert.Equal(t, cr.Spec.License, cr.Spec.ZoneCommon.VMAgent.Spec.License)
+	assert.Nil(t, cr.Spec.ZoneCommon.VMSingle)
+}
+
+func TestAddVMDistributedDefaultsWithLicenseAndVMSingleWithoutSpec(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		Spec: vmv1alpha1.VMDistributedSpec{
+			License: &vmv1beta1.License{Key: ptr.To("license-key")},
+			ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+				VMSingle: &vmv1alpha1.VMDistributedZoneSingle{Name: "existing-vmsingle"},
+			},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		addVMDistributedDefaults(cr)
+	})
+	assert.Nil(t, cr.Spec.ZoneCommon.VMSingle.Spec)
+}
+
+func TestAddVLDistributedDefaultsWithLicenseAndNoVLSingle(t *testing.T) {
+	cr := &vmv1alpha1.VLDistributed{
+		Spec: vmv1alpha1.VLDistributedSpec{
+			License: &vmv1beta1.License{Key: ptr.To("license-key")},
+			ZoneCommon: vmv1alpha1.VLDistributedZoneCommon{
+				VLCluster: vmv1alpha1.VLDistributedZoneCluster{
+					Spec: vmv1.VLClusterSpec{
+						ClusterVersion: "v1.35.0-enterprise-cluster",
+					},
+				},
+			},
+			Zones: []vmv1alpha1.VLDistributedZone{{Name: "zone-a"}},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		addVLDistributedDefaults(cr)
+	})
+	assert.Equal(t, cr.Spec.License, cr.Spec.VMAuth.Spec.License)
+	assert.Equal(t, cr.Spec.License, cr.Spec.ZoneCommon.VLAgent.Spec.License)
+	assert.Equal(t, cr.Spec.License, cr.Spec.ZoneCommon.VLCluster.Spec.License)
+	assert.Nil(t, cr.Spec.ZoneCommon.VLSingle)
 }
 
 func TestSetTag(t *testing.T) {

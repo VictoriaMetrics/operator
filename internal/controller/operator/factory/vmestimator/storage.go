@@ -134,17 +134,19 @@ func createOrUpdateStorageSTS(ctx context.Context, rclient client.Client, cr, pr
 
 func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulSet, error) {
 	storage := cr.Spec.Storage
+	var args []string
+	if cr.IsClusterMode() {
+		// storage nodes expose local cardinality estimations at the separate path
+		// in order to keep them away of the default scrape path, since select nodes expose merged estimations
+		args = append(args, "-cardinalityMetrics.exposeAt=/cardinality/metrics")
+	}
 	podSpec, err := buildPodTemplate(cr, &podOpts{
-		kind:      storageKind,
-		params:    &storage.CommonAppsParams,
-		probe:     storage,
-		logLevel:  storage.LogLevel,
-		logFormat: storage.LogFormat,
-		args: []string{
-			// storage nodes expose local cardinality estimations at the separate path
-			// in order to keep them away of the default scrape path, since select nodes expose merged estimations
-			"-cardinalityMetrics.exposeAt=/cardinality/metrics",
-		},
+		kind:       storageKind,
+		params:     &storage.CommonAppsParams,
+		probe:      storage,
+		logLevel:   storage.LogLevel,
+		logFormat:  storage.LogFormat,
+		args:       args,
 		configHash: configHash,
 	})
 	if err != nil {
@@ -170,5 +172,9 @@ func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulS
 		},
 	}
 	build.StatefulSetAddCommonParams(sts, &storage.CommonAppsParams)
+	if !cr.IsClusterMode() {
+		// single mode runs exactly one storage node, since there are no select nodes to merge estimations
+		sts.Spec.Replicas = ptr.To[int32](1)
+	}
 	return sts, nil
 }

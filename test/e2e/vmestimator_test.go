@@ -116,33 +116,39 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 				verify(&created)
 			},
-			Entry("in single-node mode by default", "single-default",
+			Entry("in single mode by default", "single-default",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
 						Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
 					},
 				},
 				func(cr *vmv1.VMEstimator) {
-					var dep appsv1.Deployment
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}, &dep)).ToNot(HaveOccurred())
-					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
-					Expect(dep.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-config=/etc/vmestimator/config/streams.yaml"))
+					Expect(cr.Spec.Mode).To(Equal(vmv1.VMEstimatorModeSingle))
+					storageNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+					var sts appsv1.StatefulSet
+					Expect(k8sClient.Get(ctx, storageNsn, &sts)).ToNot(HaveOccurred())
+					Expect(sts.Status.ReadyReplicas).To(Equal(int32(1)))
+					Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(1))
+					Expect(sts.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-config=/etc/vmestimator/config/streams.yaml"))
+					Expect(sts.Spec.Template.Spec.Containers[0].Args).ToNot(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
 
 					var cm corev1.ConfigMap
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetConfigMapName()}, &cm)).ToNot(HaveOccurred())
 					Expect(cm.Data).To(HaveKey("streams.yaml"))
 
-					var svs vmv1beta1.VMServiceScrape
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}, &svs)).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, storageNsn, &vmv1beta1.VMServiceScrape{})).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInsertName()}, &corev1.Service{})).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &appsv1.Deployment{})).
+						To(MatchError(k8serrors.IsNotFound, "isNotFound"))
 				}),
-			Entry("in single-node mode with estimations", "single-estimations",
+			Entry("in single mode with estimations", "single-estimations",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
 						Streams: []vmv1.VMEstimatorStream{
 							{Interval: "5m"},
 							{Interval: "5m", GroupBy: []string{"job"}},
 						},
-						Single: &vmv1.VMEstimatorSingle{
+						Storage: &vmv1.VMEstimatorStorage{
 							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ExtraArgs:         vmEstimatorTestArgs,
 								UseStrictSecurity: ptr.To(true),
@@ -152,13 +158,14 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				},
 				func(cr *vmv1.VMEstimator) {
 					sendVMEstimatorSeries(ctx, cr.RemoteWriteURL(), 100)
-					expectGlobalCardinality(ctx, cr.AsURL(vmv1.VMEstimatorComponentSingle)+"/metrics", 100)
+					// single storage node exposes estimations at the default /metrics path
+					expectGlobalCardinality(ctx, fmt.Sprintf("http://%s.%s.svc:8490/metrics", cr.PrefixedInsertName(), namespace), 100)
 				}),
-			Entry("in single-node mode with optional objects", "single-optional",
+			Entry("in single mode with optional objects", "single-optional",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
 						Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
-						Single: &vmv1.VMEstimatorSingle{
+						Storage: &vmv1.VMEstimatorStorage{
 							PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 								MaxUnavailable: ptr.To(intstr.FromInt32(1)),
 							},
@@ -166,23 +173,24 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 								Ingress: []networkingv1.NetworkPolicyIngressRule{{}},
 							},
 							ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-								EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-single-optional-extra"},
+								EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-optional-extra"},
 							},
 						},
 					},
 				},
 				func(cr *vmv1.VMEstimator) {
-					name := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}
+					name := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
 					Expect(k8sClient.Get(ctx, name, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
 					Expect(k8sClient.Get(ctx, name, &networkingv1.NetworkPolicy{})).ToNot(HaveOccurred())
 					// additional service routes requests to vmestimator pods
 					expectHTTPRequestToSucceed(ctx, httpRequestOpts{
-						dstURL: fmt.Sprintf("http://vmestimator-single-optional-extra.%s.svc:8490/health", namespace),
+						dstURL: fmt.Sprintf("http://vmestimator-optional-extra.%s.svc:8490/health", namespace),
 					})
 				}),
 			Entry("in cluster mode with estimations", "cluster-estimations",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
+						Mode: vmv1.VMEstimatorModeCluster,
 						Streams: []vmv1.VMEstimatorStream{
 							{Interval: "5m"},
 						},
@@ -226,7 +234,7 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				}),
 		)
 
-		It("should switch between single-node and cluster modes", func() {
+		It("should switch between single and cluster modes", func() {
 			nsn.Name = "switch-mode"
 			cr := &vmv1.VMEstimator{
 				ObjectMeta: metav1.ObjectMeta{
@@ -235,59 +243,46 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				},
 				Spec: vmv1.VMEstimatorSpec{
 					Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
-					Single:  &vmv1.VMEstimatorSingle{},
 				},
 			}
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
-			singleNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}
-			Expect(k8sClient.Get(ctx, singleNsn, &appsv1.Deployment{})).ToNot(HaveOccurred())
+			storageNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+			selectNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
+			Expect(k8sClient.Get(ctx, storageNsn, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
+			setMode := func(mode vmv1.VMEstimatorMode) {
+				expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
+					Eventually(func() error {
+						var toUpdate vmv1.VMEstimator
+						if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
+							return err
+						}
+						toUpdate.Spec.Mode = mode
+						return k8sClient.Update(ctx, &toUpdate)
+					}, eventualDeploymentAppReadyTimeout).ToNot(HaveOccurred())
+				}, vmv1beta1.UpdateStatusOperational)
+			}
 
-			By("switching to the cluster mode")
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
-				Eventually(func() error {
-					var toUpdate vmv1.VMEstimator
-					if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-						return err
-					}
-					toUpdate.Spec.Single = nil
-					toUpdate.Spec.Storage = &vmv1.VMEstimatorStorage{}
-					toUpdate.Spec.Select = &vmv1.VMEstimatorSelect{}
-					return k8sClient.Update(ctx, &toUpdate)
-				}, eventualDeploymentAppReadyTimeout).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &appsv1.StatefulSet{})).ToNot(HaveOccurred())
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &appsv1.Deployment{})).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return k8sClient.Get(ctx, singleNsn, &appsv1.Deployment{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
-			Eventually(func() error {
-				return k8sClient.Get(ctx, singleNsn, &corev1.Service{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
+			By("switching to cluster mode")
+			setMode(vmv1.VMEstimatorModeCluster)
+			Expect(k8sClient.Get(ctx, selectNsn, &appsv1.Deployment{})).ToNot(HaveOccurred())
+			var sts appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, storageNsn, &sts)).ToNot(HaveOccurred())
+			Expect(sts.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
 
-			By("switching back to the single-node mode")
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
-				Eventually(func() error {
-					var toUpdate vmv1.VMEstimator
-					if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
-						return err
-					}
-					toUpdate.Spec.Storage = nil
-					toUpdate.Spec.Select = nil
-					return k8sClient.Update(ctx, &toUpdate)
-				}, eventualDeploymentAppReadyTimeout).ToNot(HaveOccurred())
-			}, vmv1beta1.UpdateStatusOperational)
-			Expect(k8sClient.Get(ctx, singleNsn, &appsv1.Deployment{})).ToNot(HaveOccurred())
+			By("switching back to single mode")
+			setMode(vmv1.VMEstimatorModeSingle)
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &appsv1.StatefulSet{})
+				return k8sClient.Get(ctx, selectNsn, &appsv1.Deployment{})
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
 			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &appsv1.Deployment{})
+				return k8sClient.Get(ctx, selectNsn, &corev1.Service{})
 			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
-			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInsertName()}, &corev1.Service{})
-			}, eventualDeletionTimeout).Should(MatchError(k8serrors.IsNotFound, "isNotFound"))
+			Expect(k8sClient.Get(ctx, storageNsn, &sts)).ToNot(HaveOccurred())
+			Expect(sts.Spec.Template.Spec.Containers[0].Args).ToNot(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
+			// remote write URL is the same in both modes
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedInsertName()}, &corev1.Service{})).ToNot(HaveOccurred())
 		})
 
 		It("should load streams from configmap", func() {
@@ -318,7 +313,7 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					},
 				},
 			}
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
 
@@ -352,7 +347,7 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 			var got vmv1.VMEstimator
 			Expect(k8sClient.Get(ctx, nsn, &got)).ToNot(HaveOccurred())
 			Expect(got.Status.Reason).To(ContainSubstring("churnInterval"))
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}, &appsv1.Deployment{})).
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &appsv1.StatefulSet{})).
 				To(MatchError(k8serrors.IsNotFound, "isNotFound"))
 		})
 
@@ -367,16 +362,16 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
 				},
 			}
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
-			depNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1.VMEstimatorComponentSingle)}
-			var dep appsv1.Deployment
-			Expect(k8sClient.Get(ctx, depNsn, &dep)).ToNot(HaveOccurred())
-			prevHash := dep.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]
+			stsNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
+			var sts appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, stsNsn, &sts)).ToNot(HaveOccurred())
+			prevHash := sts.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]
 			Expect(prevHash).ToNot(BeEmpty())
 
-			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
+			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Eventually(func() error {
 					var toUpdate vmv1.VMEstimator
 					if err := k8sClient.Get(ctx, nsn, &toUpdate); err != nil {
@@ -386,9 +381,10 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					return k8sClient.Update(ctx, &toUpdate)
 				}, eventualDeploymentAppReadyTimeout).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
-			Expect(k8sClient.Get(ctx, depNsn, &dep)).ToNot(HaveOccurred())
-			Expect(dep.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]).ToNot(Equal(prevHash))
-			Expect(dep.Status.UpdatedReplicas).To(Equal(dep.Status.ReadyReplicas))
+			Expect(k8sClient.Get(ctx, stsNsn, &sts)).ToNot(HaveOccurred())
+			Expect(sts.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]).ToNot(Equal(prevHash))
+			Expect(sts.Status.ReadyReplicas).To(Equal(int32(1)))
+			Expect(sts.Status.UpdateRevision).To(Equal(sts.Status.CurrentRevision))
 		})
 	})
 })

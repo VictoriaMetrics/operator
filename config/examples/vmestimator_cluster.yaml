@@ -3,6 +3,7 @@ kind: VMEstimator
 metadata:
   name: example
 spec:
+  mode: cluster
   streamsConfigMap:
     name: vmestimator-streams
     key: streams.yaml

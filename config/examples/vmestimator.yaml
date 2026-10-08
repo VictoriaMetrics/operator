@@ -14,7 +14,7 @@ spec:
     # cardinality per metric name
     - interval: 15m
       groupBy: [__name__]
-  single:
+  storage:
     resources:
       requests:
         cpu: "100m"
@@ -31,7 +31,7 @@ spec:
   selectAllByDefault: true
   remoteWrite:
     - url: "http://vmsingle-example:8428/api/v1/write"
-    - url: "http://vmestimator-single-example:8490/cardinality/api/v1/write"
+    - url: "http://vmestimator-storage-example-insert:8490/cardinality/api/v1/write"
   extraArgs:
     # disables on-disk queue for vmestimator remote write url
     remoteWrite.disableOnDiskQueue: "false,true"

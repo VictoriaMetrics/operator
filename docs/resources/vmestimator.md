@@ -18,21 +18,21 @@ tags:
 for metrics ingested via [Prometheus remote write protocol](https://prometheus.io/docs/specs/prw/remote_write_spec/).
 
 The `VMEstimator` CRD declaratively defines a vmestimator installation to run in a Kubernetes cluster.
-It supports both single-node and [cluster](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster) deployment modes:
+The deployment mode is defined at `spec.mode`:
 
-* **single-node** mode (`spec.single`) - the Operator deploys a `Deployment`, which accepts remote write requests
-  and exposes cardinality estimations as metrics. It's the default mode, which is used if no component is defined at the spec.
-* **cluster** mode (`spec.storage` and `spec.select`) - the Operator deploys storage nodes as a `StatefulSet`,
+* **single** mode (default) - the Operator deploys a single storage node as a `StatefulSet`,
+  which accepts remote write requests and exposes cardinality estimations as metrics. `spec.select` is ignored.
+* **cluster** mode - the Operator deploys `spec.storage.replicaCount` storage nodes as a `StatefulSet`,
   which accept remote write requests and maintain local cardinality estimations,
   and select nodes as a `Deployment`, which query all storage nodes, merge their estimations and expose them as metrics.
-  Use the cluster mode for high availability or when CPU of a single instance becomes a limiting factor.
+  See [cluster](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster) for details.
 
-`spec.single` cannot be used together with `spec.storage` or `spec.select`, and `spec.select` requires `spec.storage`.
+Storage nodes are configured at `spec.storage` and select nodes at `spec.select` in both modes,
+so switching the mode requires changing only `spec.mode`. Remote write URL is the same in both modes.
 
 For each component the Operator adds `Service` and `VMServiceScrape` in the same namespace,
 prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
-Because of this prefix, the object name must not exceed 44 characters in single-node mode
-and 32 characters in cluster mode.
+Because of this prefix, the object name must not exceed 32 characters.
 
 ## Specification
 
@@ -52,7 +52,7 @@ see [example config](https://github.com/VictoriaMetrics/vmestimator/blob/main/st
 If both are set, streams from the `ConfigMap` are appended to the streams from `spec.streams`.
 
 The Operator validates streams, generates the configuration file and stores it at the `vmestimator-<name>` `ConfigMap`,
-which is mounted to single-node and storage pods.
+which is mounted to storage pods.
 vmestimator doesn't support configuration reload, so the Operator restarts pods on configuration changes.
 Note, that changes of the `ConfigMap` referenced at `spec.streamsConfigMap` are picked up during the next periodic reconciliation,
 which is configured with [VM_FORCERESYNCINTERVAL](https://docs.victoriametrics.com/operator/configuration/#variables-vm-forceresyncinterval).
@@ -89,18 +89,13 @@ For a `VMEstimator` named `<name>` in namespace `<namespace>`, the Operator crea
 
 | Service name | Mode | Type | Port | Purpose |
 |---|---|---|---|---|
-| `vmestimator-single-<name>` | single-node | ClusterIP | 8490 | Remote write ingestion and cardinality metrics |
-| `vmestimator-storage-<name>-insert` | cluster | ClusterIP | 8490 | Remote write ingestion, load-balanced among storage nodes |
-| `vmestimator-storage-<name>` | cluster | Headless | 8490 | Stable network identities of storage nodes, used by select nodes |
+| `vmestimator-storage-<name>-insert` | single, cluster | ClusterIP | 8490 | Remote write ingestion, load-balanced among storage nodes |
+| `vmestimator-storage-<name>` | single, cluster | Headless | 8490 | Stable network identities of storage nodes, used by select nodes |
 | `vmestimator-select-<name>` | cluster | ClusterIP | 8490 | Merged cardinality metrics |
 
-Remote write URLs:
+Remote write URL is the same in both modes: `http://vmestimator-storage-<name>-insert.<namespace>.svc:8490/cardinality/api/v1/write`.
 
-| Mode | URL |
-|---|---|
-| single-node | `http://vmestimator-single-<name>.<namespace>.svc:8490/cardinality/api/v1/write` |
-| cluster | `http://vmestimator-storage-<name>-insert.<namespace>.svc:8490/cardinality/api/v1/write` |
-
+In single mode the storage node exposes cardinality estimations at `/metrics` path.
 In cluster mode storage nodes expose local cardinality estimations at `/cardinality/metrics` path,
 so their `/metrics` path contains only operational metrics. Merged cardinality estimations are exposed by select nodes at `/metrics` path.
 This could be changed with `cardinalityMetrics.exposeAt` flag at `spec.storage.extraArgs`.
@@ -119,7 +114,7 @@ metadata:
 spec:
   streams:
     - interval: 5m
-  single:
+  storage:
     networkPolicy:
       ingress:
         - from:
@@ -143,7 +138,7 @@ spec:
   selectAllByDefault: true
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
-    - url: "http://vmestimator-single-example.default.svc:8490/cardinality/api/v1/write"
+    - url: "http://vmestimator-storage-example-insert.default.svc:8490/cardinality/api/v1/write"
   extraArgs:
     # values are applied to remoteWrite urls in the order of their definition
     remoteWrite.disableOnDiskQueue: "false,true"
@@ -160,7 +155,7 @@ and [dashboards](https://docs.victoriametrics.com/victoriametrics/vmestimator/#d
 
 ## High availability
 
-Single-node mode doesn't support high availability. Use cluster mode with several storage and select replicas instead,
+Single mode doesn't support high availability. Use cluster mode with several storage and select replicas instead,
 see [cluster mode](https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster).
 
 ## Version management
@@ -225,7 +220,7 @@ by default all `VMEstimator` pods have resource requests and limits from the def
 - `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_REQUEST_MEM` - default memory request for `VMEstimator.storage` pods,
 - `VM_VMESTIMATORDEFAULT_STORAGE_RESOURCE_REQUEST_CPU` - default cpu request for `VMEstimator.storage` pods.
 
-The same parameters with `SINGLE` and `SELECT` instead of `STORAGE` are used for `VMEstimator.single` and `VMEstimator.select` pods.
+The same parameters with `SELECT` instead of `STORAGE` are used for `VMEstimator.select` pods.
 
 These default parameters will be used if:
 
@@ -241,7 +236,7 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Examples
 
-Single-node mode:
+Single mode:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1
@@ -255,7 +250,7 @@ spec:
       groupBy: [job]
     - interval: 5m
       groupBy: [__name__]
-  single:
+  storage:
     resources:
       requests:
         cpu: 100m
@@ -272,6 +267,7 @@ kind: VMEstimator
 metadata:
   name: example
 spec:
+  mode: cluster
   streamsConfigMap:
     name: vmestimator-streams
     key: streams.yaml

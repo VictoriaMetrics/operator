@@ -60,7 +60,6 @@ Field `extraArgs` is supported for the following custom resources:
 - [VTSingle spec](https://docs.victoriametrics.com/operator/api/#v1-vtsinglespec)
 - [VTCluster spec](https://docs.victoriametrics.com/operator/api/#v1-vtclusterspec)
 - [VTAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vtagentspec)
-- [VMEstimator/single spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorsingle)
 - [VMEstimator/storage spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorstorage)
 - [VMEstimator/select spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorselect)
 

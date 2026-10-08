@@ -121,9 +121,6 @@ func WarnOpenShiftVTClusterSpec(spec *vmv1.VTClusterSpec) []string {
 // of a VMEstimatorSpec (Single, Storage, Select).
 func WarnOpenShiftVMEstimatorSpec(spec *vmv1.VMEstimatorSpec) []string {
 	var w []string
-	if c := spec.Single; c != nil {
-		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
-	}
 	if c := spec.Storage; c != nil {
 		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
 	}

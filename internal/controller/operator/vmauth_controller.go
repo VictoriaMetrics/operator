@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -99,13 +98,13 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		releaseErr := vmauth.ReleaseAppliedConditions(ctx, r.Client, &instance)
 		authSync.RUnlock()
 		if releaseErr != nil {
-			releaseErr = fmt.Errorf("cannot release status conditions for vmauth: %w", releaseErr)
+			err = fmt.Errorf("cannot release status conditions for vmauth: %w", releaseErr)
+			return
 		}
-		finErr := finalize.OnVMAuthDelete(ctx, r, &instance)
-		if finErr != nil {
-			finErr = fmt.Errorf("cannot remove finalizer from vmauth: %w", finErr)
+		err = finalize.OnVMAuthDelete(ctx, r, &instance)
+		if err != nil {
+			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
-		err = errors.Join(releaseErr, finErr)
 		return
 	}
 

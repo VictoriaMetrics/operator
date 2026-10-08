@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -101,10 +100,10 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		releaseErr := vmalertmanager.ReleaseAppliedConditions(ctx, r.Client, &instance)
 		alertmanagerSync.RUnlock()
 		if releaseErr != nil {
-			releaseErr = fmt.Errorf("cannot release status conditions for vmalertmanager: %w", releaseErr)
+			err = fmt.Errorf("cannot release status conditions for vmalertmanager: %w", releaseErr)
+			return
 		}
-		finErr := finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
-		err = errors.Join(releaseErr, finErr)
+		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
 		return
 	}
 

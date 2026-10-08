@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -108,10 +107,10 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		releaseErr := vmagent.ReleaseAppliedConditions(ctx, r.Client, &instance)
 		agentSync.RUnlock()
 		if releaseErr != nil {
-			releaseErr = fmt.Errorf("cannot release status conditions for vmagent: %w", releaseErr)
+			err = fmt.Errorf("cannot release status conditions for vmagent: %w", releaseErr)
+			return
 		}
-		finErr := finalize.OnVMAgentDelete(ctx, r.Client, &instance)
-		err = errors.Join(releaseErr, finErr)
+		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
 		return
 	}
 

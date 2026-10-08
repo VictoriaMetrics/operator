@@ -1,0 +1,37 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  streams:
+    # global cardinality and churn ratio
+    - interval: 15m
+      churnInterval: 15m
+    # cardinality and churn ratio per job
+    - interval: 15m
+      churnInterval: 15m
+      groupBy: [job]
+    # cardinality per metric name
+    - interval: 15m
+      groupBy: [__name__]
+  storage:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        memory: "1Gi"
+---
+# replicates all collected metrics into vmestimator
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example
+spec:
+  selectAllByDefault: true
+  remoteWrite:
+    - url: "http://vmsingle-example:8428/api/v1/write"
+    - url: "http://vmestimator-storage-example-insert:8490/cardinality/api/v1/write"
+  extraArgs:
+    # disables on-disk queue for vmestimator remote write url
+    remoteWrite.disableOnDiskQueue: "false,true"

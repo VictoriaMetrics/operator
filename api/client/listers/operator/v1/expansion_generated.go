@@ -49,6 +49,14 @@ type VMAnomalyListerExpansion interface{}
 // VMAnomalyNamespaceLister.
 type VMAnomalyNamespaceListerExpansion interface{}
 
+// VMEstimatorListerExpansion allows custom methods to be added to
+// VMEstimatorLister.
+type VMEstimatorListerExpansion interface{}
+
+// VMEstimatorNamespaceListerExpansion allows custom methods to be added to
+// VMEstimatorNamespaceLister.
+type VMEstimatorNamespaceListerExpansion interface{}
+
 // VTAgentListerExpansion allows custom methods to be added to
 // VTAgentLister.
 type VTAgentListerExpansion interface{}

@@ -1,0 +1,32 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMEstimator
+metadata:
+  name: example
+spec:
+  mode: cluster
+  streamsConfigMap:
+    name: vmestimator-streams
+    key: streams.yaml
+  storage:
+    replicaCount: 3
+    podDisruptionBudget:
+      maxUnavailable: 1
+    extraArgs:
+      deduplication.interval: 3m
+  select:
+    replicaCount: 2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmestimator-streams
+data:
+  streams.yaml: |
+    streams:
+      - interval: '15m'
+        churn_interval: '15m'
+      - interval: '15m'
+        churn_interval: '15m'
+        group_by: ['job']
+      - interval: '15m'
+        group_by: ['__name__']

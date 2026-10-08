@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -304,5 +305,44 @@ func TestVMAgent_Reconcile_DeleteReleasesAppliedCondition(t *testing.T) {
 		}
 	} else if len(gotAgent.Finalizers) != 0 {
 		t.Errorf("finalizer must be removed, got %v", gotAgent.Finalizers)
+	}
+}
+
+func TestVMAgent_Reconcile_DeleteKeepsFinalizerOnReleaseError(t *testing.T) {
+	ctx := context.Background()
+	now := metav1.Now()
+	vmagent := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "vmagent",
+			Namespace:         "ns",
+			Finalizers:        []string{vmv1beta1.FinalizerName},
+			DeletionTimestamp: &now,
+		},
+		Spec: vmv1beta1.VMAgentSpec{
+			SelectAllByDefault: true,
+			RemoteWrite:        []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+		},
+	}
+	fns := k8stools.GetInterceptorsWithObjects(nil)
+	fns.List = func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+		if _, ok := list.(*vmv1beta1.VMServiceScrapeList); ok {
+			return errors.New("transient list error")
+		}
+		return c.List(ctx, list, opts...)
+	}
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{vmagent}, fns)
+
+	reconciler := &VMAgentReconciler{}
+	reconciler.Init("vmagent", fclient, logr.Discard(), scheme.Scheme, config.MustGetBaseConfig())
+	nsn := types.NamespacedName{Namespace: "ns", Name: "vmagent"}
+	if _, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsn}); err == nil {
+		t.Fatal("reconcile must return the release error")
+	}
+	var got vmv1beta1.VMAgent
+	if err := fclient.Get(ctx, nsn, &got); err != nil {
+		t.Fatalf("vmagent must still exist while the release fails: %v", err)
+	}
+	if len(got.Finalizers) == 0 {
+		t.Error("finalizer must be kept when the release fails")
 	}
 }

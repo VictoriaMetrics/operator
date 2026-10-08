@@ -1,10 +1,64 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
+
+func TestPeerOutlierModelRoundTrip(t *testing.T) {
+	for _, class := range []string{"peer_outlier", "model.online.PeerOutlierModel"} {
+		for _, params := range []string{"", `
+min_peer_count: 10
+epsilon_quantile: 0.9
+tolerance: 6
+decay: 0.999
+min_n_samples_seen: 96
+groupby: [service, mode]
+queries: [cpu]
+schedulers: [minute]
+data_range: [0, 100]
+clip_predictions: true
+detection_direction: above_expected
+`} {
+			t.Run(class+params, func(t *testing.T) {
+				input := []byte("class: " + class + "\n" + params)
+				var m model
+				require.NoError(t, m.Validate(input))
+				output, err := yaml.Marshal(&m)
+				require.NoError(t, err)
+				var before, after map[string]any
+				require.NoError(t, yaml.Unmarshal(input, &before))
+				require.NoError(t, yaml.Unmarshal(output, &after))
+				assert.Equal(t, before, after)
+				if params != "" {
+					m.addPrefix("ns-config")
+					assert.Equal(t, []string{"ns-config-cpu"}, m.queries())
+					assert.Equal(t, []string{"ns-config-minute"}, m.schedulers())
+					assert.Equal(t, []string{"service", "mode"}, m.anomalyModel.(*peerOutlierModel).GroupBy)
+				}
+			})
+		}
+	}
+}
+
+func TestPeerOutlierModelValidation(t *testing.T) {
+	for _, params := range []string{
+		"min_peer_count: 2", "epsilon_quantile: 0", "epsilon_quantile: 1",
+		"tolerance: 0", "decay: 0", "decay: 1.1", "min_n_samples_seen: 0",
+		"args: {unknown: 1}", "decay: 0.9", "decay: 0.5\nmin_n_samples_seen: 3",
+	} {
+		t.Run(params, func(t *testing.T) {
+			var m model
+			assert.Error(t, m.Validate(fmt.Appendf(nil, "class: peer_outlier\n%s\n", params)))
+		})
+	}
+	var m model
+	require.NoError(t, m.Validate([]byte("class: peer_outlier\ndecay: 0.5\nmin_n_samples_seen: 2\n")))
+}
 
 func TestV130ModelValidation(t *testing.T) {
 	tests := []struct {

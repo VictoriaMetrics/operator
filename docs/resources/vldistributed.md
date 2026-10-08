@@ -50,7 +50,7 @@ Each entry in the `zones` array includes:
 *   `trafficMode` defines allowed traffic mode for a zone: `read-write`, `read-only`, `write-only`, or `maintenance`.
 *   `vlcluster` defines `VLDistributedZoneCluster`, that allows either reference an existing `VLCluster` resource or creates a new one. Only used when `spec.backendType: VLCluster`.
 *   `vlsingle` defines `VLDistributedZoneSingle`, that allows either reference an existing `VLSingle` resource or creates a new one. Only used when `spec.backendType: VLSingle`.
-*   `vlagent` defines `VLDistributedZoneAgent`, that allows either reference an existing `VLAgent` resource or creates one. It receives write traffic from `vmauth` and sends to `VLCluster` or `VLSingle` instances.
+*   `vlagent` defines `VLDistributedZoneAgent`, that allows either reference an existing `VLAgent` resource or creates one. It receives write traffic from `vmauth` and sends to `VLCluster` or `VLSingle` instances. Set `vlagent.spec.replicaCount: 0` (or `zoneCommon.vlagent.spec.replicaCount: 0` for all zones) to skip creating a `VLAgent` for the zone; the zone's backend still receives writes replicated from other zones' `VLAgent` instances, so it stays part of the distributed setup without running its own agent.
 *   `remoteWrite` defines per-zone `VLAgent` remote write settings. The operator controls the remote write URL.
 
 ### `VLDistributedZoneCluster`
@@ -144,6 +144,7 @@ spec:
 - `VLAgent`, `VLCluster` and `VLSingle` names must be unique across zones within one `VLDistributed` resource.
 - All zones must use the same backend type (controlled by `spec.backendType`); mixing `VLCluster` and `VLSingle` zones in one `VLDistributed` is not supported.
 - `VLCluster` read targets use `vlselect` API paths (`/select/...`); `VLSingle` read targets use single-node API paths (`/select/...`). Both are exposed as a `read` backend.
+- Setting `vlagent.spec.replicaCount: 0` for **all** zones leaves the `write` backend without any target; writes through `VMAuth` will fail. Custom writes would have to bypass `VMAuth` and target a backend directly.
 
 ### Authorization
 

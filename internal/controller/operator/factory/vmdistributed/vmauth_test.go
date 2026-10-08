@@ -11,8 +11,21 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
+// agentObjs extracts the VMAgent objects from zone agent refs, for tests that
+// need to pass them around as plain *vmv1beta1.VMAgent (e.g. newTestLBZones).
+func agentObjs(refs []vmAgentRef) []*vmv1beta1.VMAgent {
+	objs := make([]*vmv1beta1.VMAgent, len(refs))
+	for i, r := range refs {
+		objs[i] = r.obj
+	}
+	return objs
+}
+
 func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle) *zones {
-	zs := &zones{vmagents: vmAgents}
+	zs := &zones{vmagents: make([]vmAgentRef, len(vmAgents))}
+	for i, a := range vmAgents {
+		zs.vmagents[i] = vmAgentRef{obj: a}
+	}
 	for _, c := range vmClusters {
 		zs.backends = append(zs.backends, vmBackend{obj: c})
 	}

@@ -98,7 +98,7 @@ func addVMDistributedDefaults(objI any) {
 		if !cr.Spec.ZoneCommon.VMCluster.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VMCluster.Spec.License = cr.Spec.License.DeepCopy()
 		}
-		if !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
+		if cr.Spec.ZoneCommon.VMSingle != nil && cr.Spec.ZoneCommon.VMSingle.Spec != nil && !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VMSingle.Spec.License = cr.Spec.License.DeepCopy()
 		}
 	}
